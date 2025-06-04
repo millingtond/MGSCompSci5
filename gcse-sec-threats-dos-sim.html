@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive DDoS Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none;
+        }
+        .packet {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            position: absolute;
+            transition: opacity 0.3s ease-out; 
+        }
+        .legitimate-packet {
+            background-color: #3498db; 
+            box-shadow: 0 0 5px #3498db;
+        }
+        .malicious-packet {
+            background-color: #e74c3c; 
+            box-shadow: 0 0 5px #e74c3c;
+        }
+        .app-layer-packet {
+            background-color: #c0392b; 
+            box-shadow: 0 0 7px #c0392b;
+            transform: scale(1.2); 
+        }
+        .entity-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 20px;
+            position: absolute; 
+            transition: background-color 0.1s ease-out, opacity 0.3s ease-out;
+        }
+        .server-icon {
+            font-size: 50px;
+        }
+        .tooltip {
+            position: absolute;
+            background-color: #2c3e50; 
+            color: white;
+            padding: 8px 12px; 
+            border-radius: 6px; 
+            font-size: 0.85rem; 
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 100;
+            white-space: normal; 
+            width: max-content;
+            max-width: 250px; 
+            bottom: 125%; 
+            left: 50%;
+            transform: translateX(-50%) translateY(10px); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        [data-tooltip]:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+            transform: translateX(-50%) translateY(0); 
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-3px); }
+            50% { transform: translateX(3px); }
+            75% { transform: translateX(-3px); }
+        }
+        .server-struggling {
+            animation: shake 0.3s infinite;
+        }
+        html, body {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
+        #simulation-area {
+            min-height: 300px;
+        }
+        .blocked-feedback { 
+            background-color: #f39c12 !important; 
+        }
+        #legitimate-users-area, #attackers-area {
+            position: absolute;
+            width: 20%; 
+            height: 75%; 
+            top: 12.5%; 
+        }
+        #legitimate-users-area {
+            left: 2%; 
+        }
+        #attackers-area {
+            right: 2%; 
+        }
+        .user-impacted { 
+            opacity: 0.5;
+        }
+        .packet-failed {
+            opacity: 0.2 !important;
+            background-color: #7f8c8d !important; 
+        }
+        /* Contextual Info Box Styling */
+        #contextual-info-box {
+            position: fixed; /* Fixed position relative to viewport */
+            bottom: 20px;
+            right: 20px;
+            width: 280px;
+            background-color: #1f2937; /* Tailwind gray-800 */
+            color: #e5e7eb; /* Tailwind gray-200 */
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            z-index: 101; /* Above tooltips */
+            border: 1px solid #374151; /* Tailwind gray-700 */
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none; /* Initially not interactive */
+        }
+        #contextual-info-box.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto; /* Interactive when visible */
+        }
+        #contextual-info-box h4 {
+            font-size: 1.05em;
+            color: #60a5fa; /* Tailwind blue-400 */
+            margin-bottom: 8px;
+        }
+        #contextual-info-box p {
+            font-size: 0.9em;
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+        #contextual-info-box button {
+            background-color: #3b82f6; /* Tailwind blue-500 */
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85em;
+            float: right;
+        }
+        #contextual-info-box button:hover {
+            background-color: #2563eb; /* Tailwind blue-600 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4 selection:bg-blue-500 selection:text-white">
+
+    <div class="w-full max-w-5xl bg-gray-800 shadow-2xl rounded-lg p-4 md:p-6">
+        <header class="mb-4 md:mb-6 text-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-blue-400">Interactive DDoS Simulation</h1>
+            <p class="text-sm text-gray-400">Observe how DDoS attacks impact a server and test basic defenses.</p>
+        </header>
+
+        <div id="simulation-area" class="relative w-full h-[300px] md:h-[400px] bg-gray-700 rounded-lg mb-4 md:mb-6 overflow-hidden border-2 border-gray-600">
+            <div id="server" class="entity-icon absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-green-600 p-3 rounded-lg shadow-lg" data-tooltip>
+                <span class="server-icon">🖥️</span>
+                <span class="tooltip">Target Server: Processes incoming requests. Its health depletes under attack.</span>
+            </div>
+            <div id="server-health-bar-container" class="absolute top-4 left-1/2 -translate-x-1/2 w-3/4 max-w-xs h-6 bg-gray-600 rounded-full overflow-hidden border-2 border-gray-500">
+                <div id="server-health-bar" class="h-full bg-green-500 transition-all duration-300 ease-linear" style="width: 100%;"></div>
+            </div>
+            <div id="server-status-text" class="absolute top-12 left-1/2 -translate-x-1/2 text-xs font-semibold text-white bg-black bg-opacity-50 px-2 py-1 rounded">HEALTHY</div>
+
+            <div id="legitimate-users-area"></div>
+            <div id="attackers-area"></div>
+            
+            <div id="cnc-server" class="entity-icon absolute bg-gray-600 shadow-md" style="width:30px; height:30px; font-size:16px; top: 5%; right: 3%;" data-tooltip>
+                📡
+                <span class="tooltip">Attacker C&C Server: Controls the botnet. Becomes active during an attack.</span>
+            </div>
+
+            <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+                <svg viewBox="0 0 200 100" class="w-1/2 h-1/2">
+                    <path d="M60 80 Q40 80 40 60 Q40 40 60 40 Q70 20 90 30 Q120 10 140 40 Q160 40 160 60 Q160 80 140 80 Z" fill="currentColor" class="text-gray-500"/>
+                    <path d="M80 85 Q70 85 70 70 Q70 55 80 55 Q85 45 95 50 Q110 40 120 55 Q130 55 130 70 Q130 85 120 85 Z" fill="currentColor" class="text-gray-500 opacity-70 transform translate-x-5 translate-y-2 scale-90"/>
+                </svg>
+            </div>
+            <div id="packets-blocked-counter" class="absolute bottom-2 right-2 text-xs bg-black bg-opacity-60 px-2 py-1 rounded text-gray-300">Blocked: 0</div>
+        </div>
+
+        <div id="controls-panel" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 mb-4 md:mb-6 p-4 bg-gray-700 rounded-lg">
+            <button id="start-sim" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-3 rounded-lg shadow transition-colors duration-150 text-sm md:text-base">▶️ Start</button>
+            <button id="pause-sim" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-3 rounded-lg shadow transition-colors duration-150 text-sm md:text-base" disabled>⏸️ Pause</button>
+            <button id="reset-sim" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-3 rounded-lg shadow transition-colors duration-150 text-sm md:text-base">🔄 Reset</button>
+
+            <div class="flex flex-col items-center col-span-2 sm:col-span-1">
+                <label for="sim-speed" class="text-xs text-gray-300 mb-1">Speed: <span id="sim-speed-value">1x</span></label>
+                <input type="range" id="sim-speed" min="0.1" max="3" step="0.1" value="1" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500">
+            </div>
+
+            <h3 class="col-span-full text-lg font-semibold mt-3 mb-1 text-blue-300 border-t border-gray-600 pt-3">Attack Types:</h3>
+            <button id="toggle-volume-attack" class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-3 rounded-lg shadow transition-colors duration-150 text-sm md:text-base" data-tooltip>
+                🌊 Volume Attack
+                <span class="tooltip">Standard DDoS: Overwhelms the server with a high volume of simple requests (e.g., UDP flood).</span>
+            </button>
+            <button id="toggle-app-layer-attack" class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-3 rounded-lg shadow transition-colors duration-150 text-sm md:text-base" data-tooltip>
+                🔥 App-Layer Attack
+                <span class="tooltip">Resource Exhaustion: Sends complex requests that consume more server CPU/memory, causing more damage per packet. Click to learn more!</span>
+            </button>
+
+            <h3 class="col-span-full text-lg font-semibold mt-3 mb-1 text-blue-300 border-t border-gray-600 pt-3">Defenses:</h3>
+            <button id="toggle-firewall" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-3 rounded-lg shadow transition-colors duration-150 text-sm md:text-base" data-tooltip>
+                🛡️ Firewall: OFF
+                <span class="tooltip">A basic firewall that inspects incoming traffic and blocks a percentage of packets from known malicious sources or with suspicious patterns.</span>
+            </button>
+            <button id="toggle-rate-limit" class="bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-3 rounded-lg shadow transition-colors duration-150 text-sm md:text-base" data-tooltip>
+                🚦 Rate Limit: OFF
+                <span class="tooltip">Limits the number of requests a single IP address can make in a short period. Helps mitigate flood attacks from individual or small groups of bots. Click to learn more!</span>
+            </button>
+        </div>
+
+        <div id="info-panel" class="bg-gray-700 p-3 md:p-4 rounded-lg shadow">
+            <h3 class="text-md md:text-lg font-semibold text-blue-300 mb-2">Simulation Log & Info:</h3>
+            <div id="log-messages" class="text-xs md:text-sm text-gray-300 h-20 overflow-y-auto border border-gray-600 p-2 rounded bg-gray-800">
+                Welcome to the DDoS Simulation! Click 'Start' to begin.
+            </div>
+             <div class="mt-3 text-xs text-gray-400">
+                <p><strong>Objective:</strong> Keep the server healthy by using defenses against different attack types.</p>
+                <p><strong>Server Health:</strong> Green (Healthy) -> Yellow (Struggling) -> Red (Overwhelmed/Offline).</p>
+            </div>
+        </div>
+
+        <div id="learn-more-section" class="mt-4 bg-gray-700 p-3 md:p-4 rounded-lg shadow">
+            <button id="toggle-learn-more" class="text-md md:text-lg font-semibold text-blue-300 mb-2 w-full text-left focus:outline-none flex justify-between items-center">
+                <span>Learn More About DDoS & Defenses</span>
+                <span id="learn-more-arrow" class="transform transition-transform duration-200">▼</span>
+            </button>
+            <div id="learn-more-content" class="hidden text-xs md:text-sm text-gray-300 space-y-3 border-t border-gray-600 pt-3">
+                <div>
+                    <h4 class="font-semibold text-blue-400">What is a DDoS Attack?</h4>
+                    <p>A Distributed Denial-of-Service (DDoS) attack attempts to make an online service (like a website or game server) unavailable by overwhelming it with a flood of internet traffic from many compromised computer systems. These compromised systems, often called a "botnet," are controlled by an attacker.</p>
+                </div>
+                 <div>
+                    <h4 class="font-semibold text-blue-400">What is an Application-Layer Attack?</h4>
+                    <p>Application-Layer (Layer 7) DDoS attacks target the resources of the application itself, rather than just network bandwidth. Attackers send requests that appear legitimate but are designed to be very resource-intensive for the server to process (e.g., complex database queries, requests for large dynamic pages). This can exhaust server CPU, memory, or other application-specific limits, making the service slow or unresponsive even if network bandwidth isn't fully saturated.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-blue-400">Defense: Firewall</h4>
+                    <p>A firewall acts like a security guard for a network. It inspects incoming and outgoing traffic and decides whether to allow or block specific traffic based on a set of security rules. For DDoS, it can block traffic from known malicious IP addresses or filter out common attack patterns. Firewalls can be software programs or dedicated hardware devices (appliances).</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-blue-400">Defense: Rate Limiting</h4>
+                    <p>Rate limiting is a technique used to control the amount of incoming requests a server accepts from a single IP address (or user) within a specific time window. If an IP sends too many requests too quickly (exceeding the limit), its further requests are temporarily slowed down or blocked. This helps prevent a single bot or a small group of bots from overwhelming the server.</p>
+                </div>
+                 <div>
+                    <h4 class="font-semibold text-blue-400">Security Appliances</h4>
+                    <p>The term "security appliance" typically refers to a dedicated hardware device designed to protect a network. Examples include hardware firewalls, Intrusion Prevention Systems (IPS), and devices that specifically mitigate DDoS attacks. Software solutions can also perform these functions, sometimes running on standard servers or as virtual appliances.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contextual Info Box HTML -->
+    <div id="contextual-info-box">
+        <h4 id="contextual-info-title">Contextual Info</h4>
+        <p id="contextual-info-text">Details about the selected feature.</p>
+        <button id="close-contextual-info">Got it!</button>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const simulationArea = document.getElementById('simulation-area');
+        const serverElement = document.getElementById('server');
+        const serverHealthBar = document.getElementById('server-health-bar');
+        const serverStatusText = document.getElementById('server-status-text');
+        const legitimateUsersArea = document.getElementById('legitimate-users-area');
+        const attackersArea = document.getElementById('attackers-area');
+        const packetsBlockedCounterElement = document.getElementById('packets-blocked-counter');
+        const cncServerElement = document.getElementById('cnc-server');
+        
+        const contextualInfoBox = document.getElementById('contextual-info-box');
+        const contextualInfoTitle = document.getElementById('contextual-info-title'); // Added
+        const contextualInfoText = document.getElementById('contextual-info-text');   // Added
+        const closeContextualInfoButton = document.getElementById('close-contextual-info');
+
+
+        const startButton = document.getElementById('start-sim');
+        const pauseButton = document.getElementById('pause-sim');
+        const resetButton = document.getElementById('reset-sim');
+        const simSpeedSlider = document.getElementById('sim-speed');
+        const simSpeedValue = document.getElementById('sim-speed-value');
+        
+        const toggleVolumeAttackButton = document.getElementById('toggle-volume-attack');
+        const toggleAppLayerAttackButton = document.getElementById('toggle-app-layer-attack');
+
+        const toggleFirewallButton = document.getElementById('toggle-firewall');
+        const toggleRateLimitButton = document.getElementById('toggle-rate-limit');
+        const logMessages = document.getElementById('log-messages');
+
+        const toggleLearnMoreButton = document.getElementById('toggle-learn-more');
+        const learnMoreContent = document.getElementById('learn-more-content');
+        const learnMoreArrow = document.getElementById('learn-more-arrow');
+
+
+        // --- Simulation State & Parameters ---
+        let simRunning = false;
+        let animationFrameId;
+        let packets = [];
+        let entities = [];
+        let serverHealth = 100;
+        let maxServerHealth = 100;
+        
+        let volumeAttackActive = false; 
+        let appLayerAttackActive = false;
+        let activeInfoType = null; // Tracks which type of info is/should be shown
+
+        let firewallActive = false;
+        let rateLimitingActive = false;
+        let simulationSpeed = 1;
+        let requestCounts = {};
+        let packetsBlockedCount = 0;
+
+        const RATE_LIMIT_THRESHOLD = 5;
+        const PACKET_DAMAGE_VOLUME = 0.2;
+        const PACKET_DAMAGE_APP_LAYER = 0.5; 
+        const PACKET_HEAL = 0.05;
+        const MAX_PACKETS_ON_SCREEN = 300;
+        const SERVER_CRITICAL_THRESHOLD = 20; 
+
+        const LEGIT_USER_COUNT = 3;
+        const BOT_COUNT = 5;
+        let rateLimitResetIntervalId = null;
+        
+        // Store if info has been shown this session to prevent repeated pop-ups for the same feature
+        let infoShownThisSession = { 
+            appLayer: false,
+            rateLimit: false
+        };
+
+        const CONTEXTUAL_INFO_CONTENT = {
+            appLayer: {
+                title: "🔥 About Application-Layer Attacks",
+                text: "These attacks target your server's application resources (CPU, memory) with requests that look legitimate but are hard to process. This makes your service slow or crash, even if your network isn't full."
+            },
+            rateLimit: {
+                title: "🚦 About Rate Limiting",
+                text: "Rate limiting restricts how many requests one source (IP address) can send in a short time. If a bot sends too many too fast, its extra requests are blocked, helping to stop floods."
+            }
+        };
+
+
+        // --- Entity & Packet Classes ---
+        class Entity {
+            constructor(id, type, icon, areaElement, isAttacker = false) {
+                this.id = id;
+                this.type = type;
+                this.ip = `192.168.0.${Math.floor(Math.random() * 254) + 1}`;
+                this.element = document.createElement('div');
+                this.element.className = `entity-icon ${isAttacker ? 'bg-red-700' : 'bg-green-700'} shadow-md`;
+                this.element.innerHTML = icon + `<span class="tooltip">${type} (${this.ip})</span>`;
+                this.element.dataset.tooltip = "";
+                areaElement.appendChild(this.element); 
+
+                this.element.style.top = `${Math.random() * 80 + 5}%`; 
+                this.element.style.left = `${Math.random() * 80 + 5}%`; 
+
+                this.isAttacker = isAttacker;
+                this.packetInterval = null;
+                this.targetX = serverElement.offsetLeft + serverElement.offsetWidth / 2;
+                this.targetY = serverElement.offsetTop + serverElement.offsetHeight / 2;
+            }
+
+            sendPacket() {
+                if (!simRunning || packets.length > MAX_PACKETS_ON_SCREEN || (!volumeAttackActive && !appLayerAttackActive && this.isAttacker) ) return;
+
+                let packetBlockedByRateLimit = false;
+                if (this.isAttacker && rateLimitingActive) {
+                    requestCounts[this.ip] = (requestCounts[this.ip] || 0) + 1;
+                    if (requestCounts[this.ip] > RATE_LIMIT_THRESHOLD) {
+                        if (Math.random() < 0.8) {
+                           packetBlockedByRateLimit = true;
+                        }
+                    }
+                }
+
+                if (packetBlockedByRateLimit) {
+                    packetsBlockedCount++;
+                    updatePacketsBlockedCounter();
+                    this.element.classList.add('blocked-feedback');
+                    setTimeout(() => {
+                        this.element.classList.remove('blocked-feedback');
+                    }, 200);
+                    return; 
+                }
+
+                const packet = document.createElement('div');
+                let packetTypeClass = this.isAttacker ? 'malicious-packet' : 'legitimate-packet';
+                let currentPacketDamage = PACKET_DAMAGE_VOLUME;
+                let packetSpeedMultiplier = this.isAttacker ? 3 : 2;
+
+                if (this.isAttacker && appLayerAttackActive) {
+                    packetTypeClass += ' app-layer-packet'; 
+                    currentPacketDamage = PACKET_DAMAGE_APP_LAYER;
+                }
+                
+                packet.className = `packet ${packetTypeClass}`;
+                
+                if (!this.isAttacker && serverHealth <= SERVER_CRITICAL_THRESHOLD) {
+                    packetSpeedMultiplier *= 0.5; 
+                    if (Math.random() < 0.3) { 
+                         packet.classList.add('packet-failed');
+                    }
+                }
+                
+                const simRect = simulationArea.getBoundingClientRect();
+                const entityRect = this.element.getBoundingClientRect(); 
+                let startX = entityRect.left - simRect.left + entityRect.width / 2 - 5;
+                let startY = entityRect.top - simRect.top + entityRect.height / 2 - 5;
+                startX = Math.max(0, Math.min(startX, simRect.width - 10));
+                startY = Math.max(0, Math.min(startY, simRect.height - 10));
+                packet.style.left = `${startX}px`;
+                packet.style.top = `${startY}px`;
+                
+                simulationArea.appendChild(packet);
+                packets.push({
+                    element: packet,
+                    x: startX, y: startY,
+                    isMalicious: this.isAttacker,
+                    isFailedVisual: packet.classList.contains('packet-failed'),
+                    ip: this.ip,
+                    targetX: this.targetX - 5, targetY: this.targetY - 5,
+                    speed: packetSpeedMultiplier * simulationSpeed,
+                    damage: this.isAttacker ? currentPacketDamage : 0
+                });
+            }
+
+            startSending(intervalBase) {
+                this.stopSending(); 
+                const sendLogic = () => {
+                    if (!simRunning) { this.stopSending(); return; }
+                    if (this.isAttacker && !volumeAttackActive && !appLayerAttackActive) {
+                        this.packetInterval = setTimeout(sendLogic, intervalBase / simulationSpeed); 
+                        return;
+                    }
+                    let effectiveInterval = intervalBase;
+                    if (this.isAttacker && (volumeAttackActive || appLayerAttackActive)) {
+                         effectiveInterval = intervalBase / 5; 
+                    }
+                    this.sendPacket();
+                    this.packetInterval = setTimeout(sendLogic, effectiveInterval / simulationSpeed);
+                };
+                if (simRunning) { sendLogic(); }
+            }
+            
+            stopSending() {
+                if (this.packetInterval) { clearTimeout(this.packetInterval); this.packetInterval = null; }
+            }
+        }
+
+        // --- Utility Functions ---
+        function addLog(message) {
+            const p = document.createElement('p');
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logMessages.insertBefore(p, logMessages.firstChild); 
+            if (logMessages.children.length > 20) { logMessages.removeChild(logMessages.lastChild); }
+        }
+
+        function updatePacketsBlockedCounter() {
+            packetsBlockedCounterElement.textContent = `Blocked: ${packetsBlockedCount}`;
+        }
+
+        function updateServerVisuals() {
+            serverHealthBar.style.width = `${serverHealth}%`;
+            serverElement.classList.remove('server-struggling', 'bg-green-600', 'bg-yellow-500', 'bg-red-500');
+            
+            entities.filter(e => !e.isAttacker).forEach(userEntity => {
+                if (serverHealth <= SERVER_CRITICAL_THRESHOLD / 2) { 
+                    userEntity.element.classList.add('user-impacted');
+                } else {
+                    userEntity.element.classList.remove('user-impacted');
+                }
+            });
+
+            if (serverHealth > 60) {
+                serverHealthBar.style.backgroundColor = '#2ecc71'; serverElement.classList.add('bg-green-600');
+                serverStatusText.textContent = 'HEALTHY'; serverStatusText.style.backgroundColor = 'rgba(46, 204, 113, 0.7)';
+            } else if (serverHealth > SERVER_CRITICAL_THRESHOLD) {
+                serverHealthBar.style.backgroundColor = '#f1c40f'; serverElement.classList.add('bg-yellow-500', 'server-struggling');
+                serverStatusText.textContent = 'STRUGGLING'; serverStatusText.style.backgroundColor = 'rgba(241, 196, 15, 0.7)';
+            } else {
+                serverHealthBar.style.backgroundColor = '#e74c3c'; serverElement.classList.add('bg-red-500', 'server-struggling');
+                serverStatusText.textContent = serverHealth > 0 ? 'CRITICAL' : 'OFFLINE'; serverStatusText.style.backgroundColor = 'rgba(231, 76, 60, 0.7)';
+                if (serverHealth <= 0) {
+                    serverHealth = 0;
+                    if (simRunning) pauseSimulation();
+                    addLog("Server Offline! Attack successful.");
+                }
+            }
+        }
+        
+        function resetRateLimitCounts() { requestCounts = {}; }
+        function setupRateLimitInterval() {
+            if (rateLimitResetIntervalId) { clearInterval(rateLimitResetIntervalId); }
+            rateLimitResetIntervalId = setInterval(resetRateLimitCounts, 3000 / simulationSpeed);
+        }
+
+        // --- Simulation Loop ---
+        function gameLoop() {
+            if (!simRunning) return;
+            
+            packets.forEach(p => { 
+                let baseSpeedMultiplier = p.isMalicious ? 3 : 2;
+                if (!p.isMalicious && serverHealth <= SERVER_CRITICAL_THRESHOLD) {
+                    baseSpeedMultiplier *= 0.5; 
+                }
+                p.speed = baseSpeedMultiplier * simulationSpeed; 
+            });
+
+            packets = packets.filter(packet => {
+                const dx = packet.targetX - packet.x; const dy = packet.targetY - packet.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (packet.isFailedVisual && distance < packet.speed * 5) { 
+                     if (packet.element.parentNode === simulationArea) { simulationArea.removeChild(packet.element); }
+                     return false;
+                }
+
+                if (distance < packet.speed) { 
+                    if (packet.element.parentNode === simulationArea) { simulationArea.removeChild(packet.element); }
+                    if (!packet.isFailedVisual) { 
+                        handlePacketArrival(packet);
+                    }
+                    return false; 
+                } else {
+                    packet.x += (dx / distance) * packet.speed; packet.y += (dy / distance) * packet.speed;
+                    packet.element.style.left = `${packet.x}px`; packet.element.style.top = `${packet.y}px`;
+                    return true; 
+                }
+            });
+            if (serverHealth < maxServerHealth && serverHealth > 0) {
+                serverHealth += PACKET_HEAL * simulationSpeed;
+                serverHealth = Math.min(serverHealth, maxServerHealth);
+            }
+            updateServerVisuals();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function handlePacketArrival(packet) {
+            if (packet.isMalicious && firewallActive) {
+                if (Math.random() < 0.6) { 
+                    packetsBlockedCount++;
+                    updatePacketsBlockedCounter();
+                    return; 
+                }
+            }
+            if (packet.isMalicious) {
+                serverHealth -= packet.damage; 
+                if (serverHealth < 0) serverHealth = 0;
+            }
+            updateServerVisuals();
+        }
+
+        // --- Control Functions ---
+        function initializeEntities() {
+            entities.forEach(entity => {
+                entity.stopSending();
+                if (entity.element.parentNode) { entity.element.parentNode.removeChild(entity.element); }
+            });
+            entities = [];
+            legitimateUsersArea.innerHTML = ''; attackersArea.innerHTML = '';
+            for (let i = 0; i < LEGIT_USER_COUNT; i++) { 
+                entities.push(new Entity(`user-${i}`, 'User', '🧑‍💻', legitimateUsersArea, false)); 
+            }
+            for (let i = 0; i < BOT_COUNT; i++) { 
+                entities.push(new Entity(`bot-${i}`, 'Bot', '💀', attackersArea, true)); 
+            }
+        }
+
+        function updateCncServerVisual(isAttackActive) {
+            if (isAttackActive) {
+                cncServerElement.classList.remove('bg-gray-600');
+                cncServerElement.classList.add('bg-red-800', 'ring-2', 'ring-red-500');
+            } else {
+                cncServerElement.classList.add('bg-gray-600');
+                cncServerElement.classList.remove('bg-red-800', 'ring-2', 'ring-red-500');
+            }
+        }
+        
+        function showContextualInfo(typeKey) {
+            const content = CONTEXTUAL_INFO_CONTENT[typeKey];
+            if (content && !infoShownThisSession[typeKey]) {
+                contextualInfoTitle.textContent = content.title;
+                contextualInfoText.textContent = content.text;
+                contextualInfoBox.classList.add('visible');
+                infoShownThisSession[typeKey] = true;
+                activeInfoType = typeKey; // Track which info is active
+            } else if (content && infoShownThisSession[typeKey] && !contextualInfoBox.classList.contains('visible')) {
+                // If already shown but box is hidden, re-show it without resetting the session flag
+                contextualInfoTitle.textContent = content.title;
+                contextualInfoText.textContent = content.text;
+                contextualInfoBox.classList.add('visible');
+                activeInfoType = typeKey;
+            }
+        }
+
+        function hideContextualInfo(typeKey = null) {
+            // If a specific type is passed, only hide if that type is active
+            // Otherwise (no typeKey or typeKey matches activeInfoType), hide the box
+            if (typeKey === null || typeKey === activeInfoType) {
+                contextualInfoBox.classList.remove('visible');
+                activeInfoType = null;
+            }
+        }
+
+
+        function startSimulation() {
+            if (simRunning) return;
+            simRunning = true; startButton.disabled = true; pauseButton.disabled = false;
+            addLog("Simulation started.");
+            entities.forEach(entity => entity.startSending(entity.isAttacker ? 500 : 2000)); 
+            setupRateLimitInterval(); gameLoop();
+        }
+
+        function pauseSimulation() {
+            if (!simRunning) return;
+            simRunning = false; startButton.disabled = false; pauseButton.disabled = true;
+            addLog("Simulation paused.");
+            entities.forEach(entity => entity.stopSending());
+            if (rateLimitResetIntervalId) { clearInterval(rateLimitResetIntervalId); }
+            cancelAnimationFrame(animationFrameId);
+        }
+
+        function resetSimulation() {
+            pauseSimulation();
+            packets.forEach(p => { if (p.element.parentNode === simulationArea) simulationArea.removeChild(p.element); });
+            packets = []; serverHealth = maxServerHealth;
+            volumeAttackActive = false; appLayerAttackActive = false;
+            
+            // Reset info shown flags
+            infoShownThisSession.appLayer = false;
+            infoShownThisSession.rateLimit = false;
+            hideContextualInfo(); // Hide any active contextual info
+
+            firewallActive = false; rateLimitingActive = false;
+            packetsBlockedCount = 0; updatePacketsBlockedCounter();
+            updateCncServerVisual(false);
+            
+            toggleVolumeAttackButton.classList.remove('bg-yellow-600', 'hover:bg-yellow-700', 'ring-2', 'ring-white');
+            toggleVolumeAttackButton.classList.add('bg-purple-500', 'hover:bg-purple-600');
+            toggleAppLayerAttackButton.classList.remove('bg-yellow-600', 'hover:bg-yellow-700', 'ring-2', 'ring-white');
+            toggleAppLayerAttackButton.classList.add('bg-indigo-500', 'hover:bg-indigo-600');
+
+            toggleFirewallButton.textContent = "🛡️ Firewall: OFF";
+            toggleFirewallButton.classList.remove('bg-green-500', 'hover:bg-green-600');
+            toggleFirewallButton.classList.add('bg-blue-500', 'hover:bg-blue-600');
+            toggleRateLimitButton.textContent = "🚦 Rate Limit: OFF";
+            toggleRateLimitButton.classList.remove('bg-green-500', 'hover:bg-green-600');
+            toggleRateLimitButton.classList.add('bg-teal-500', 'hover:bg-teal-600');
+
+            initializeEntities(); updateServerVisuals();
+            logMessages.innerHTML = ''; addLog("Simulation reset. Click 'Start' to begin.");
+            pauseButton.disabled = true; startButton.disabled = false;
+        }
+
+        // --- Event Listeners ---
+        startButton.addEventListener('click', startSimulation);
+        pauseButton.addEventListener('click', pauseSimulation);
+        resetButton.addEventListener('click', resetSimulation);
+
+        simSpeedSlider.addEventListener('input', (e) => {
+            simulationSpeed = parseFloat(e.target.value);
+            simSpeedValue.textContent = `${simulationSpeed.toFixed(1)}x`;
+            addLog(`Simulation speed set to ${simulationSpeed.toFixed(1)}x`);
+            if (simRunning) {
+                 entities.forEach(entity => entity.startSending(entity.isAttacker ? 500 : 2000));
+                 setupRateLimitInterval();
+            } else if (rateLimitResetIntervalId) { setupRateLimitInterval(); }
+        });
+
+        toggleVolumeAttackButton.addEventListener('click', () => {
+            volumeAttackActive = !volumeAttackActive;
+            updateCncServerVisual(volumeAttackActive || appLayerAttackActive);
+            if (volumeAttackActive) {
+                toggleVolumeAttackButton.classList.add('bg-yellow-600', 'hover:bg-yellow-700', 'ring-2', 'ring-white');
+                toggleVolumeAttackButton.classList.remove('bg-purple-500', 'hover:bg-purple-600');
+                addLog("Volume Attack Activated!");
+                hideContextualInfo('appLayer'); // Hide app layer info if volume attack is chosen
+                hideContextualInfo('rateLimit'); // Hide rate limit info
+                if (appLayerAttackActive) {
+                    appLayerAttackActive = false;
+                    toggleAppLayerAttackButton.classList.remove('bg-yellow-600', 'hover:bg-yellow-700', 'ring-2', 'ring-white');
+                    toggleAppLayerAttackButton.classList.add('bg-indigo-500', 'hover:bg-indigo-600');
+                    addLog("Application Layer Attack Deactivated.");
+                }
+            } else {
+                toggleVolumeAttackButton.classList.remove('bg-yellow-600', 'hover:bg-yellow-700', 'ring-2', 'ring-white');
+                toggleVolumeAttackButton.classList.add('bg-purple-500', 'hover:bg-purple-600');
+                addLog("Volume Attack Deactivated.");
+            }
+            if (simRunning) { entities.filter(e => e.isAttacker).forEach(bot => bot.startSending(500)); }
+        });
+
+        toggleAppLayerAttackButton.addEventListener('click', () => {
+            appLayerAttackActive = !appLayerAttackActive;
+            updateCncServerVisual(volumeAttackActive || appLayerAttackActive);
+            if (appLayerAttackActive) {
+                toggleAppLayerAttackButton.classList.add('bg-yellow-600', 'hover:bg-yellow-700', 'ring-2', 'ring-white');
+                toggleAppLayerAttackButton.classList.remove('bg-indigo-500', 'hover:bg-indigo-600');
+                addLog("Application Layer Attack Activated!");
+                showContextualInfo('appLayer');
+                hideContextualInfo('rateLimit'); // Hide rate limit info
+
+                if (volumeAttackActive) {
+                    volumeAttackActive = false;
+                    toggleVolumeAttackButton.classList.remove('bg-yellow-600', 'hover:bg-yellow-700', 'ring-2', 'ring-white');
+                    toggleVolumeAttackButton.classList.add('bg-purple-500', 'hover:bg-purple-600');
+                    addLog("Volume Attack Deactivated.");
+                }
+            } else {
+                toggleAppLayerAttackButton.classList.remove('bg-yellow-600', 'hover:bg-yellow-700', 'ring-2', 'ring-white');
+                toggleAppLayerAttackButton.classList.add('bg-indigo-500', 'hover:bg-indigo-600');
+                addLog("Application Layer Attack Deactivated.");
+                hideContextualInfo('appLayer');
+            }
+            if (simRunning) { entities.filter(e => e.isAttacker).forEach(bot => bot.startSending(500)); }
+        });
+
+        closeContextualInfoButton.addEventListener('click', () => {
+            hideContextualInfo(); // Hides any active contextual info
+        });
+
+
+        toggleFirewallButton.addEventListener('click', () => {
+            firewallActive = !firewallActive;
+            if (firewallActive) {
+                toggleFirewallButton.textContent = "🛡️ Firewall: ON";
+                toggleFirewallButton.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                toggleFirewallButton.classList.add('bg-green-500', 'hover:bg-green-600');
+                addLog("Firewall Activated.");
+            } else {
+                toggleFirewallButton.textContent = "🛡️ Firewall: OFF";
+                toggleFirewallButton.classList.remove('bg-green-500', 'hover:bg-green-600');
+                toggleFirewallButton.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                addLog("Firewall Deactivated.");
+            }
+        });
+
+        toggleRateLimitButton.addEventListener('click', () => {
+            rateLimitingActive = !rateLimitingActive;
+            resetRateLimitCounts(); 
+            if (rateLimitingActive) {
+                toggleRateLimitButton.textContent = "🚦 Rate Limit: ON";
+                toggleRateLimitButton.classList.remove('bg-teal-500', 'hover:bg-teal-600');
+                toggleRateLimitButton.classList.add('bg-green-500', 'hover:bg-green-600');
+                addLog("Rate Limiting Activated.");
+                showContextualInfo('rateLimit'); // Show rate limit info
+                hideContextualInfo('appLayer'); // Hide app layer info if rate limit is chosen
+            } else {
+                toggleRateLimitButton.textContent = "🚦 Rate Limit: OFF";
+                toggleRateLimitButton.classList.remove('bg-green-500', 'hover:bg-green-600');
+                toggleRateLimitButton.classList.add('bg-teal-500', 'hover:bg-teal-600');
+                addLog("Rate Limiting Deactivated.");
+                hideContextualInfo('rateLimit'); // Hide rate limit info
+            }
+        });
+
+        toggleLearnMoreButton.addEventListener('click', () => {
+            const isHidden = learnMoreContent.classList.toggle('hidden');
+            learnMoreArrow.classList.toggle('rotate-180', !isHidden); 
+        });
+        
+        // Initial Setup
+        window.addEventListener('load', () => {
+            initializeEntities(); updateServerVisuals(); updatePacketsBlockedCounter();
+            updateCncServerVisual(false); 
+            contextualInfoBox.classList.remove('visible'); 
+            setTimeout(() => { 
+                 entities.forEach(e => {
+                    if(serverElement) {
+                        e.targetX = serverElement.offsetLeft + serverElement.offsetWidth / 2;
+                        e.targetY = serverElement.offsetTop + serverElement.offsetHeight / 2;
+                    }
+                 });
+            }, 100); 
+            setupRateLimitInterval();
+        });
+
+        window.addEventListener('resize', () => { 
+            if (serverElement) {
+                 entities.forEach(e => {
+                    e.targetX = serverElement.offsetLeft + serverElement.offsetWidth / 2;
+                    e.targetY = serverElement.offsetTop + serverElement.offsetHeight / 2;
+                 });
+            }
+        });
+
+    </script>
+</body>
+</html>

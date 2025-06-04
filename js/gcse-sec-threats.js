@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- Drag and Drop ---
-    setupDragAndDrop();
+    setupDragAndDrop(); // Make sure this function is defined or moved to global if needed by other scripts
 
     // --- Initialize Network Virus Sim (for Virus Section) ---
     if (typeof netVirus_initSimulation === 'function') {
@@ -92,7 +92,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 // --- Task 1: Identify the Threat! ---
-function checkThreatQuestion(selectId, correctAnswer, feedbackId) {
+// Made globally accessible
+window.checkThreatQuestion = function(selectId, correctAnswer, feedbackId) {
     const selectElement = document.getElementById(selectId);
     const feedbackElement = document.getElementById(feedbackId);
     const userAnswer = selectElement.value;
@@ -102,7 +103,7 @@ function checkThreatQuestion(selectId, correctAnswer, feedbackId) {
 
     if (userAnswer === correctAnswer) {
         feedbackElement.innerHTML = '<span class="text-green-600 font-semibold"><i class="fas fa-check-circle mr-1"></i>Correct!</span> Well done.';
-        feedbackElement.className = 'feedback-area-inline text-green-700 show';
+        feedbackElement.className = 'feedback-area-inline text-green-700 show'; // Ensure 'show' is managed by worksheet-common.js or similar
         quizItem.dataset.answeredCorrectly = "true";
     } else if (userAnswer === "") {
         feedbackElement.innerHTML = '<span class="text-yellow-600 font-semibold"><i class="fas fa-exclamation-triangle mr-1"></i>Please select an answer.</span>';
@@ -116,7 +117,8 @@ function checkThreatQuestion(selectId, correctAnswer, feedbackId) {
 }
 
 // --- Fill in the Blanks Functionality ---
-function checkFillBlanks(containerId) {
+// Made globally accessible
+window.checkFillBlanks = function(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
     const inputs = container.querySelectorAll('.fill-in-blank');
@@ -159,11 +161,12 @@ function checkFillBlanks(containerId) {
         } else { 
              feedbackDiv.innerHTML = '<span class="text-blue-600">Keep going! Check the highlighted boxes.</span>';
         }
-        feedbackDiv.className = 'feedback-area mt-2 show';
+        feedbackDiv.className = 'feedback-area mt-2 show'; // Ensure 'show' is managed by worksheet-common.js or similar
     }
 }
 
-function resetFillBlanks(containerId) {
+// Made globally accessible
+window.resetFillBlanks = function(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
     const inputs = container.querySelectorAll('.fill-in-blank');
@@ -183,7 +186,6 @@ function resetFillBlanks(containerId) {
 // --- Simulation Functions & Resets ---
 let virusSimIntervals = []; // For local virus sim
 let ransomwareSimIntervals = [];
-// bruteForceSimIntervals is now handled by the new bruteForceAdv_ logic
 
 // For Networked Virus Simulation (under Virus section)
 let netVirus_computers_state = []; 
@@ -211,8 +213,8 @@ function clearSimTimeouts(timeoutArray) {
     timeoutArray.length = 0;
 }
 
-
-function resetVirusSim() { // This is for the LOCAL virus sim
+// Made globally accessible
+window.resetVirusSim = function() { // This is for the LOCAL virus sim
     clearSimIntervals(virusSimIntervals);
     const simArea = document.getElementById('virus-sim-area');
     if (simArea) {
@@ -226,7 +228,8 @@ function resetVirusSim() { // This is for the LOCAL virus sim
     if (statusP) statusP.textContent = "";
 }
 
-function simulateVirusSpread() { // This is for the LOCAL virus sim
+// Made globally accessible
+window.simulateVirusSpread = function() { // This is for the LOCAL virus sim
     resetVirusSim(); 
     const cleanFile1 = document.getElementById('clean-file-1');
     const cleanFile2 = document.getElementById('clean-file-2');
@@ -252,8 +255,8 @@ function simulateVirusSpread() { // This is for the LOCAL virus sim
     }, 5000)); 
 }
 
-
-function resetTrojanSim() {
+// Made globally accessible
+window.resetTrojanSim = function() {
     const statusP = document.getElementById('trojan-game-status');
     const alertMsg = document.getElementById('trojan-alert-message');
     const dataTransfer = document.getElementById('trojan-data-transfer');
@@ -270,7 +273,8 @@ function resetTrojanSim() {
     }
 }
 
-function checkTrojan(type, buttonId) {
+// Made globally accessible
+window.checkTrojan = function(type, buttonId) {
     const statusP = document.getElementById('trojan-game-status');
     const alertMsg = document.getElementById('trojan-alert-message');
     const dataTransfer = document.getElementById('trojan-data-transfer');
@@ -299,8 +303,8 @@ function checkTrojan(type, buttonId) {
     }
 }
 
-
-function resetKeyloggerSim() {
+// Made globally accessible
+window.resetKeyloggerSim = function() {
     const fakePasswordInput = document.getElementById('fake-password');
     const keyloggerOutput = document.getElementById('keylogger-output');
     const hackerServerLog = document.getElementById('hacker-server-log');
@@ -311,8 +315,8 @@ function resetKeyloggerSim() {
     if (transmissionIndicator) transmissionIndicator.classList.add('hidden');
 }
 
-
-function resetRansomwareSim() {
+// Made globally accessible
+window.resetRansomwareSim = function() {
     clearSimIntervals(ransomwareSimIntervals);
     const filesArea = document.getElementById('ransomware-files-area');
     if (filesArea) {
@@ -326,7 +330,8 @@ function resetRansomwareSim() {
     if (ransomDemandDiv) ransomDemandDiv.classList.add('hidden');
 }
 
-function simulateRansomware() {
+// Made globally accessible
+window.simulateRansomware = function() {
     resetRansomwareSim();
     const files = [
         { id: 'doc1-ransom', name: 'MyDoc1.docx', icon: 'fa-file-word' },
@@ -350,10 +355,9 @@ function simulateRansomware() {
     }, (files.length + 1) * 1800)); 
 }
 
-// Old BruteForce functions are removed. New ones are prefixed bruteForceAdv_ and are below.
-
 
 // --- Drag and Drop Functionality ---
+// This function is called from DOMContentLoaded, so it's fine as is unless called from HTML
 function setupDragAndDrop() {
     const draggables = document.querySelectorAll('.drag-item');
     const dropZones = document.querySelectorAll('.drop-zone');
@@ -407,8 +411,8 @@ function setupDragAndDrop() {
         
         dropZones.forEach(zone => {
             const droppedItem = zone.querySelector('.drag-item');
-            zone.classList.remove('border-green-500', 'border-red-500', 'border-2', 'border-dashed');
-            zone.classList.add('border-2', 'border-dashed', 'border-gray-300'); 
+            zone.classList.remove('border-green-500', 'border-red-500', 'border-2', 'border-dashed'); // Reset borders
+            zone.classList.add('border-2', 'border-dashed', 'border-gray-300'); // Add back default dashed border
 
             if (droppedItem) {
                 totalDroppedInZones++;
@@ -644,24 +648,25 @@ function netVirus_infectComputer(computerId, isInitialInfection = false) {
                                 
                                 if (netVirus_blockedMessageTimeouts[targetComputer.id]) clearTimeout(netVirus_blockedMessageTimeouts[targetComputer.id]);
                                 netVirus_blockedMessageTimeouts[targetComputer.id] = setTimeout(() => {
-                                    if (targetId < netVirus_computers_state.length && netVirus_computers_state[targetComputer.id] && !netVirus_computers_state[targetComputer.id].infected) {
-                                        netVirus_updateComputerVisual(netVirus_computers_state[targetComputer.id]); 
+                                     if (targetId < netVirus_computers_state.length && netVirus_computers_state[targetComputer.id] && !netVirus_computers_state[targetComputer.id].infected) {
+                                         netVirus_updateComputerVisual(netVirus_computers_state[targetComputer.id]); 
                                     }
-                                }, ADVWORM_BLOCKED_MESSAGE_DURATION); 
+                                }, ADVWORMSIM_BLOCKED_MESSAGE_DURATION); // Using ADVWORMSIM constant, ensure this is defined or use NETVIRUS one
                             }
-                        }, ADVWORM_EXPLOIT_ATTEMPT_DELAY); 
+                        }, ADVWORMSIM_EXPLOIT_ATTEMPT_DELAY); // Using ADVWORMSIM constant
                         netVirus_propagationTimeouts_list.push(secondaryExploitTimeoutId);
                     }
-                }, ADVWORM_EXPLOIT_ATTEMPT_DELAY); 
+                }, ADVWORMSIM_EXPLOIT_ATTEMPT_DELAY); // Using ADVWORMSIM constant
                 netVirus_propagationTimeouts_list.push(exploitTimeoutId);
 
-            }, ADVWORM_SCAN_DURATION + NETVIRUS_SPREAD_DELAY * (Math.random() * 0.2 + 0.8));
+            }, ADVWORMSIM_SCAN_DURATION + NETVIRUS_SPREAD_DELAY * (Math.random() * 0.2 + 0.8)); // Using ADVWORMSIM constant
             netVirus_propagationTimeouts_list.push(timeoutId);
         });
     }
 }
 
-function netVirus_initSimulation() {
+// Made globally accessible
+window.netVirus_initSimulation = function() {
     netVirus_simulationActive_state = false;
     const introBtn = document.getElementById('netVirus_introduceVirusBtn');
     const resetBtn = document.getElementById('netVirus_resetSimulationBtn');
@@ -929,7 +934,7 @@ function advWormSim_infectComputer(computerId, isInitialRelease = false) {
                                 if (advWormSim_blockedMessageTimeouts[targetComputer.id]) clearTimeout(advWormSim_blockedMessageTimeouts[targetComputer.id]);
                                 advWormSim_blockedMessageTimeouts[targetComputer.id] = setTimeout(() => {
                                      if (targetId < advWormSim_computers_state.length && advWormSim_computers_state[targetComputer.id] && !advWormSim_computers_state[targetComputer.id].infectedByWorm) {
-                                        advWormSim_updateComputerVisual(advWormSim_computers_state[targetComputer.id]); 
+                                         advWormSim_updateComputerVisual(advWormSim_computers_state[targetComputer.id]); 
                                     }
                                 }, ADVWORMSIM_BLOCKED_MESSAGE_DURATION);
                             }
@@ -945,7 +950,8 @@ function advWormSim_infectComputer(computerId, isInitialRelease = false) {
     }
 }
 
-function advWormSim_initSimulation() {
+// Made globally accessible
+window.advWormSim_initSimulation = function() {
     advWormSim_simulationActive_state = false;
     const releaseBtn = document.getElementById('advWormSim_releaseWormBtn');
     const resetBtn = document.getElementById('advWormSim_resetSimulationBtn');
@@ -1131,7 +1137,6 @@ function bruteForceAdv_attackStep() {
 
     if (bruteForceAdv_accountLockoutEnabled && bruteForceAdv_attemptsCount >= bruteForceAdv_lockoutAfterAttempts) {
         bruteForceAdv_isAttackRunning = false;
-        // bruteForceAdv_passwordFound = false; // Not found if locked out
         bruteForceAdv_logEvent(`ACCOUNT LOCKED OUT after ${bruteForceAdv_attemptsCount.toLocaleString()} failed attempts.`, 'lockout');
         bruteForceAdv_updateSystemVisualState();
         bruteForceAdv_updateAttackMonitorDisplay();
@@ -1149,7 +1154,6 @@ function bruteForceAdv_attackStep() {
         
         if (bruteForceAdv_currentGeneratedPassword === null) {
             bruteForceAdv_logEvent(`Attack stopped: All ${bruteForceAdv_PASSWORD_LENGTH}-character combinations tried. Password not found.`, 'failure');
-            // bruteForceAdv_passwordFound = false; // Already false
             bruteForceAdv_isAttackRunning = false;
             if (bruteForceAdv_attackLoopId) cancelAnimationFrame(bruteForceAdv_attackLoopId);
             if(startAttackBtn) startAttackBtn.disabled = true; 
@@ -1193,7 +1197,7 @@ function bruteForceAdv_calculateEstimatedTime() {
         if(estimatedTimeText) estimatedTimeText.textContent = "- (Simple mode)";
         return;
     }
-    advConfigError.textContent = "";
+    if(advConfigError) advConfigError.textContent = ""; // Clear previous errors
     bruteForceAdv_buildCharset(); 
     const currentLength = parseInt(advPasswordLength.value) || 0;
     const selectedSpeed = attackSpeedSelect.value;
@@ -1406,7 +1410,8 @@ function bruteForceAdv_startAttack() {
     bruteForceAdv_attackLoopId = requestAnimationFrame(bruteForceAdv_attackStep);
 }
 
-function bruteForceAdv_resetSimulation() {
+// Made globally accessible
+window.bruteForceAdv_resetSimulation = function() { // Renamed to avoid conflict if there was an old one
     const startAttackBtn = document.getElementById('bruteForceAdv_startAttackBtn');
     const resetSimulationBtn = document.getElementById('bruteForceAdv_resetSimulationBtn');
     const eventLog = document.getElementById('bruteForceAdv_eventLog');
@@ -1461,7 +1466,7 @@ function bruteForceAdv_resetSimulation() {
         if(advConfigError) advConfigError.textContent = "";
         if(advPasswordInput) advPasswordInput.value = "";
         if(advPasswordLength) advPasswordLength.value = "3";
-        if(advPasswordInput) advPasswordInput.maxLength = 3; 
+        if(advPasswordInput && advPasswordLength) advPasswordInput.maxLength = parseInt(advPasswordLength.value); 
         if(attackSpeedSelect) attackSpeedSelect.value = "normal";
         if(charLowercase) charLowercase.checked = true;
         if(charUppercase) charUppercase.checked = false;
@@ -1477,7 +1482,8 @@ function bruteForceAdv_resetSimulation() {
     }
 }
 
-function bruteForceAdv_switchToMode(mode) {
+// Made globally accessible
+window.bruteForceAdv_switchToMode = function(mode) {
     const modeSelectionScreen = document.getElementById('bruteForceAdv_modeSelectionScreen');
     const simulatorInterface = document.getElementById('bruteForceAdv_simulatorInterface');
     const simpleModeConfigDiv = document.getElementById('bruteForceAdv_simpleModeConfig');
@@ -1509,7 +1515,8 @@ function bruteForceAdv_switchToMode(mode) {
     }
 }
 
-function bruteForceAdv_handleAdvPasswordLengthChange() {
+// Made globally accessible
+window.bruteForceAdv_handleAdvPasswordLengthChange = function() {
     const advPasswordLength = document.getElementById('bruteForceAdv_advPasswordLength');
     const advPasswordInput = document.getElementById('bruteForceAdv_advPasswordInput');
     if(!advPasswordLength || !advPasswordInput) return;
@@ -1524,7 +1531,8 @@ function bruteForceAdv_handleAdvPasswordLengthChange() {
     bruteForceAdv_calculateEstimatedTime(); 
 }
 
-function bruteForceAdv_init() { // Renamed from the global DOMContentLoaded
+// Made globally accessible
+window.bruteForceAdv_init = function() { 
     const selectSimpleModeBtn = document.getElementById('bruteForceAdv_selectSimpleModeBtn');
     const selectAdvancedModeBtn = document.getElementById('bruteForceAdv_selectAdvancedModeBtn');
     const backToModeSelectionBtn = document.getElementById('bruteForceAdv_backToModeSelectionBtn');
@@ -1552,6 +1560,7 @@ function bruteForceAdv_init() { // Renamed from the global DOMContentLoaded
     if(selectAdvancedModeBtn) selectAdvancedModeBtn.addEventListener('click', () => bruteForceAdv_switchToMode('advanced'));
     if(backToModeSelectionBtn) backToModeSelectionBtn.addEventListener('click', () => {
         if(bruteForceAdv_isAttackRunning) {
+            // Using a simple browser confirm for now, replace with custom modal if needed
             if(!confirm("Attack is running. Are you sure you want to go back and reset? This will stop the current attack.")) return;
         }
         bruteForceAdv_isAttackRunning = false; 
@@ -1580,48 +1589,13 @@ function bruteForceAdv_init() { // Renamed from the global DOMContentLoaded
 
 
 // --- Global Helper Functions (if not in worksheet-common.js) ---
-window.toggleMarkScheme = function(markSchemeId, textareaId) {
-    const markScheme = document.getElementById(markSchemeId);
-    const buttonId = `ms-button-${textareaId.split('-')[1]}`; 
-    const button = document.getElementById(buttonId);
+// These are already on window in the user's provided JS, so no change needed if they are there.
+// If they were *inside* DOMContentLoaded, they would need to be moved out or attached to window.
+// Assuming toggleMarkScheme and toggleReveal are correctly in worksheet-common.js and globally available or correctly scoped there.
+// For safety, if they are intended to be called from HTML onclicks from THIS script, ensure they are global.
+// The user's provided JS for gcse-sec-threats.js already makes these global.
 
-    if (markScheme && button) {
-        const isHidden = markScheme.style.display === 'none' || markScheme.style.display === '';
-        markScheme.style.display = isHidden ? 'block' : 'none';
-        button.textContent = isHidden ? 'Hide Mark Scheme' : 'Show Mark Scheme';
-    }
-};
+// Example: if toggleMarkScheme was defined inside DOMContentLoaded in the original gcse-sec-threats.js, it would need:
+// window.toggleMarkScheme = function(markSchemeId, textareaId) { /* ... */ };
+// But the user's provided JS already does this.
 
-window.toggleReveal = function(elementId, buttonElement, showText, hideText) {
-    const content = document.getElementById(elementId);
-    const textareaId = buttonElement.id.replace('reveal-', '').replace('-btn', '-student'); 
-    const textarea = document.getElementById(textareaId);
-    const minChars = 40;
-
-    if (content && buttonElement) {
-        if (!content.classList.contains('show')) { 
-            if (textarea && textarea.value.trim().length < minChars) {
-                let tempMsg = buttonElement.parentNode.querySelector('.reveal-req-msg');
-                if (!tempMsg) {
-                    tempMsg = document.createElement('span');
-                    tempMsg.className = 'reveal-req-msg text-xs text-red-500 ml-2';
-                    buttonElement.parentNode.insertBefore(tempMsg, buttonElement.nextSibling);
-                }
-                tempMsg.textContent = ` Please write at least ${minChars} characters first.`;
-                setTimeout(() => { if(tempMsg) tempMsg.remove(); }, 3000);
-                return; 
-            }
-        }
-
-        const isCurrentlyHidden = content.classList.contains('hidden') || !content.classList.contains('show');
-        if (isCurrentlyHidden) {
-            content.classList.remove('hidden');
-            content.classList.add('show');
-            buttonElement.textContent = hideText;
-        } else {
-            content.classList.add('hidden');
-            content.classList.remove('show');
-            buttonElement.textContent = showText;
-        }
-    }
-};

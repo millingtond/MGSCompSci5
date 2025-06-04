@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antivirus Ally: Malware Investigator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .control-panel-section { margin-bottom: 20px; padding: 15px; background-color: #f8fafc; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .file-system-area { border: 2px dashed #cbd5e1; padding: 15px; min-height: 300px; border-radius: 8px; background-color: #f1f5f9; }
+        .file-item {
+            padding: 8px 10px; /* Adjusted padding */
+            margin: 5px;
+            border-radius: 6px;
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column; /* Stack icon/name and status */
+            align-items: start; /* Align items to the start */
+            justify-content: space-between; /* Space out content */
+            min-height: 70px; /* Ensure some height for content */
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            cursor: pointer;
+            overflow-wrap: break-word; /* Allow long words to break */
+            word-break: break-all; /* Ensure words break to fit */
+        }
+        .file-item .file-name-icon { display: flex; align-items: center; margin-bottom: 4px; }
+        .file-item .file-name-icon .file-icon { margin-right: 6px; }
+        .file-item .file-status { font-size: 0.75rem; color: #64748b; align-self: flex-end; } /* Status at bottom right */
+
+        .file-item:hover { transform: translateY(-2px); box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+        .file-item.infected { background-color: #fecaca; border-left: 4px solid #ef4444; }
+        .file-item.suspicious { background-color: #fef9c3; border-left: 4px solid #facc15; }
+        .file-item.quarantined-display { background-color: #e5e7eb; text-decoration: line-through; opacity: 0.7; }
+        .file-item.encrypted-look { background-color: #a1a1aa; border-left: 4px solid #71717a;}
+        .file-item.encrypted-look .file-name::after { content: ".locked"; color: #ef4444; font-weight: bold;}
+
+        .log-entry { padding: 4px 8px; margin-bottom: 4px; border-radius: 4px; font-size: 0.875rem; }
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;
+            opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal.active { opacity: 1; visibility: visible; }
+        .modal-content { background-color: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 550px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transform: scale(0.95); transition: transform 0.3s ease;}
+        .modal.active .modal-content { transform: scale(1); }
+        
+        .file-inspector-modal .modal-content { max-width: 400px; } /* Smaller modal for file inspector */
+        .file-inspector-modal dt { font-weight: 600; color: #475569; margin-top: 8px;} /* Changed font-semibold to font-weight: 600 (semibold) */
+        .file-inspector-modal dd { margin-left: 16px; color: #1e293b; font-size: 0.9rem;}
+
+
+        .btn {
+            padding: 10px 15px; border-radius: 6px; font-weight: 600; transition: background-color 0.2s ease, box-shadow 0.2s ease; /* Changed font-semibold to font-weight: 600 (semibold) */
+            cursor: pointer; border: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .btn:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn:disabled { background-color: #d1d5db; cursor: not-allowed; box-shadow: none; }
+        .btn-primary { background-color: #3b82f6; color: white; }
+        .btn-primary:hover:not(:disabled) { background-color: #2563eb; }
+        .btn-secondary { background-color: #6b7280; color: white; }
+        .btn-secondary:hover:not(:disabled) { background-color: #4b5563; }
+        .btn-danger { background-color: #ef4444; color: white; }
+        .btn-danger:hover:not(:disabled) { background-color: #dc2626; }
+        .btn-warning { background-color: #f59e0b; color: white; }
+        .btn-warning:hover:not(:disabled) { background-color: #d97706; }
+        .btn-success { background-color: #22c55e; color: white; }
+        .btn-success:hover:not(:disabled) { background-color: #16a34a; }
+        .btn-neutral { background-color: #a1a1aa; color: white; } /* Neutral button for reset */
+        .btn-neutral:hover:not(:disabled) { background-color: #71717a; }
+
+
+        .performance-bar-container { background-color: #e5e7eb; border-radius: 4px; height: 10px; overflow: hidden; margin-top: 5px;}
+        .performance-bar { background-color: #3b82f6; height: 100%; width: 10%; transition: width 0.5s ease-in-out; border-radius: 4px;}
+
+
+        @keyframes scanPulse {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .scanning { animation: scanPulse 1.5s infinite; }
+    </style>
+</head>
+<body class="bg-slate-200 text-slate-800 p-4 md:p-8">
+
+    <header class="text-center mb-8">
+        <h1 class="text-3xl md:text-4xl font-bold text-sky-600">🛡️ Antivirus Ally: Malware Investigator 🛡️</h1>
+        <p class="text-slate-600 mt-2">Detect and neutralize digital threats in this interactive simulation!</p>
+    </header>
+
+    <div class="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <!-- Column 1: Antivirus Controls -->
+        <div class="md:col-span-1 space-y-6">
+            <div class="control-panel-section">
+                <h2 class="text-xl font-semibold mb-3 text-sky-700 border-b pb-2">Antivirus Controls</h2>
+                <button id="scanSystemButton" class="btn btn-primary w-full mb-2">Scan Entire System</button>
+                <button id="scanSelectedFileButton" class="btn btn-primary w-full mb-2" disabled>Scan Selected File</button>
+                <button id="updateDbButton" class="btn btn-secondary w-full mb-2">Update Virus Definitions</button>
+                <button id="simulateDownloadButton" class="btn btn-success w-full mb-2">Simulate New File Download</button>
+                <button id="resetSimulationButton" class="btn btn-neutral w-full">Reset Simulation</button>
+                
+                <div class="mt-3 space-y-2">
+                    <label for="realTimeProtectionToggle" class="flex items-center cursor-pointer text-sm">
+                        <input type="checkbox" id="realTimeProtectionToggle" class="form-checkbox h-5 w-5 text-sky-600 rounded" checked>
+                        <span class="ml-2 text-slate-700">Real-Time Protection</span>
+                    </label>
+                    <label for="autoQuarantineToggle" class="flex items-center cursor-pointer text-sm">
+                        <input type="checkbox" id="autoQuarantineToggle" class="form-checkbox h-5 w-5 text-sky-600 rounded" checked>
+                        <span class="ml-2 text-slate-700">Auto-Quarantine on Detection</span>
+                    </label>
+                </div>
+                <p class="text-xs mt-3 text-slate-500">Definitions Version: <span id="dbVersion">1.0</span></p>
+                <div class="mt-2">
+                    <p class="text-xs text-slate-500">System Performance:</p>
+                    <div class="performance-bar-container">
+                        <div id="performanceBar" class="performance-bar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel-section">
+                <h2 class="text-xl font-semibold mb-3 text-sky-700 border-b pb-2">Quarantine Zone</h2>
+                <div id="quarantineList" class="max-h-60 overflow-y-auto text-sm">
+                    <p class="text-slate-500 italic">Quarantine is empty.</p>
+                </div>
+                <button id="restoreSelectedQuarantineButton" class="btn btn-secondary w-full mt-3" disabled>Restore Selected from Quarantine</button>
+            </div>
+             <div class="control-panel-section">
+                <h2 class="text-xl font-semibold mb-3 text-sky-700 border-b pb-2">Threat Actions (for selected file in File System)</h2>
+                <p class="text-sm text-slate-600 mb-2">Select an infected/suspicious file from the File System above.</p>
+                <button id="quarantineFileButton" class="btn btn-warning w-full mb-2" disabled>Quarantine Selected File</button>
+                <button id="deleteFileButton" class="btn btn-danger w-full" disabled>Delete Selected File</button>
+            </div>
+        </div>
+
+        <!-- Column 2: File System & Logs -->
+        <div class="md:col-span-2 space-y-6">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 text-sky-700 border-b pb-2">Simulated File System</h2>
+                <div id="fileSystem" class="file-system-area grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"> <!-- More columns for smaller items -->
+                    <!-- Files will be dynamically added here -->
+                </div>
+                <p id="scenarioDescription" class="text-sm text-slate-600 mt-4 p-3 bg-sky-50 rounded-md border border-sky-200">
+                    <!-- Scenario text will be updated by JS -->
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 text-sky-700 border-b pb-2">Activity Log</h2>
+                <div id="activityLog" class="max-h-60 overflow-y-auto space-y-1">
+                    <p class="text-sm text-slate-500 italic">Log is empty. Start an action.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Questions -->
+    <div id="questionModal" class="modal">
+        <div class="modal-content">
+            <h3 id="questionText" class="text-lg font-semibold mb-4">Question will appear here.</h3>
+            <div id="answerOptions" class="space-y-2 mb-4"></div>
+            <p id="feedbackText" class="mt-3 text-sm"></p>
+            <button id="closeModalButton" class="btn btn-primary mt-4 w-full">Continue</button>
+        </div>
+    </div>
+    
+    <!-- Modal for File Inspector -->
+    <div id="fileInspectorModal" class="modal file-inspector-modal">
+        <div class="modal-content">
+            <h3 class="text-xl font-semibold mb-3 text-sky-700 border-b pb-2">File Details: <span id="inspectorFileName"></span></h3>
+            <dl id="inspectorDetailsList">
+                <!-- Details will be populated here -->
+            </dl>
+            <button id="closeInspectorModalButton" class="btn btn-primary mt-4 w-full">Close</button>
+        </div>
+    </div>
+
+
+<script>
+    // --- Globals ---
+    const scanSystemButton = document.getElementById('scanSystemButton');
+    const scanSelectedFileButton = document.getElementById('scanSelectedFileButton');
+    const updateDbButton = document.getElementById('updateDbButton');
+    const simulateDownloadButton = document.getElementById('simulateDownloadButton');
+    const resetSimulationButton = document.getElementById('resetSimulationButton');
+    const realTimeProtectionToggle = document.getElementById('realTimeProtectionToggle');
+    const autoQuarantineToggle = document.getElementById('autoQuarantineToggle');
+    const quarantineFileButton = document.getElementById('quarantineFileButton');
+    const deleteFileButton = document.getElementById('deleteFileButton');
+    const restoreSelectedQuarantineButton = document.getElementById('restoreSelectedQuarantineButton');
+    const dbVersionDisplay = document.getElementById('dbVersion');
+    const fileSystemArea = document.getElementById('fileSystem');
+    const quarantineListArea = document.getElementById('quarantineList');
+    const activityLog = document.getElementById('activityLog');
+    const scenarioDescription = document.getElementById('scenarioDescription');
+    const performanceBar = document.getElementById('performanceBar');
+
+    const questionModal = document.getElementById('questionModal');
+    const questionText = document.getElementById('questionText');
+    const answerOptions = document.getElementById('answerOptions');
+    const feedbackText = document.getElementById('feedbackText');
+    const closeModalButton = document.getElementById('closeModalButton');
+
+    const fileInspectorModal = document.getElementById('fileInspectorModal');
+    const inspectorFileName = document.getElementById('inspectorFileName');
+    const inspectorDetailsList = document.getElementById('inspectorDetailsList');
+    const closeInspectorModalButton = document.getElementById('closeInspectorModalButton');
+
+
+    let logInitialized = false;
+    let currentQuestion = null;
+    let selectedFileObjectFS = null; 
+    let selectedFileElementFS = null; 
+    let selectedFileElementQuarantine = null; 
+    
+    // --- Antivirus State ---
+    const initialVirusSignatures = [
+        { name: "FreeBitcoinMiner.exe", signature: "MAL_SIGNATURE_001", type: "Trojan" },
+        { name: "UpdateUrgent.exe", signature: "MAL_SIGNATURE_002", type: "Worm" },
+        { name: "SecretDocsStealer.exe", signature: "MAL_SIGNATURE_003", type: "Spyware"},
+        { name: "EncryptMyFiles.exe", signature: "MAL_SIGNATURE_004", type: "Ransomware"}
+    ];
+    let virusSignatures; 
+    let currentDbVersion;
+
+    const heuristicRules = [
+        { characteristic: "renames_critical_files", description: "Attempts to rename critical system files.", severity: "high" },
+        { characteristic: "disables_security_software", description: "Attempts to disable security software.", severity: "high" },
+        { characteristic: "rapid_file_encryption", description: "Rapidly encrypts multiple user files.", severity: "critical", malwareType: "Ransomware" }
+    ];
+
+    const initialFilesInSystem = [
+        { id: 'file1', name: "MyDocument.docx", type: "doc", status: "clean", icon: "📄", size: "12KB", created: "2023-10-01" },
+        { id: 'file2', name: "HolidayPhoto.jpg", type: "img", status: "clean", icon: "🖼️", size: "2.3MB", created: "2023-09-15" },
+        { id: 'file3', name: "FreeBitcoinMiner.exe", type: "exe", status: "unknown", icon: "⚙️", signature: "MAL_SIGNATURE_001", isMalicious: true, size: "750KB", created: "2023-10-02", suspiciousChars: ["disables_security_software"]},
+        { id: 'file4', name: "ImportantSpreadsheet.xlsx", type: "xls", status: "clean", icon: "📊", size: "45KB", created: "2023-08-20" },
+        { id: 'file5', name: "CoolGameInstaller.exe", type: "exe", status: "unknown", icon: "🎮", suspiciousChars: [], size: "1.2GB", created: "2023-09-28" }, 
+        { id: 'file6', name: "UpdateUrgent.exe", type: "exe", status: "unknown", icon: "⚙️", signature: "MAL_SIGNATURE_002", isMalicious: true, size: "300KB", created: "2023-10-03", suspiciousChars: [] },
+        { id: 'file7', name: "SystemPerformanceOptimizer.exe", type: "exe", status: "unknown", icon: "🚀", suspiciousChars: ["renames_critical_files"], isMalicious: false, size: "500KB", created: "2023-09-01" } 
+    ];
+    let filesInSystem;
+    let quarantinedFiles;
+    let fileIdCounter; // Will be initialized in initializeSimulation
+
+    // --- System Performance ---
+    function updatePerformanceBar(level) { // level 0-100
+        performanceBar.style.width = `${Math.max(10, Math.min(100, level))}%`;
+        if (level > 70) performanceBar.style.backgroundColor = '#ef4444'; // Red for high
+        else if (level > 40) performanceBar.style.backgroundColor = '#f59e0b'; // Orange for medium
+        else performanceBar.style.backgroundColor = '#3b82f6'; // Blue for low
+    }
+
+    // --- Functions ---
+    function logActivity(message, type = 'INFO') {
+        if (!logInitialized) {
+            activityLog.innerHTML = '';
+            logInitialized = true;
+        }
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        const timestamp = new Date().toLocaleTimeString();
+        let icon = 'ℹ️'; let textColor = 'text-slate-700';
+
+        switch(type) {
+            case 'SCAN': icon = '🔍'; textColor = 'text-blue-600'; break;
+            case 'DETECT': icon = '❗'; textColor = 'text-red-600 font-semibold'; break;
+            case 'SUSPICIOUS': icon = '🤔'; textColor = 'text-yellow-500 font-semibold'; break;
+            case 'QUARANTINE': icon = '🛡️'; textColor = 'text-yellow-600'; break;
+            case 'RESTORE': icon = '↩️'; textColor = 'text-indigo-600'; break;
+            case 'DELETE': icon = '🗑️'; textColor = 'text-red-700'; break;
+            case 'SAFE': icon = '✅'; textColor = 'text-green-600'; break;
+            case 'UPDATE': icon = '🔄'; textColor = 'text-purple-600'; break;
+            case 'ERROR': icon = '⚠️'; textColor = 'text-orange-500'; break;
+            case 'RANSOM_EFFECT': icon = '🔒'; textColor = 'text-neutral-700'; break;
+            case 'POLICY': icon = '⚙️'; textColor = 'text-cyan-600'; break;
+            case 'RESET': icon = '🔁'; textColor = 'text-slate-500'; break; 
+        }
+        entry.innerHTML = `<span class="font-mono text-xs">${timestamp}</span> ${icon} <span class="${textColor}">${message}</span>`;
+        activityLog.prepend(entry);
+    }
+
+    function renderFileSystem() {
+        fileSystemArea.innerHTML = '';
+        filesInSystem.forEach(file => {
+            if (file.status === 'deleted') return;
+
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'file-item';
+            fileDiv.setAttribute('data-file-id', file.id);
+            
+            let fileNameDisplay = `<span class="file-name">${file.name}</span>`;
+            if (file.isEncrypted) {
+                fileDiv.classList.add('encrypted-look');
+            }
+
+            fileDiv.innerHTML = `
+                <div class="file-name-icon">
+                    <span class="file-icon">${file.icon}</span>
+                    ${fileNameDisplay}
+                </div>
+                <span class="file-status">${file.status}</span>
+            `;
+
+            if (file.status === 'infected') fileDiv.classList.add('infected');
+            else if (file.status === 'suspicious') fileDiv.classList.add('suspicious');
+            else if (file.status === 'quarantined') fileDiv.classList.add('quarantined-display');
+
+
+            fileDiv.addEventListener('click', () => handleFileClickInFS(file, fileDiv));
+            fileSystemArea.appendChild(fileDiv);
+        });
+    }
+
+    function renderQuarantine() {
+        quarantineListArea.innerHTML = '';
+        if (quarantinedFiles.length === 0) {
+            quarantineListArea.innerHTML = '<p class="text-slate-500 italic">Quarantine is empty.</p>';
+            restoreSelectedQuarantineButton.disabled = true;
+            return;
+        }
+        quarantinedFiles.forEach(file => {
+            const qDiv = document.createElement('div');
+            qDiv.className = 'p-2 border-b border-slate-300 hover:bg-slate-100 cursor-pointer rounded file-item';
+            qDiv.setAttribute('data-file-id', file.id);
+            qDiv.innerHTML = `
+                <div class="file-name-icon">
+                     <span class="file-icon">${file.icon}</span>
+                     <span class="file-name">${file.name}</span>
+                </div>
+                <span class="file-status text-xs">(Reason: ${file.detectedAs || 'Suspicious Behavior'})</span>`;
+            
+            qDiv.addEventListener('click', () => handleFileClickInQuarantine(file, qDiv));
+            quarantineListArea.appendChild(qDiv);
+        });
+    }
+
+    function handleFileClickInFS(file, element) {
+        if (selectedFileElementFS) {
+            selectedFileElementFS.classList.remove('ring-2', 'ring-blue-500');
+        }
+        selectedFileObjectFS = file; 
+        selectedFileElementFS = element;
+        element.classList.add('ring-2', 'ring-blue-500');
+        
+        // Enable/disable Scan Selected File button
+        if (file.status !== 'deleted' && file.status !== 'quarantined') {
+            scanSelectedFileButton.disabled = false;
+        } else {
+            scanSelectedFileButton.disabled = true;
+        }
+
+        // Enable/disable Quarantine and Delete buttons
+        if (file.status === 'infected' || file.status === 'suspicious') {
+            quarantineFileButton.disabled = false;
+            deleteFileButton.disabled = false;
+        } else {
+            quarantineFileButton.disabled = true;
+            deleteFileButton.disabled = true;
+        }
+        
+        showFileInspector(file);
+
+        if(selectedFileElementQuarantine) selectedFileElementQuarantine.classList.remove('ring-2', 'ring-blue-500');
+        selectedFileElementQuarantine = null;
+        restoreSelectedQuarantineButton.disabled = true;
+    }
+
+    function handleFileClickInQuarantine(file, element){
+        if(selectedFileElementQuarantine){
+            selectedFileElementQuarantine.classList.remove('ring-2', 'ring-blue-500');
+        }
+        selectedFileElementQuarantine = element; 
+        element.classList.add('ring-2', 'ring-blue-500');
+        restoreSelectedQuarantineButton.disabled = false;
+        restoreSelectedQuarantineButton.setAttribute('data-file-id', file.id); 
+
+        if(selectedFileElementFS) selectedFileElementFS.classList.remove('ring-2', 'ring-blue-500');
+        selectedFileObjectFS = null;
+        selectedFileElementFS = null;
+        quarantineFileButton.disabled = true;
+        deleteFileButton.disabled = true;
+        scanSelectedFileButton.disabled = true;
+    }
+    
+    function showFileInspector(file) {
+        inspectorFileName.textContent = file.name;
+        inspectorDetailsList.innerHTML = `
+            <dt>Type:</dt><dd>${file.type.toUpperCase()}</dd>
+            <dt>Size:</dt><dd>${file.size || 'N/A'}</dd>
+            <dt>Created:</dt><dd>${file.created || 'N/A'}</dd>
+            <dt>Current Status:</dt><dd>${file.status}</dd>
+        `;
+        if (file.status === 'infected' || file.status === 'suspicious') {
+            inspectorDetailsList.innerHTML += `<dt>Detection Reason:</dt><dd class="${file.status === 'infected' ? 'text-red-600' : 'text-yellow-600'}">${file.detectedAs || 'N/A'}</dd>`;
+        }
+        if (file.signature) {
+             inspectorDetailsList.innerHTML += `<dt>Signature Match:</dt><dd>${file.signature}</dd>`;
+        }
+        if (file.suspiciousChars && file.suspiciousChars.length > 0) {
+            inspectorDetailsList.innerHTML += `<dt>Suspicious Traits:</dt><dd>${file.suspiciousChars.join(', ')}</dd>`;
+        }
+        fileInspectorModal.classList.add('active');
+    }
+
+
+    function scanSingleFile(file, isRealTime = false) {
+        if (!file) return false;
+        // Allow re-scan unless deleted. If quarantined, it's more about re-evaluation.
+        if (file.status === 'deleted') return false; 
+        
+        updatePerformanceBar(isRealTime ? 30 : 50); 
+
+        let threatDetectedOrConfirmed = false;
+        const scanPrefix = isRealTime ? "Real-time scan: " : "";
+        const originalStatus = file.status;
+        let detectionReason = file.detectedAs; 
+
+        // 1. Signature Check
+        const knownThreat = virusSignatures.find(sig => sig.signature === file.signature && sig.name === file.name);
+        if (knownThreat) {
+            file.status = 'infected';
+            detectionReason = knownThreat.type; 
+            file.detectedAs = detectionReason;
+            logActivity(`${scanPrefix}Threat detected: ${file.name} (${knownThreat.type}) by signature.`, "DETECT");
+            threatDetectedOrConfirmed = true;
+
+            if (knownThreat.type === "Ransomware" && !file.isEncrypted) {
+                simulateRansomwareEffect(file);
+            }
+        } else {
+            // 2. Heuristic Check (only if not already signature-confirmed infected)
+            if (file.status !== 'infected' && file.suspiciousChars && file.suspiciousChars.length > 0) {
+                const matchedRule = heuristicRules.find(hr => file.suspiciousChars.includes(hr.characteristic));
+                if (matchedRule) {
+                    file.status = 'suspicious';
+                    detectionReason = `Heuristic (${matchedRule.description})`;
+                    file.detectedAs = detectionReason;
+                    logActivity(`${scanPrefix}Suspicious file: ${file.name}. Reason: ${matchedRule.description}`, "SUSPICIOUS");
+                    threatDetectedOrConfirmed = true;
+
+                    if (file.name === "SystemPerformanceOptimizer.exe" && !file.isMalicious) {
+                         askQuestion({
+                            id: "q_false_positive",
+                            text: `${file.name} was flagged as suspicious by heuristics (${matchedRule.description}). However, this tool is known to be safe. What is this situation an example of?`,
+                            options: [
+                                { text: "A Zero-Day Exploit.", correct: false, feedback: "A Zero-Day is an unknown vulnerability." },
+                                { text: "A False Positive.", correct: true, feedback: "Correct! Safe software mistakenly flagged." },
+                                { text: "Encrypted Malware.", correct: false, feedback: "This is about behavior of a safe file." }
+                            ]
+                        });
+                    }
+                }
+            }
+        }
+        
+        if (!threatDetectedOrConfirmed && (originalStatus !== 'clean' || file.status !== 'clean')) { 
+            // If no threat was found by this scan, and it wasn't 'clean' before (or its status changed from clean), mark it clean.
+            if (file.status !== 'infected' && file.status !== 'suspicious') { // Ensure it wasn't just flagged by heuristics in this same scan
+                file.status = 'clean';
+                file.detectedAs = undefined; 
+                logActivity(`${scanPrefix}${file.name} now appears clean.`, "SAFE");
+            }
+        }
+        
+        renderFileSystem(); // Update UI after status change
+        
+        // Auto-quarantine if policy is ON and a threat was detected/confirmed in this scan
+        if (threatDetectedOrConfirmed && autoQuarantineToggle.checked && file.status !== 'quarantined') {
+            logActivity(`Auto-Quarantine policy is ON. Attempting to quarantine ${file.name}.`, "POLICY");
+            setTimeout(() => quarantineFileById(file.id), 300); 
+        }
+        
+        setTimeout(() => updatePerformanceBar(10), 500); 
+        return threatDetectedOrConfirmed;
+    }
+    
+    function simulateRansomwareEffect(ransomwareFile) {
+        logActivity(`Ransomware Attack! ${ransomwareFile.name} is attempting to encrypt files!`, "RANSOM_EFFECT");
+        ransomwareFile.isEncrypted = true; 
+        
+        let encryptedCount = 0;
+        for (let file of filesInSystem) {
+            if (file.id !== ransomwareFile.id && (file.type === 'doc' || file.type === 'img' || file.type === 'xls') && !file.isEncrypted) {
+                file.isEncrypted = true;
+                logActivity(`${file.name} has been "encrypted" by ${ransomwareFile.name}!`, "RANSOM_EFFECT");
+                encryptedCount++;
+                if (encryptedCount >= 2) break;
+            }
+        }
+        renderFileSystem();
+         askQuestion({
+            id: "q_ransomware_attack",
+            text: `Ransomware (${ransomwareFile.name}) was detected and it started "encrypting" files! What is the primary goal of ransomware?`,
+            options: [
+                { text: "To steal personal information.", correct: false, feedback: "That's more typical of Spyware." },
+                { text: "To demand payment to restore access to files.", correct: true, feedback: "Correct! Ransomware holds files hostage." },
+                { text: "To spread to other computers.", correct: false, feedback: "Spreading is more a worm characteristic." }
+            ]
+        });
+    }
+
+    function scanSystem() {
+        logActivity("Full system scan initiated...", "SCAN");
+        updatePerformanceBar(75); 
+        scanSystemButton.classList.add('scanning');
+        scanSelectedFileButton.disabled = true;
+        scanSystemButton.disabled = true;
+        simulateDownloadButton.disabled = true;
+        let overallThreatsFound = 0;
+
+        const scanPromises = filesInSystem.map((file, index) => {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    if (file.status !== 'deleted' && file.status !== 'quarantined') { 
+                        if (scanSingleFile(file)) { 
+                            overallThreatsFound++;
+                        }
+                    }
+                    resolve();
+                }, 150 * index); 
+            });
+        });
+
+        Promise.all(scanPromises).then(() => {
+            scanSystemButton.classList.remove('scanning');
+            scanSystemButton.disabled = false;
+            simulateDownloadButton.disabled = false;
+            scanSelectedFileButton.disabled = !selectedFileObjectFS; 
+            updatePerformanceBar(10); 
+
+            if (overallThreatsFound > 0) {
+                logActivity(`Full Scan complete. ${overallThreatsFound} potential threat(s) identified or confirmed. Review actions.`, "INFO");
+            } else {
+                logActivity("Full Scan complete. No new threats found.", "SAFE");
+            }
+            const fbm = filesInSystem.find(f => f.name === "FreeBitcoinMiner.exe");
+            if (fbm && fbm.status === "infected" && scenarioDescription.textContent.includes("FreeBitcoinMiner.exe")) {
+                 askQuestion({ 
+                        id: "q1_fbm_detected",
+                        text: "FreeBitcoinMiner.exe was detected as a Trojan! What is the recommended first action for a detected threat?",
+                        options: [
+                            { text: "Immediately delete it.", correct: false, feedback: "Deletion is an option, but quarantining is often safer first." },
+                            { text: "Quarantine the file.", correct: true, feedback: "Correct! Quarantining isolates the threat safely." },
+                            { text: "Ignore it, it might be a false positive.", correct: false, feedback: "Ignoring known malware is risky!" }
+                        ]
+                 });
+            }
+        });
+    }
+
+    function updateVirusDefinitions() { 
+        logActivity("Checking for virus definition updates...", "UPDATE");
+        currentDbVersion += 0.1;
+        dbVersionDisplay.textContent = currentDbVersion.toFixed(1);
+
+        let newSignaturesAdded = false;
+        if (currentDbVersion >= 1.1 && !virusSignatures.find(s => s.name === "SecretDocsStealer.exe")) {
+            virusSignatures.push({ name: "SecretDocsStealer.exe", signature: "MAL_SIGNATURE_003", type: "Spyware" });
+            newSignaturesAdded = true;
+        }
+        if (currentDbVersion >= 1.2 && !virusSignatures.find(s => s.name === "EncryptMyFiles.exe")) {
+            virusSignatures.push({ name: "EncryptMyFiles.exe", signature: "MAL_SIGNATURE_004", type: "Ransomware" });
+            newSignaturesAdded = true;
+        }
+
+        if(newSignaturesAdded){
+            logActivity("Virus definitions updated. New threat signatures added.", "UPDATE");
+            scenarioDescription.innerHTML = `<strong>Scenario Update:</strong> Definitions updated to v${currentDbVersion.toFixed(1)}. New threats might be detectable. Try simulating a new file download or rescan.`;
+        } else {
+            logActivity("Virus definitions are up to date.", "INFO");
+        }
+    }
+
+    function quarantineFileById(fileId) { 
+        const fileIndex = filesInSystem.findIndex(f => f.id === fileId);
+        if (fileIndex > -1) {
+            const file = filesInSystem[fileIndex];
+            if (file.status === 'infected' || file.status === 'suspicious') {
+                file.originalStatusForRestore = file.status;
+                file.status = 'quarantined';
+                const quarantinedFileCopy = {...file, statusInQuarantine: 'quarantined_active'};
+                quarantinedFiles.push(quarantinedFileCopy);
+                logActivity(`${file.name} has been quarantined.`, "QUARANTINE");
+                renderFileSystem();
+                renderQuarantine();
+                disableThreatActionButtonsFS();
+
+                if (file.name === "FreeBitcoinMiner.exe" && scenarioDescription.textContent.includes("FreeBitcoinMiner.exe")) {
+                     askQuestion({
+                        id: "q_fbm_quarantined_action",
+                        text: `The file "${file.name}" has been successfully quarantined. What is the primary benefit of quarantining a threat instead of deleting it immediately?`,
+                        options: [
+                            { text: "Quarantining allows for later analysis or restoration if it's a false positive.", correct: true, feedback: "Correct! Quarantine provides a safety net." },
+                            { text: "Quarantining always disinfects the file automatically.", correct: false, feedback: "Disinfection is a separate process." },
+                            { text: "Quarantining sends a copy to the antivirus company.", correct: false, feedback: "Not automatically part of quarantine." }
+                        ]
+                    });
+                }
+            } else {
+                logActivity(`File ${file.name} is not a current threat. Cannot quarantine.`, "ERROR");
+            }
+        }
+    }
+    function restoreFileFromQuarantine(fileId) { 
+        const qIndex = quarantinedFiles.findIndex(qf => qf.id === fileId);
+        if (qIndex > -1) {
+            const restoredFileFromQ = quarantinedFiles.splice(qIndex, 1)[0]; 
+            
+            const fsFile = filesInSystem.find(f => f.id === fileId);
+            if (fsFile) {
+                fsFile.status = fsFile.originalStatusForRestore || 'unknown'; 
+                if (fsFile.isEncrypted && restoredFileFromQ.type !== "Ransomware") { 
+                    fsFile.isEncrypted = false;
+                }
+                logActivity(`${fsFile.name} has been restored from quarantine. Its status is now '${fsFile.status}'.`, "RESTORE");
+                renderFileSystem();
+                renderQuarantine();
+                disableQuarantineActionButtons();
+
+                 askQuestion({
+                    id: "q_after_restore",
+                    text: `${fsFile.name} was restored. What should you do if you restored a file you're still unsure about?`,
+                    options: [
+                        { text: "Immediately run it to see what happens.", correct: false, feedback: "That could be risky!" },
+                        { text: "Scan it again or seek expert advice.", correct: true, feedback: "Correct! Further analysis is wise." },
+                        { text: "Delete it permanently without checking.", correct: false, feedback: "If unsure, deleting isn't ideal." }
+                    ]
+                });
+            }
+        }
+    }
+    function deleteFileById(fileId) { 
+        const fileIndex = filesInSystem.findIndex(f => f.id === fileId);
+        if (fileIndex > -1) {
+            const file = filesInSystem[fileIndex];
+            if (file.status === 'infected' || file.status === 'suspicious' || file.status === 'quarantined') {
+                const fileName = file.name;
+                file.status = 'deleted'; 
+                logActivity(`${fileName} has been deleted.`, "DELETE");
+                
+                const qIndex = quarantinedFiles.findIndex(qf => qf.id === fileId);
+                if (qIndex > -1) quarantinedFiles.splice(qIndex, 1); 
+
+                renderFileSystem();
+                renderQuarantine();
+                disableThreatActionButtonsFS();
+            } else {
+                 logActivity(`File ${file.name} is not a detected threat. Deletion not performed.`, "ERROR");
+            }
+        }
+    }
+    function disableThreatActionButtonsFS() { 
+        if (selectedFileElementFS) {
+            selectedFileElementFS.classList.remove('ring-2', 'ring-blue-500');
+        }
+        selectedFileObjectFS = null; // Clear the selected object
+        selectedFileElementFS = null;
+        
+        quarantineFileButton.disabled = true;
+        deleteFileButton.disabled = true;
+        scanSelectedFileButton.disabled = true; // Also disable scan selected if no file is selected
+    }
+    function disableQuarantineActionButtons() { 
+        if (selectedFileElementQuarantine) {
+            selectedFileElementQuarantine.classList.remove('ring-2', 'ring-blue-500');
+        }
+        selectedFileElementQuarantine = null;
+        restoreSelectedQuarantineButton.disabled = true;
+    }
+    function simulateNewFileArrival() { 
+        const potentialNewFiles = [
+            { name: "FamilyVacationSlideshow.ppsx", type: "doc", status: "unknown", icon: "🎞️", isMalicious: false, size: "5MB", created: new Date().toISOString().slice(0,10) },
+            { name: "SecretDocsStealer.exe", type: "exe", status: "unknown", icon: "⚙️", signature: "MAL_SIGNATURE_003", isMalicious: true, suspiciousChars: ["disables_security_software"], size: "450KB", created: new Date().toISOString().slice(0,10) },
+            { name: "Invoice_Urgent.pdf.exe", type: "exe", status: "unknown", icon: "📜", signature: (Math.random() < 0.5 ? "MAL_SIGNATURE_001" : undefined), isMalicious: true, suspiciousChars: ["renames_critical_files"], size: "620KB", created: new Date().toISOString().slice(0,10) },
+            { name: "EncryptMyFiles.exe", type: "exe", status: "unknown", icon: "🔒", signature: "MAL_SIGNATURE_004", isMalicious: true, suspiciousChars: ["rapid_file_encryption"], size: "810KB", created: new Date().toISOString().slice(0,10) },
+            { name: "MyCustomTool.exe", type: "exe", status: "unknown", icon: "🛠️", isMalicious: false, suspiciousChars: ["renames_critical_files"], size: "1.1MB", created: new Date().toISOString().slice(0,10) } 
+        ];
+        const newFileTemplate = potentialNewFiles[Math.floor(Math.random() * potentialNewFiles.length)];
+        const newFile = { ...newFileTemplate, id: `file${fileIdCounter++}`};
+
+        logActivity(`New file appearing: ${newFile.name}`, "INFO");
+        filesInSystem.push(newFile);
+        renderFileSystem(); 
+
+        if (realTimeProtectionToggle.checked) {
+            logActivity(`Real-time protection scanning ${newFile.name}...`, "SCAN");
+            setTimeout(() => { 
+                const threatFoundByRTP = scanSingleFile(newFile, true); 
+                if (threatFoundByRTP) {
+                    logActivity(`Real-Time Protection Alert: ${newFile.name} identified as a threat!`, "DETECT");
+                    askQuestion({
+                        id: "q_rtp_detected",
+                        text: `Real-Time Protection flagged ${newFile.name} as ${newFile.status === 'infected' ? newFile.detectedAs : 'suspicious'}. What should happen next? (Note: Auto-Quarantine policy is ${autoQuarantineToggle.checked ? 'ON' : 'OFF'})`,
+                        options: [
+                            { text: "Quarantine it (if not auto-quarantined).", correct: true, feedback: "Good choice! Handling the threat is important." },
+                            { text: "Do nothing, wait for manual scan.", correct: false, feedback: "Waiting could be risky if it's an active threat." }
+                        ],
+                        action: () => { if(!autoQuarantineToggle.checked && (newFile.status === 'infected' || newFile.status === 'suspicious')) quarantineFileById(newFile.id); } 
+                    });
+                } else {
+                     logActivity(`Real-time protection: ${newFile.name} appears clean.`, "SAFE");
+                }
+            }, 500);
+        } else {
+            logActivity(`Real-time protection is OFF. ${newFile.name} was not automatically scanned.`, "ERROR");
+        }
+    }
+    function askQuestion(q) { 
+        currentQuestion = q;
+        questionText.textContent = q.text;
+        answerOptions.innerHTML = '';
+        q.options.forEach(opt => { 
+            const button = document.createElement('button');
+            button.className = 'block w-full text-left p-3 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-300 mb-2';
+            button.textContent = opt.text;
+            button.onclick = () => checkAnswer(opt, q.action);
+            answerOptions.appendChild(button);
+        });
+        feedbackText.textContent = '';
+        questionModal.classList.add('active');
+    }
+    function checkAnswer(selectedOption, actionCallback) { 
+        if (!currentQuestion) return;
+        feedbackText.className = 'mt-3 text-sm font-semibold';
+        if (selectedOption.correct) {
+            feedbackText.textContent = `Correct! ${selectedOption.feedback || ''}`;
+            feedbackText.classList.add('text-green-600');
+        } else {
+            feedbackText.textContent = `Not quite. ${selectedOption.feedback || ''}`;
+            feedbackText.classList.add('text-red-600');
+        }
+        Array.from(answerOptions.children).forEach(button => button.disabled = true);
+        if (actionCallback) { 
+            setTimeout(actionCallback, 500); 
+        }
+    }
+
+    function resetSimulation() {
+        logActivity("Simulation reset by user.", "RESET");
+        initializeSimulationState(); // Use a dedicated function to reset state
+        initializeScenario(); 
+        logActivity("Antivirus simulation started. Real-Time Protection & Auto-Quarantine are ON.", "INFO"); // Re-log start
+    }
+
+    // --- Event Listeners ---
+    scanSystemButton.addEventListener('click', scanSystem);
+    scanSelectedFileButton.addEventListener('click', () => {
+        if (selectedFileObjectFS) {
+            logActivity(`Scanning selected file: ${selectedFileObjectFS.name}...`, "SCAN");
+            scanSingleFile(selectedFileObjectFS);
+        }
+    });
+    updateDbButton.addEventListener('click', updateVirusDefinitions);
+    simulateDownloadButton.addEventListener('click', simulateNewFileArrival);
+    resetSimulationButton.addEventListener('click', resetSimulation); 
+
+    quarantineFileButton.addEventListener('click', () => {
+        if (selectedFileObjectFS) quarantineFileById(selectedFileObjectFS.id);
+    });
+    deleteFileButton.addEventListener('click', () => {
+        if (selectedFileObjectFS) deleteFileById(selectedFileObjectFS.id);
+    });
+    restoreSelectedQuarantineButton.addEventListener('click', () => {
+        const fileId = restoreSelectedQuarantineButton.getAttribute('data-file-id'); 
+        if(fileId) restoreFileFromQuarantine(fileId);
+    });
+
+    closeModalButton.addEventListener('click', () => questionModal.classList.remove('active'));
+    questionModal.addEventListener('click', (event) => { if (event.target === questionModal) questionModal.classList.remove('active'); });
+    closeInspectorModalButton.addEventListener('click', () => fileInspectorModal.classList.remove('active'));
+    fileInspectorModal.addEventListener('click', (event) => { if (event.target === fileInspectorModal) fileInspectorModal.classList.remove('active'); });
+
+
+    // --- Initial Setup ---
+    function initializeScenario() { 
+        scenarioDescription.innerHTML = `<strong>Scenario 1: Getting Started</strong>
+            <ol class="list-decimal list-inside mt-2 text-xs">
+                <li>Notice the <code class="bg-slate-300 px-1 rounded">FreeBitcoinMiner.exe</code> file in your system. Click it to see its details in the File Inspector. Its status is 'unknown'.</li>
+                <li>Click the "Scan Entire System" button. Observe the Activity Log and System Performance.</li>
+                <li>If "Auto-Quarantine" is ON (default), the threat should be handled automatically. The file's status will change.</li>
+                <li>If Auto-Quarantine was OFF, select the infected file from the File System (it will be highlighted red). The "Threat Actions" buttons will become active.</li>
+                <li>Click "Quarantine Selected File".</li>
+                <li>Now, find the file in the "Quarantine Zone". Click it, then click "Restore Selected from Quarantine".</li>
+                <li>Answer any questions that appear during these steps. Experiment with other buttons like "Update Virus Definitions" and "Simulate New File Download".</li>
+            </ol>`;
+    }
+    
+    function initializeSimulationState() {
+        virusSignatures = JSON.parse(JSON.stringify(initialVirusSignatures));
+        filesInSystem = JSON.parse(JSON.stringify(initialFilesInSystem));
+        quarantinedFiles = []; 
+        currentDbVersion = 1.0;
+        fileIdCounter = initialFilesInSystem.length + 1; // Correct initialization
+
+        dbVersionDisplay.textContent = currentDbVersion.toFixed(1);
+        realTimeProtectionToggle.checked = true;
+        autoQuarantineToggle.checked = true;
+        updatePerformanceBar(10); 
+
+        selectedFileObjectFS = null;
+        if (selectedFileElementFS) selectedFileElementFS.classList.remove('ring-2', 'ring-blue-500');
+        selectedFileElementFS = null;
+        if (selectedFileElementQuarantine) selectedFileElementQuarantine.classList.remove('ring-2', 'ring-blue-500');
+        selectedFileElementQuarantine = null;
+        
+        scanSelectedFileButton.disabled = true;
+        quarantineFileButton.disabled = true;
+        deleteFileButton.disabled = true;
+        restoreSelectedQuarantineButton.disabled = true;
+
+        logInitialized = false;
+        activityLog.innerHTML = '<p class="text-sm text-slate-500 italic">Log is empty. Start an action.</p>';
+        questionModal.classList.remove('active');
+        fileInspectorModal.classList.remove('active');
+
+        renderFileSystem();
+        renderQuarantine();
+    }
+
+    function initializeSimulation() {
+        initializeSimulationState();
+        logActivity("Antivirus simulation started. Real-Time Protection & Auto-Quarantine are ON.", "INFO");
+        initializeScenario();
+    }
+
+    initializeSimulation();
+
+</script>
+</body>
+</html>

@@ -71,3 +71,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+/**
+ * Toggles the visibility of a mark scheme element and updates the button text.
+ * @param {string} markSchemeId - The ID of the mark scheme element to toggle.
+ * @param {string} [textareaId] - (Optional) The ID of the associated textarea. Not used directly for toggling here
+ *                                as button enabling logic is separate, but kept for signature consistency.
+ * @param {HTMLElement} buttonElement - The button element that was clicked.
+ */
+window.toggleMarkScheme = function(markSchemeId, textareaId, buttonElement) {
+    const markScheme = document.getElementById(markSchemeId);
+    if (!markScheme) {
+        console.error(`Mark scheme element with ID '${markSchemeId}' not found.`);
+        return;
+    }
+
+    const isShown = markScheme.classList.contains('show');
+
+    if (isShown) {
+        markScheme.classList.remove('show');
+        if (buttonElement) {
+            buttonElement.textContent = 'Show Mark Scheme';
+        }
+    } else {
+        markScheme.classList.add('show');
+        if (buttonElement) {
+            buttonElement.textContent = 'Hide Mark Scheme';
+        }
+    }
+};
