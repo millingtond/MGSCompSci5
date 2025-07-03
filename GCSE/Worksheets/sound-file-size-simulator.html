@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Your Way Out</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #F1F5F9;
+            --surface: #FFFFFF;
+            --primary: #4F46E5;
+            --primary-light: #C7D2FE;
+            --player: #EC4899;
+            --goal: #10B981;
+            --text-dark: #1F2937;
+            --text-light: #6B7280;
+            --code-bg: #1E293B;
+            --code-text: #E2E8F0;
+            --code-active-bg: #334155;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-dark);
+            overflow: hidden;
+        }
+        .code-block {
+            font-family: 'Fira Code', monospace;
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 1.5rem;
+            border-radius: 1rem;
+        }
+        .code-line {
+            transition: background-color 0.2s ease-in-out;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            margin: 0 -0.75rem;
+        }
+        .code-line.active {
+            background-color: var(--code-active-bg);
+        }
+        .function { color: #A5B4FC; }
+        .parentheses { color: #6B7280; }
+        
+        #game-container {
+            touch-action: none;
+            background-color: var(--surface);
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        #message-modal {
+            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen p-4">
+
+    <div class="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+        <!-- Game Canvas -->
+        <div id="game-container" class="w-full aspect-square p-4">
+            <canvas id="gameCanvas"></canvas>
+        </div>
+
+        <!-- Code Instructions -->
+        <div class="flex flex-col space-y-6">
+            <div class="text-center lg:text-left">
+                <h1 class="text-4xl font-bold text-gray-800">Follow the Code</h1>
+                <p class="text-gray-500 mt-1">Use your arrow keys to execute the commands.</p>
+            </div>
+            <div id="code-display" class="code-block text-lg shadow-lg"></div>
+            <button id="reset-button" class="mt-2 px-6 py-3 text-white font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-all duration-200 transform active:scale-95">
+                Reset Level
+            </button>
+        </div>
+    </div>
+    
+    <!-- Level Complete Modal -->
+    <div id="message-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 backdrop-blur-sm flex items-center justify-center hidden opacity-0 transform scale-95">
+        <div class="bg-white p-8 rounded-xl shadow-2xl text-center max-w-sm">
+            <h2 id="modal-title" class="text-3xl font-bold text-gray-900 mb-2">Level Complete!</h2>
+            <p id="modal-message" class="text-gray-600 mb-6">Great job following the instructions.</p>
+            <button id="next-level-button" class="w-full px-8 py-3 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 focus:outline-none focus:ring-4 focus:ring-green-300 transition-transform transform active:scale-95">
+                Continue
+            </button>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const codeDisplay = document.getElementById('code-display');
+            const resetButton = document.getElementById('reset-button');
+            const modal = document.getElementById('message-modal');
+            const nextLevelButton = document.getElementById('next-level-button');
+
+            // --- Sound Synthesis ---
+            let moveSynth, winSynth, errorSynth;
+            let audioInitialized = false;
+
+            const initAudio = async () => {
+                if (typeof Tone === 'undefined' || audioInitialized) return;
+                try {
+                    await Tone.start();
+                    moveSynth = new Tone.PluckSynth({ attackNoise: 0.5, dampening: 4000, resonance: 0.8 }).toDestination();
+                    winSynth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.4, sustain: 0.1, release: 0.4 } }).toDestination();
+                    errorSynth = new Tone.NoiseSynth({ noise: { type: 'brown' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0 } }).toDestination();
+                    audioInitialized = true;
+                } catch (e) { console.error('Failed to initialize audio context:', e); }
+            };
+            document.addEventListener('keydown', initAudio); document.addEventListener('click', initAudio);
+
+            const playSuccessSound = () => { if (moveSynth) moveSynth.triggerAttack('C5'); };
+            const playErrorSound = () => { if (errorSynth) errorSynth.triggerAttackRelease('0.1'); };
+            const playWinSound = () => { if(winSynth) winSynth.triggerAttackRelease(["C4", "E4", "G4", "C5"], "0.5"); };
+
+            // --- Game Configuration ---
+            const levels = [{
+                gridSize: { cols: 4, rows: 3 },
+                startPos: { x: 0, y: 1 },
+                endPos: {x: 3, y: 1 },
+                path: [
+                    {x: 0, y: 1}, {x: 1, y: 1}, {x: 2, y: 1}, {x: 2, y: 0}, {x: 3, y: 0}, {x: 3, y: 1}
+                ],
+                commands: ['right()', 'right()', 'up()', 'right()', 'down()']
+            }];
+
+            let currentLevelIndex = 0, level, player, currentCommandIndex;
+            
+            // --- Animation & Drawing State ---
+            let anim = { active: false, x: 0, y: 0, vx: 0, vy: 0, scale: 1, targetScale: 1 };
+            let size, cellWidth, cellHeight, radius;
+            let particles = [];
+            const friction = 0.85;
+            const spring = 0.03;
+
+            const setupCanvas = () => {
+                const container = document.getElementById('game-container');
+                const dpr = window.devicePixelRatio || 1;
+                const rect = container.getBoundingClientRect();
+                size = Math.min(rect.width, rect.height);
+                canvas.width = size * dpr;
+                canvas.height = size * dpr;
+                canvas.style.width = `${size}px`; canvas.style.height = `${size}px`;
+                ctx.scale(dpr, dpr);
+                cellWidth = size / level.gridSize.cols;
+                cellHeight = size / level.gridSize.rows;
+                radius = Math.min(cellWidth, cellHeight) * 0.25;
+            };
+
+            const getCanvasPos = (gridX, gridY) => ({
+                x: cellWidth * (gridX + 0.5),
+                y: cellHeight * (gridY + 0.5)
+            });
+
+            const createParticles = (x, y, color) => {
+                for (let i = 0; i < 15; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 3 + 1;
+                    particles.push({
+                        x, y,
+                        vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                        life: 1, color
+                    });
+                }
+            };
+            
+            const draw = (time) => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Draw path tiles
+                level.path.forEach(pos => {
+                    const canvasPos = getCanvasPos(pos.x, pos.y);
+                    const isEnd = pos.x === level.endPos.x && pos.y === level.endPos.y;
+                    ctx.fillStyle = isEnd ? 'var(--primary-light)' : '#E2E8F0';
+                    ctx.beginPath();
+                    ctx.arc(canvasPos.x, canvasPos.y, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                // --- Player Physics & Animation ---
+                const targetPos = getCanvasPos(player.x, player.y);
+                const dx = targetPos.x - anim.x;
+                const dy = targetPos.y - anim.y;
+                
+                anim.vx += dx * spring;
+                anim.vy += dy * spring;
+                anim.vx *= friction;
+                anim.vy *= friction;
+
+                anim.x += anim.vx;
+                anim.y += anim.vy;
+
+                // Scale animation for plop effect
+                anim.scale += (anim.targetScale - anim.scale) * 0.2;
+                if (anim.active && Math.abs(anim.scale - anim.targetScale) < 0.01) {
+                    anim.targetScale = 1;
+                }
+
+                // Draw player
+                ctx.fillStyle = 'var(--player)';
+                ctx.beginPath();
+                ctx.arc(anim.x, anim.y, radius * 1.1 * anim.scale, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw Particles
+                particles.forEach((p, index) => {
+                    p.x += p.vx; p.y += p.vy;
+                    p.life -= 0.04;
+                    if(p.life <= 0) particles.splice(index, 1);
+                    ctx.globalAlpha = p.life > 0 ? p.life : 0;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, Math.max(0, p.life * radius * 0.2), 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.globalAlpha = 1;
+
+                requestAnimationFrame(draw);
+            };
+
+            const loadLevel = (levelIndex) => {
+                level = levels[levelIndex];
+                player = { ...level.startPos };
+                const startPos = getCanvasPos(player.x, player.y);
+                anim.x = startPos.x;
+                anim.y = startPos.y;
+                anim.vx = 0;
+                anim.vy = 0;
+                currentCommandIndex = 0;
+                particles = [];
+                setupCanvas();
+                renderCode();
+                updateCodeHighlight();
+            };
+
+            const renderCode = () => {
+                codeDisplay.innerHTML = level.commands.map((cmd, index) => {
+                    const [func, rest] = cmd.split('(');
+                    return `<div class="code-line" id="code-line-${index}">
+                                <span class="function">${func}</span><span class="parentheses">(${rest}</span>
+                            </div>`;
+                }).join('');
+            };
+
+            const updateCodeHighlight = () => document.querySelectorAll('.code-line').forEach((line, i) => line.classList.toggle('active', i === currentCommandIndex));
+            
+            const showModal = (title, message) => {
+                document.getElementById('modal-title').textContent = title;
+                document.getElementById('modal-message').textContent = message;
+                modal.classList.remove('hidden');
+                setTimeout(() => modal.classList.remove('opacity-0', 'scale-95'), 10);
+            };
+
+            const hideModal = () => {
+                modal.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => modal.classList.add('hidden'), 200);
+            };
+
+            const checkWinCondition = () => {
+                if (currentCommandIndex >= level.commands.length) {
+                    if (player.x === level.endPos.x && player.y === level.endPos.y) {
+                        playWinSound();
+                        const p = getCanvasPos(player.x, player.y);
+                        createParticles(p.x, p.y, 'var(--goal)');
+                        setTimeout(() => showModal('Level Complete!', 'Great job following the instructions.'), 500);
+                    } else {
+                         showModal('Almost!', "You followed all the commands, but didn't land on the finish tile. Try again!");
+                    }
+                }
+            };
+            
+            const movePlayer = (dx, dy) => {
+                const newPos = { x: player.x + dx, y: player.y + dy };
+                const isValidMove = level.path.some(p => p.x === newPos.x && p.y === newPos.y);
+
+                if (!isValidMove) {
+                    playErrorSound();
+                    return;
+                }
+                
+                playSuccessSound();
+                player = newPos;
+                
+                // Trigger plop animation
+                anim.scale = 0.8;
+                anim.targetScale = 1.1;
+                anim.active = true;
+
+                const p = getCanvasPos(player.x, player.y);
+                createParticles(p.x, p.y, 'var(--primary)');
+                
+                currentCommandIndex++;
+                updateCodeHighlight();
+                setTimeout(checkWinCondition, 400);
+            };
+
+            const processInput = (direction) => {
+                if (currentCommandIndex >= level.commands.length) return;
+                const command = level.commands[currentCommandIndex].split('(')[0];
+                if (direction === command) {
+                    const moves = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+                    movePlayer(...moves[direction]);
+                } else {
+                    playErrorSound();
+                }
+            };
+
+            window.addEventListener('keydown', (e) => {
+                const keyMap = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right'};
+                if (keyMap[e.key]) {
+                    e.preventDefault();
+                    processInput(keyMap[e.key]);
+                }
+            });
+
+            window.addEventListener('resize', setupCanvas);
+            resetButton.addEventListener('click', () => loadLevel(currentLevelIndex));
+            nextLevelButton.addEventListener('click', () => {
+                hideModal();
+                loadLevel(currentLevelIndex);
+            });
+
+            loadLevel(currentLevelIndex);
+            requestAnimationFrame(draw);
+        });
+    </script>
+
+</body>
+</html>

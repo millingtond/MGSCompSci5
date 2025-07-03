@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Disk Defragmentation Simulation - GCSE Computer Science</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 30px;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 1000px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .info-panel {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .disk-container {
+            background: #f7fafc;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .disk-wrapper {
+            position: relative;
+            background: #1a202c;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .disk {
+            display: grid;
+            grid-template-columns: repeat(20, 1fr);
+            gap: 3px;
+            margin-bottom: 20px;
+        }
+        
+        .block {
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+            border-radius: 4px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .block:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .block::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.2);
+            transition: left 0.3s;
+        }
+        
+        .block:hover::before {
+            left: 100%;
+        }
+        
+        .empty {
+            background: #4a5568;
+            color: #718096;
+        }
+        
+        .file-a {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .file-b {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        .file-c {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        
+        .file-d {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        
+        .file-e {
+            background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+        }
+        
+        .block.reading {
+            animation: pulse 0.5s ease-in-out;
+            box-shadow: 0 0 20px rgba(255,255,255,0.8);
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .read-head-container {
+            position: relative;
+            height: 60px;
+            margin-bottom: 10px;
+        }
+        
+        .head-track {
+            position: absolute;
+            top: 30px;
+            left: 10px;
+            right: 10px;
+            height: 4px;
+            background: #2d3748;
+            border-radius: 2px;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .head {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: radial-gradient(circle, #e53e3e 0%, #c53030 100%);
+            border-radius: 50%;
+            top: 17px;
+            left: 0;
+            transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 8px rgba(229, 62, 62, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .head::after {
+            content: '';
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        button {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        .stats-panel {
+            background: #f7fafc;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stats {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .stat-box {
+            padding: 20px;
+            background: linear-gradient(135deg, #e0e7ff 0%, #cfe2ff 100%);
+            border-radius: 10px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        
+        .stat-box:hover {
+            transform: translateY(-2px);
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #4a5568;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #edf2f7;
+            border-radius: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .legend-color {
+            width: 25px;
+            height: 25px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .file-operations {
+            margin: 20px 0;
+            padding: 20px;
+            background: #edf2f7;
+            border-radius: 10px;
+        }
+        
+        .file-op-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .file-size-input {
+            padding: 8px 12px;
+            border: 2px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 14px;
+            width: 80px;
+        }
+        
+        .speed-control {
+            margin: 20px 0;
+            padding: 15px;
+            background: #edf2f7;
+            border-radius: 10px;
+        }
+        
+        .speed-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #cbd5e0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+        
+        .algorithm-selector {
+            margin: 20px 0;
+        }
+        
+        select {
+            padding: 10px 15px;
+            border: 2px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .quiz-section {
+            margin-top: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #f6f9fc 0%, #e9ecef 100%);
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .question {
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: transform 0.3s;
+        }
+        
+        .question:hover {
+            transform: translateY(-2px);
+        }
+        
+        .option {
+            display: block;
+            margin: 8px 0;
+            padding: 12px 15px;
+            background: #f7fafc;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .option:hover {
+            background: #e2e8f0;
+            border-color: #cbd5e0;
+        }
+        
+        .option.selected {
+            background: #5a67d8;
+            color: white;
+            border-color: #5a67d8;
+        }
+        
+        .option.correct {
+            background: #48bb78;
+            color: white;
+            border-color: #48bb78;
+        }
+        
+        .option.incorrect {
+            background: #f56565;
+            color: white;
+            border-color: #f56565;
+        }
+        
+        .feedback {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            font-weight: 500;
+        }
+        
+        .feedback.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .feedback.correct {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        
+        .feedback.incorrect {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #feb2b2;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease-out;
+            width: 0%;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: #2d3748;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        
+        .tooltip.show {
+            opacity: 1;
+        }
+        
+        .step-mode-indicator {
+            display: inline-block;
+            padding: 5px 15px;
+            background: #48bb78;
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Advanced Disk Defragmentation Simulation</h1>
+        <p class="subtitle">OCR J277 GCSE Computer Science - Interactive Learning Tool</p>
+        
+        <div class="info-panel">
+            <h2>📚 What is Disk Defragmentation?</h2>
+            <p>Defragmentation is a utility that reduces file separation on disk by organizing contents to store file pieces together. This improves file retrieval speed as the read/write head travels less distance.</p>
+        </div>
+        
+        <div class="main-grid">
+            <div>
+                <div class="disk-container">
+                    <h3>💾 Disk Visualization</h3>
+                    
+                    <div class="algorithm-selector">
+                        <label>Defrag Algorithm: 
+                            <select id="algorithmSelect">
+                                <option value="simple">Simple Sequential</option>
+                                <option value="optimized">Optimized (Groups by File)</option>
+                                <option value="smart">Smart (Frequently Used First)</option>
+                            </select>
+                        </label>
+                    </div>
+                    
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-color empty"></div>
+                            <span>Empty</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color file-a"></div>
+                            <span>File A</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color file-b"></div>
+                            <span>File B</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color file-c"></div>
+                            <span>File C</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color file-d"></div>
+                            <span>File D</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color file-e"></div>
+                            <span>File E</span>
+                        </div>
+                    </div>
+                    
+                    <div class="disk-wrapper">
+                        <div class="read-head-container">
+                            <div class="head-track"></div>
+                            <div class="head" id="readHead"></div>
+                        </div>
+                        <div class="disk" id="disk"></div>
+                    </div>
+                    
+                    <div class="speed-control">
+                        <label>Animation Speed: <span id="speedValue">5</span>
+                            <input type="range" class="speed-slider" id="speedSlider" min="1" max="10" value="5">
+                        </label>
+                    </div>
+                    
+                    <div class="file-operations">
+                        <h4>File Operations</h4>
+                        <div class="file-op-controls">
+                            <input type="number" class="file-size-input" id="fileSizeInput" min="1" max="10" value="3" placeholder="Size">
+                            <button onclick="addNewFile()">Add File</button>
+                            <button onclick="deleteRandomFile()">Delete Random File</button>
+                            <button onclick="fillDiskRandom()">Fill Disk Random</button>
+                        </div>
+                    </div>
+                    
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressBar"></div>
+                    </div>
+                    
+                    <div class="controls">
+                        <button onclick="showFragmentedDisk()">Fragment Disk</button>
+                        <button onclick="simulateFileAccess()">Access File A</button>
+                        <button onclick="defragmentDisk()">Defragment</button>
+                        <button onclick="toggleStepMode()" id="stepModeBtn">Step Mode: OFF</button>
+                        <button onclick="comparePerformance()">Compare Before/After</button>
+                        <button onclick="resetSimulation()">Reset All</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-panel">
+                <h3>📊 Performance Metrics</h3>
+                <div class="stats">
+                    <div class="stat-box">
+                        <div class="stat-label">Fragmentation Level</div>
+                        <div class="stat-value" id="fragmentationLevel">0%</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Total Fragments</div>
+                        <div class="stat-value" id="totalFragments">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Head Movements (File A)</div>
+                        <div class="stat-value" id="headMovements">0</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Access Time</div>
+                        <div class="stat-value" id="accessTime">0ms</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Disk Usage</div>
+                        <div class="stat-value" id="diskUsage">0%</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">Largest Gap</div>
+                        <div class="stat-value" id="largestGap">0</div>
+                    </div>
+                </div>
+                
+                <div id="performanceComparison" style="margin-top: 20px; display: none;">
+                    <h4>Performance Comparison</h4>
+                    <canvas id="comparisonChart" width="300" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="quiz-section">
+            <h2>🎯 Test Your Knowledge</h2>
+            <div id="quizContainer"></div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="checkAnswers()">Check Answers</button>
+                <button onclick="resetQuiz()">Reset Quiz</button>
+                <button onclick="showHints()">Show Hints</button>
+            </div>
+            <div id="quizScore" style="margin-top: 20px; font-size: 24px; font-weight: bold; text-align: center;"></div>
+        </div>
+    </div>
+    
+    <div class="tooltip" id="tooltip"></div>
+    
+    <script>
+        let diskBlocks = [];
+        let isFragmented = false;
+        let animationInProgress = false;
+        let stepMode = false;
+        let stepQueue = [];
+        let fileCounter = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+        let animationSpeed = 5;
+        let beforeStats = null;
+        
+        const questions = [
+            {
+                question: "What is the main purpose of defragmentation software?",
+                options: [
+                    "To delete unnecessary files",
+                    "To reduce file separation and organize disk contents",
+                    "To compress files to save space",
+                    "To encrypt data for security"
+                ],
+                correct: 1,
+                feedback: "Correct! Defragmentation reduces file separation by organizing disk contents to store file pieces together.",
+                hint: "Think about how files are physically arranged on the disk."
+            },
+            {
+                question: "How does defragmentation improve file access speed?",
+                options: [
+                    "It makes files smaller",
+                    "It increases disk rotation speed",
+                    "The read/write head doesn't have to travel as far",
+                    "It adds more memory to the system"
+                ],
+                correct: 2,
+                feedback: "Correct! When files are stored together, the read/write head travels less distance to read all parts of a file.",
+                hint: "Consider the physical movement of disk components."
+            },
+            {
+                question: "What causes disk fragmentation?",
+                options: [
+                    "Using the computer too much",
+                    "Viruses and malware",
+                    "Files being saved and deleted over time",
+                    "Hardware failure"
+                ],
+                correct: 2,
+                feedback: "Correct! As files are saved and deleted, gaps appear on the disk. New files may be split to fit in these gaps.",
+                hint: "Think about what happens when you delete a file and then save a larger one."
+            },
+            {
+                question: "When a new file is larger than available contiguous space, what happens?",
+                options: [
+                    "The file cannot be saved",
+                    "The file is compressed automatically",
+                    "The file is split into pieces across different locations",
+                    "The disk creates more space"
+                ],
+                correct: 2,
+                feedback: "Correct! When a file is larger than any single free space, it's split and stored in multiple locations.",
+                hint: "Files can be stored in multiple pieces."
+            },
+            {
+                question: "Why does defragmentation help when saving new files?",
+                options: [
+                    "It creates more disk space",
+                    "It provides larger contiguous free spaces",
+                    "It speeds up the processor",
+                    "It removes viruses"
+                ],
+                correct: 1,
+                feedback: "Correct! With larger contiguous free spaces, new files don't need to be split and can be stored together.",
+                hint: "Consider what happens to free space after defragmentation."
+            },
+            {
+                question: "Which component of the hard drive benefits most from defragmentation?",
+                options: [
+                    "The disk platter rotation speed",
+                    "The read/write head movement",
+                    "The disk cache",
+                    "The disk controller"
+                ],
+                correct: 1,
+                feedback: "Correct! The read/write head benefits most as it needs to move less when files are contiguous.",
+                hint: "Which part physically moves to access data?"
+            }
+        ];
+        
+        function initializeDisk() {
+            diskBlocks = new Array(100).fill('empty');
+            fileCounter = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+            renderDisk();
+            updateStats();
+        }
+        
+        function showFragmentedDisk() {
+            diskBlocks = new Array(100).fill('empty');
+            
+            // Create a realistic fragmentation pattern
+            const files = [
+                { type: 'A', blocks: ['A1', 'A2', 'A3', 'A4', 'A5', 'A6'] },
+                { type: 'B', blocks: ['B1', 'B2', 'B3', 'B4'] },
+                { type: 'C', blocks: ['C1', 'C2', 'C3', 'C4', 'C5'] },
+                { type: 'D', blocks: ['D1', 'D2', 'D3', 'D4'] },
+                { type: 'E', blocks: ['E1', 'E2', 'E3'] }
+            ];
+            
+            // Fragment files across disk
+            let positions = [5, 6, 10, 11, 15, 18, 20, 25, 28, 30, 35, 38, 40, 41, 45, 48, 50, 51, 55, 60, 61, 62];
+            let blockIndex = 0;
+            
+            files.forEach(file => {
+                file.blocks.forEach(block => {
+                    if (blockIndex < positions.length) {
+                        diskBlocks[positions[blockIndex]] = block;
+                        blockIndex++;
+                    }
+                });
+            });
+            
+            isFragmented = true;
+            renderDisk();
+            updateStats();
+            showNotification('Disk fragmented! Files are now scattered across the disk.');
+        }
+        
+        function addNewFile() {
+            const size = parseInt(document.getElementById('fileSizeInput').value);
+            const fileTypes = ['A', 'B', 'C', 'D', 'E'];
+            const availableTypes = fileTypes.filter(type => !diskBlocks.some(block => block.startsWith(type)));
+            
+            if (availableTypes.length === 0) {
+                showNotification('No more file types available!', 'error');
+                return;
+            }
+            
+            const fileType = availableTypes[0];
+            const emptySpaces = [];
+            
+            // Find empty spaces
+            diskBlocks.forEach((block, index) => {
+                if (block === 'empty') emptySpaces.push(index);
+            });
+            
+            if (emptySpaces.length < size) {
+                showNotification('Not enough space on disk!', 'error');
+                return;
+            }
+            
+            // Add file blocks
+            for (let i = 0; i < size && i < emptySpaces.length; i++) {
+                diskBlocks[emptySpaces[i]] = `${fileType}${i + 1}`;
+            }
+            
+            renderDisk();
+            updateStats();
+            showNotification(`File ${fileType} added (${size} blocks)`);
+        }
+        
+        function deleteRandomFile() {
+            const fileBlocks = diskBlocks.filter(block => block !== 'empty');
+            if (fileBlocks.length === 0) {
+                showNotification('No files to delete!', 'error');
+                return;
+            }
+            
+            const fileType = fileBlocks[Math.floor(Math.random() * fileBlocks.length)][0];
+            let deletedCount = 0;
+            
+            diskBlocks = diskBlocks.map(block => {
+                if (block.startsWith(fileType)) {
+                    deletedCount++;
+                    return 'empty';
+                }
+                return block;
+            });
+            
+            renderDisk();
+            updateStats();
+            showNotification(`File ${fileType} deleted (${deletedCount} blocks freed)`);
+        }
+        
+        function fillDiskRandom() {
+            initializeDisk();
+            const fileTypes = ['A', 'B', 'C', 'D', 'E'];
+            let usedSpace = 0;
+            
+            fileTypes.forEach(type => {
+                const size = Math.floor(Math.random() * 8) + 2;
+                for (let i = 0; i < size && usedSpace < 80; i++) {
+                    let pos;
+                    do {
+                        pos = Math.floor(Math.random() * 100);
+                    } while (diskBlocks[pos] !== 'empty');
+                    
+                    diskBlocks[pos] = `${type}${i + 1}`;
+                    usedSpace++;
+                }
+            });
+            
+            isFragmented = true;
+            renderDisk();
+            updateStats();
+        }
+        
+        function defragmentDisk() {
+            if (animationInProgress) return;
+            
+            beforeStats = {
+                fragmentation: document.getElementById('fragmentationLevel').textContent,
+                movements: document.getElementById('headMovements').textContent,
+                accessTime: document.getElementById('accessTime').textContent
+            };
+            
+            animationInProgress = true;
+            const algorithm = document.getElementById('algorithmSelect').value;
+            
+            // Show progress
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = '0%';
+            
+            // Collect all file blocks
+            let files = {};
+            diskBlocks.forEach((block, index) => {
+                if (block !== 'empty') {
+                    const fileType = block[0];
+                    if (!files[fileType]) files[fileType] = [];
+                    files[fileType].push(block);
+                }
+            });
+            
+            // Sort files based on algorithm
+            let sortedFiles = Object.entries(files);
+            if (algorithm === 'smart') {
+                // Prioritize frequently accessed files (A, B first)
+                sortedFiles.sort((a, b) => {
+                    const priority = { A: 1, B: 2, C: 3, D: 4, E: 5 };
+                    return priority[a[0]] - priority[b[0]];
+                });
+            }
+            
+            // Reorganize disk
+            diskBlocks = new Array(100).fill('empty');
+            let position = 5;
+            let progress = 0;
+            const totalBlocks = sortedFiles.reduce((sum, [_, blocks]) => sum + blocks.length, 0);
+            
+            sortedFiles.forEach(([fileType, blocks]) => {
+                blocks.forEach(block => {
+                    if (stepMode) {
+                        stepQueue.push(() => {
+                            diskBlocks[position++] = block;
+                            progress++;
+                            progressBar.style.width = `${(progress / totalBlocks) * 100}%`;
+                            renderDisk();
+                        });
+                    } else {
+                        setTimeout(() => {
+                            diskBlocks[position++] = block;
+                            progress++;
+                            progressBar.style.width = `${(progress / totalBlocks) * 100}%`;
+                            renderDisk();
+                            
+                            if (progress === totalBlocks) {
+                                isFragmented = false;
+                                animationInProgress = false;
+                                updateStats();
+                                showNotification('Defragmentation complete!', 'success');
+                            }
+                        }, (progress * 100) / animationSpeed);
+                    }
+                });
+            });
+            
+            if (!stepMode) {
+                setTimeout(() => {
+                    isFragmented = false;
+                    animationInProgress = false;
+                    updateStats();
+                }, (totalBlocks * 100) / animationSpeed + 100);
+            }
+        }
+        
+        function simulateFileAccess() {
+            if (animationInProgress) return;
+            animationInProgress = true;
+            
+            const fileAPositions = [];
+            diskBlocks.forEach((block, index) => {
+                if (block && block[0] === 'A') {
+                    fileAPositions.push(index);
+                }
+            });
+            
+            if (fileAPositions.length === 0) {
+                showNotification('File A not found on disk!', 'error');
+                animationInProgress = false;
+                return;
+            }
+            
+            let currentPosition = 0;
+            let moveCount = 0;
+            
+            function moveHead(index) {
+                if (index < fileAPositions.length) {
+                    const targetPosition = fileAPositions[index];
+                    const headElement = document.getElementById('readHead');
+                    headElement.style.left = `${targetPosition}%`;
+                    
+                    // Highlight the block being read
+                    const blocks = document.querySelectorAll('.block');
+                    blocks[targetPosition].classList.add('reading');
+                    
+                    setTimeout(() => {
+                        blocks[targetPosition].classList.remove('reading');
+                        moveHead(index + 1);
+                    }, 500 / animationSpeed);
+                    
+                    moveCount++;
+                } else {
+                    animationInProgress = false;
+                    updateStats();
+                    showNotification(`File A read complete. Head movements: ${moveCount}`);
+                }
+            }
+            
+            moveHead(0);
+        }
+        
+        function toggleStepMode() {
+            stepMode = !stepMode;
+            const btn = document.getElementById('stepModeBtn');
+            btn.textContent = `Step Mode: ${stepMode ? 'ON' : 'OFF'}`;
+            
+            if (stepMode && stepQueue.length > 0) {
+                executeNextStep();
+            }
+        }
+        
+        function executeNextStep() {
+            if (stepQueue.length > 0) {
+                const step = stepQueue.shift();
+                step();
+                
+                if (stepQueue.length === 0) {
+                    isFragmented = false;
+                    animationInProgress = false;
+                    updateStats();
+                    showNotification('Defragmentation complete!', 'success');
+                }
+            }
+        }
+        
+        function comparePerformance() {
+            if (!beforeStats) {
+                showNotification('Run defragmentation first to compare!', 'error');
+                return;
+            }
+            
+            const comparison = document.getElementById('performanceComparison');
+            comparison.style.display = 'block';
+            
+            const canvas = document.getElementById('comparisonChart');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Simple bar chart
+            const before = parseInt(beforeStats.movements);
+            const after = parseInt(document.getElementById('headMovements').textContent);
+            const maxValue = Math.max(before, after) || 1;
+            
+            ctx.fillStyle = '#e53e3e';
+            ctx.fillRect(50, 150 - (before / maxValue) * 100, 80, (before / maxValue) * 100);
+            
+            ctx.fillStyle = '#48bb78';
+            ctx.fillRect(170, 150 - (after / maxValue) * 100, 80, (after / maxValue) * 100);
+            
+            ctx.fillStyle = '#2d3748';
+            ctx.font = '14px Arial';
+            ctx.fillText('Before', 70, 170);
+            ctx.fillText('After', 190, 170);
+            ctx.fillText(`${before} moves`, 60, 140 - (before / maxValue) * 100);
+            ctx.fillText(`${after} moves`, 180, 140 - (after / maxValue) * 100);
+        }
+        
+        function renderDisk() {
+            const diskElement = document.getElementById('disk');
+            diskElement.innerHTML = '';
+            
+            diskBlocks.forEach((block, index) => {
+                const blockElement = document.createElement('div');
+                blockElement.className = 'block';
+                
+                if (block === 'empty') {
+                    blockElement.classList.add('empty');
+                } else {
+                    const fileType = block[0];
+                    blockElement.classList.add(`file-${fileType.toLowerCase()}`);
+                    blockElement.textContent = block;
+                }
+                
+                // Add hover tooltip
+                blockElement.addEventListener('mouseenter', (e) => {
+                    const tooltip = document.getElementById('tooltip');
+                    tooltip.textContent = block === 'empty' ? 'Empty block' : `File ${block}`;
+                    tooltip.style.left = e.pageX + 'px';
+                    tooltip.style.top = (e.pageY - 30) + 'px';
+                    tooltip.classList.add('show');
+                });
+                
+                blockElement.addEventListener('mouseleave', () => {
+                    document.getElementById('tooltip').classList.remove('show');
+                });
+                
+                diskElement.appendChild(blockElement);
+            });
+        }
+        
+        function updateStats() {
+            // Calculate fragmentation
+            let fragments = 0;
+            let fileChanges = 0;
+            let currentFile = '';
+            let totalFiles = 0;
+            const fileGroups = {};
+            
+            diskBlocks.forEach((block, index) => {
+                if (block !== 'empty') {
+                    const fileType = block[0];
+                    if (!fileGroups[fileType]) fileGroups[fileType] = [];
+                    fileGroups[fileType].push(index);
+                    
+                    if (currentFile && fileType !== currentFile) {
+                        fileChanges++;
+                    }
+                    currentFile = fileType;
+                    totalFiles++;
+                }
+            });
+            
+            // Count fragments per file
+            Object.values(fileGroups).forEach(positions => {
+                for (let i = 1; i < positions.length; i++) {
+                    if (positions[i] - positions[i-1] > 1) {
+                        fragments++;
+                    }
+                }
+            });
+            
+            const fragmentationLevel = totalFiles > 0 ? Math.round((fragments / totalFiles) * 100) : 0;
+            document.getElementById('fragmentationLevel').textContent = `${fragmentationLevel}%`;
+            document.getElementById('totalFragments').textContent = fragments;
+            
+            // Calculate head movements for File A
+            const fileAPositions = [];
+            diskBlocks.forEach((block, index) => {
+                if (block && block[0] === 'A') {
+                    fileAPositions.push(index);
+                }
+            });
+            
+            let headMovements = 0;
+            if (fileAPositions.length > 1) {
+                for (let i = 1; i < fileAPositions.length; i++) {
+                    headMovements += Math.abs(fileAPositions[i] - fileAPositions[i-1]);
+                }
+            }
+            
+            document.getElementById('headMovements').textContent = headMovements;
+            document.getElementById('accessTime').textContent = `${headMovements * 5}ms`;
+            
+            // Disk usage
+            const usedBlocks = diskBlocks.filter(b => b !== 'empty').length;
+            document.getElementById('diskUsage').textContent = `${usedBlocks}%`;
+            
+            // Largest contiguous gap
+            let largestGap = 0;
+            let currentGap = 0;
+            diskBlocks.forEach(block => {
+                if (block === 'empty') {
+                    currentGap++;
+                    largestGap = Math.max(largestGap, currentGap);
+                } else {
+                    currentGap = 0;
+                }
+            });
+            document.getElementById('largestGap').textContent = largestGap;
+        }
+        
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 25px;
+                background: ${type === 'error' ? '#f56565' : type === 'success' ? '#48bb78' : '#4299e1'};
+                color: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                animation: slideIn 0.3s ease-out;
+                z-index: 1000;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+        
+        function resetSimulation() {
+            initializeDisk();
+            isFragmented = false;
+            stepQueue = [];
+            beforeStats = null;
+            document.getElementById('performanceComparison').style.display = 'none';
+            document.getElementById('progressBar').style.width = '0%';
+        }
+        
+        function renderQuiz() {
+            const container = document.getElementById('quizContainer');
+            container.innerHTML = '';
+            
+            questions.forEach((q, qIndex) => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'question';
+                questionDiv.innerHTML = `
+                    <h3>Question ${qIndex + 1}: ${q.question}</h3>
+                    <div class="options">
+                        ${q.options.map((option, oIndex) => `
+                            <label class="option" data-question="${qIndex}" data-option="${oIndex}">
+                                <input type="radio" name="q${qIndex}" value="${oIndex}" style="margin-right: 10px;">
+                                ${option}
+                            </label>
+                        `).join('')}
+                    </div>
+                    <div class="feedback" id="feedback-${qIndex}"></div>
+                    <div class="hint" id="hint-${qIndex}" style="display: none; margin-top: 10px; padding: 10px; background: #fef3c7; border-radius: 8px; color: #92400e;">
+                        💡 Hint: ${q.hint}
+                    </div>
+                `;
+                container.appendChild(questionDiv);
+            });
+            
+            // Add click handlers
+            document.querySelectorAll('.option').forEach(option => {
+                option.addEventListener('click', function() {
+                    const radio = this.querySelector('input[type="radio"]');
+                    radio.checked = true;
+                    
+                    this.parentElement.querySelectorAll('.option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    this.classList.add('selected');
+                });
+            });
+        }
+        
+        function checkAnswers() {
+            let score = 0;
+            
+            questions.forEach((q, qIndex) => {
+                const selectedOption = document.querySelector(`input[name="q${qIndex}"]:checked`);
+                const feedbackDiv = document.getElementById(`feedback-${qIndex}`);
+                const options = document.querySelectorAll(`[data-question="${qIndex}"]`);
+                
+                if (selectedOption) {
+                    const selectedValue = parseInt(selectedOption.value);
+                    
+                    options.forEach((option, oIndex) => {
+                        option.classList.remove('correct', 'incorrect');
+                        if (oIndex === q.correct) {
+                            option.classList.add('correct');
+                        } else if (oIndex === selectedValue && oIndex !== q.correct) {
+                            option.classList.add('incorrect');
+                        }
+                    });
+                    
+                    if (selectedValue === q.correct) {
+                        score++;
+                        feedbackDiv.className = 'feedback show correct';
+                        feedbackDiv.innerHTML = '✓ ' + q.feedback;
+                    } else {
+                        feedbackDiv.className = 'feedback show incorrect';
+                        feedbackDiv.innerHTML = '✗ Incorrect. ' + q.feedback;
+                    }
+                } else {
+                    feedbackDiv.className = 'feedback show incorrect';
+                    feedbackDiv.innerHTML = '✗ Please select an answer.';
+                }
+            });
+            
+            const percentage = Math.round((score / questions.length) * 100);
+            document.getElementById('quizScore').innerHTML = `
+                Score: ${score}/${questions.length} (${percentage}%)
+                ${percentage >= 80 ? '<span style="color: #48bb78;"> Excellent!</span>' : 
+                  percentage >= 60 ? '<span style="color: #4299e1;"> Good job!</span>' : 
+                  '<span style="color: #f56565;"> Keep practicing!</span>'}
+            `;
+        }
+        
+        function showHints() {
+            questions.forEach((q, index) => {
+                document.getElementById(`hint-${index}`).style.display = 'block';
+            });
+        }
+        
+        function resetQuiz() {
+            renderQuiz();
+            document.getElementById('quizScore').textContent = '';
+        }
+        
+        // Event listeners
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            animationSpeed = parseInt(e.target.value);
+            document.getElementById('speedValue').textContent = animationSpeed;
+        });
+        
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ' && stepMode && stepQueue.length > 0) {
+                e.preventDefault();
+                executeNextStep();
+            }
+        });
+        
+        // Initialize
+        initializeDisk();
+        renderQuiz();
+        
+        // Add animation styles
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideOut {
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

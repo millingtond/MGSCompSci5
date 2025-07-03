@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAT (Network Address Translation) Simulation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+        .network-zone {
+            background-size: 40px 40px;
+            background-image:
+                linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px);
+        }
+        .packet {
+            transition: all 1.5s cubic-bezier(0.5, 0, 0.5, 1);
+            z-index: 50; /* Sits above the simulation grid */
+        }
+        .packet-info {
+            transition: all 0.5s ease-in-out;
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        .packet-info.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .nat-table-entry.highlight {
+            animation: highlight-row 1.5s ease-in-out;
+        }
+        @keyframes highlight-row {
+            0%, 100% { background-color: transparent; }
+            50% { background-color: #fef08a; } /* yellow-200 */
+        }
+        .popup-container {
+            transition: opacity 0.3s ease;
+            z-index: 100; /* High z-index to sit on top of everything */
+        }
+        .popup-container.hidden {
+            pointer-events: none;
+            opacity: 0;
+        }
+        .popup {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            z-index: 110; /* Sits on top of its own overlay */
+        }
+        .popup-container.hidden .popup {
+            transform: scale(0.95);
+        }
+        .device.selected {
+             box-shadow: 0 0 0 4px #3b82f6; /* blue-600 */
+        }
+        .device {
+            transition: all 0.2s ease-in-out;
+        }
+        .device:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800">
+    <div class="container mx-auto p-4 md:p-6 max-w-7xl">
+        <!-- Header -->
+        <header class="bg-white rounded-2xl p-6 text-center mb-6 shadow-lg">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900 flex items-center justify-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><path d="M12 12v.01"/><path d="M15 16v.01"/><path d="M15 8v.01"/><path d="M9 16v.01"/><path d="M9 8v.01"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M17 19.5h-1.25a.75.75 0 0 1-.65-.375l-.5-1A.75.75 0 0 0 14 18h-4a.75.75 0 0 0-.6.375l-.5 1a.75.75 0 0 1-.65.375H7"/><path d="M17 4.5h-1.25a.75.75 0 0 0-.65.375l-.5 1A.75.75 0 0 1 14 6H10a.75.75 0 0 1-.6.375l-.5 1a.75.75 0 0 0-.65.375H7"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+                <span>NAT Simulation (9618 Spec)</span>
+            </h1>
+            <p class="text-slate-600 mt-2 text-lg">Visualizing how multiple devices share one public IP address.</p>
+        </header>
+
+        <!-- Instructions -->
+        <div class="bg-white rounded-2xl p-6 mb-6 shadow-lg">
+            <h2 class="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                How to Use This Simulation
+            </h2>
+            <ol class="list-decimal list-inside space-y-2 text-slate-700">
+                <li><strong>Select a Device:</strong> Click on a device in the 'Private Network' to begin.</li>
+                <li><strong>Send a Request:</strong> Click the "Send Request to a Website" button.</li>
+                <li><strong>Follow the Steps:</strong> Use the "Next Step" button to advance the simulation.</li>
+                <li><strong>Read Explanations:</strong> Contextual pop-ups will explain each stage. Close the pop-up to watch the animation.</li>
+                <li><strong>Observe the NAT Table:</strong> Watch how the router records and uses Port Address Translation (PAT).</li>
+                <li><strong>Test Your Knowledge:</strong> Complete the quiz at the end to check your understanding.</li>
+            </ol>
+        </div>
+
+        <!-- Simulation Area -->
+        <div class="bg-white rounded-2xl p-6 shadow-lg relative min-h-[600px] overflow-hidden">
+            <!-- Packet -->
+            <div id="packet" class="packet absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0">
+                <div class="w-24 h-16 bg-yellow-300 border-2 border-yellow-500 rounded-lg shadow-xl flex items-center justify-center text-4xl">✉️</div>
+                <div id="packet-info" class="packet-info absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-slate-800 text-white p-3 rounded-lg text-xs font-mono shadow-2xl text-center space-y-1"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
+                <!-- Private Network -->
+                <div id="private-network" class="network-zone bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                    <h3 class="text-xl font-bold text-blue-800 text-center mb-4">🏠 Private Network</h3>
+                    <div class="flex flex-col items-center justify-around h-full gap-4">
+                        <div id="device-1" class="device text-center cursor-pointer p-2 rounded-lg" onclick="NAT_SIM.selectDevice(this, 'Laptop', '192.168.1.101')">
+                            <div class="text-5xl">💻</div>
+                            <div class="font-bold">Laptop</div>
+                            <div class="text-sm font-mono text-slate-600">192.168.1.101</div>
+                        </div>
+                        <div id="device-2" class="device text-center cursor-pointer p-2 rounded-lg" onclick="NAT_SIM.selectDevice(this, 'Phone', '172.16.10.55')">
+                            <div class="text-5xl">📱</div>
+                            <div class="font-bold">Phone</div>
+                            <div class="text-sm font-mono text-slate-600">172.16.10.55</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Router -->
+                <div class="flex flex-col items-center justify-center p-4">
+                     <button id="send-request-btn" onclick="NAT_SIM.startSimulation()" class="mb-6 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Send Request to a Website
+                    </button>
+                    <div id="router" class="text-center">
+                        <div class="text-7xl">🛡️</div>
+                        <div class="text-xl font-bold">NAT Router</div>
+                        <div class="text-sm font-mono text-slate-600">Public IP: <strong>82.45.110.23</strong></div>
+                    </div>
+                     <div class="w-full max-w-sm mt-6">
+                        <h4 class="text-lg font-bold text-slate-700 text-center mb-2">NAT Table</h4>
+                        <table class="w-full bg-slate-100 rounded-lg shadow-inner text-sm font-mono">
+                            <thead>
+                                <tr class="bg-slate-200">
+                                    <th class="p-2 text-left">Private IP:Port</th>
+                                    <th class="p-2 text-left">Public IP:Port</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nat-table-body">
+                                <!-- Entries added dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="step-controls" class="mt-6 text-center space-x-4 hidden">
+                         <button id="next-step-btn" onclick="NAT_SIM.nextStep()" class="px-5 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed">Next Step →</button>
+                    </div>
+                </div>
+
+                <!-- Public Network -->
+                <div id="public-network" class="network-zone bg-red-50 border-2 border-red-200 rounded-xl p-4">
+                    <h3 class="text-xl font-bold text-red-800 text-center mb-4">☁️ The Internet</h3>
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <div id="web-server" class="text-center">
+                            <div class="text-6xl">🌍</div>
+                            <div class="font-bold">Web Server</div>
+                            <div class="text-sm font-mono text-slate-600">www.cambridge.org</div>
+                            <div class="text-sm font-mono text-slate-600">204.15.5.10</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+             <!-- Reset Button -->
+            <button id="reset-btn" onclick="NAT_SIM.resetSimulation()" class="absolute bottom-4 right-4 px-4 py-2 bg-slate-600 text-white font-semibold rounded-lg shadow-md hover:bg-slate-700 transition flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                Reset
+            </button>
+        </div>
+
+        <!-- Quiz Section -->
+        <div class="bg-white rounded-2xl p-6 mt-6 shadow-lg">
+             <div class="text-center mb-6">
+                <h2 class="text-3xl font-bold text-slate-900">🎓 Test Your Knowledge</h2>
+                <p class="text-slate-600 mt-1">Check your understanding of NAT.</p>
+            </div>
+            <div id="quiz-container" class="space-y-6 max-w-4xl mx-auto"></div>
+            <div id="quiz-controls" class="mt-6 text-center space-x-4">
+                <button onclick="NAT_SIM.checkQuiz()" class="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition">Check Answers</button>
+                <button onclick="NAT_SIM.resetQuiz()" class="px-6 py-3 bg-slate-600 text-white font-semibold rounded-lg shadow-md hover:bg-slate-700 transition">Reset Quiz</button>
+            </div>
+            <div id="quiz-results" class="mt-6 text-center font-bold text-xl p-4 rounded-lg" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <!-- Popup -->
+    <div id="popup-container" class="popup-container fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden">
+        <div id="popup" class="popup fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-lg bg-white rounded-2xl shadow-2xl p-6">
+            <div class="flex items-center gap-4 mb-4">
+                 <div id="popup-icon" class="text-4xl"></div>
+                 <h3 id="popup-title" class="text-2xl font-bold text-slate-800"></h3>
+            </div>
+            <div id="popup-content" class="text-slate-700 space-y-3"></div>
+            <button id="popup-close-btn" class="mt-6 w-full px-5 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition">Continue</button>
+        </div>
+    </div>
+
+    <script>
+    const NAT_SIM = (() => {
+        const state = {
+            selectedDevice: null,
+            currentStepIndex: -1,
+            simulationRunning: false,
+            isAnimating: false,
+            natTable: {},
+            currentTranslation: null,
+            nextPort: 49152,
+            resolvePopup: null,
+        };
+
+        const DOM = {
+            packet: document.getElementById('packet'),
+            packetInfo: document.getElementById('packet-info'),
+            natTableBody: document.getElementById('nat-table-body'),
+            sendRequestBtn: document.getElementById('send-request-btn'),
+            stepControls: document.getElementById('step-controls'),
+            nextStepBtn: document.getElementById('next-step-btn'),
+            resetBtn: document.getElementById('reset-btn'),
+            popupContainer: document.getElementById('popup-container'),
+            popup: document.getElementById('popup'),
+            popupIcon: document.getElementById('popup-icon'),
+            popupTitle: document.getElementById('popup-title'),
+            popupContent: document.getElementById('popup-content'),
+            popupCloseBtn: document.getElementById('popup-close-btn'),
+            quizContainer: document.getElementById('quiz-container'),
+            quizResults: document.getElementById('quiz-results'),
+        };
+
+        const PUBLIC_IP = '82.45.110.23';
+        const SERVER_IP = '204.15.5.10';
+
+        const STEPS = [
+            {
+                id: 'createAndSend',
+                title: 'Step 1: Create & Send Packet',
+                icon: '📱',
+                content: (t) => `The packet is created with a <strong class='text-blue-600'>Private IP</strong> as its source.
+                <div class='mt-2 p-3 bg-slate-100 rounded-lg text-sm'>
+                    <strong class='font-bold text-slate-700'>Private IP Address (${t.privateIP})</strong>
+                    <ul class='list-disc list-inside mt-1 space-y-1'>
+                        <li>Assigned by the local router.</li>
+                        <li>Only reachable internally on the LAN; cannot be routed on the internet.</li>
+                        <li>Part of a reserved range (e.g., 192.168.x.x, 172.16.x.x, 10.x.x.x).</li>
+                        <li>Considered more secure as it's not directly exposed.</li>
+                        <li>Requires NAT to access the internet.</li>
+                    </ul>
+                </div>`,
+                execute: async (t) => {
+                    updatePacketInfo(`${t.privateIP}:${t.privatePort}`, `${SERVER_IP}:443`, 'Leaving device');
+                    await movePacket(state.selectedDevice.element, document.getElementById('router'));
+                }
+            },
+            {
+                id: 'performNAT',
+                title: 'Step 2: Perform NAT',
+                icon: '🛡️',
+                content: (t) => `The router performs <strong>Port Address Translation (PAT)</strong>, replacing the private source IP with its <strong class='text-red-600'>Public IP</strong>.
+                <div class='mt-2 p-3 bg-slate-100 rounded-lg text-sm'>
+                     <strong class='font-bold text-slate-700'>Public IP Address (${PUBLIC_IP})</strong>
+                    <ul class='list-disc list-inside mt-1 space-y-1'>
+                        <li>Assigned by the Internet Service Provider (ISP).</li>
+                        <li>Globally unique and reachable across the internet.</li>
+                        <li>Less secure as it is exposed to the internet.</li>
+                        <li>The NAT table maps this public IP and a port back to the original private IP.</li>
+                    </ul>
+                </div>`,
+                execute: async (t) => {
+                    renderNatTable();
+                    document.getElementById(`nat-${t.privateIP.replace(/\./g, '-')}-${t.privatePort}`).classList.add('highlight');
+                    updatePacketInfo(`${t.publicIP}:${t.publicPort}`, `${SERVER_IP}:443`, 'Translated & Forwarded');
+                }
+            },
+            {
+                id: 'toWebServer',
+                title: 'Step 3: Travel to Server',
+                icon: '✈️',
+                content: () => `The modified packet, now with a public source IP, travels across the internet to the destination web server.`,
+                execute: async () => {
+                     await movePacket(document.getElementById('router'), document.getElementById('web-server'));
+                }
+            },
+            {
+                id: 'serverResponse',
+                title: 'Step 4: Server Responds',
+                icon: '🌍',
+                content: () => `The server receives the request from <strong class='text-red-600'>${PUBLIC_IP}</strong>. It has no knowledge of the original device's private IP. It creates a response packet and sends it back to the router's public IP address.`,
+                execute: async (t) => {
+                     updatePacketInfo(`${SERVER_IP}:443`, `${t.publicIP}:${t.publicPort}`, 'Server is responding');
+                }
+            },
+            {
+                id: 'responseToRouter',
+                title: 'Step 5: Return to Router',
+                icon: '↩️',
+                content: () => `The response packet travels back across the internet to the NAT router's public IP address.`,
+                execute: async () => {
+                     await movePacket(document.getElementById('web-server'), document.getElementById('router'));
+                }
+            },
+            {
+                id: 'reverseNAT',
+                title: 'Step 6: Perform Reverse NAT',
+                icon: '🔍',
+                content: (t) => `The router receives the response. It checks the destination port (<strong class='text-red-600'>${t.publicPort}</strong>) and looks it up in its <strong>NAT table</strong>.
+               <p class='mt-2'>It finds the matching internal device (<strong class='text-blue-600'>${t.privateIP}</strong>) and translates the destination address back to the private IP.</p>`,
+                execute: async (t) => {
+                    document.getElementById(`nat-${t.privateIP.replace(/\./g, '-')}-${t.privatePort}`).classList.add('highlight');
+                    updatePacketInfo(`${SERVER_IP}:443`, `${t.privateIP}:${t.privatePort}`, 'Reverse Translated');
+                }
+            },
+            {
+                id: 'responseToDevice',
+                title: 'Step 7: Deliver to Device',
+                icon: '📦',
+                content: () => `The router forwards the final, re-addressed packet to the correct device on the private network.`,
+                execute: async () => {
+                    await movePacket(document.getElementById('router'), state.selectedDevice.element);
+                }
+            },
+            {
+                id: 'finish',
+                title: 'Step 8: Process Complete',
+                icon: '✅',
+                content: () => `The response packet has successfully reached the original device. The NAT process is complete.`,
+                execute: async () => {
+                    DOM.packet.style.opacity = '0';
+                    DOM.packetInfo.classList.remove('visible');
+                    resetUIForNewSession();
+                }
+            },
+        ];
+
+        const quizQuestions = [
+            {
+                q: "What is the primary function of Network Address Translation (NAT)?",
+                o: ["To assign permanent public IP addresses to all devices.", "To allow multiple devices on a private network to share a single public IP address.", "To encrypt all traffic leaving a private network.", "To increase the speed of the internet connection."],
+                a: 1,
+                exp: "NAT's main purpose is to conserve public IPv4 addresses by allowing many devices with private, non-routable IPs to share one public IP."
+            },
+            {
+                q: "Which of these IP addresses falls within a private address range as defined by RFC 1918?",
+                o: ["8.8.8.8", "204.15.5.10", "172.32.1.1", "10.250.1.1"],
+                a: 3,
+                exp: "The 10.0.0.0/8 block is a private range. 172.32.x.x is outside the private 172.16.0.0/12 range."
+            },
+            {
+                q: "Who is responsible for assigning a public IP address to a home router?",
+                o: ["The router manufacturer", "The Internet Service Provider (ISP)", "The computer's operating system", "The user"],
+                a: 1,
+                exp: "ISPs manage and assign public IP addresses from their allocated blocks to their customers."
+            },
+            {
+                q: "How does a NAT router use its translation table for an incoming packet from the internet?",
+                o: ["It checks the source IP to find the original device.", "It checks the destination port number to find the corresponding private IP.", "It broadcasts the packet to all devices on the private network.", "It checks the packet's MAC address."],
+                a: 1,
+                exp: "The router uses the destination port of the incoming packet to look up which internal device and port the packet should be forwarded to."
+            },
+             {
+                q: "Why is a private IP address considered more secure than a public one?",
+                o: ["It has built-in encryption.", "It cannot be reached directly from the internet.", "It changes every few seconds.", "It blocks all viruses automatically."],
+                a: 1,
+                exp: "Because private IPs are not routable on the internet, external devices cannot initiate connections to them, effectively hiding them from direct access."
+            },
+             {
+                q: "Can two different private networks (e.g., your home and your friend's home) use the same IP address like 192.168.1.100?",
+                o: ["No, every IP address must be globally unique.", "Yes, because private IP addresses only need to be unique within their own local network.", "Only if they use different Internet Service Providers.", "Yes, but they cannot access the internet at the same time."],
+                a: 1,
+                exp: "Private IP address ranges can be reused in any number of private networks because they are isolated from each other and not visible on the public internet."
+            }
+        ];
+
+        function selectDevice(element, name, ip) {
+            if (state.simulationRunning) return;
+            document.querySelectorAll('.device.selected').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            state.selectedDevice = { element, name, ip };
+            DOM.sendRequestBtn.disabled = false;
+        }
+
+        function startSimulation() {
+            if (!state.selectedDevice || state.simulationRunning) return;
+            
+            state.simulationRunning = true;
+            updateButtonStates();
+
+            const sourcePort = state.nextPort++;
+            state.currentTranslation = {
+                privateIP: state.selectedDevice.ip,
+                privatePort: sourcePort,
+                publicIP: PUBLIC_IP,
+                publicPort: sourcePort,
+            };
+            state.natTable[state.currentTranslation.privateIP + ':' + state.currentTranslation.privatePort] = state.currentTranslation;
+            
+            state.currentStepIndex = 0;
+            DOM.stepControls.classList.remove('hidden');
+            runCurrentStep();
+        }
+        
+        function nextStep() {
+            if (state.isAnimating || state.currentStepIndex >= STEPS.length - 1) return;
+            state.currentStepIndex++;
+            runCurrentStep();
+        }
+
+        async function runCurrentStep() {
+            state.isAnimating = true;
+            updateButtonStates();
+            
+            const step = STEPS[state.currentStepIndex];
+            if (!step) {
+                state.isAnimating = false;
+                updateButtonStates();
+                return;
+            }
+            
+            const popupClosed = new Promise(resolve => state.resolvePopup = resolve);
+            showPopup(step.icon, step.title, step.content(state.currentTranslation));
+            await popupClosed;
+            
+            await step.execute(state.currentTranslation);
+            
+            state.isAnimating = false;
+            updateButtonStates();
+        }
+
+        function updateButtonStates() {
+            DOM.sendRequestBtn.disabled = state.simulationRunning || !state.selectedDevice;
+            DOM.resetBtn.disabled = state.isAnimating;
+            DOM.nextStepBtn.disabled = state.isAnimating || !state.simulationRunning || state.currentStepIndex >= STEPS.length - 1;
+        }
+
+        function showPopup(icon, title, content) {
+            DOM.popupIcon.textContent = icon;
+            DOM.popupTitle.textContent = title;
+            DOM.popupContent.innerHTML = content;
+            DOM.popupContainer.classList.remove('hidden');
+        }
+
+        function closePopup() {
+            DOM.popupContainer.classList.add('hidden');
+            if (state.resolvePopup) {
+                state.resolvePopup();
+                state.resolvePopup = null;
+            }
+        }
+        
+        function updatePacketInfo(source, dest, status) {
+            DOM.packetInfo.innerHTML = `
+                <div><span class="text-green-400">SRC:</span> ${source}</div>
+                <div><span class="text-red-400">DST:</span> ${dest}</div>
+                <div class="pt-1 mt-1 border-t border-slate-600"><span class="text-yellow-400">Status:</span> ${status}</div>
+            `;
+             DOM.packetInfo.classList.add('visible');
+        }
+        
+        async function movePacket(fromEl, toEl) {
+            const fromRect = fromEl.getBoundingClientRect();
+            const toRect = toEl.getBoundingClientRect();
+            const container = DOM.packet.parentElement.getBoundingClientRect();
+            
+            DOM.packet.style.transition = 'none';
+            DOM.packet.style.left = `${fromRect.left - container.left + fromRect.width / 2 - DOM.packet.offsetWidth / 2}px`;
+            DOM.packet.style.top = `${fromRect.top - container.top + fromRect.height / 2 - DOM.packet.offsetHeight / 2}px`;
+            DOM.packet.style.opacity = '1';
+            
+            await new Promise(r => setTimeout(r, 50));
+            
+            DOM.packet.style.transition = 'all 1.5s cubic-bezier(0.5, 0, 0.5, 1)';
+            DOM.packet.style.left = `${toRect.left - container.left + toRect.width / 2 - DOM.packet.offsetWidth / 2}px`;
+            DOM.packet.style.top = `${toRect.top - container.top + toRect.height / 2 - DOM.packet.offsetHeight / 2}px`;
+
+            await new Promise(r => setTimeout(r, 1500));
+        }
+        
+        function renderNatTable() {
+            DOM.natTableBody.innerHTML = '';
+            for(const key in state.natTable) {
+                const entry = state.natTable[key];
+                const row = document.createElement('tr');
+                row.id = `nat-${entry.privateIP.replace(/\./g, '-')}-${entry.privatePort}`;
+                row.innerHTML = `
+                    <td class="p-2">${entry.privateIP}:${entry.privatePort}</td>
+                    <td class="p-2">${entry.publicIP}:${entry.publicPort}</td>
+                `;
+                DOM.natTableBody.appendChild(row);
+            }
+        }
+
+        function resetUIForNewSession() {
+            state.simulationRunning = false;
+            state.currentStepIndex = -1;
+            DOM.stepControls.classList.add('hidden');
+            if (state.selectedDevice) {
+                DOM.sendRequestBtn.disabled = false;
+            } else {
+                 DOM.sendRequestBtn.disabled = true;
+            }
+            document.querySelectorAll('.nat-table-entry.highlight').forEach(el => el.classList.remove('highlight'));
+            updateButtonStates();
+        }
+
+        function resetSimulation() {
+             const oldTable = state.natTable;
+             const oldPort = state.nextPort;
+             
+             Object.assign(state, {
+                selectedDevice: null,
+                currentStepIndex: -1,
+                simulationRunning: false,
+                isAnimating: false,
+                natTable: oldTable,
+                currentTranslation: null,
+                nextPort: oldPort,
+                resolvePopup: null,
+             });
+
+            document.querySelectorAll('.device.selected').forEach(el => el.classList.remove('selected'));
+            resetUIForNewSession();
+            DOM.packet.style.opacity = '0';
+            DOM.packetInfo.classList.remove('visible');
+            closePopup(); // Ensure popup is closed on reset
+        }
+        
+        function initQuiz() {
+            DOM.quizContainer.innerHTML = quizQuestions.map((q, i) => `
+                <div class="bg-slate-100 rounded-xl p-5 shadow-inner">
+                    <p class="font-bold mb-3">${i + 1}. ${q.q}</p>
+                    <div class="space-y-2">
+                        ${q.o.map((opt, j) => `
+                            <label class="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-slate-200 cursor-pointer hover:border-blue-400 transition has-[:checked]:bg-blue-100 has-[:checked]:border-blue-500">
+                                <input type="radio" name="q${i}" value="${j}" class="accent-blue-600">
+                                <span>${opt}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                    <div id="feedback-${i}" class="mt-3 p-3 rounded-lg text-sm font-medium" style="display: none;"></div>
+                </div>
+            `).join('');
+        }
+        
+        function checkQuiz() {
+            let score = 0;
+            quizQuestions.forEach((q, i) => {
+                const feedbackEl = document.getElementById(`feedback-${i}`);
+                const selected = document.querySelector(`input[name="q${i}"]:checked`);
+                
+                if (selected) {
+                    if(parseInt(selected.value) === q.a) {
+                        score++;
+                        feedbackEl.className = 'mt-3 p-3 rounded-lg text-sm font-medium bg-green-100 text-green-800';
+                        feedbackEl.innerHTML = `✅ <strong>Correct!</strong> ${q.exp}`;
+                    } else {
+                        feedbackEl.className = 'mt-3 p-3 rounded-lg text-sm font-medium bg-red-100 text-red-800';
+                        feedbackEl.innerHTML = `❌ <strong>Incorrect.</strong> ${q.exp}`;
+                    }
+                } else {
+                    feedbackEl.className = 'mt-3 p-3 rounded-lg text-sm font-medium bg-yellow-100 text-yellow-800';
+                    feedbackEl.innerHTML = `🤔 Please select an answer.`;
+                }
+                feedbackEl.style.display = 'block';
+            });
+            DOM.quizResults.textContent = `You scored ${score} out of ${quizQuestions.length}.`;
+            DOM.quizResults.style.display = 'block';
+        }
+
+        function resetQuiz() {
+            initQuiz();
+            DOM.quizResults.style.display = 'none';
+        }
+
+        function init() {
+            DOM.sendRequestBtn.disabled = true;
+            DOM.popupCloseBtn.addEventListener('click', () => closePopup());
+            initQuiz();
+            return {
+                selectDevice,
+                startSimulation,
+                nextStep,
+                resetSimulation,
+                checkQuiz,
+                resetQuiz
+            };
+        }
+
+        return init();
+    })();
+
+    </script>
+</body>
+</html>

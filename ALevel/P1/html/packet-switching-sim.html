@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Packet Switching Simulation - A Level Computer Science</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .simulation-area {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            animation: slideInLeft 0.8s ease-out;
+        }
+
+        .control-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            animation: slideInRight 0.8s ease-out;
+        }
+
+        .packet-info {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            animation: fadeIn 1s ease-out;
+        }
+
+        .instructions {
+            background: #f0f4ff;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .instructions h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
+            line-height: 1.6;
+        }
+
+        canvas {
+            width: 100%;
+            height: 450px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+            box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(240, 147, 251, 0.4);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            color: white;
+            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+        }
+
+        .btn-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
+        }
+
+        .status {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            border: 2px solid #e9ecef;
+        }
+
+        .status h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .packet-structure {
+            display: flex;
+            margin: 20px 0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .packet-part {
+            padding: 15px;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            position: relative;
+        }
+
+        .packet-header {
+            background: #667eea;
+            flex: 1;
+        }
+
+        .packet-payload {
+            background: #4CAF50;
+            flex: 2;
+        }
+
+        .packet-trailer {
+            background: #ff6b6b;
+            flex: 0.5;
+        }
+
+        .packet-details {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        .reassembly-area {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            min-height: 100px;
+            border: 2px dashed #2196F3;
+        }
+
+        .reassembly-area h4 {
+            color: #1976D2;
+            margin-bottom: 10px;
+        }
+
+        .received-packet {
+            display: inline-block;
+            background: #2196F3;
+            color: white;
+            padding: 5px 10px;
+            margin: 5px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .quiz-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            animation: fadeIn 1s ease-out;
+        }
+
+        .quiz-question {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 2px solid #e9ecef;
+        }
+
+        .quiz-question h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .quiz-option {
+            padding: 12px 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .quiz-option:hover {
+            background: #f0f4ff;
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .quiz-option.selected {
+            background: #e3f2fd;
+            border-color: #2196F3;
+        }
+
+        .quiz-option.correct {
+            background: #e8f5e9;
+            border-color: #4CAF50;
+        }
+
+        .quiz-option.incorrect {
+            background: #ffebee;
+            border-color: #f44336;
+        }
+
+        .quiz-feedback {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .quiz-feedback.correct {
+            background: #e8f5e9;
+            border: 2px solid #4CAF50;
+            color: #2e7d32;
+        }
+
+        .quiz-feedback.incorrect {
+            background: #ffebee;
+            border: 2px solid #f44336;
+            color: #c62828;
+        }
+
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+            max-width: 500px;
+            animation: popupIn 0.3s ease-out;
+        }
+
+        .popup h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .popup p {
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            border-left: 4px solid #2196F3;
+        }
+
+        .info-box h4 {
+            color: #1976D2;
+            margin-bottom: 10px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 5px;
+            border: 2px solid #333;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideInLeft {
+            from { transform: translateX(-50px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(50px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes popupIn {
+            from { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+            to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Packet Switching Simulation</h1>
+            <p>Cambridge A Level Computer Science (9618)</p>
+        </div>
+
+        <div class="packet-info">
+            <h2>Packet Structure</h2>
+            <div class="packet-structure">
+                <div class="packet-part packet-header">Header</div>
+                <div class="packet-part packet-payload">Payload (Body)</div>
+                <div class="packet-part packet-trailer">Trailer</div>
+            </div>
+            <div class="packet-details">
+                <p><strong>Header:</strong> Contains recipient address, sender address, packet number (e.g., 2/5), TTL/hop limit</p>
+                <p><strong>Payload:</strong> The actual data (500-1500 bytes typically)</p>
+                <p><strong>Trailer:</strong> Error checking data (checksum/CRC)</p>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="simulation-area">
+                <h2>Network Simulation</h2>
+                <canvas id="simulationCanvas"></canvas>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #667eea;"></div>
+                        <span>Packet 1</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f093fb;"></div>
+                        <span>Packet 2</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4facfe;"></div>
+                        <span>Packet 3</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #fa709a;"></div>
+                        <span>Packet 4</span>
+                    </div>
+                </div>
+                <div class="reassembly-area">
+                    <h4>Reassembly at Destination</h4>
+                    <div id="reassemblyDisplay">Waiting for packets...</div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="instructions">
+                    <h3>📖 How to Use This Simulation</h3>
+                    <ol>
+                        <li>Click "Create Message" to see data being split into packets</li>
+                        <li>Click "Send Packets" to transmit them through the network</li>
+                        <li>Watch as each packet takes a different route</li>
+                        <li>Observe packets arriving out of order</li>
+                        <li>See how they're reassembled at the destination</li>
+                        <li>Test your knowledge with the quiz below!</li>
+                    </ol>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-primary" id="createMessage">Create Message</button>
+                    <button class="btn btn-info" id="sendPackets" disabled>Send Packets</button>
+                    <button class="btn btn-secondary" id="reset">Reset</button>
+                </div>
+
+                <div class="status">
+                    <h4>Transmission Status</h4>
+                    <p id="statusText">Ready to create message</p>
+                </div>
+
+                <div class="info-box">
+                    <h4>💡 Key Points</h4>
+                    <ul>
+                        <li>Message broken into multiple packets</li>
+                        <li>Each packet can take different route</li>
+                        <li>Packets may arrive out of order</li>
+                        <li>Reassembled using packet numbers</li>
+                        <li>Error checking ensures integrity</li>
+                        <li>More efficient for internet traffic</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-section">
+            <h2>Test Your Understanding</h2>
+            <div id="quizContainer"></div>
+            <div class="controls">
+                <button class="btn btn-primary" id="checkAnswers">Check Answers</button>
+                <button class="btn btn-secondary" id="resetQuiz">Reset Quiz</button>
+            </div>
+            <div id="quizScore" style="margin-top: 20px; font-size: 1.2em; font-weight: bold;"></div>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="popup" id="popup">
+        <h3 id="popupTitle"></h3>
+        <p id="popupContent"></p>
+        <button class="btn btn-primary" onclick="closePopup()">Close</button>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set actual canvas size
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Network nodes
+        const nodes = [
+            { id: 'A', x: 100, y: 225, label: 'Sender' },
+            { id: 'R1', x: 250, y: 100, label: 'Router 1' },
+            { id: 'R2', x: 250, y: 225, label: 'Router 2' },
+            { id: 'R3', x: 250, y: 350, label: 'Router 3' },
+            { id: 'R4', x: 450, y: 100, label: 'Router 4' },
+            { id: 'R5', x: 450, y: 225, label: 'Router 5' },
+            { id: 'R6', x: 450, y: 350, label: 'Router 6' },
+            { id: 'R7', x: 650, y: 175, label: 'Router 7' },
+            { id: 'R8', x: 650, y: 300, label: 'Router 8' },
+            { id: 'B', x: 800, y: 225, label: 'Receiver' }
+        ];
+
+        // Network connections
+        const connections = [
+            { from: 'A', to: 'R1' },
+            { from: 'A', to: 'R2' },
+            { from: 'A', to: 'R3' },
+            { from: 'R1', to: 'R4' },
+            { from: 'R1', to: 'R5' },
+            { from: 'R2', to: 'R4' },
+            { from: 'R2', to: 'R5' },
+            { from: 'R2', to: 'R6' },
+            { from: 'R3', to: 'R5' },
+            { from: 'R3', to: 'R6' },
+            { from: 'R4', to: 'R7' },
+            { from: 'R5', to: 'R7' },
+            { from: 'R5', to: 'R8' },
+            { from: 'R6', to: 'R8' },
+            { from: 'R7', to: 'B' },
+            { from: 'R8', to: 'B' }
+        ];
+
+        // Different routes for packets
+        const routes = [
+            ['A', 'R1', 'R4', 'R7', 'B'],
+            ['A', 'R2', 'R5', 'R8', 'B'],
+            ['A', 'R3', 'R6', 'R8', 'B'],
+            ['A', 'R2', 'R4', 'R7', 'B']
+        ];
+
+        // State
+        let packets = [];
+        let messageCreated = false;
+        let receivedPackets = [];
+        let animationFrame = 0;
+
+        // Packet colors
+        const packetColors = ['#667eea', '#f093fb', '#4facfe', '#fa709a'];
+
+        // Scale nodes to canvas size
+        function scaleCoordinates() {
+            const scaleX = canvas.width / 900;
+            const scaleY = canvas.height / 450;
+            
+            return nodes.map(node => ({
+                ...node,
+                x: node.x * scaleX,
+                y: node.y * scaleY
+            }));
+        }
+
+        // Create packets from message
+        function createMessage() {
+            packets = [];
+            receivedPackets = [];
+            messageCreated = true;
+            
+            const message = "HELLO WORLD!";
+            const packetSize = 3; // Characters per packet
+            
+            for (let i = 0; i < 4; i++) {
+                const start = i * packetSize;
+                const end = Math.min(start + packetSize, message.length);
+                const data = message.substring(start, end);
+                
+                packets.push({
+                    id: i + 1,
+                    data: data,
+                    route: routes[i],
+                    position: 0,
+                    x: 0,
+                    y: 0,
+                    color: packetColors[i],
+                    ttl: 10,
+                    speed: 2 + Math.random() * 2 // Variable speeds
+                });
+            }
+            
+            document.getElementById('statusText').textContent = 'Message split into 4 packets';
+            document.getElementById('sendPackets').disabled = false;
+            document.getElementById('reassemblyDisplay').innerHTML = 'Waiting for packets...';
+            
+            showPopup('Message Packetization', 'Your message "HELLO WORLD!" has been split into 4 packets. Each packet contains a header with routing information, a portion of the data (payload), and error checking in the trailer.');
+        }
+
+        // Send packets
+        function sendPackets() {
+            document.getElementById('statusText').textContent = 'Transmitting packets...';
+            document.getElementById('sendPackets').disabled = true;
+            
+            // Start packets at slightly different times
+            packets.forEach((packet, index) => {
+                setTimeout(() => {
+                    packet.active = true;
+                }, index * 300);
+            });
+        }
+
+        // Update packet positions
+        function updatePackets() {
+            const scaledNodes = scaleCoordinates();
+            
+            packets.forEach(packet => {
+                if (!packet.active || packet.position >= packet.route.length - 1) return;
+                
+                const currentNode = scaledNodes.find(n => n.id === packet.route[Math.floor(packet.position)]);
+                const nextNode = scaledNodes.find(n => n.id === packet.route[Math.floor(packet.position) + 1]);
+                
+                if (!currentNode || !nextNode) return;
+                
+                const progress = packet.position - Math.floor(packet.position);
+                packet.x = currentNode.x + (nextNode.x - currentNode.x) * progress;
+                packet.y = currentNode.y + (nextNode.y - currentNode.y) * progress;
+                
+                packet.position += packet.speed / 100;
+                
+                // Check if packet reached destination
+                if (packet.position >= packet.route.length - 1) {
+                    packet.position = packet.route.length - 1;
+                    if (!receivedPackets.find(p => p.id === packet.id)) {
+                        receivedPackets.push(packet);
+                        updateReassembly();
+                        
+                        if (receivedPackets.length === packets.length) {
+                            document.getElementById('statusText').textContent = 'All packets received - Message reassembled!';
+                            showPopup('Successful Transmission', 'All packets have arrived at the destination. Notice how they may have arrived in a different order than they were sent, but the packet numbers allow proper reassembly.');
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update reassembly display
+        function updateReassembly() {
+            const display = document.getElementById('reassemblyDisplay');
+            display.innerHTML = '';
+            
+            // Sort by packet ID for proper reassembly
+            const sorted = [...receivedPackets].sort((a, b) => a.id - b.id);
+            
+            sorted.forEach(packet => {
+                const packetDiv = document.createElement('span');
+                packetDiv.className = 'received-packet';
+                packetDiv.style.background = packet.color;
+                packetDiv.textContent = `${packet.id}/4: ${packet.data}`;
+                display.appendChild(packetDiv);
+            });
+            
+            if (receivedPackets.length === packets.length) {
+                const message = sorted.map(p => p.data).join('');
+                display.innerHTML += `<div style="margin-top: 10px; font-weight: bold;">Reassembled: ${message}</div>`;
+            }
+        }
+
+        // Draw network
+        function drawNetwork() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const scaledNodes = scaleCoordinates();
+            
+            // Draw connections
+            connections.forEach(conn => {
+                const fromNode = scaledNodes.find(n => n.id === conn.from);
+                const toNode = scaledNodes.find(n => n.id === conn.to);
+                
+                ctx.beginPath();
+                ctx.moveTo(fromNode.x, fromNode.y);
+                ctx.lineTo(toNode.x, toNode.y);
+                ctx.strokeStyle = '#e0e0e0';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+            
+            // Draw active routes
+            packets.forEach(packet => {
+                if (!packet.active) return;
+                
+                ctx.strokeStyle = packet.color;
+                ctx.lineWidth = 3;
+                ctx.globalAlpha = 0.3;
+                
+                for (let i = 0; i < packet.route.length - 1; i++) {
+                    const from = scaledNodes.find(n => n.id === packet.route[i]);
+                    const to = scaledNodes.find(n => n.id === packet.route[i + 1]);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(from.x, from.y);
+                    ctx.lineTo(to.x, to.y);
+                    ctx.stroke();
+                }
+                
+                ctx.globalAlpha = 1;
+            });
+            
+            // Draw nodes
+            scaledNodes.forEach(node => {
+                // Node circle
+                ctx.fillStyle = node.id === 'A' || node.id === 'B' ? '#2196F3' : '#9e9e9e';
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 20, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Node border
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Node label
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(node.label, node.x, node.y - 30);
+            });
+            
+            // Draw packets
+            packets.forEach(packet => {
+                if (!packet.active || packet.position >= packet.route.length - 1) return;
+                
+                // Packet visualization
+                ctx.fillStyle = packet.color;
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                
+                // Draw packet as rectangle
+                ctx.fillRect(packet.x - 20, packet.y - 10, 40, 20);
+                ctx.strokeRect(packet.x - 20, packet.y - 10, 40, 20);
+                
+                // Packet label
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`P${packet.id}`, packet.x, packet.y + 4);
+            });
+            
+            // Draw message creation visualization
+            if (messageCreated && packets.length > 0 && !packets[0].active) {
+                const sender = scaledNodes.find(n => n.id === 'A');
+                
+                packets.forEach((packet, index) => {
+                    const y = sender.y - 60 + index * 25;
+                    
+                    ctx.fillStyle = packet.color;
+                    ctx.fillRect(sender.x - 30, y - 10, 60, 20);
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(sender.x - 30, y - 10, 60, 20);
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${packet.id}/4: ${packet.data}`, sender.x, y + 4);
+                });
+            }
+        }
+
+        // Animation loop
+        function animate() {
+            animationFrame++;
+            updatePackets();
+            drawNetwork();
+            requestAnimationFrame(animate);
+        }
+
+        // Start animation
+        animate();
+
+        // Reset function
+        function reset() {
+            packets = [];
+            receivedPackets = [];
+            messageCreated = false;
+            document.getElementById('statusText').textContent = 'Ready to create message';
+            document.getElementById('sendPackets').disabled = true;
+            document.getElementById('reassemblyDisplay').innerHTML = 'Waiting for packets...';
+            resetQuiz();
+        }
+
+        // Event listeners
+        document.getElementById('createMessage').addEventListener('click', createMessage);
+        document.getElementById('sendPackets').addEventListener('click', sendPackets);
+        document.getElementById('reset').addEventListener('click', reset);
+
+        // Popup functions
+        function showPopup(title, content) {
+            document.getElementById('popupTitle').textContent = title;
+            document.getElementById('popupContent').textContent = content;
+            document.getElementById('popup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function closePopup() {
+            document.getElementById('popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        document.getElementById('overlay').addEventListener('click', closePopup);
+
+        // Quiz data
+        const quizQuestions = [
+            {
+                question: "What is the main characteristic of packet switching?",
+                options: [
+                    "A dedicated path is reserved for the entire communication",
+                    "Messages are broken into parts and sent independently",
+                    "All data must follow the same route",
+                    "Connections are permanent once established"
+                ],
+                correct: 1,
+                feedback: "In packet switching, messages are divided into packets that can travel independently via different routes."
+            },
+            {
+                question: "What information is typically found in a packet header?",
+                options: [
+                    "Only the data being transmitted",
+                    "Error checking codes",
+                    "Recipient address, sender address, packet number, and TTL",
+                    "Encryption keys"
+                ],
+                correct: 2,
+                feedback: "The packet header contains routing information including addresses, packet sequence numbers, and Time To Live (TTL)."
+            },
+            {
+                question: "What is the typical size range for a packet payload?",
+                options: [
+                    "10-50 bytes",
+                    "500-1,500 bytes",
+                    "10,000-50,000 bytes",
+                    "Always exactly 1,000 bytes"
+                ],
+                correct: 1,
+                feedback: "Packet payloads typically range from 500 to 1,500 bytes to balance efficiency and transmission time."
+            },
+            {
+                question: "Why are packets kept relatively small?",
+                options: [
+                    "To save storage space",
+                    "To prevent blocking other packets and balance efficiency",
+                    "Because routers can't handle large packets",
+                    "To reduce internet costs"
+                ],
+                correct: 1,
+                feedback: "Small packets prevent any single packet from monopolizing network resources while maintaining efficiency."
+            },
+            {
+                question: "What happens if a packet's checksum doesn't match at the destination?",
+                options: [
+                    "The packet is accepted anyway",
+                    "The entire message is deleted",
+                    "The packet is refused and a new copy is requested",
+                    "The connection is permanently closed"
+                ],
+                correct: 2,
+                feedback: "When error checking fails, the corrupted packet is rejected and the sender is asked to retransmit it."
+            },
+            {
+                question: "How are packets reassembled in the correct order at the destination?",
+                options: [
+                    "They always arrive in order",
+                    "Using packet numbers in the header",
+                    "By checking the data content",
+                    "Using timestamps only"
+                ],
+                correct: 1,
+                feedback: "Packet numbers (e.g., 3/5) in the header allow proper reassembly regardless of arrival order."
+            },
+            {
+                question: "What is the purpose of TTL (Time To Live) in a packet header?",
+                options: [
+                    "To specify data expiration date",
+                    "To limit how many hops a packet can make",
+                    "To set transmission speed",
+                    "To encrypt the packet"
+                ],
+                correct: 1,
+                feedback: "TTL prevents packets from circulating indefinitely by limiting the number of router hops."
+            },
+            {
+                question: "In packet transmission within a LAN, what role does the server play?",
+                options: [
+                    "It creates all packets",
+                    "It reads addresses and directs packets to recipients",
+                    "It stores all packets permanently",
+                    "It encrypts all data"
+                ],
+                correct: 1,
+                feedback: "In a LAN, the server reads packet addresses and routes them to the appropriate recipients."
+            }
+        ];
+
+        // Initialize quiz
+        function initializeQuiz() {
+            const container = document.getElementById('quizContainer');
+            container.innerHTML = '';
+            
+            quizQuestions.forEach((q, index) => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'quiz-question';
+                questionDiv.innerHTML = `
+                    <h3>Question ${index + 1}: ${q.question}</h3>
+                    <div class="quiz-options">
+                        ${q.options.map((option, optIndex) => `
+                            <div class="quiz-option" data-question="${index}" data-option="${optIndex}">
+                                ${option}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="quiz-feedback" id="feedback-${index}"></div>
+                `;
+                container.appendChild(questionDiv);
+            });
+            
+            // Add click handlers
+            document.querySelectorAll('.quiz-option').forEach(option => {
+                option.addEventListener('click', selectOption);
+            });
+        }
+
+        function selectOption(e) {
+            const questionIndex = parseInt(e.target.dataset.question);
+            const options = document.querySelectorAll(`.quiz-option[data-question="${questionIndex}"]`);
+            
+            options.forEach(opt => opt.classList.remove('selected'));
+            e.target.classList.add('selected');
+        }
+
+        function checkAnswers() {
+            let score = 0;
+            
+            quizQuestions.forEach((q, index) => {
+                const selected = document.querySelector(`.quiz-option[data-question="${index}"].selected`);
+                const feedback = document.getElementById(`feedback-${index}`);
+                const options = document.querySelectorAll(`.quiz-option[data-question="${index}"]`);
+                
+                if (selected) {
+                    const selectedIndex = parseInt(selected.dataset.option);
+                    
+                    options.forEach((opt, optIndex) => {
+                        opt.classList.remove('correct', 'incorrect');
+                        if (optIndex === q.correct) {
+                            opt.classList.add('correct');
+                        } else if (optIndex === selectedIndex && selectedIndex !== q.correct) {
+                            opt.classList.add('incorrect');
+                        }
+                    });
+                    
+                    if (selectedIndex === q.correct) {
+                        score++;
+                        feedback.className = 'quiz-feedback correct';
+                        feedback.textContent = '✓ Correct! ' + q.feedback;
+                    } else {
+                        feedback.className = 'quiz-feedback incorrect';
+                        feedback.textContent = '✗ Incorrect. ' + q.feedback;
+                    }
+                    feedback.style.display = 'block';
+                }
+            });
+            
+            const scoreDiv = document.getElementById('quizScore');
+            scoreDiv.textContent = `Your Score: ${score}/${quizQuestions.length} (${Math.round(score/quizQuestions.length * 100)}%)`;
+            
+            if (score === quizQuestions.length) {
+                scoreDiv.style.color = '#4CAF50';
+                showPopup('Excellent!', 'Perfect score! You have mastered the concept of packet switching.');
+            } else if (score >= quizQuestions.length * 0.7) {
+                scoreDiv.style.color = '#ff9800';
+                showPopup('Good Job!', 'You have a solid understanding of packet switching. Review the incorrect answers to improve further.');
+            } else {
+                scoreDiv.style.color = '#f44336';
+                showPopup('Keep Practicing', 'Review the feedback for each question and try the simulation again to better understand packet switching.');
+            }
+        }
+
+        function resetQuiz() {
+            document.querySelectorAll('.quiz-option').forEach(option => {
+                option.classList.remove('selected', 'correct', 'incorrect');
+            });
+            document.querySelectorAll('.quiz-feedback').forEach(feedback => {
+                feedback.style.display = 'none';
+            });
+            document.getElementById('quizScore').textContent = '';
+        }
+
+        // Initialize quiz on load
+        initializeQuiz();
+
+        // Quiz event listeners
+        document.getElementById('checkAnswers').addEventListener('click', checkAnswers);
+        document.getElementById('resetQuiz').addEventListener('click', resetQuiz);
+    </script>
+</body>
+</html>

@@ -1,0 +1,2837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCSE Python Summer Project (Skulpt Version)</title>
+    
+    <!-- CodeMirror CSS (Upgraded Version) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+    
+    <!-- Skulpt.js - Python in Browser -->
+    <!-- Primary CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/1.2.0/skulpt.min.js" 
+            onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js'"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/skulpt/1.2.0/skulpt-stdlib.js" 
+            onerror="this.onerror=null; this.src='https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js'"></script>
+    
+    <!-- Fallback to older version if needed -->
+    <script>
+        // Check if Skulpt loaded after a delay
+        setTimeout(function() {
+            if (typeof Sk === 'undefined') {
+                console.log('Primary Skulpt failed, trying fallback...');
+                var script1 = document.createElement('script');
+                script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/skulpt/0.11.0/skulpt.min.js';
+                document.head.appendChild(script1);
+                
+                var script2 = document.createElement('script');
+                script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/skulpt/0.11.0/skulpt-stdlib.js';
+                document.head.appendChild(script2);
+            }
+        }, 2000);
+    </script>
+    
+    <!-- CodeMirror JS (Upgraded Version) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --primary-dark: #0a58ca;
+            --primary-light: #cfe2ff;
+            --success-color: #198754;
+            --warning-color: #ffc107;
+            --error-color: #dc3545;
+            --bg-primary: #f8f9fa;
+            --bg-secondary: white;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --border-color: #dee2e6;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --xp-color: #6f42c1;
+            --badge-gold: #ffd700;
+            --badge-silver: #c0c0c0;
+            --badge-bronze: #cd7f32;
+        }
+
+        /* Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        /* Allow selection for specific elements */
+        .CodeMirror, textarea, input, .allow-select {
+            -webkit-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+
+        /* Header */
+        .header {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 1rem 2rem;
+            box-shadow: var(--shadow-md);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .header-content h1 { font-size: 1.75rem; }
+        .header-content p { color: var(--text-secondary); }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        /* XP Display */
+        .xp-display {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: linear-gradient(135deg, var(--xp-color) 0%, #8b5cf6 100%);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .backup-reminder {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #664d03;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            z-index: 999;
+            max-width: 300px;
+            display: none;
+        }
+
+        .backup-reminder.show {
+            display: block;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        .backup-reminder h4 {
+            margin: 0 0 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .backup-reminder .close-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #664d03;
+        }
+
+        .xp-icon {
+            font-size: 1.5rem;
+        }
+
+        .xp-amount {
+            font-size: 1.2rem;
+        }
+
+        .current-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1600px;
+            margin: 1.5rem auto;
+            padding: 0 1.5rem;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 1.5rem;
+            align-items: flex-start;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            position: sticky;
+            top: 100px;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        /* Badges Section */
+        .badges-section {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .badges-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge-list {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+
+        .badge-item {
+            text-align: center;
+            padding: 0.5rem;
+            border-radius: 6px;
+            background: white;
+            border: 2px solid var(--border-color);
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .badge-item.earned {
+            border-color: var(--xp-color);
+            background: linear-gradient(135deg, #f3f0ff 0%, #e9e3ff 100%);
+        }
+
+        .badge-icon {
+            font-size: 2rem;
+            margin-bottom: 0.25rem;
+            filter: grayscale(100%);
+            opacity: 0.3;
+        }
+
+        .badge-item.earned .badge-icon {
+            filter: grayscale(0%);
+            opacity: 1;
+        }
+
+        .badge-name {
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-xp {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .section-header {
+            font-size: 1.2rem;
+            font-weight: 600;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .section-header:hover { background-color: #e9ecef; }
+        .section-arrow { transition: transform 0.2s ease-in-out; }
+        .section-arrow.open { transform: rotate(90deg); }
+
+        .task-list {
+            list-style: none;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+        }
+
+        .task-list.open {
+            max-height: 1000px;
+        }
+        
+        .task-item {
+            padding: 0.6rem 1rem;
+            margin-left: 1rem;
+            margin-bottom: 0.25rem;
+            border-left: 3px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+            position: relative;
+        }
+
+        .task-item:hover { background: var(--primary-light); }
+        .task-item.active {
+            background: var(--primary-color);
+            color: white;
+            border-left-color: var(--primary-dark);
+            font-weight: 500;
+        }
+        .task-item-status { font-size: 0.8rem; }
+        .task-item.completed .task-item-status::before { content: '✔'; color: var(--success-color); }
+        
+        .task-xp {
+            position: absolute;
+            right: 0.5rem;
+            font-size: 0.75rem;
+            padding: 0.1rem 0.4rem;
+            background: var(--xp-color);
+            color: white;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        .task-item.completed .task-xp {
+            background: var(--success-color);
+        }
+
+        .export-button-container {
+            padding: 1rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 1rem;
+        }
+
+        /* Content Area */
+        .content {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            min-height: 600px;
+            padding: 1.5rem 2rem;
+        }
+
+        .task-header {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .task-title { font-size: 1.5rem; font-weight: 600; }
+        
+        .task-xp-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, var(--xp-color) 0%, #8b5cf6 100%);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .instructions h3 {
+            font-size: 1.1rem;
+            margin: 1.25rem 0 0.5rem 0;
+            color: var(--text-primary);
+        }
+        .instructions ul { margin-left: 1.5rem; }
+        .instructions code {
+            background-color: #e9ecef;
+            padding: 0.2em 0.4em;
+            margin: 0;
+            font-size: 85%;
+            border-radius: 3px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .example-output {
+            background-color: #f8f9fa;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+        }
+
+        .example-output-header {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        /* Input Panel - NEW */
+        .input-panel {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: none;
+        }
+
+        .input-panel.active {
+            display: block;
+        }
+
+        .input-prompt {
+            font-family: 'Courier New', monospace;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .input-submit {
+            margin-top: 0.5rem;
+            padding: 0.5rem 1rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .input-submit:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .editor-container { margin: 1.5rem 0; }
+        .editor-header {
+            background: #343a40;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .CodeMirror { 
+            height: 300px; 
+            border: 1px solid #343a40; 
+            border-bottom-left-radius: 6px; 
+            border-bottom-right-radius: 6px;
+        }
+
+        .output-panel { margin-top: 1rem; }
+        .output-header { font-weight: 500; margin-bottom: 0.5rem; }
+        .output-content {
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            min-height: 100px;
+            background: #212529;
+            color: #f8f9fa;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .output-content.error { color: #ff8a8a; }
+        .loading { color: var(--text-secondary); }
+
+        .controls { display: flex; gap: 0.75rem; margin-top: 1.5rem; flex-wrap: wrap; }
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: white;
+            border: 1px solid transparent;
+        }
+        .btn-primary { background-color: var(--primary-color); border-color: var(--primary-color); }
+        .btn-primary:hover { background-color: var(--primary-dark); border-color: var(--primary-dark); }
+        .btn-secondary { background-color: #6c757d; border-color: #6c757d; color: white; }
+        .btn-secondary:hover { background-color: #5c636a; }
+        .btn-success { background-color: var(--success-color); border-color: var(--success-color); }
+        .btn-success:hover { background-color: #157347; }
+        .btn-warning { background-color: var(--warning-color); border-color: var(--warning-color); color: var(--text-primary); }
+        .btn-warning:hover { background-color: #ffca2c; }
+
+        .hint-box {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #664d03;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            display: none;
+        }
+        .hint-box.show { display: block; }
+        .hint-box h4 { margin: 0 0 0.5rem 0; }
+
+        .checks-container { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 6px;
+        }
+        .check-item.passed { background-color: #d1e7dd; }
+        .check-item.failed { background-color: #f8d7da; }
+        .check-icon { width: 20px; height: 20px; font-weight: bold; text-align: center; }
+        .check-icon.passed { color: var(--success-color); }
+        .check-icon.failed { color: var(--error-color); }
+        .check-description { flex-grow: 1; }
+        .check-description code { font-size: 90%; }
+        
+        .xp-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, var(--xp-color) 0%, #8b5cf6 100%);
+            color: white;
+            padding: 2rem 3rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 3000;
+            text-align: center;
+            animation: xpPop 0.8s ease-out forwards;
+        }
+
+        @keyframes xpPop {
+            0% { transform: translate(-50%, -50%) scale(0); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .xp-notification h2 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .xp-notification p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background-color: #343a40;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 6px;
+            box-shadow: var(--shadow-md);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: all 0.3s ease-in-out;
+            z-index: 2000;
+        }
+        .toast.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .error-message {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem;
+        }
+
+        .test-info-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #664d03;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+        }
+        
+        .test-info-box h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1rem;
+        }
+        
+        .test-info-box ul {
+            margin: 0.5rem 0 0.5rem 1.5rem;
+        }
+        
+        /* Error boundary styles */
+        .error-boundary {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 2rem;
+            border-radius: 6px;
+            margin: 1rem;
+            text-align: center;
+        }
+
+        .error-boundary h3 {
+            margin-bottom: 1rem;
+        }
+
+        .error-boundary button {
+            margin-top: 1rem;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .section-header.challenges {
+            background-color: #ffe4e1;
+            border-color: #ff6b6b;
+        }
+        
+        .section-header.challenges:hover { 
+            background-color: #ffccc7; 
+        }
+        
+        /* Responsive */
+        @media (max-width: 992px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                position: static;
+                max-height: none;
+                margin-bottom: 1.5rem;
+            }
+            .header {
+                padding: 1rem;
+            }
+            .header-right {
+                flex-wrap: wrap;
+            }
+        }
+
+        /* Backup Popup Modal */
+        .backup-modal {
+            display: none;
+            position: fixed;
+            z-index: 5000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .backup-modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 2rem;
+            border: 1px solid #888;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .backup-modal h2 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .backup-modal p {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .backup-modal-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Streak Display */
+        .streak-display {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8787 100%);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .streak-flame {
+            font-size: 1.2rem;
+            animation: flicker 2s ease-in-out infinite;
+        }
+
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Solution Compare */
+        .solution-panel {
+            display: none;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .solution-locked {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .solution-locked .lock-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .code-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .code-panel {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 1rem;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+
+        .code-panel h4 {
+            color: #f8f8f2;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-message" style="text-align: center; padding: 2rem;">
+        <h2>Loading Python Summer Project...</h2>
+        <div class="spinner"></div>
+        <p>Please wait while we set up the environment.</p>
+        <p id="loading-status" style="color: #666; font-size: 0.9rem;"></p>
+    </div>
+
+    <header class="header" style="display: none;">
+        <div class="header-content">
+            <h1>GCSE Python Summer Project</h1>
+            <p id="header-subtitle">45 core tasks + 5 comprehensive challenges. Earn XP and unlock badges!</p>
+        </div>
+        <div class="header-right">
+            <button class="btn btn-secondary" id="backup-btn" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                💾 Backup
+            </button>
+            <button class="btn btn-secondary" id="restore-btn" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+                ⬆ Restore
+            </button>
+            <div class="streak-display" id="streak-display" style="display: none;">
+                <span class="streak-flame">🔥</span>
+                <span id="streak-count">0 day streak</span>
+            </div>
+            <div class="xp-display">
+                <span class="xp-icon">⭐</span>
+                <span class="xp-amount" id="total-xp">0 XP</span>
+                <span class="current-badge" id="current-badge">Beginner</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="backup-reminder" id="backup-reminder">
+        <button class="close-btn" id="close-reminder">×</button>
+        <h4>💾 Time for a backup?</h4>
+        <p>It's been a while since your last backup. Download your progress to keep it safe!</p>
+        <button class="btn btn-primary" style="margin-top: 0.5rem; font-size: 0.85rem;" id="reminder-backup-btn">Download Backup</button>
+    </div>
+
+    <div id="backup-modal" class="backup-modal">
+        <div class="backup-modal-content">
+            <h2>💾 Welcome Back!</h2>
+            <p>Remember to backup your progress regularly to avoid losing your work. Your progress is stored in your browser and could be lost if you clear your data.</p>
+            <div class="backup-modal-buttons">
+                <button class="btn btn-primary" id="modal-backup-btn">Download Backup Now</button>
+                <button class="btn btn-secondary" id="modal-skip-btn">Skip for Now</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container" style="display: none;">
+        <aside class="sidebar">
+            <div class="badges-section">
+                <div class="badges-header">
+                    <span>🏆</span>
+                    <span>Badges</span>
+                </div>
+                <div class="badge-list" id="badge-list">
+                    <!-- Badges will be generated by JavaScript -->
+                </div>
+            </div>
+            <div id="sidebar-nav">
+                <!-- Navigation will be generated by JavaScript -->
+            </div>
+        </aside>
+        
+        <main class="content" id="mainContent">
+            <!-- Main content will be generated by JavaScript -->
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <div id="xp-notification" class="xp-notification" style="display: none;">
+        <h2>+<span id="xp-earned">0</span> XP!</h2>
+        <p id="xp-message">Well done!</p>
+    </div>
+
+    <script>
+    'use strict';
+    // Encapsulate everything in an IIFE to avoid global pollution
+    (function() {
+        // --- XP AND BADGES CONFIGURATION ---
+        const XP_VALUES = {
+            '1': 10,  // Section 1 tasks - 10 XP each
+            '2': 15,  // Section 2 tasks - 15 XP each
+            '3': 20,  // Section 3 tasks - 20 XP each
+            '4': 25,  // Section 4 tasks - 25 XP each
+            '5': 30,  // Section 5 tasks - 30 XP each
+            '6': 50   // Section 6 challenges - 50 XP each
+        };
+        
+        const BADGES = [
+            { name: 'Beginner', xpRequired: 0, icon: '🌱' },
+            { name: 'Novice', xpRequired: 100, icon: '🌿' },
+            { name: 'Apprentice', xpRequired: 250, icon: '🌳' },
+            { name: 'Coder', xpRequired: 500, icon: '💻' },
+            { name: 'Developer', xpRequired: 750, icon: '🚀' },
+            { name: 'Expert', xpRequired: 1000, icon: '⭐' },
+            { name: 'Master', xpRequired: 1250, icon: '🏆' },
+            { name: 'Legend', xpRequired: 1500, icon: '👑' }
+        ];
+        
+        const SECTION_COMPLETION_BONUS = {
+            1: 50,
+            2: 75,
+            3: 100,
+            4: 125,
+            5: 150,
+            6: 200
+        };
+        
+        // --- DATA: 50 Programming Tasks ---
+        const TASKS = {
+            // SECTION 1
+            '1-1': {
+                section: 1,
+                title: 'Hello, World!',
+                instructions: '<h3>Task: Print a Message</h3><p>The first step in any programming journey is to print "Hello, World!".</p><p>Write a single line of Python code that displays the exact text <code>Hello, World!</code> on the screen.</p>',
+                exampleOutput: 'Hello, World!',
+                starterCode: '# Write your code here',
+                hints: ['You will need to use the print() function.', 'The text you want to print should be inside the parentheses and enclosed in quote marks (e.g. "text").'],
+                testCases: [{ inputs: [], expectedOutput: 'Hello, World!\n' }]
+            },
+            '1-2': {
+                section: 1,
+                title: 'Personal Greeting',
+                instructions: '<h3>Task: Get User Input</h3><p>Write a program that asks the user for their name and then prints a personalised greeting.</p><p><strong>Note:</strong> The input prompt can be anything you like. The output must be exactly: <code>Hello, [name]</code></p>',
+                exampleOutput: 'Hello, Alice',
+                starterCode: '# Get the user\'s name\n# Print a greeting',
+                hints: ['Store the result of the input() function in a variable.', 'Use the + operator to join the string "Hello, " with the user\'s name.', 'The exact input prompt doesn\'t matter for testing - use whatever feels natural!'],
+                testCases: [{ inputs: ['Alice'], expectedOutput: 'Hello, Alice\n' }]
+            },
+            '1-3': {
+                section: 1,
+                title: 'Storing Numbers',
+                instructions: '<h3>Task: Variables and Types</h3><p>Write a program that:</p><ol><li>Asks the user for their age</li><li>Converts the input into an integer</li><li>Calculates what their age will be in 10 years</li><li>Prints exactly: <code>In 10 years, you will be [age] years old.</code></li></ol>',
+                exampleOutput: 'In 10 years, you will be 25 years old.',
+                starterCode: '# Get age from user\n# Convert to integer and calculate future age\n# Print the result',
+                hints: ['The input() function returns a string. You must convert it to a number using int().', 'Create a new variable for the future age, e.g., future_age = age + 10.', 'To print numbers and strings together, you might need to convert the number back to a string using str().'],
+                testCases: [{ inputs: ['15'], expectedOutput: 'In 10 years, you will be 25 years old.\n' }]
+            },
+            '1-4': {
+                section: 1,
+                title: 'Simple Area Calculator',
+                instructions: '<h3>Task: Rectangle Area</h3><p>Write a program that calculates the area of a rectangle.</p><ol><li>Ask the user for the width</li><li>Ask the user for the height</li><li>Calculate the area (width × height)</li><li>Print exactly: <code>The area is: [area]</code></li></ol>',
+                exampleOutput: 'The area is: 50',
+                starterCode: '# Get width and height from the user\n# Calculate and print the area',
+                hints: ['You will need two input() calls.', 'Remember to convert both inputs to numbers (int or float) before multiplying them.'],
+                testCases: [{ inputs: ['5', '10'], expectedOutput: 'The area is: 50\n' }]
+            },
+            '1-5': {
+                section: 1,
+                title: 'Working with Floats',
+                instructions: '<h3>Task: Tip Calculator</h3><p>Write a program to calculate a 15% tip on a restaurant bill.</p><ol><li>Ask the user for the total bill amount</li><li>Convert the input to a float</li><li>Calculate the tip (bill × 0.15)</li><li>Print exactly: <code>The tip is: [amount]</code></li></ol>',
+                exampleOutput: 'The tip is: 7.5',
+                starterCode: '# Get bill amount and calculate 15% tip',
+                hints: ['Use float() to handle decimal numbers.', 'To calculate 15%, you multiply by 0.15.'],
+                testCases: [{ inputs: ['50.00'], expectedOutput: 'The tip is: 7.5\n' }]
+            },
+            '1-6': {
+                section: 1,
+                title: 'Integer Division (//)',
+                instructions: '<h3>Task: Sharing Sweets</h3><p>You have 50 sweets to share equally among 7 children.</p><p>Using integer division (<code>//</code>), calculate how many whole sweets each child receives. Print only the number.</p>',
+                exampleOutput: '7',
+                starterCode: 'sweets = 50\nchildren = 7\n# Calculate how many sweets each child gets',
+                hints: ['Standard division / gives a float (e.g., 7.14).', 'Integer division // gives only the whole number part of the division.'],
+                testCases: [{ inputs: [], expectedOutput: '7\n' }]
+            },
+            '1-7': {
+                section: 1,
+                title: 'Modulus Operator (%)',
+                instructions: '<h3>Task: Leftover Sweets</h3><p>Following on from the previous task, you have 50 sweets and 7 children.</p><p>Using the modulus operator (<code>%</code>), calculate how many sweets are left over after sharing them equally. Print only the number.</p>',
+                exampleOutput: '1',
+                starterCode: 'sweets = 50\nchildren = 7\n# Calculate the remaining sweets',
+                hints: ['The modulus operator % gives the remainder of a division.', 'For example, 10 % 3 is 1.'],
+                testCases: [{ inputs: [], expectedOutput: '1\n' }]
+            },
+            '1-8': {
+                section: 1,
+                title: 'Exponentiation (**)',
+                instructions: '<h3>Task: Squared and Cubed</h3><p>Ask the user for a number. Then calculate and print:</p><ol><li><code>[number] squared is [result]</code></li><li><code>[number] cubed is [result]</code></li></ol>',
+                exampleOutput: '4 squared is 16\n4 cubed is 64',
+                starterCode: '# Get a number from the user\n# Calculate and print the square and cube',
+                hints: ['The operator for exponentiation (raising to a power) is **.', 'number ** 2 is the square. number ** 3 is the cube.'],
+                testCases: [{ inputs: ['4'], expectedOutput: '4 squared is 16\n4 cubed is 64\n' }]
+            },
+            '1-9': {
+                section: 1,
+                title: 'Mad Libs Story',
+                instructions: '<h3>Task: Build a Story</h3><p>Create a simple story generator. Ask the user for:</p><ul><li>A person\'s name</li><li>A verb (action word)</li><li>An adjective (describing word)</li><li>A noun (thing)</li></ul><p>Then print exactly: <code>[Name] decided to [verb] the [adjective] [noun].</code></p>',
+                exampleOutput: 'Ada decided to code the giant computer.',
+                starterCode: '# Get 4 inputs from the user\n\n# Print the final story sentence',
+                hints: ['You will need four variables to store the user\'s inputs.', 'Use string concatenation (+) to join the words and form the final sentence.'],
+                testCases: [{ inputs: ['Ada', 'code', 'giant', 'computer'], expectedOutput: 'Ada decided to code the giant computer.\n' }]
+            },
+            '1-10': {
+                section: 1,
+                title: 'Section 1 Challenge',
+                instructions: '<h3>Task: Journey Calculator</h3><p>Write a program that calculates the cost of a car journey.</p><ol><li>Ask for the journey distance in miles (can be decimal)</li><li>Ask for the car\'s fuel efficiency in miles per gallon (MPG)</li><li>Ask for the price of fuel per litre</li><li>Calculate and print exactly: <code>Total cost: [amount]</code></li></ol><h3>Hints:</h3><ul><li>1 gallon = 4.546 litres</li><li>Gallons needed = distance ÷ MPG</li><li>Litres needed = gallons × 4.546</li><li>Total cost = litres × price per litre</li></ul>',
+                exampleOutput: 'Total cost: 13.638',
+                starterCode: '# This is a multi-step calculation.\n# Break the problem down!',
+                hints: ['Create a variable for each step of the calculation to keep your code clear.', 'The final output will likely be a float with many decimal places. That is okay for this task.'],
+                testCases: [{ inputs: ['100', '50', '1.50'], expectedOutput: 'Total cost: 13.638\n' }]
+            },
+            // SECTION 2
+            '2-1': {
+                section: 2,
+                title: 'Positive or Negative',
+                instructions: '<h3>Task: Number Check</h3><p>Ask the user to enter a number. Print exactly:</p><ul><li><code>Positive</code> if the number is greater than 0</li><li><code>Negative</code> if less than 0</li><li><code>Zero</code> if exactly 0</li></ul>',
+                exampleOutput: 'Positive',
+                starterCode: '# Get a number from the user\n# Use if/elif/else to check the number',
+                hints: ['You will need an if for the first condition, an elif for the second, and an else for the final case.', 'The condition for checking equality is ==.'],
+                testCases: [
+                    { inputs: ['10'], expectedOutput: 'Positive\n' },
+                    { inputs: ['-5'], expectedOutput: 'Negative\n' },
+                    { inputs: ['0'], expectedOutput: 'Zero\n' }
+                ]
+            },
+            '2-2': {
+                section: 2,
+                title: 'Age Check',
+                instructions: '<h3>Task: Are you old enough?</h3><p>A rollercoaster has an age restriction: you must be 12 or older to ride.</p><p>Ask for the user\'s age and print exactly:</p><ul><li><code>Access granted</code> if 12 or older</li><li><code>Access denied</code> if under 12</li></ul>',
+                exampleOutput: 'Access granted',
+                starterCode: '# Get age and check if 12 or older',
+                hints: ['The condition is "age is greater than or equal to 12".', 'The operator for "greater than or equal to" is >=.'],
+                testCases: [
+                    { inputs: ['15'], expectedOutput: 'Access granted\n' },
+                    { inputs: ['12'], expectedOutput: 'Access granted\n' },
+                    { inputs: ['11'], expectedOutput: 'Access denied\n' }
+                ]
+            },
+            '2-3': {
+                section: 2,
+                title: 'Simple Password',
+                instructions: '<h3>Task: Password Checker</h3><p>Write a program that asks for a password. The correct password is "secret123".</p><p>Print exactly:</p><ul><li><code>Welcome</code> if correct</li><li><code>Wrong password</code> if incorrect</li></ul>',
+                exampleOutput: 'Welcome',
+                starterCode: 'password = "secret123"\n\n# Get user input and check password',
+                hints: ['You are comparing two strings for equality.', 'The == operator works for strings as well as numbers.'],
+                testCases: [
+                    { inputs: ['secret123'], expectedOutput: 'Welcome\n' },
+                    { inputs: ['password'], expectedOutput: 'Wrong password\n' }
+                ]
+            },
+            '2-4': {
+                section: 2,
+                title: 'Even or Odd',
+                instructions: '<h3>Task: Even or Odd Checker</h3><p>Ask the user for a whole number and determine if it is even or odd.</p><p>Print exactly <code>Even</code> or <code>Odd</code></p><p><strong>Hint:</strong> An even number has no remainder when divided by 2.</p>',
+                exampleOutput: 'Even',
+                starterCode: '# Get a number and check if even or odd',
+                hints: ['If number % 2 is equal to 0, the number is even.', 'Otherwise, the number is odd.'],
+                testCases: [
+                    { inputs: ['10'], expectedOutput: 'Even\n' },
+                    { inputs: ['7'], expectedOutput: 'Odd\n' }
+                ]
+            },
+            '2-5': {
+                section: 2,
+                title: 'Grading Program',
+                instructions: '<h3>Task: Assign a Grade</h3><p>Write a program that takes a test score (0-100) and prints the grade:</p><ul><li>Over 80: <code>A</code></li><li>Over 60: <code>B</code></li><li>Over 40: <code>C</code></li><li>40 or below: <code>Fail</code></li></ul>',
+                exampleOutput: 'A',
+                starterCode: '# Get score and assign grade',
+                hints: ['Use an if/elif/elif/else structure.', 'The order of your checks is important. Start by checking for the highest grade first.'],
+                testCases: [
+                    { inputs: ['95'], expectedOutput: 'A\n' },
+                    { inputs: ['72'], expectedOutput: 'B\n' },
+                    { inputs: ['50'], expectedOutput: 'C\n' },
+                    { inputs: ['30'], expectedOutput: 'Fail\n' }
+                ]
+            },
+            '2-6': {
+                section: 2,
+                title: 'Boolean Operator: AND',
+                instructions: '<h3>Task: VIP Lounge Access</h3><p>To enter a VIP lounge, a person must be over 18 AND have a VIP pass.</p><p>Ask for:</p><ol><li>Their age</li><li>If they have a pass (yes/no)</li></ol><p>Print <code>Access granted</code> or <code>Access denied</code></p>',
+                exampleOutput: 'Access granted',
+                starterCode: '# Get age and VIP pass status\n# Check BOTH conditions',
+                hints: ['Your if statement will need two conditions joined by the and keyword.', 'The condition will look something like: if age > 18 and has_pass == "yes":'],
+                testCases: [
+                    { inputs: ['25', 'yes'], expectedOutput: 'Access granted\n' },
+                    { inputs: ['25', 'no'], expectedOutput: 'Access denied\n' },
+                    { inputs: ['17', 'yes'], expectedOutput: 'Access denied\n' }
+                ]
+            },
+            '2-7': {
+                section: 2,
+                title: 'Boolean Operator: OR',
+                instructions: '<h3>Task: Weekend or Weekday</h3><p>Ask the user for the day of the week.</p><p>Print exactly:</p><ul><li><code>It\'s the weekend!</code> for Saturday or Sunday</li><li><code>It\'s a weekday.</code> for any other day</li></ul>',
+                exampleOutput: 'It\'s the weekend!',
+                starterCode: '# Get day and check if weekend',
+                hints: ['Your if statement will need two conditions joined by the or keyword.', 'The condition will look like: if day == "Saturday" or day == "Sunday":'],
+                testCases: [
+                    { inputs: ['Sunday'], expectedOutput: 'It\'s the weekend!\n' },
+                    { inputs: ['Monday'], expectedOutput: 'It\'s a weekday.\n' }
+                ]
+            },
+            '2-8': {
+                section: 2,
+                title: 'Boolean Operator: NOT',
+                instructions: '<h3>Task: Not a Vowel</h3><p>Ask the user to enter a single lowercase letter.</p><p>Print exactly:</p><ul><li><code>Consonant</code> if NOT a vowel (a, e, i, o, u)</li><li><code>Vowel</code> if it is a vowel</li></ul>',
+                exampleOutput: 'Consonant',
+                starterCode: '# Get letter and check if NOT a vowel',
+                hints: ['One way to do this is to check if the letter is not in the group of vowels.', 'A complex condition could be: if letter != "a" and letter != "e" and ...'],
+                testCases: [
+                    { inputs: ['b'], expectedOutput: 'Consonant\n' },
+                    { inputs: ['e'], expectedOutput: 'Vowel\n' }
+                ]
+            },
+            '2-9': {
+                section: 2,
+                title: 'Nested Selection',
+                instructions: '<h3>Task: Cinema Tickets</h3><p>Cinema pricing rules:</p><ul><li>Standard ticket: £10</li><li>Wednesday: £2 off</li><li>Students get additional £1 off</li></ul><p>Ask for:</p><ol><li>Day of the week</li><li>Student status (yes/no)</li></ol><p>Print exactly: <code>Price: [amount]</code></p>',
+                exampleOutput: 'Price: 7',
+                starterCode: '# Get day and student status\n# Calculate price with discounts',
+                hints: ['Start with a base price, e.g., price = 10.', 'Use an if statement to check the day. Inside that, you can use another if statement to check for student status. This is called nesting.'],
+                testCases: [
+                    { inputs: ['Monday', 'no'], expectedOutput: 'Price: 10\n' },
+                    { inputs: ['Wednesday', 'no'], expectedOutput: 'Price: 8\n' },
+                    { inputs: ['Wednesday', 'yes'], expectedOutput: 'Price: 7\n' }
+                ]
+            },
+            '2-10': {
+                section: 2,
+                title: 'Section 2 Challenge',
+                instructions: '<h3>Task: Leap Year Calculator</h3><p>A year is a leap year if:</p><ul><li>Divisible by 4 AND not divisible by 100</li><li>OR divisible by 400</li></ul><p>Ask for a year and print exactly <code>Leap year</code> or <code>Not a leap year</code></p>',
+                exampleOutput: 'Leap year',
+                starterCode: '# Get year and check if it\'s a leap year',
+                hints: ['You can use the modulus operator % to check for divisibility.', 'The logic is complex. Try to write it as one large if condition using and, or, and parentheses () to group the logic correctly.'],
+                testCases: [
+                    { inputs: ['2024'], expectedOutput: 'Leap year\n' },
+                    { inputs: ['2023'], expectedOutput: 'Not a leap year\n' },
+                    { inputs: ['1900'], expectedOutput: 'Not a leap year\n' },
+                    { inputs: ['2000'], expectedOutput: 'Leap year\n' }
+                ]
+            },
+            // SECTION 3
+            '3-1': {
+                section: 3,
+                title: 'FOR Loop: Counting',
+                instructions: '<h3>Task: Count to 10</h3><p>Using a <code>for</code> loop and the <code>range()</code> function, print the numbers from 1 to 10, each on a new line.</p>',
+                exampleOutput: '1\n2\n3\n4\n5\n6\n7\n8\n9\n10',
+                starterCode: '# Use a for loop to iterate from 1 to 10',
+                hints: ['range(1, 11) will generate numbers from 1 up to (but not including) 11.', 'The variable in your loop (e.g., i) will hold the current number on each pass.'],
+                testCases: [{ inputs: [], expectedOutput: '1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n' }]
+            },
+            '3-2': {
+                section: 3,
+                title: 'FOR Loop: Times Table',
+                instructions: '<h3>Task: Times Table</h3><p>Ask the user for a number. Print its times table from 1 to 12.</p><p>First print: <code>Times table for [number]</code></p><p>Then each line: <code>[number] x [i] = [result]</code></p>',
+                exampleOutput: 'Times table for 3\n3 x 1 = 3\n3 x 2 = 6\n...',
+                starterCode: '# Get a number from the user\n# Print header\n# Use a for loop to print the times table',
+                hints: ['Your loop should run from 1 to 12 (range(1, 13)).', 'Inside the loop, calculate result = num * i and then print all the parts.'],
+                testCases: [{ inputs: ['3'], expectedOutput: 'Times table for 3\n3 x 1 = 3\n3 x 2 = 6\n3 x 3 = 9\n3 x 4 = 12\n3 x 5 = 15\n3 x 6 = 18\n3 x 7 = 21\n3 x 8 = 24\n3 x 9 = 27\n3 x 10 = 30\n3 x 11 = 33\n3 x 12 = 36\n' }]
+            },
+            '3-3': {
+                section: 3,
+                title: 'FOR Loop: Summation',
+                instructions: '<h3>Task: Sum of Numbers</h3><p>Using a <code>for</code> loop, calculate the sum of all numbers from 1 to 100 inclusive. Print only the final total.</p>',
+                exampleOutput: '5050',
+                starterCode: 'total = 0\n# Loop from 1 to 100\n    # Add the current number to the total\n\n# Print the final total',
+                hints: ['Create a variable called total and set it to 0 before the loop starts.', 'Inside the loop, use total = total + i to accumulate the sum.'],
+                testCases: [{ inputs: [], expectedOutput: '5050\n' }]
+            },
+            '3-4': {
+                section: 3,
+                title: 'FOR Loop: Backwards',
+                instructions: '<h3>Task: Countdown</h3><p>Use a <code>for</code> loop to print a countdown from 10 to 1, each on a new line.</p><p>After the countdown, print <code>Blast off!</code></p>',
+                exampleOutput: '10\n9\n8\n7\n6\n5\n4\n3\n2\n1\nBlast off!',
+                starterCode: '# Loop from 10 down to 1\n\n# After the loop, print "Blast off!"',
+                hints: ['Try using range(10, 0, -1). This starts at 10, stops before 0, and steps by -1.', 'The final print statement should be outside/after the loop.'],
+                testCases: [{ inputs: [], expectedOutput: '10\n9\n8\n7\n6\n5\n4\n3\n2\n1\nBlast off!\n' }]
+            },
+            '3-5': {
+                section: 3,
+                title: 'WHILE Loop: Simple',
+                instructions: '<h3>Task: Repeating Message</h3><p>Use a <code>while</code> loop to print <code>Are we there yet?</code> exactly 5 times.</p>',
+                exampleOutput: 'Are we there yet?\nAre we there yet?\nAre we there yet?\nAre we there yet?\nAre we there yet?',
+                starterCode: '# You will need a counter variable',
+                hints: ['Create a counter variable and set it to 0 before the loop.', 'The loop condition could be: while counter < 5:', 'Don\'t forget to increase the counter by 1 inside the loop (counter = counter + 1) to avoid an infinite loop!'],
+                testCases: [{ inputs: [], expectedOutput: 'Are we there yet?\nAre we there yet?\nAre we there yet?\nAre we there yet?\nAre we there yet?\n' }]
+            },
+            '3-6': {
+                section: 3,
+                title: 'WHILE Loop: User Input',
+                instructions: '<h3>Task: Loop Until "quit"</h3><p>Repeatedly ask the user for input and echo it back. Stop when they type "quit".</p><p>Don\'t print the word "quit".</p>',
+                exampleOutput: 'hello\nworld',
+                starterCode: 'command = ""\n# Create a while loop that continues until command equals "quit"\n    # Get input from user\n    # Check if it\'s not "quit" before printing',
+                hints: ['The loop condition is: while command != "quit":', 'Inside the loop, you need to get new input from the user.', 'Add an if statement so you don\'t print the final "quit" command.'],
+                testCases: [{ inputs: ['hello', 'world', 'quit'], expectedOutput: 'hello\nworld\n' }]
+            },
+            '3-7': {
+                section: 3,
+                title: 'WHILE Loop: Validation',
+                instructions: '<h3>Task: Valid Input</h3><p>Ask the user to enter a number between 1 and 10. Keep asking until they enter a valid number.</p><p>Once valid, print <code>Thank you</code></p>',
+                exampleOutput: 'Thank you',
+                starterCode: 'num = 0\n# Loop while num is not valid',
+                hints: ['Initialize your number variable to a value that is not valid (e.g., 0).', 'The while loop condition should check if the number is outside the valid range: while num < 1 or num > 10:'],
+                testCases: [{ inputs: ['15', '0', '5'], expectedOutput: 'Thank you\n' }]
+            },
+            '3-8': {
+                section: 3,
+                title: 'Looping Through a String',
+                instructions: '<h3>Task: Spell It Out</h3><p>Ask the user for their name. Using a <code>for</code> loop, print each letter on a new line.</p>',
+                exampleOutput: 'B\ne\nn',
+                starterCode: '# Get name from user\n# Loop through each character in the name string',
+                hints: ['A for loop can iterate directly over a string.', 'for letter in name: will work.'],
+                testCases: [{ inputs: ['Ben'], expectedOutput: 'B\ne\nn\n' }]
+            },
+            '3-9': {
+                section: 3,
+                title: 'FizzBuzz Challenge',
+                instructions: '<h3>Task: The FizzBuzz Game</h3><p>Print the numbers 1 to 15 with these rules:</p><ul><li>Multiples of 3: print <code>Fizz</code></li><li>Multiples of 5: print <code>Buzz</code></li><li>Multiples of both: print <code>FizzBuzz</code></li><li>Otherwise: print the number</li></ul>',
+                exampleOutput: '1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz',
+                starterCode: '# Loop from 1 to 15',
+                hints: ['Use the modulus operator % to check for multiples.', 'The condition for "FizzBuzz" (i % 3 == 0 and i % 5 == 0) must be checked FIRST.'],
+                testCases: [{ inputs: [], expectedOutput: '1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz\n' }]
+            },
+            '3-10': {
+                section: 3,
+                title: 'Section 3 Challenge',
+                instructions: '<h3>Task: Guess the Number Game</h3><p>Create a guessing game with secret number 42.</p><ol><li>Print <code>I am thinking of a number...</code></li><li>Let the user keep guessing</li><li>For each guess print: <code>Too high</code>, <code>Too low</code>, or <code>Correct!</code></li><li>Stop when correct</li></ol>',
+                exampleOutput: 'I am thinking of a number...\nToo high\nToo low\nCorrect!',
+                starterCode: 'secret_number = 42\nguess = 0\nprint("I am thinking of a number...")\n\n# Loop while the guess is not the secret number',
+                hints: ['The while loop condition should be: while guess != secret_number:', 'Inside the loop, get the user\'s input and convert it to an integer.', 'Use an if/elif/else block inside the loop to provide feedback.'],
+                testCases: [{ inputs: ['50', '30', '42'], expectedOutput: 'I am thinking of a number...\nToo high\nToo low\nCorrect!\n' }]
+            },
+            // SECTION 4
+            '4-1': {
+                section: 4,
+                title: 'Creating a List',
+                instructions: '<h3>Task: Your Favourite Things</h3><p>Create a list containing exactly: <code>[\'red\', \'green\', \'blue\']</code></p><p>Then:</p><ol><li>Print the entire list</li><li>Print only the second item (green)</li></ol>',
+                exampleOutput: '[\'red\', \'green\', \'blue\']\ngreen',
+                starterCode: '# Create a list of colours\n# Print the whole list\n# Print the second item',
+                hints: ['Lists are created with square brackets [], with items separated by commas.', 'To access the second item, use the index [1].'],
+                testCases: [{ inputs: [], expectedOutput: '[\'red\', \'green\', \'blue\']\ngreen\n' }]
+            },
+            '4-2': {
+                section: 4,
+                title: 'Looping Through a List',
+                instructions: '<h3>Task: Greeting Party</h3><p>Create a list: <code>[\'Alice\', \'Bob\', \'Charlie\']</code></p><p>Use a loop to print <code>Hello, [name]</code> for each person.</p>',
+                exampleOutput: 'Hello, Alice\nHello, Bob\nHello, Charlie',
+                starterCode: '# Create a list of guests\n# Loop through the guests list and greet each one',
+                hints: ['You can loop directly over a list: for name in guests:', 'Inside the loop, the name variable will hold the current name from the list.'],
+                testCases: [{ inputs: [], expectedOutput: 'Hello, Alice\nHello, Bob\nHello, Charlie\n' }]
+            },
+            '4-3': {
+                section: 4,
+                title: 'Adding to a List',
+                instructions: '<h3>Task: Shopping List</h3><p>Start with: <code>[\'milk\', \'bread\']</code></p><p>Ask the user for another item. Add it to the list using <code>append()</code>. Print the updated list.</p>',
+                exampleOutput: '[\'milk\', \'bread\', \'eggs\']',
+                starterCode: '# Create initial shopping list\n# Get item from user\n# Append the item to the list\n# Print the new list',
+                hints: ['The syntax to add an item is list_name.append(item_to_add).', 'The new item will be added to the end of the list.'],
+                testCases: [{ inputs: ['eggs'], expectedOutput: '[\'milk\', \'bread\', \'eggs\']\n' }]
+            },
+            '4-4': {
+                section: 4,
+                title: 'Accessing by Index',
+                instructions: '<h3>Task: Top of the Charts</h3><p>Create list: <code>[\'Song A\', \'Song B\', \'Song C\']</code></p><p>Ask user for position (1, 2, or 3). Print the song at that position.</p><p><strong>Remember:</strong> User enters 1-3, but indices are 0-2!</p>',
+                exampleOutput: 'Song B',
+                starterCode: '# Create list of top songs\n# Get position from user\n# Get the correct index and print the song',
+                hints: ['Calculate the index: index = pos - 1.', 'Use this calculated index to access the item from the list: top_songs[index].'],
+                testCases: [{ inputs: ['2'], expectedOutput: 'Song B\n' }]
+            },
+            '4-5': {
+                section: 4,
+                title: 'Getting List Length',
+                instructions: '<h3>Task: How Many Guests?</h3><p>Create: <code>[\'Anna\', \'Bob\', \'Charlie\', \'David\']</code></p><p>Use <code>len()</code> to count items. Print exactly: <code>There are [number] guests.</code></p>',
+                exampleOutput: 'There are 4 guests.',
+                starterCode: '# Create a list of guests\n# Get the length and print the message',
+                hints: ['len(list_name) returns the number of items in the list.', 'You will need to convert the length to a string using str() to print it with other text.'],
+                testCases: [{ inputs: [], expectedOutput: 'There are 4 guests.\n' }]
+            },
+            '4-6': {
+                section: 4,
+                title: 'String Length',
+                instructions: '<h3>Task: Character Count</h3><p>Ask for the user\'s name. Count the characters using <code>len()</code>.</p><p>Print exactly: <code>Your name has [number] characters.</code></p>',
+                exampleOutput: 'Your name has 5 characters.',
+                starterCode: '# Get name from user\n# Count characters and print result',
+                hints: ['The len() function works on strings as well as lists.'],
+                testCases: [{ inputs: ['David'], expectedOutput: 'Your name has 5 characters.\n' }]
+            },
+            '4-7': {
+                section: 4,
+                title: 'String Slicing',
+                instructions: '<h3>Task: First and Last Letter</h3><p>Ask for a word. Print:</p><ol><li><code>First letter: [letter]</code></li><li><code>Last letter: [letter]</code></li></ol>',
+                exampleOutput: 'First letter: P\nLast letter: n',
+                starterCode: '# Get a word from user\n# Print first and last letters',
+                hints: ['word[0] will give you the first character.', 'Python has a handy feature where index [-1] gives you the last character.'],
+                testCases: [{ inputs: ['Python'], expectedOutput: 'First letter: P\nLast letter: n\n' }]
+            },
+            '4-8': {
+                section: 4,
+                title: 'Changing Case',
+                instructions: '<h3>Task: Shouting and Whispering</h3><p>Ask for a sentence. Print it in:</p><ol><li>All UPPERCASE</li><li>All lowercase</li></ol>',
+                exampleOutput: 'HELLO WORLD\nhello world',
+                starterCode: '# Get a sentence from user\n# Print in uppercase\n# Print in lowercase',
+                hints: ['sentence.upper() will return the uppercase version.', 'sentence.lower() will return the lowercase version.'],
+                testCases: [{ inputs: ['Hello World'], expectedOutput: 'HELLO WORLD\nhello world\n' }]
+            },
+            '4-9': {
+                section: 4,
+                title: 'Linear Search in a List',
+                instructions: '<h3>Task: Is it on the list?</h3><p>Approved guests: <code>["Ken", "Ryu", "Chun-Li"]</code></p><p>Ask for a name. Search the list using a loop.</p><p>Print <code>Welcome</code> or <code>Sorry, you are not on the list.</code></p>',
+                exampleOutput: 'Welcome',
+                starterCode: 'approved = ["Ken", "Ryu", "Chun-Li"]\n# Get name to check\nfound = False\n\n# Loop through the approved list\n    # If the name matches, set found to True\n\n# After the loop, check if the name was found',
+                hints: ['Use a boolean variable (a "flag"), e.g., found = False, before the loop.', 'Inside the loop, if you find a match, set found = True.', 'After the loop finishes, use an if statement to check the value of your found flag.'],
+                testCases: [
+                    { inputs: ['Ryu'], expectedOutput: 'Welcome\n' },
+                    { inputs: ['Zangief'], expectedOutput: 'Sorry, you are not on the list.\n' }
+                ]
+            },
+            '4-10': {
+                section: 4,
+                title: 'Section 4 Challenge',
+                instructions: '<h3>Task: Finding Max Score</h3><p>Given scores: <code>[78, 92, 56, 88, 99, 67]</code></p><p>Find the highest score WITHOUT using <code>max()</code>. Use a loop!</p><p>Print exactly: <code>The highest score is: [score]</code></p>',
+                exampleOutput: 'The highest score is: 99',
+                starterCode: 'scores = [78, 92, 56, 88, 99, 67]\nhighest_score = 0\n\n# Loop through the scores list\n    # If the current score is higher than highest_score, update highest_score\n\n# Print the final highest score',
+                hints: ['Initialize highest_score to the first item in the list, or to 0.', 'Inside your loop, compare the current score with highest_score.', 'If score > highest_score, then you have a new highest score, so you should update it: highest_score = score.'],
+                testCases: [{ inputs: [], expectedOutput: 'The highest score is: 99\n' }]
+            },
+            // SECTION 5
+            '5-1': {
+                section: 5,
+                title: 'Defining a Procedure',
+                instructions: '<h3>Task: Simple Greeting Procedure</h3><p>Define a procedure <code>show_greeting</code> that prints <code>Welcome to the program!</code></p><p>Then call it to run it.</p>',
+                exampleOutput: 'Welcome to the program!',
+                starterCode: '# Define the procedure here\n\n# Call the procedure here',
+                hints: ['Procedures are defined with def procedure_name():', 'The code inside the procedure must be indented.', 'To run the procedure, you simply type its name followed by parentheses: show_greeting().'],
+                testCases: [{ inputs: [], expectedOutput: 'Welcome to the program!\n' }]
+            },
+            '5-2': {
+                section: 5,
+                title: 'Procedure with a Parameter',
+                instructions: '<h3>Task: Personalised Greeting</h3><p>Define <code>greet_user(name)</code> that prints <code>Hello, [name]</code></p><p>Call it with "Alice" as the argument.</p>',
+                exampleOutput: 'Hello, Alice',
+                starterCode: '# Define a procedure with a name parameter\n\n# Call the procedure with "Alice"',
+                hints: ['Parameters go inside the parentheses in the def line.', 'When you call the procedure, the value you put inside the parentheses is passed into the name parameter.'],
+                testCases: [{ inputs: [], expectedOutput: 'Hello, Alice\n' }]
+            },
+            '5-3': {
+                section: 5,
+                title: 'Defining a Function',
+                instructions: '<h3>Task: Adding Function</h3><p>Define <code>add_numbers(a, b)</code> that returns their sum.</p><p>Call it with 5 and 10, store the result, and print it.</p>',
+                exampleOutput: '15',
+                starterCode: '# Define a function that adds two numbers and returns the result\n\n# Call the function and print the result',
+                hints: ['Your function must end with return sum_variable.', 'When you call the function, the returned value can be assigned to a variable: result = add_numbers(...).'],
+                testCases: [{ inputs: [], expectedOutput: '15\n' }]
+            },
+            '5-4': {
+                section: 5,
+                title: 'Function: Area Calculator',
+                instructions: '<h3>Task: Rectangle Area Function</h3><p>Create <code>calculate_area(width, height)</code> that returns the area.</p><p>Ask user for width and height, call the function, print the result.</p>',
+                exampleOutput: '56',
+                starterCode: '# Define your function here\n\n# Get user input for width and height\n\n# Call the function and print the result',
+                hints: ['Remember to convert the user\'s input to numbers before passing them to the function.', 'Your main code will get the inputs, call the function, and then handle the printing.'],
+                testCases: [{ inputs: ['7', '8'], expectedOutput: '56\n' }]
+            },
+            '5-5': {
+                section: 5,
+                title: 'Functions: Average',
+                instructions: '<h3>Task: Average Calculator</h3><p>Create <code>calculate_average(num1, num2, num3)</code> that returns the average.</p><p>Test with values 10, 20, 30 and print the result.</p>',
+                exampleOutput: '20.0',
+                starterCode: '# Define function to calculate average of 3 numbers\n\n# Test with 10, 20, 30',
+                hints: ['Average = (num1 + num2 + num3) / 3', 'Remember to return the result'],
+                testCases: [{ inputs: [], expectedOutput: '20.0\n' }]
+            },
+            // SECTION 6 - COMPREHENSIVE CHALLENGES
+            '6-1': {
+                section: 6,
+                title: 'Student Grade Manager',
+                instructions: '<h3>Challenge: Complete Grade System</h3><p>Create a program that manages student grades:</p><ol><li>Ask how many students (must be 1-10)</li><li>For each student, ask for name and score (0-100)</li><li>Store names and scores in separate lists</li><li>Calculate and print class average</li><li>Find and print highest scorer\'s name</li><li>Count and print how many passed (≥50)</li></ol><p>Use functions for average calculation and finding highest score.</p>',
+                exampleOutput: 'How many students? 3\nStudent 1 name: Alice\nStudent 1 score: 85\nStudent 2 name: Bob\nStudent 2 score: 72\nStudent 3 name: Charlie\nStudent 3 score: 45\n\nClass average: 67.3\nHighest scorer: Alice with 85\nStudents passed: 2',
+                starterCode: '# Define function to calculate average\ndef calculate_average(scores):\n    # Your code here\n    pass\n\n# Define function to find highest score index\ndef find_highest_index(scores):\n    # Your code here\n    pass\n\n# Main program\n# Get number of students (validate 1-10)\n# Create empty lists for names and scores\n# Loop to get student data\n# Calculate and display results',
+                hints: ['Use while loop for input validation', 'Remember list indices for matching names to scores', 'The average might be a decimal - use round() for one decimal place'],
+                testCases: [{ inputs: ['3', 'Alice', '85', 'Bob', '72', 'Charlie', '45'], expectedOutput: 'Class average: 67.3\nHighest scorer: Alice with 85\nStudents passed: 2\n' }]
+            },
+            '6-2': {
+                section: 6,
+                title: 'Shopping Till System',
+                instructions: '<h3>Challenge: Supermarket Checkout</h3><p>Create a shopping till system:</p><ol><li>Show menu: 1=Add item, 2=View basket, 3=Checkout, 4=Exit</li><li>Add item: ask for item name and price</li><li>View basket: show all items with prices</li><li>Checkout: show total, apply 10% discount if over £50</li><li>Keep running until user exits</li></ol><p>Use lists to store items and prices. Create functions for each menu option.</p>',
+                exampleOutput: 'Menu:\n1. Add item\n2. View basket\n3. Checkout\n4. Exit\nChoice: 1\nItem name: Apples\nItem price: 2.50\nApples added!\n\nMenu:\n1. Add item\n2. View basket\n3. Checkout\n4. Exit\nChoice: 3\nYour basket:\nApples - £2.50\nTotal: £2.50\nThank you!',
+                starterCode: '# Define function to display menu\ndef show_menu():\n    print("Menu:")\n    print("1. Add item")\n    print("2. View basket")\n    print("3. Checkout")\n    print("4. Exit")\n\n# Define other functions here\n\n# Main program\nitems = []\nprices = []\nchoice = ""\n\n# Main loop',
+                hints: ['Use parallel lists - items[0] matches prices[0]', 'For checkout, sum all prices then check if discount applies', 'Format prices to 2 decimal places'],
+                testCases: [{ inputs: ['1', 'Bread', '1.20', '1', 'Milk', '0.99', '3', '4'], expectedOutput: 'Menu:\n1. Add item\n2. View basket\n3. Checkout\n4. Exit\nBread added!\nMenu:\n1. Add item\n2. View basket\n3. Checkout\n4. Exit\nMilk added!\nMenu:\n1. Add item\n2. View basket\n3. Checkout\n4. Exit\nYour basket:\nBread - £1.2\nMilk - £0.99\nTotal: £2.19\nThank you!\nMenu:\n1. Add item\n2. View basket\n3. Checkout\n4. Exit\nGoodbye!\n' }]
+            },
+            '6-3': {
+                section: 6,
+                title: 'Password Generator',
+                instructions: '<h3>Challenge: Secure Password Creator</h3><p>Build a password generator with options:</p><ol><li>Ask for password length (8-20 characters)</li><li>Ask if include numbers (yes/no)</li><li>Ask if include symbols (yes/no)</li><li>Generate password using rules</li><li>Check password strength and report it</li></ol><p>Rules: Always include letters. Strength: Weak (<10 chars), Medium (10-15), Strong (>15 with numbers AND symbols)</p>',
+                exampleOutput: 'Password length (8-20): 12\nInclude numbers? (yes/no): yes\nInclude symbols? (yes/no): no\n\nGenerated password: AbCdEf123GhI\nPassword strength: Medium',
+                starterCode: 'import random\n\n# Define function to generate password\ndef generate_password(length, use_numbers, use_symbols):\n    letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"\n    numbers = "0123456789"\n    symbols = "!@#$%^&*"\n    \n    # Build character pool based on options\n    # Generate password\n    pass\n\n# Define function to check strength\ndef check_strength(password, has_numbers, has_symbols):\n    # Your code here\n    pass\n\n# Main program',
+                hints: ['Build a pool of allowed characters based on user choices', 'Use random.choice() to pick random characters', 'Remember to validate the length input'],
+                // NOTE: Skulpt's random is deterministic in some cases, so this test is simplified
+                testCases: [{ inputs: ['12', 'yes', 'no'], expectedOutput: 'Password strength: Medium\n' }]
+            },
+            '6-4': {
+                section: 6,
+                title: 'Quiz Game with High Scores',
+                instructions: '<h3>Challenge: Python Knowledge Quiz</h3><p>Create a quiz game:</p><ol><li>Store 5 questions with multiple choice answers</li><li>Show each question with options A, B, C</li><li>Track score and time taken</li><li>Calculate points: correct answer = 10 points, bonus 5 if answered in <5 seconds</li><li>Show final score and performance message</li></ol><p>Performance: <30 points="Need practice", 30-60="Good job!", >60="Python Expert!"</p>',
+                exampleOutput: 'Python Quiz - 5 Questions\n\nQ1: What keyword defines a function?\nA) def\nB) func\nC) function\nYour answer: A\nCorrect! (Time: 3 seconds) +15 points\n\n[...more questions...]\n\nFinal Score: 65 points\nPerformance: Python Expert!',
+                starterCode: 'import time\n\n# Quiz data\nquestions = [\n    "What keyword defines a function?",\n    "Which operator is used for exponentiation?",\n    # Add more questions\n]\n\noptions = [\n    ["A) def", "B) func", "C) function"],\n    ["A) ^", "B) **", "C) exp"],\n    # Add more options\n]\n\nanswers = ["A", "B"]  # Add more answers\n\n# Main quiz loop',
+                hints: ['Use time.time() before and after input to measure response time', 'Keep questions and options in parallel lists', 'Calculate time difference for bonus points'],
+                testCases: [{ inputs: ['A', 'B', 'C', 'A', 'B'], expectedOutput: 'Python Quiz - 5 Questions\n\nQ1: What keyword defines a function?\nA) def\nB) func  \nC) function\nCorrect!\n\nQ2: Which operator is used for exponentiation?\nA) ^\nB) **\nC) exp\nCorrect!\n\nQ3: How do you start a comment?\nA) //\nB) #\nC) --\nWrong! Correct answer: B\n\nQ4: Which creates a list?\nA) []\nB) {}\nC) ()\nCorrect!\n\nQ5: What does len() return?\nA) Last element\nB) List size\nC) List type\nCorrect!\n\nFinal Score: 40 points\nPerformance: Good job!\n' }]
+            },
+            '6-5': {
+                section: 6,
+                title: 'Text Adventure Game',
+                instructions: '<h3>Ultimate Challenge: Escape Room</h3><p>Create a text adventure game:</p><ol><li>Player starts in a locked room with 100 health</li><li>Available commands: look, search [object], use [item], inventory, help</li><li>Room contains: desk (has key), door (locked), window (has crowbar), chest (has potion)</li><li>Player must find key to unlock door</li><li>Each action costs 10 health, potion restores 50</li><li>Win by escaping, lose if health reaches 0</li></ol>',
+                exampleOutput: 'Welcome to Escape Room!\nYou wake up in a locked room. Health: 100\n\nWhat do you do? look\nYou see: a desk, a door, a window, and a chest.\nHealth: 90\n\nWhat do you do? search desk\nYou found a key!\nHealth: 80\n\nWhat do you do? use key\nYou unlock the door and escape!\nYOU WIN!',
+                starterCode: '# Game setup\nhealth = 100\ninventory = []\nroom_items = {\n    "desk": "key",\n    "window": "crowbar", \n    "chest": "potion"\n}\nfound_items = {}\ndoor_locked = True\n\n# Define game functions\ndef show_help():\n    print("Commands: look, search [object], use [item], inventory, help")\n\n# Add more functions\n\n# Main game loop\nprint("Welcome to Escape Room!")\nprint("You wake up in a locked room. Health:", health)\n\n# Game loop here',
+                hints: ['Use dictionaries to track items and their locations', 'Split user input to get command and target', 'Check inventory before allowing item use'],
+                testCases: [{ inputs: ['look', 'search desk', 'use key'], expectedOutput: 'Welcome to Escape Room!\nYou wake up in a locked room. Health: 100\n\nYou see: a desk, a door, a window, and a chest.\nHealth: 90\n\nYou found a key!\nHealth: 80\n\nYou unlock the door and escape!\nYOU WIN!\n' }]
+            }
+        };
+        
+        // --- APPLICATION STATE ---
+        const appState = {
+            isSkulptReady: false,
+            editor: null,
+            currentTaskId: null,
+            userProgress: {},
+            xpData: {
+                totalXP: 0,
+                taskXP: {},
+                currentBadge: 'Beginner'
+            },
+            streakData: {
+                currentStreak: 0,
+                longestStreak: 0,
+                lastActiveDate: null,
+                totalDaysActive: 0
+            },
+            completedSections: {},
+            domBatchUpdates: [],
+            domBatchScheduled: false,
+            eventListeners: new Map(),
+            inputQueue: [],
+            isRunningCode: false,
+            currentInputResolve: null,
+            inputPanel: null
+        };
+        const SECRET_KEY = "6gyg6GYhi[]*u9g9Hyfit2fd";
+        
+        // --- XP SYSTEM FUNCTIONS (Unchanged) ---
+        function calculateTaskXP(taskId) {
+            const task = TASKS[taskId];
+            return XP_VALUES[task.section] || 0;
+        }
+        
+        function awardXP(taskId) {
+            if (appState.xpData.taskXP[taskId]) {
+                return 0;
+            }
+            const xpAmount = calculateTaskXP(taskId);
+            appState.xpData.taskXP[taskId] = xpAmount;
+            appState.xpData.totalXP += xpAmount;
+            updateBadge();
+            saveXPData();
+            showXPNotification(xpAmount);
+            updateXPDisplay();
+            updateBadgeDisplay();
+            return xpAmount;
+        }
+        
+        function updateBadge() {
+            for (let i = BADGES.length - 1; i >= 0; i--) {
+                if (appState.xpData.totalXP >= BADGES[i].xpRequired) {
+                    appState.xpData.currentBadge = BADGES[i].name;
+                    break;
+                }
+            }
+        }
+        
+        function showXPNotification(xpAmount) {
+            const notification = document.getElementById('xp-notification');
+            const xpEarned = document.getElementById('xp-earned');
+            const xpMessage = document.getElementById('xp-message');
+            xpEarned.textContent = xpAmount;
+            xpMessage.textContent = 'Task completed!';
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 2000);
+        }
+        
+        // --- STREAK MANAGEMENT (Unchanged) ---
+        function updateStreak() {
+            const today = new Date().toDateString();
+            const lastActive = appState.streakData.lastActiveDate;
+            
+            if (!lastActive) {
+                appState.streakData.currentStreak = 1;
+                appState.streakData.lastActiveDate = today;
+                appState.streakData.totalDaysActive = 1;
+            } else if (lastActive === today) {
+                return;
+            } else {
+                const lastDate = new Date(lastActive);
+                const todayDate = new Date(today);
+                const dayDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
+                
+                if (dayDiff === 1) {
+                    appState.streakData.currentStreak++;
+                    appState.streakData.totalDaysActive++;
+                } else {
+                    appState.streakData.currentStreak = 1;
+                    appState.streakData.totalDaysActive++;
+                }
+                
+                appState.streakData.lastActiveDate = today;
+                
+                if (appState.streakData.currentStreak > appState.streakData.longestStreak) {
+                    appState.streakData.longestStreak = appState.streakData.currentStreak;
+                }
+            }
+            
+            saveStreakData();
+            updateStreakDisplay();
+        }
+        
+        function updateStreakDisplay() {
+            const streakDisplay = document.getElementById('streak-display');
+            const streakCount = document.getElementById('streak-count');
+            
+            if (appState.streakData.currentStreak > 0) {
+                streakDisplay.style.display = 'flex';
+                streakCount.textContent = `${appState.streakData.currentStreak} day streak`;
+            }
+        }
+        
+        function checkDailyBonus() {
+            const today = new Date().toDateString();
+            const lastBonus = localStorage.getItem('pythonProjectLastBonus');
+            
+            if (lastBonus !== today && appState.streakData.currentStreak > 1) {
+                const bonusXP = Math.min(appState.streakData.currentStreak * 5, 50);
+                appState.xpData.totalXP += bonusXP;
+                localStorage.setItem('pythonProjectLastBonus', today);
+                showXPNotification(bonusXP);
+                updateXPDisplay();
+                saveXPData();
+            }
+        }
+
+        // --- DATA and UI (Unchanged) ---
+        
+        function updateXPDisplay() {
+            const xpDisplay = document.getElementById('total-xp');
+            if (xpDisplay) {
+                xpDisplay.textContent = `${appState.xpData.totalXP} XP`;
+            }
+            const badgeDisplay = document.getElementById('current-badge');
+            if (badgeDisplay) {
+                badgeDisplay.textContent = appState.xpData.currentBadge;
+            }
+        }
+        
+        function updateBadgeDisplay() {
+            const badgeList = document.getElementById('badge-list');
+            if (!badgeList) return;
+            badgeList.innerHTML = '';
+            BADGES.forEach(badge => {
+                const badgeItem = document.createElement('div');
+                badgeItem.className = 'badge-item';
+                if (appState.xpData.totalXP >= badge.xpRequired) {
+                    badgeItem.classList.add('earned');
+                }
+                const icon = document.createElement('div');
+                icon.className = 'badge-icon';
+                icon.textContent = badge.icon;
+                const name = document.createElement('div');
+                name.className = 'badge-name';
+                name.textContent = badge.name;
+                const xp = document.createElement('div');
+                xp.className = 'badge-xp';
+                xp.textContent = `${badge.xpRequired} XP`;
+                badgeItem.appendChild(icon);
+                badgeItem.appendChild(name);
+                badgeItem.appendChild(xp);
+                badgeList.appendChild(badgeItem);
+            });
+        }
+        
+        function saveXPData() {
+            try {
+                const encoded = btoa(JSON.stringify(appState.xpData));
+                localStorage.setItem('pythonProjectXP', encoded);
+            } catch (e) {
+                console.error('Could not save XP data', e);
+            }
+        }
+        
+        function loadXPData() {
+            try {
+                const encoded = localStorage.getItem('pythonProjectXP');
+                if (encoded) {
+                    const decoded = JSON.parse(atob(encoded));
+                    if (decoded && typeof decoded.totalXP === 'number') {
+                        appState.xpData = decoded;
+                    }
+                }
+            } catch (e) {
+                console.error('Could not load XP data', e);
+                appState.xpData = {
+                    totalXP: 0,
+                    taskXP: {},
+                    currentBadge: 'Beginner'
+                };
+            }
+        }
+        
+        function saveStreakData() {
+            localStorage.setItem('pythonProjectStreak', JSON.stringify(appState.streakData));
+        }
+        
+        function loadStreakData() {
+            try {
+                const saved = localStorage.getItem('pythonProjectStreak');
+                if (saved) {
+                    appState.streakData = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.error('Could not load streak data', e);
+            }
+        }
+        
+        function loadCompletedSections() {
+            try {
+                const saved = localStorage.getItem('pythonProjectCompletedSections');
+                if (saved) {
+                    appState.completedSections = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.error('Could not load completed sections', e);
+            }
+        }
+        
+        // --- ERROR BOUNDARY (Unchanged) ---
+        class ErrorBoundary {
+            constructor() {
+                this.errors = [];
+                this.maxErrors = 50;
+            }
+            
+            handle(error, context = {}) {
+                console.error('Error:', error, 'Context:', context);
+                
+                this.errors.push({
+                    timestamp: Date.now(),
+                    error: error.message,
+                    stack: error.stack,
+                    context
+                });
+                
+                if (this.errors.length > this.maxErrors) {
+                    this.errors.shift();
+                }
+                
+                this.showUserMessage(error, context);
+            }
+            
+            showUserMessage(error, context) {
+                let message = 'An error occurred';
+                if(error.toString().includes("TimeLimitError")) {
+                    message = 'Your code took too long to run. Check for infinite loops.';
+                } else if (error.message) {
+                    message = error.message;
+                } else {
+                    message = error.toString();
+                }
+                
+                showToast(message, 'error');
+            }
+        }
+        
+        const errorBoundary = new ErrorBoundary();
+        
+        // --- UTILITY FUNCTIONS (Unchanged) ---
+        function safeCreateElement(tag, className, textContent) {
+            const element = document.createElement(tag);
+            if (className) element.className = className;
+            if (textContent) element.textContent = textContent;
+            return element;
+        }
+        
+        function safeSetTextContent(elementId, text) {
+            const element = document.getElementById(elementId);
+            if (element) element.textContent = text;
+        }
+        
+        function safeAppendChild(parentId, child) {
+            const parent = document.getElementById(parentId);
+            if (parent) parent.appendChild(child);
+        }
+        
+        function addManagedEventListener(element, event, handler) {
+            element.addEventListener(event, handler);
+            
+            if (!appState.eventListeners.has(element)) {
+                appState.eventListeners.set(element, []);
+            }
+            
+            appState.eventListeners.get(element).push({ event, handler });
+        }
+        
+        function removeAllEventListeners() {
+            appState.eventListeners.forEach((listeners, element) => {
+                listeners.forEach(({ event, handler }) => {
+                    element.removeEventListener(event, handler);
+                });
+            });
+            
+            appState.eventListeners.clear();
+        }
+        
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            if (!toast) return;
+            
+            toast.textContent = message;
+            toast.className = `toast show toast-${type}`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        function validatePythonCode(code) {
+            if (code.length > 10000) {
+                throw new Error('Code is too long (max 10,000 characters)');
+            }
+            return true;
+        }
+
+        // --- IMPROVED SKULPT IMPLEMENTATION ---
+        
+        // Enhanced input handling with visual UI
+        function createInputPanel() {
+            const existingPanel = document.querySelector('.input-panel');
+            if (existingPanel) {
+                existingPanel.remove();
+            }
+            
+            const panel = safeCreateElement('div', 'input-panel active');
+            const prompt = safeCreateElement('div', 'input-prompt');
+            const inputField = safeCreateElement('input', 'input-field');
+            inputField.type = 'text';
+            
+            const submitBtn = safeCreateElement('button', 'input-submit');
+            submitBtn.textContent = 'Submit';
+            
+            panel.appendChild(prompt);
+            panel.appendChild(inputField);
+            panel.appendChild(submitBtn);
+            
+            return { panel, prompt, inputField, submitBtn };
+        }
+        
+        // Skulpt configuration with improved input handling
+        function configureSkulpt(outputFunc, inputFunc) {
+            try {
+                Sk.configure({
+                    output: outputFunc,
+                    read: function(x) {
+                        if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined) {
+                            throw "File not found: '" + x + "'";
+                        }
+                        return Sk.builtinFiles["files"][x];
+                    },
+                    inputfun: inputFunc,
+                    inputfunTakesPrompt: true,
+                    __future__: Sk.python3 || Sk.python2
+                });
+                // Set execution limits
+                Sk.execLimit = 10000; // 10 seconds
+            } catch (e) {
+                console.error('Skulpt configuration error:', e);
+                // Try simpler configuration
+                Sk.configure({
+                    output: outputFunc,
+                    inputfun: inputFunc
+                });
+            }
+        }
+
+        // Enhanced code execution with visual input
+        async function runCode() {
+            if (appState.isRunningCode) {
+                showToast('Code is already running!', 'warning');
+                return;
+            }
+            
+            appState.isRunningCode = true;
+            const outputElement = document.getElementById('output');
+            outputElement.textContent = 'Running...';
+            outputElement.classList.remove('error');
+
+            const code = appState.editor.getValue();
+            let fullOutput = "";
+            
+            // Create input panel location
+            const outputPanel = document.querySelector('.output-panel');
+            let inputPanelData = null;
+
+            configureSkulpt(
+                (text) => { 
+                    fullOutput += text;
+                    outputElement.textContent = fullOutput || '(No output)';
+                },
+                (promptText) => {
+                    return new Promise((resolve) => {
+                        // Create and show input panel
+                        fullOutput += promptText;
+                        outputElement.textContent = fullOutput;
+                        
+                        inputPanelData = createInputPanel();
+                        inputPanelData.prompt.textContent = promptText;
+                        outputPanel.parentNode.insertBefore(inputPanelData.panel, outputPanel);
+                        
+                        // Focus on input field
+                        inputPanelData.inputField.focus();
+                        
+                        // Handle submit
+                        const submitHandler = () => {
+                            const value = inputPanelData.inputField.value;
+                            fullOutput += value + '\n';
+                            outputElement.textContent = fullOutput;
+                            inputPanelData.panel.remove();
+                            resolve(value);
+                        };
+                        
+                        inputPanelData.submitBtn.addEventListener('click', submitHandler);
+                        inputPanelData.inputField.addEventListener('keypress', (e) => {
+                            if (e.key === 'Enter') {
+                                submitHandler();
+                            }
+                        });
+                    });
+                }
+            );
+            
+            try {
+                validatePythonCode(code);
+                await Sk.misceval.asyncToPromise(() => Sk.importMainWithBody("<stdin>", false, code, true));
+                outputElement.textContent = fullOutput || '(No output)';
+            } catch (err) {
+                // Clean up any input panel
+                if (inputPanelData && inputPanelData.panel.parentNode) {
+                    inputPanelData.panel.remove();
+                }
+                
+                outputElement.textContent = formatPythonError(err);
+                outputElement.classList.add('error');
+            } finally {
+                appState.isRunningCode = false;
+            }
+        }
+        
+        // Format Python errors for better readability
+        function formatPythonError(err) {
+            let errorStr = err.toString();
+            
+            // Remove internal Skulpt traceback info
+            errorStr = errorStr.replace(/on line \d+ of <stdin>/g, '');
+            errorStr = errorStr.replace(/File "<stdin>",/g, '');
+            
+            // Make common errors more student-friendly
+            if (errorStr.includes('SyntaxError')) {
+                errorStr = 'SyntaxError: Check your code syntax (missing colons, brackets, quotes, etc.)';
+            } else if (errorStr.includes('IndentationError')) {
+                errorStr = 'IndentationError: Check your code indentation (use consistent spaces)';
+            } else if (errorStr.includes('NameError')) {
+                const match = errorStr.match(/name '(\w+)' is not defined/);
+                if (match) {
+                    errorStr = `NameError: '${match[1]}' is not defined. Check spelling or define it first.`;
+                }
+            }
+            
+            return errorStr;
+        }
+        
+        // Improved solution checking
+        async function checkSolution() {
+            if (!appState.editor || !appState.currentTaskId) {
+                showToast('No task selected.', 'error');
+                return;
+            }
+            
+            const task = TASKS[appState.currentTaskId];
+            const studentCode = appState.editor.getValue();
+            
+            const checksContainer = document.getElementById('checks-container');
+            checksContainer.style.display = 'block';
+            checksContainer.innerHTML = '';
+            
+            const checksHeader = safeCreateElement('h3');
+            checksHeader.textContent = task.section == 6 ? 'Challenge Checks:' : 'Solution Checks:';
+            checksContainer.appendChild(checksHeader);
+            
+            let allPassed = true;
+
+            for (let i = 0; i < task.testCases.length; i++) {
+                const testCase = task.testCases[i];
+                let mockInputs = [...testCase.inputs];
+                let output = "";
+                let passed = false;
+
+                configureSkulpt(
+                    (text) => { output += text; },
+                    (promptText) => {
+                        if (mockInputs.length > 0) {
+                            return Promise.resolve(mockInputs.shift());
+                        }
+                        return Promise.resolve("");
+                    }
+                );
+
+                try {
+                    validatePythonCode(studentCode);
+                    await Sk.misceval.asyncToPromise(() => 
+                        Sk.importMainWithBody("<stdin>", false, studentCode, true)
+                    );
+                    
+                    // Special handling for specific tasks
+                    if (task.title === 'Password Generator' && output.includes('Password strength: Medium')) {
+                        passed = true;
+                    } else if (task.title === 'Quiz Game with High Scores') {
+                        // For the quiz game, we check for key elements rather than exact match
+                        const expectedElements = ['Python Quiz', 'Q1:', 'Q2:', 'Q3:', 'Q4:', 'Q5:', 
+                                                'Final Score:', 'Performance:'];
+                        passed = expectedElements.every(elem => output.includes(elem));
+                    } else {
+                        // Normalize output for comparison
+                        const normalizedOutput = output.trim().replace(/\r\n/g, '\n');
+                        const normalizedExpected = testCase.expectedOutput.trim().replace(/\r\n/g, '\n');
+                        passed = (normalizedOutput === normalizedExpected);
+                    }
+                } catch (err) {
+                    output = formatPythonError(err);
+                    passed = false;
+                }
+
+                const checkItem = safeCreateElement('div', `check-item ${passed ? 'passed' : 'failed'}`);
+                const checkIcon = safeCreateElement('div', `check-icon ${passed ? 'passed' : 'failed'}`);
+                checkIcon.textContent = passed ? '✔' : '✖';
+                
+                const checkDesc = safeCreateElement('div', 'check-description');
+                let description = `Test ${i + 1}: `;
+                
+                if (testCase.inputs.length > 0) {
+                    description += `With input(s): [${testCase.inputs.join(', ')}]. `;
+                }
+                
+                if (task.title === 'Password Generator' && passed) {
+                    description += `Expected output containing: "Password strength: Medium"`;
+                } else if (task.title === 'Quiz Game with High Scores' && passed) {
+                    description += `Expected quiz structure with 5 questions and final score`;
+                } else {
+                    description += `Expected output: "${testCase.expectedOutput.trim().replace(/\n/g, '\\n')}"`;
+                }
+               
+                if (!passed) {
+                    description += ` Got: "${output.trim().replace(/\n/g, '\\n')}"`;
+                }
+                
+                checkDesc.textContent = description;
+                
+                checkItem.appendChild(checkIcon);
+                checkItem.appendChild(checkDesc);
+                checksContainer.appendChild(checkItem);
+                
+                if (!passed) allPassed = false;
+            }
+
+            if (allPassed) {
+                showToast('All tests passed! Well done!', 'success');
+                if (!appState.userProgress[appState.currentTaskId]?.completed) {
+                    if (!appState.userProgress[appState.currentTaskId]) {
+                        appState.userProgress[appState.currentTaskId] = {};
+                    }
+                    appState.userProgress[appState.currentTaskId].completed = true;
+                    appState.userProgress[appState.currentTaskId].code = appState.editor.getValue();
+                    saveProgress();
+                    const taskItem = document.getElementById(`task-item-${appState.currentTaskId}`);
+                    if (taskItem) taskItem.classList.add('completed');
+                    
+                    awardXP(appState.currentTaskId);
+                    
+                    const section = task.section;
+                    const sectionTasks = Object.keys(TASKS).filter(id => TASKS[id].section === section);
+                    const completedInSection = sectionTasks.filter(id => appState.userProgress[id]?.completed);
+                    
+                    if (completedInSection.length === sectionTasks.length) {
+                        if (!appState.completedSections[section]) {
+                            appState.completedSections[section] = true;
+                            localStorage.setItem('pythonProjectCompletedSections', JSON.stringify(appState.completedSections));
+                            
+                            const bonusXP = SECTION_COMPLETION_BONUS[section] || 50;
+                            appState.xpData.totalXP += bonusXP;
+                            showXPNotification(bonusXP);
+                            showToast(`Section ${section} completed! +${bonusXP} bonus XP!`, 'success');
+                            saveXPData();
+                            updateXPDisplay();
+                        }
+                    }
+                }
+            } else {
+                showToast('Some tests failed. Check that your output matches exactly!', 'warning');
+            }
+        }
+
+        // --- UI GENERATION AND INITIALIZATION (Mostly unchanged) ---
+
+        function updateHeaderStatus(message) {
+            safeSetTextContent('header-subtitle', message);
+            safeSetTextContent('python-status', message);
+            
+            if (message === 'Python Ready. Happy Coding!') {
+                safeSetTextContent('header-subtitle', '45 core tasks + 5 comprehensive challenges. Earn XP and unlock badges!');
+            }
+        }
+        
+        function generateSidebar() {
+            const sidebarNav = document.getElementById('sidebar-nav');
+            if (!sidebarNav) return;
+            
+            sidebarNav.innerHTML = '';
+            
+            const sections = {};
+            for (const taskId in TASKS) {
+                const task = TASKS[taskId];
+                if (!sections[task.section]) {
+                    sections[task.section] = [];
+                }
+                sections[task.section].push(taskId);
+            }
+            
+            for (const sectionNum in sections) {
+                const sectionDiv = safeCreateElement('div', 'section-container');
+                const header = safeCreateElement('div', 'section-header');
+                if (sectionNum == '6') {
+                    header.classList.add('challenges');
+                }
+                const headerText = safeCreateElement('span');
+                headerText.textContent = sectionNum == '6' ? 'Comprehensive Challenges' : `Section ${sectionNum}`;
+                const arrow = safeCreateElement('span', 'section-arrow');
+                arrow.textContent = '▶';
+                header.appendChild(headerText);
+                header.appendChild(arrow);
+                
+                const taskList = safeCreateElement('ul', 'task-list');
+                taskList.id = `section-list-${sectionNum}`;
+                
+                sections[sectionNum].forEach(taskId => {
+                    const task = TASKS[taskId];
+                    const li = safeCreateElement('li', 'task-item');
+                    li.id = `task-item-${taskId}`;
+                    
+                    if (appState.userProgress[taskId]?.completed) {
+                        li.classList.add('completed');
+                    }
+                    
+                    const status = safeCreateElement('span', 'task-item-status');
+                    const title = safeCreateElement('span');
+                    title.textContent = task.title;
+                    
+                    const xpBadge = safeCreateElement('span', 'task-xp');
+                    xpBadge.textContent = `${calculateTaskXP(taskId)} XP`;
+                    
+                    li.appendChild(status);
+                    li.appendChild(title);
+                    li.appendChild(xpBadge);
+                    
+                    addManagedEventListener(li, 'click', () => switchTask(taskId));
+                    taskList.appendChild(li);
+                });
+                
+                addManagedEventListener(header, 'click', () => {
+                    taskList.classList.toggle('open');
+                    arrow.classList.toggle('open');
+                });
+                
+                const exportContainer = safeCreateElement('div', 'export-button-container');
+                const exportBtn = safeCreateElement('button', 'btn btn-secondary');
+                exportBtn.textContent = sectionNum == '6' ? 'Export Challenge Answers' : `Export Section ${sectionNum} Answers`;
+                addManagedEventListener(exportBtn, 'click', () => exportSectionAnswers(sectionNum));
+                exportContainer.appendChild(exportBtn);
+                
+                sectionDiv.appendChild(header);
+                sectionDiv.appendChild(taskList);
+                taskList.appendChild(exportContainer);
+                sidebarNav.appendChild(sectionDiv);
+            }
+        }
+        
+        function switchTask(taskId) {
+            try {
+                appState.currentTaskId = taskId;
+                
+                const task = TASKS[taskId];
+                const mainContent = document.getElementById('mainContent');
+                if (!mainContent) return;
+                
+                document.querySelectorAll('.task-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                const taskItem = document.getElementById(`task-item-${taskId}`);
+                if (taskItem) {
+                    taskItem.classList.add('active');
+                }
+                
+                const taskList = document.getElementById(`section-list-${task.section}`);
+                if (taskList && !taskList.classList.contains('open')) {
+                    taskList.classList.add('open');
+                    const arrow = taskList.previousElementSibling.querySelector('.section-arrow');
+                    if (arrow) arrow.classList.add('open');
+                }
+                
+                mainContent.innerHTML = '';
+                
+                const taskHeader = safeCreateElement('div', 'task-header');
+                const taskTitleWrapper = safeCreateElement('div');
+                const taskTitle = safeCreateElement('h2', 'task-title');
+                const taskNumber = task.section == 6 ? `Challenge ${taskId.split('-')[1]}` : `${task.section}.${taskId.split('-')[1]}`;
+                taskTitle.textContent = `${taskNumber} - ${task.title}`;
+                taskTitleWrapper.appendChild(taskTitle);
+                
+                const xpBadge = safeCreateElement('div', 'task-xp-badge');
+                const xpIcon = safeCreateElement('span');
+                xpIcon.textContent = '⭐ ';
+                const xpText = safeCreateElement('span');
+                xpText.textContent = `${calculateTaskXP(taskId)} XP`;
+                xpBadge.appendChild(xpIcon);
+                xpBadge.appendChild(xpText);
+                
+                taskHeader.appendChild(taskTitleWrapper);
+                taskHeader.appendChild(xpBadge);
+                
+                const instructions = safeCreateElement('div', 'instructions allow-select');
+                
+                const instructionContent = safeCreateElement('div');
+                instructionContent.innerHTML = task.instructions;
+                instructions.appendChild(instructionContent);
+                
+                if (task.exampleOutput) {
+                    const exampleBox = safeCreateElement('div', 'example-output');
+                    const exampleHeader = safeCreateElement('div', 'example-output-header');
+                    exampleHeader.textContent = '📋 Example Output:';
+                    const exampleContent = safeCreateElement('div', 'allow-select');
+                    exampleContent.textContent = task.exampleOutput;
+                    exampleBox.appendChild(exampleHeader);
+                    exampleBox.appendChild(exampleContent);
+                    instructions.appendChild(exampleBox);
+                }
+                
+                const editorContainer = safeCreateElement('div', 'editor-container');
+                const editorHeader = safeCreateElement('div', 'editor-header');
+                const fileName = safeCreateElement('span');
+                fileName.textContent = 'student_code.py';
+                const copyBtn = safeCreateElement('button', 'btn btn-warning');
+                copyBtn.textContent = 'Copy Code';
+                addManagedEventListener(copyBtn, 'click', copyCode);
+                editorHeader.appendChild(fileName);
+                editorHeader.appendChild(copyBtn);
+                
+                const editorTextarea = safeCreateElement('textarea');
+                editorTextarea.id = 'editor';
+                
+                editorContainer.appendChild(editorHeader);
+                editorContainer.appendChild(editorTextarea);
+                
+                const controls = safeCreateElement('div', 'controls');
+                
+                const runBtn = safeCreateElement('button', 'btn btn-primary');
+                runBtn.textContent = '▶ Run';
+                addManagedEventListener(runBtn, 'click', runCode);
+                
+                const checkBtn = safeCreateElement('button', 'btn btn-success');
+                checkBtn.textContent = '✔ Check Solution';
+                addManagedEventListener(checkBtn, 'click', checkSolution);
+                
+                const hintBtn = safeCreateElement('button', 'btn btn-secondary');
+                hintBtn.textContent = '💡 Show Hint';
+                addManagedEventListener(hintBtn, 'click', showHint);
+                
+                const resetBtn = safeCreateElement('button', 'btn btn-secondary');
+                resetBtn.textContent = '↺ Reset';
+                addManagedEventListener(resetBtn, 'click', resetCode);
+                
+                controls.appendChild(runBtn);
+                controls.appendChild(checkBtn);
+                controls.appendChild(hintBtn);
+                controls.appendChild(resetBtn);
+                
+                const hintBox = safeCreateElement('div', 'hint-box');
+                hintBox.id = 'hint-box';
+                
+                const outputPanel = safeCreateElement('div', 'output-panel');
+                const outputHeader = safeCreateElement('div', 'output-header');
+                outputHeader.textContent = 'Console Output';
+                const outputContent = safeCreateElement('div', 'output-content');
+                outputContent.id = 'output';
+                outputPanel.appendChild(outputHeader);
+                outputPanel.appendChild(outputContent);
+                
+                const checksContainer = safeCreateElement('div', 'checks-container');
+                checksContainer.id = 'checks-container';
+                checksContainer.style.display = 'none';
+                
+                mainContent.appendChild(taskHeader);
+                mainContent.appendChild(instructions);
+                mainContent.appendChild(editorContainer);
+                mainContent.appendChild(controls);
+                mainContent.appendChild(hintBox);
+                mainContent.appendChild(outputPanel);
+                mainContent.appendChild(checksContainer);
+                
+                initializeEditor(task.starterCode);
+                window.history.pushState({}, '', `?task=${taskId}`);
+                
+            } catch (error) {
+                errorBoundary.handle(error, { type: 'switch-task', taskId });
+            }
+        }
+        
+        function initializeEditor(starterCode) {
+            const editorTextarea = document.getElementById('editor');
+            if (!editorTextarea) return;
+            
+            if (appState.editor) {
+                appState.editor.toTextArea();
+            }
+            
+            if (typeof CodeMirror === 'undefined') {
+                errorBoundary.handle(new Error('CodeMirror not loaded'), { type: 'editor-init' });
+                return;
+            }
+            
+            appState.editor = CodeMirror.fromTextArea(editorTextarea, {
+                mode: 'python',
+                theme: 'monokai',
+                lineNumbers: true,
+                autoCloseBrackets: true,
+                matchBrackets: true,
+                indentUnit: 4,
+                extraKeys: { 
+                    "Tab": (cm) => {
+                        if (cm.somethingSelected()) {
+                            cm.indentSelection("add");
+                        } else {
+                            cm.replaceSelection("    ", "end");
+                        }
+                    }
+                }
+            });
+            
+            appState.editor.on('beforeChange', (cm, change) => {
+                if (change.origin === 'paste') {
+                    change.cancel();
+                    showToast('Paste is disabled. Please type your code.', 'warning');
+                }
+            });
+            
+            const savedCode = appState.userProgress[appState.currentTaskId]?.code || starterCode;
+            appState.editor.setValue(savedCode);
+            
+            appState.editor.on('change', () => {
+                if (!appState.userProgress[appState.currentTaskId]) {
+                    appState.userProgress[appState.currentTaskId] = { code: '', completed: false };
+                }
+                appState.userProgress[appState.currentTaskId].code = appState.editor.getValue();
+                saveProgress();
+            });
+        }
+        
+        function showWelcomeMessage() {
+            const mainContent = document.getElementById('mainContent');
+            if (!mainContent) return;
+            
+            mainContent.innerHTML = '';
+            
+            const welcome = safeCreateElement('div');
+            const title = safeCreateElement('h2');
+            title.textContent = 'Welcome to your GCSE Python Summer Project!';
+            
+            const p1 = safeCreateElement('p', 'allow-select');
+            p1.textContent = 'This project contains 45 core tasks (Sections 1-5) covering Python fundamentals, plus 5 comprehensive challenges (Section 6).';
+            
+            const p2 = safeCreateElement('p', 'allow-select');
+            p2.textContent = 'Core sections cover: Variables & Operations, Selection, Loops, Lists & Strings, and Functions.';
+            
+            const p3 = safeCreateElement('p', 'allow-select');
+            p3.textContent = 'Challenges combine multiple concepts into larger programs. Each task awards XP - complete them all to unlock badges!';
+            
+            const xpInfo = safeCreateElement('div', 'test-info-box');
+            xpInfo.innerHTML = `<h4>⭐ XP System</h4>
+            <p>Earn XP by completing tasks:</p>
+            <ul>
+                <li>Section 1: 10 XP per task (100 XP total)</li>
+                <li>Section 2: 15 XP per task (150 XP total)</li>
+                <li>Section 3: 20 XP per task (200 XP total)</li>
+                <li>Section 4: 25 XP per task (250 XP total)</li>
+                <li>Section 5: 30 XP per task (150 XP total)</li>
+                <li>Challenges: 50 XP each (250 XP total)</li>
+            </ul>
+            <p><strong>Total possible: 1100 XP</strong></p>
+            <p>Unlock badges as you progress!</p>`;
+            
+            const testingNote = safeCreateElement('div', 'test-info-box');
+            testingNote.innerHTML = `<h4>📋 About Testing Your Code</h4>
+            <p>When you click "Check Solution", your code is tested automatically:</p>
+            <ul>
+                <li><strong>Input prompts are flexible</strong> - Use any prompt text you like</li>
+                <li><strong>Only output is tested</strong> - Make sure your output matches exactly</li>
+                <li><strong>Check example outputs</strong> - Each task shows what output is expected</li>
+            </ul>`;
+            
+            const p4 = safeCreateElement('p', 'allow-select');
+            p4.textContent = 'Select a task from the sidebar to begin. Your progress and XP are automatically saved.';
+            
+            const p5 = safeCreateElement('p', 'allow-select');
+            p5.id = 'python-status';
+            p5.textContent = 'Python environment is ready.';
+            
+            const backupSection = safeCreateElement('div', 'test-info-box');
+            backupSection.style.background = '#e3f2fd';
+            backupSection.style.borderColor = '#2196f3';
+            backupSection.innerHTML = `<h4>💾 Backup Your Progress</h4>
+            <p><strong>Important:</strong> Your progress is saved in your browser. To prevent data loss:</p>
+            <ul>
+                <li>Don't clear your browser data</li>
+                <li>Use the same browser and computer</li>
+                <li>Create regular backups (recommended weekly)</li>
+            </ul>`;
+            
+            const backupButtons = safeCreateElement('div', 'controls');
+            backupButtons.style.marginTop = '1rem';
+            
+            const backupBtn = safeCreateElement('button', 'btn btn-primary');
+            backupBtn.textContent = '⬇ Download Backup';
+            addManagedEventListener(backupBtn, 'click', exportFullProgressWithTracking);
+            
+            const restoreBtn = safeCreateElement('button', 'btn btn-secondary');
+            restoreBtn.textContent = '⬆ Restore from Backup';
+            addManagedEventListener(restoreBtn, 'click', importFullProgress);
+            
+            backupButtons.appendChild(backupBtn);
+            backupButtons.appendChild(restoreBtn);
+            backupSection.appendChild(backupButtons);
+            
+            welcome.appendChild(title);
+            welcome.appendChild(p1);
+            welcome.appendChild(p2);
+            welcome.appendChild(p3);
+            welcome.appendChild(xpInfo);
+            welcome.appendChild(testingNote);
+            welcome.appendChild(backupSection);
+            welcome.appendChild(p4);
+            welcome.appendChild(p5);
+            mainContent.appendChild(welcome);
+        }
+        
+        function showHint() {
+            if (!appState.currentTaskId) return;
+            
+            const task = TASKS[appState.currentTaskId];
+            const hintBox = document.getElementById('hint-box');
+            
+            if (!task.hints || task.hints.length === 0) {
+                hintBox.textContent = 'No hints available for this task.';
+            } else {
+                if (!appState.userProgress[appState.currentTaskId]) {
+                    appState.userProgress[appState.currentTaskId] = {};
+                }
+                const currentHintIndex = appState.userProgress[appState.currentTaskId].hintIndex || 0;
+                appState.userProgress[appState.currentTaskId].hintIndex = 
+                    (currentHintIndex + 1) % task.hints.length;
+                
+                hintBox.innerHTML = '';
+                const hintTitle = safeCreateElement('h4');
+                hintTitle.textContent = `💡 Hint ${appState.userProgress[appState.currentTaskId].hintIndex + 1} of ${task.hints.length}`;
+                const hintText = safeCreateElement('p', 'allow-select');
+                hintText.textContent = task.hints[appState.userProgress[appState.currentTaskId].hintIndex];
+                
+                hintBox.appendChild(hintTitle);
+                hintBox.appendChild(hintText);
+                saveProgress();
+            }
+            hintBox.style.display = 'block';
+        }
+        
+        function resetCode() {
+            if (confirm('Are you sure you want to reset your code for this task? This cannot be undone.')) {
+                appState.editor.setValue(TASKS[appState.currentTaskId].starterCode);
+            }
+        }
+        
+        function copyCode() {
+            if (!appState.editor) return;
+            
+            const code = appState.editor.getValue();
+            navigator.clipboard.writeText(code).then(
+                () => showToast('Code copied to clipboard!', 'success'),
+                () => showToast('Failed to copy code.', 'error')
+            );
+        }
+        
+        function exportSectionAnswers(sectionNum) {
+            const sectionName = sectionNum == '6' ? 'Challenges' : `Section ${sectionNum}`;
+            let content = `# Python Summer Project - ${sectionName} Answers\n\n`;
+            let hasAnswers = false;
+            
+            for (const taskId in TASKS) {
+                if (TASKS[taskId].section == sectionNum && appState.userProgress[taskId]?.code) {
+                    const task = TASKS[taskId];
+                    const taskNumber = task.section == 6 ? `Challenge ${taskId.split('-')[1]}` : `${task.section}.${taskId.split('-')[1]}`;
+                    content += '\n# -----------------------------------------\n';
+                    content += `# TASK ${taskNumber} - ${task.title}\n`;
+                    content += '# -----------------------------------------\n\n';
+                    content += appState.userProgress[taskId].code + '\n\n';
+                    hasAnswers = true;
+                }
+            }
+            
+            if (!hasAnswers) {
+                showToast(`No answers saved for ${sectionName} yet.`, 'warning');
+                return;
+            }
+            
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = sectionNum == '6' ? 'challenges_answers.py' : `section_${sectionNum}_answers.py`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function exportFullProgress() {
+            const progressKeys = Object.keys(appState.userProgress).filter(k => appState.userProgress[k].completed);
+            const signature = btoa(appState.xpData.totalXP + ':' + progressKeys.length + ':' + SECRET_KEY);
+            
+            const backup = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                progress: appState.userProgress,
+                xpData: appState.xpData,
+                streakData: appState.streakData,
+                completedSections: appState.completedSections,
+                signature: signature
+            };
+            
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `python_project_backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('Full progress backup downloaded!', 'success');
+        }
+        
+        function importFullProgress() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                try {
+                    const text = await file.text();
+                    const backup = JSON.parse(text);
+
+                    if (!backup.signature || !backup.progress || !backup.xpData) {
+                        throw new Error('Invalid or old backup file format');
+                    }
+
+                    const progressKeys = Object.keys(backup.progress).filter(k => backup.progress[k].completed);
+                    const expectedSignature = btoa(backup.xpData.totalXP + ':' + progressKeys.length + ':' + SECRET_KEY);
+
+                    if (backup.signature !== expectedSignature) {
+                        showToast('Backup file is invalid or has been tampered with.', 'error');
+                        return;
+                    }
+                    
+                    if (confirm('This will replace all your current progress. Are you sure?')) {
+                        appState.userProgress = backup.progress;
+                        appState.xpData = backup.xpData;
+                        appState.streakData = backup.streakData || { currentStreak: 0, longestStreak: 0, lastActiveDate: null, totalDaysActive: 0 };
+                        appState.completedSections = backup.completedSections || {};
+                        
+                        saveProgress();
+                        saveXPData();
+                        saveStreakData();
+                        localStorage.setItem('pythonProjectCompletedSections', JSON.stringify(appState.completedSections));
+                        
+                        updateXPDisplay();
+                        updateBadgeDisplay();
+                        generateSidebar();
+                        
+                        showToast('Progress restored successfully!', 'success');
+                        
+                        if (appState.currentTaskId) {
+                            switchTask(appState.currentTaskId);
+                        }
+                    }
+                } catch (error) {
+                    showToast('Failed to import backup file.', 'error');
+                    console.error('Import error:', error);
+                }
+            };
+            
+            input.click();
+        }
+        
+        // --- LOCAL STORAGE ---
+        function saveProgress() {
+            try {
+                localStorage.setItem('pythonSummerProjectProgress', JSON.stringify(appState.userProgress));
+                localStorage.setItem('pythonProjectLastSave', Date.now().toString());
+            } catch (e) {
+                console.error('Could not save progress to localStorage.', e);
+            }
+        }
+        
+        function loadProgress() {
+            try {
+                const saved = localStorage.getItem('pythonSummerProjectProgress');
+                if (saved) {
+                    appState.userProgress = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.error('Could not load progress from localStorage.', e);
+                appState.userProgress = {};
+            }
+        }
+        
+        function checkBackupReminder() {
+            const lastBackup = localStorage.getItem('pythonProjectLastBackup');
+            const lastSave = localStorage.getItem('pythonProjectLastSave');
+            
+            if (!lastSave) return;
+            
+            const now = Date.now();
+            const weekInMs = 7 * 24 * 60 * 60 * 1000;
+            
+            if (!lastBackup || (now - parseInt(lastBackup)) > weekInMs) {
+                if (Object.keys(appState.userProgress).length > 5) {
+                    setTimeout(() => {
+                        const reminder = document.getElementById('backup-reminder');
+                        if (reminder) reminder.classList.add('show');
+                    }, 5000);
+                }
+            }
+        }
+        
+        function exportFullProgressWithTracking() {
+            exportFullProgress();
+            localStorage.setItem('pythonProjectLastBackup', Date.now().toString());
+            
+            const reminder = document.getElementById('backup-reminder');
+            if (reminder) reminder.classList.remove('show');
+        }
+        
+        function showBackupModal() {
+            const modal = document.getElementById('backup-modal');
+            if (modal) {
+                modal.style.display = 'block';
+            }
+        }
+        
+        function hideBackupModal() {
+            const modal = document.getElementById('backup-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // --- INITIALIZATION ---
+        async function loadSkulptWithFallbacks() {
+            const loadingStatus = document.getElementById('loading-status');
+            
+            // Method 1: Check if already loaded
+            if (typeof Sk !== 'undefined') {
+                return true;
+            }
+            
+            // Method 2: Try dynamic loading with different CDNs
+            const skulptSources = [
+                {
+                    name: 'CDNjs (Latest)',
+                    main: 'https://cdnjs.cloudflare.com/ajax/libs/skulpt/1.2.0/skulpt.min.js',
+                    stdlib: 'https://cdnjs.cloudflare.com/ajax/libs/skulpt/1.2.0/skulpt-stdlib.js'
+                },
+                {
+                    name: 'jsDelivr CDN',
+                    main: 'https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js',
+                    stdlib: 'https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js'
+                },
+                {
+                    name: 'Unpkg CDN',
+                    main: 'https://unpkg.com/skulpt@1.2.0/dist/skulpt.min.js',
+                    stdlib: 'https://unpkg.com/skulpt@1.2.0/dist/skulpt-stdlib.js'
+                },
+                {
+                    name: 'cdnjs (Stable 0.11.0)',
+                    main: 'https://cdnjs.cloudflare.com/ajax/libs/skulpt/0.11.0/skulpt.min.js',
+                    stdlib: 'https://cdnjs.cloudflare.com/ajax/libs/skulpt/0.11.0/skulpt-stdlib.js'
+                },
+                {
+                    name: 'jsDelivr (Fallback 0.11.1)',
+                    main: 'https://cdn.jsdelivr.net/npm/skulpt@0.11.1/dist/skulpt.min.js',
+                    stdlib: 'https://cdn.jsdelivr.net/npm/skulpt@0.11.1/dist/skulpt-stdlib.js'
+                }
+            ];
+            
+            for (const source of skulptSources) {
+                if (loadingStatus) {
+                    loadingStatus.textContent = `Trying ${source.name}...`;
+                }
+                
+                try {
+                    // Try to load main Skulpt
+                    await loadScript(source.main);
+                    
+                    // If successful, load stdlib
+                    await loadScript(source.stdlib);
+                    
+                    // Check if Skulpt is now available
+                    if (typeof Sk !== 'undefined') {
+                        if (loadingStatus) {
+                            loadingStatus.textContent = `Successfully loaded from ${source.name}`;
+                        }
+                        return true;
+                    }
+                } catch (e) {
+                    console.warn(`Failed to load from ${source.name}:`, e);
+                }
+            }
+            
+            return false;
+        }
+        
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.crossOrigin = 'anonymous'; // Add CORS support
+                script.onload = resolve;
+                script.onerror = () => reject(new Error(`Failed to load ${src}`));
+                script.timeout = 10000; // 10 second timeout
+                
+                // Add timeout handling
+                const timeoutId = setTimeout(() => {
+                    script.remove();
+                    reject(new Error(`Timeout loading ${src}`));
+                }, 10000);
+                
+                script.onload = () => {
+                    clearTimeout(timeoutId);
+                    resolve();
+                };
+                
+                document.head.appendChild(script);
+            });
+        }
+        
+        async function main() {
+            try {
+                // Try to load Skulpt with fallbacks
+                const skulptLoaded = await loadSkulptWithFallbacks();
+                
+                if (!skulptLoaded) {
+                    document.getElementById('loading-message').innerHTML = `
+                        <h2>Error: Unable to Load Python Environment</h2>
+                        <p>We couldn't load the Python interpreter from any of our sources.</p>
+                        <p>Possible solutions:</p>
+                        <ul style="text-align: left; display: inline-block;">
+                            <li>Check if JavaScript is enabled in your browser</li>
+                            <li>Try using a different browser (Chrome, Firefox, Edge recommended)</li>
+                            <li>Check if your firewall or antivirus is blocking CDN access</li>
+                            <li>Try accessing from a different network</li>
+                            <li>Clear your browser cache and refresh the page</li>
+                            <li>If you're on a school network, CDNs might be blocked</li>
+                        </ul>
+                        <button class="btn btn-primary" onclick="location.reload()">Retry</button>
+                        <div style="margin-top: 2rem; padding: 1rem; background: #f0f0f0; border-radius: 8px;">
+                            <p><strong>Alternative Option:</strong></p>
+                            <p>If the problem persists, you can try:</p>
+                            <ol style="text-align: left;">
+                                <li>Download the project file and run it locally</li>
+                                <li>Use an online Python environment like <a href="https://replit.com" target="_blank">Replit</a> or <a href="https://colab.research.google.com" target="_blank">Google Colab</a></li>
+                                <li>Install Python on your computer from <a href="https://python.org" target="_blank">python.org</a></li>
+                            </ol>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                appState.isSkulptReady = true;
+                
+                document.getElementById('loading-message').style.display = 'none';
+                document.querySelector('.header').style.display = 'flex';
+                document.querySelector('.main-container').style.display = 'grid';
+                
+                try {
+                    const testKey = '__localStorage_test__';
+                    localStorage.setItem(testKey, 'test');
+                    localStorage.removeItem(testKey);
+                } catch (e) {
+                    const warningBox = safeCreateElement('div', 'error-message');
+                    warningBox.style.margin = '1rem';
+                    warningBox.innerHTML = '<strong>⚠️ Warning:</strong> Your browser is not saving data (possibly in private/incognito mode). Your progress will be lost when you close this tab. Please use normal browsing mode or download regular backups!';
+                    document.querySelector('.main-container').prepend(warningBox);
+                }
+                
+                loadProgress();
+                loadXPData();
+                loadStreakData();
+                loadCompletedSections();
+                
+                updateXPDisplay();
+                updateBadgeDisplay();
+                
+                generateSidebar();
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const taskIdFromUrl = urlParams.get('task');
+                
+                if (taskIdFromUrl && TASKS[taskIdFromUrl]) {
+                    switchTask(taskIdFromUrl);
+                } else {
+                    showWelcomeMessage();
+                }
+                
+                // Set up backup button
+                const backupBtn = document.getElementById('backup-btn');
+                if (backupBtn) {
+                    addManagedEventListener(backupBtn, 'click', exportFullProgressWithTracking);
+                }
+                
+                const restoreBtn = document.getElementById('restore-btn');
+                if (restoreBtn) {
+                    addManagedEventListener(restoreBtn, 'click', importFullProgress);
+                }
+                
+                const reminderBackupBtn = document.getElementById('reminder-backup-btn');
+                if (reminderBackupBtn) {
+                    addManagedEventListener(reminderBackupBtn, 'click', exportFullProgressWithTracking);
+                }
+                
+                const closeReminderBtn = document.getElementById('close-reminder');
+                if (closeReminderBtn) {
+                    addManagedEventListener(closeReminderBtn, 'click', () => {
+                        const reminder = document.getElementById('backup-reminder');
+                        if (reminder) reminder.classList.remove('show');
+                    });
+                }
+                
+                // Set up modal button listeners
+                const modalBackupBtn = document.getElementById('modal-backup-btn');
+                if (modalBackupBtn) {
+                    addManagedEventListener(modalBackupBtn, 'click', () => {
+                        exportFullProgressWithTracking();
+                        hideBackupModal();
+                    });
+                }
+                
+                const modalSkipBtn = document.getElementById('modal-skip-btn');
+                if (modalSkipBtn) {
+                    addManagedEventListener(modalSkipBtn, 'click', hideBackupModal);
+                }
+                
+                // Update streak
+                updateStreak();
+                checkDailyBonus();
+                
+                checkBackupReminder();
+                
+                // Show backup modal after delay
+                setTimeout(() => {
+                    if (Object.keys(appState.userProgress).length > 0) {
+                        showBackupModal();
+                    }
+                }, 1500);
+                
+                // Close modal if clicking outside
+                addManagedEventListener(window, 'click', (event) => {
+                    const modal = document.getElementById('backup-modal');
+                    if (event.target === modal) {
+                        hideBackupModal();
+                    }
+                });
+                
+                addManagedEventListener(document.body, 'paste', (e) => {
+                    if (!e.target.closest('.allow-paste')) {
+                        e.preventDefault();
+                        showToast('Paste is disabled. Please type your code.', 'warning');
+                    }
+                });
+                
+            } catch (error) {
+                errorBoundary.handle(error, { type: 'initialization' });
+                showToast('Failed to initialize application', 'error');
+            }
+        }
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', (e) => {
+            if (Object.keys(appState.userProgress).length > 0) {
+                e.preventDefault();
+                e.returnValue = 'Are you sure you want to leave? Your progress is saved, but you may lose unsaved changes.';
+            }
+            
+            removeAllEventListeners();
+            if (appState.editor) {
+                appState.editor.toTextArea();
+            }
+        });
+        
+        // Wait longer for scripts to load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(main, 3000); // Give scripts more time to load
+            });
+        } else {
+            setTimeout(main, 3000); // Give scripts more time to load
+        }
+        
+    })(); // End of IIFE
+</script>
+</body>
+</html>

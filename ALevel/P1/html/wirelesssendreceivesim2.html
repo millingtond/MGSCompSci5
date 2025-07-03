@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wireless Send & Receive Simulation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --primary-color: #38bdf8;
+            --secondary-color: #818cf8;
+            --text-color: #e2e8f0;
+            --card-bg: rgba(30, 41, 59, 0.6);
+            --border-color: #334155;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+            --highlight-color: #facc15;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent body scroll, scrolling is handled inside */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .glassmorphism {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+        }
+
+        .animated-gradient-bg {
+            background: linear-gradient(-45deg, #0f172a, #132a4a, #0f172a);
+            background-size: 400% 400%;
+            animation: gradient-bg 25s ease infinite;
+        }
+        
+        @keyframes gradient-bg {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .animated-gradient-header {
+            background: linear-gradient(-45deg, var(--primary-color), var(--secondary-color), #34d399);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .sim-container {
+            width: 100%;
+            height: 100vh; /* Use viewport height */
+            max-width: 1200px;
+            margin: auto;
+            border-radius: 1rem;
+            position: relative;
+        }
+        
+        .sim-area {
+            height: 65%;
+            position: relative;
+            overflow: hidden;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        #particleCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .device {
+            position: absolute;
+            z-index: 2;
+            width: 100px;
+            height: 100px;
+            will-change: transform, opacity;
+            transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .device .icon { font-size: 4rem; text-align: center; }
+        .device .label { font-size: 0.8rem; text-align: center; margin-top: 5px; font-weight: 600; }
+
+        #sender { left: 10%; top: 50%; transform: translateY(-50%); }
+        #receiver { right: 10%; top: 50%; transform: translateY(-50%); }
+        #wap { top: 15%; left: 50%; transform: translate(-50%, 0); }
+        #interferingDevice {
+             left: 10%;
+             top: 80%;
+             transform: translateY(-50%);
+             opacity: 0;
+        }
+        .listening-indicator {
+            position: absolute;
+            width: 100%; height: 100%;
+            border: 2px solid var(--highlight-color);
+            border-radius: 50%;
+            opacity: 0;
+            animation: pulse 2s ease-out infinite;
+            will-change: transform, opacity;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { opacity: 0.7; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+
+        #data-packet {
+            position: absolute;
+            top: 50%;
+            left: calc(10% + 100px);
+            transform: translateY(-50%);
+            width: 80px;
+            height: 50px;
+            opacity: 0;
+            z-index: 3;
+            will-change: transform, opacity, left;
+            transition: all 0.5s ease-in-out;
+        }
+
+        .data-packet-content {
+            background-color: var(--secondary-color);
+            border: 2px solid var(--primary-color);
+            color: black;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            height: 100%;
+            box-shadow: 0 0 15px var(--secondary-color);
+        }
+        
+        .encryption-shield {
+            position: absolute;
+            top: -10px; bottom: -10px; left: -10px; right: -10px;
+            border: 3px dashed var(--primary-color);
+            border-radius: 15px;
+            opacity: 0;
+            animation: rotate 10s linear infinite;
+            transition: opacity 0.5s ease-in-out;
+            will-change: opacity;
+        }
+
+        .radio-wave {
+            position: absolute;
+            border-radius: 50%;
+            border: 3px solid var(--primary-color);
+            opacity: 0;
+            will-change: transform, opacity;
+            z-index: 1;
+        }
+        
+        .nav-btn {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+            will-change: transform;
+        }
+        .nav-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(56, 189, 248, 0.2), 0 6px 6px rgba(129, 140, 248, 0.2);
+        }
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        .nav-btn .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple 600ms linear;
+            background-color: rgba(255, 255, 255, 0.7);
+        }
+
+        @keyframes ripple { to { transform: scale(4); opacity: 0; } }
+        
+        .modal {
+            position: fixed; /* Use fixed for full screen overlay */
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal.active { opacity: 1; pointer-events: all; }
+        
+        .quiz-option {
+            border: 2px solid var(--border-color);
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .quiz-option:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+        .quiz-option.selected {
+            border-color: var(--secondary-color);
+            background-color: rgba(129, 140, 248, 0.2);
+        }
+        .quiz-option.correct {
+            border-color: var(--success-color);
+            background-color: rgba(34, 197, 94, 0.2);
+        }
+        .quiz-option.incorrect {
+            border-color: var(--error-color);
+            background-color: rgba(239, 68, 68, 0.2);
+        }
+        
+        .drag-item {
+            cursor: grab;
+            border: 2px dashed var(--border-color);
+        }
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            min-height: 50px;
+        }
+        .drop-zone.over {
+            border-color: var(--primary-color);
+            background-color: rgba(56, 189, 248, 0.1);
+        }
+
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.5s ease-in-out forwards; }
+
+        .step-text-container { 
+            height: 35%; 
+            overflow-y: auto; /* Allow this container to scroll */
+            -webkit-overflow-scrolling: touch; /* Smooth scroll on mobile */
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center animated-gradient-bg">
+
+    <div id="simulationContainer" class="sim-container glassmorphism flex flex-col shadow-2xl">
+        <!-- Header -->
+        <header class="p-4 border-b border-gray-700 flex justify-between items-center animated-gradient-header">
+            <h1 class="text-2xl font-bold text-white">Wireless Send & Receive Process</h1>
+            <div id="stepCounter" class="text-lg font-semibold text-white">Step 0/11</div>
+        </header>
+
+        <!-- Simulation Area -->
+        <div class="sim-area p-8">
+            <canvas id="particleCanvas"></canvas>
+            <!-- Devices -->
+            <div id="sender" class="device">
+                <div class="listening-indicator"></div>
+                <div class="icon">💻</div>
+                <div class="label">Sender</div>
+            </div>
+            <div id="wap" class="device">
+                 <div class="icon">📡</div>
+                <div class="label">WAP</div>
+            </div>
+            <div id="receiver" class="device">
+                <div class="listening-indicator"></div>
+                <div class="icon">🖥️</div>
+                <div class="label">Receiver</div>
+            </div>
+            <div id="interferingDevice" class="device">
+                <div class="icon">📱</div>
+                <div class="label">Other Device</div>
+            </div>
+            
+            <!-- Data Packet -->
+            <div id="data-packet">
+                <div id="encryptionShield" class="encryption-shield"></div>
+                <div class="data-packet-content">Data</div>
+            </div>
+            
+            <div id="radioWaveContainer"></div>
+        </div>
+
+        <!-- Text and Controls Area -->
+        <div class="step-text-container p-6">
+             <div id="stepText" class="text-lg text-center h-full flex items-center justify-center"></div>
+             <div id="quizContainer" class="flex-grow mx-auto max-w-4xl hidden"></div>
+            <div class="flex justify-between items-center mt-4 sticky bottom-0 bg-opacity-50 py-2">
+                <button id="prevBtn" class="nav-btn text-white font-bold py-2 px-6 rounded-lg shadow-md">Previous</button>
+                <button id="nextBtn" class="nav-btn text-white font-bold py-2 px-6 rounded-lg shadow-md">Next</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal -->
+    <div id="modal" class="modal">
+        <div id="modalContent" class="glassmorphism p-8 rounded-lg max-w-2xl w-full mx-4 shadow-xl text-center">
+            <h2 id="modalTitle" class="text-3xl font-bold mb-4 text-white"></h2>
+            <p id="modalText" class="text-lg mb-6"></p>
+            <button id="modalCloseBtn" class="nav-btn text-white font-bold py-3 px-8 rounded-lg shadow-lg">Continue</button>
+        </div>
+    </div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- DOM Caching ---
+    const stepCounter = document.getElementById('stepCounter');
+    const stepText = document.getElementById('stepText');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalText = document.getElementById('modalText');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    const quizContainer = document.getElementById('quizContainer');
+    const stepTextContainer = document.querySelector('.step-text-container');
+    
+    const sender = document.getElementById('sender');
+    const receiver = document.getElementById('receiver');
+    const wap = document.getElementById('wap');
+    const interferingDevice = document.getElementById('interferingDevice');
+    const senderListeningIndicator = sender.querySelector('.listening-indicator');
+    const receiverListeningIndicator = receiver.querySelector('.listening-indicator');
+    
+    const dataPacket = document.getElementById('data-packet');
+    const encryptionShield = document.getElementById('encryptionShield');
+    const radioWaveContainer = document.getElementById('radioWaveContainer');
+    
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // --- State ---
+    let currentStep = 0;
+    let quizAnswers = {};
+    let modalAction = null;
+    let particles = [];
+
+    // --- Simulation Setup ---
+    function setupCanvas() {
+        const simArea = canvas.parentElement;
+        canvas.width = simArea.clientWidth;
+        canvas.height = simArea.clientHeight;
+    }
+    window.addEventListener('resize', setupCanvas);
+
+    // --- Simulation Steps Definition ---
+    const steps = [
+        { // 0
+            title: "Welcome to the Simulation!",
+            text: "This interactive simulation demonstrates how data is sent and received over a wireless network, covering key concepts from the A-Level syllabus. Click 'Continue' or use the arrow keys to navigate.",
+            action: resetSimulation
+        },
+        { // 1
+            title: "Sending Process Begins",
+            text: "A device (the sender) has data it needs to send to another device (the receiver) on the same wireless network.",
+            action: () => {
+                dataPacket.style.opacity = '1';
+                dataPacket.style.transform = 'translateY(-50%) scale(1)';
+            }
+        },
+        { // 2
+            title: "Step 1: Encryption",
+            text: "To protect the data, it's encrypted using protocols like <strong>AES</strong> (Advanced Encryption Standard). This wraps the data in a secure layer, making it unreadable to unauthorized devices.",
+            action: () => {
+                encryptionShield.style.opacity = '1';
+                triggerParticles(dataPacket.offsetLeft + 40, dataPacket.offsetTop + 25, '#38bdf8', 30);
+            }
+        },
+        { // 3
+            title: "Step 2: Encoding",
+            text: "The encrypted digital data (1s and 0s) is encoded into an analogue radio signal by the sender's Wireless Network Interface Card (WNIC).",
+            action: () => {
+                dataPacket.style.transform = 'translateY(-50%) scale(0)';
+                setTimeout(() => createRadioWave('sender'), 500);
+            }
+        },
+        { // 4
+            title: "Step 3: Listen (CSMA/CA)",
+            text: "The sender must listen to the radio channel to avoid collisions. This is <strong>CSMA/CA</strong> (Carrier-Sense Multiple Access with Collision Avoidance). Oh wait... the channel is currently busy!",
+            action: () => {
+                senderListeningIndicator.style.opacity = '1';
+                interferingDevice.style.opacity = '1';
+                setTimeout(() => createRadioWave('interference'), 200);
+            }
+        },
+        { // 5
+            title: "Step 3: Listen (Channel Clear)",
+            text: "The other device has finished transmitting. After a short, random backoff period, the sender checks again and finds the channel is now clear. It's safe to transmit.",
+            action: () => {
+                senderListeningIndicator.style.opacity = '1';
+                interferingDevice.style.opacity = '0';
+            }
+        },
+        { // 6
+            title: "Step 4: Transmission",
+            text: "The channel is clear. The sender's antenna broadcasts the radio signal, which propagates outwards towards the Wireless Access Point (WAP).",
+            action: () => {
+                senderListeningIndicator.style.opacity = '0';
+                createRadioWave('sender_to_wap');
+            }
+        },
+        { // 7
+            title: "The Role of the WAP",
+            text: "The WAP acts as a central hub. It receives the signal, checks the packet's destination address, and forwards the signal specifically towards the intended receiver.",
+            action: () => createRadioWave('wap_to_receiver')
+        },
+        { // 8
+            title: "Receiving Process: Step 1 - Detection",
+            text: "The receiver's WNIC, which is constantly scanning, detects the incoming radio signal from the WAP.",
+            action: () => receiverListeningIndicator.style.opacity = '1'
+        },
+        { // 9
+            title: "Step 2: Decoding",
+            text: "The receiver's antenna captures the signal. The WNIC then decodes the analogue radio wave back into its digital (binary) form.",
+            action: () => {
+                receiverListeningIndicator.style.opacity = '0';
+                dataPacket.style.left = `calc(90% - 80px)`;
+                dataPacket.style.opacity = '1';
+                dataPacket.style.transform = 'translateY(-50%) scale(1)';
+                encryptionShield.style.opacity = '1';
+            }
+        },
+        { // 10
+            title: "Step 3: Decryption & Delivery",
+            text: "The device confirms the data is addressed to it and uses the correct security key to decrypt the data. It is now back in its original, readable format. Success!",
+            action: () => {
+                encryptionShield.style.opacity = '0';
+                triggerParticles(dataPacket.offsetLeft + 40, dataPacket.offsetTop + 25, '#22c55e', 50);
+            }
+        },
+        { // 11
+            title: "Knowledge Check!",
+            text: "Let's test your understanding of the wireless transmission process.",
+            action: displayQuiz
+        },
+        { // 12
+            title: "Quiz Results",
+            text: "Here's how you did. Review the concepts if needed, or restart the simulation.",
+            action: showResults
+        }
+    ];
+    
+    const quizQuestions = [ { type: 'mcq', question: "Which protocol involves a device 'listening' to the channel before transmitting data?", options: ["TCP/IP", "HTTP", "CSMA/CA", "FTP"], answer: "CSMA/CA" }, { type: 'fill', question: "The process of converting digital data into analogue radio waves is called ________.", answer: "encoding" }, { type: 'drag', question: "Drag the steps of the sending process into the correct order.", items: ["Encode into radio signal", "Transmit when channel is quiet", "Encrypt the data", "Listen for other signals"], answer: ["Encrypt the data", "Encode into radio signal", "Listen for other signals", "Transmit when channel is quiet"] }, { type: 'mcq', question: "What is the primary role of a WAP (Wireless Access Point) in this process?", options: [ "To encrypt all data on the network", "To decode radio signals for all devices", "To act as a central point, receiving and forwarding signals", "To generate the original data for transmission" ], answer: "To act as a central point, receiving and forwarding signals" } ];
+
+    // --- Core Functions ---
+    function updateUI() {
+        const totalSteps = steps.length - 1; 
+        const displayStep = currentStep > 10 ? currentStep - 2 : currentStep;
+        const totalDisplaySteps = totalSteps - 2;
+
+        stepCounter.textContent = `Step ${displayStep > totalDisplaySteps ? totalDisplaySteps : displayStep}/${totalDisplaySteps}`;
+        if (currentStep === 0) stepCounter.textContent = 'Introduction';
+        if (currentStep >= 11) stepCounter.textContent = 'Quiz';
+
+        stepText.innerHTML = '';
+        stepText.classList.remove('hidden');
+        quizContainer.classList.add('hidden');
+        quizContainer.innerHTML = '';
+        
+        prevBtn.disabled = currentStep === 0;
+        nextBtn.disabled = currentStep === totalSteps;
+        
+        const step = steps[currentStep];
+        
+        if (step.action) {
+            showModal(step.title, step.text, () => {
+                if (currentStep > 0 && currentStep < 11) {
+                   stepText.innerHTML = `<p class="fade-in">${step.text}</p>`;
+                }
+                setTimeout(() => {
+                    step.action();
+                }, 100); 
+            });
+        }
+    }
+    
+    function showModal(title, text, action) {
+        modal.classList.remove('fade-in'); 
+        modalTitle.textContent = title;
+        modalText.innerHTML = text;
+        modalAction = action;
+        modal.classList.add('active');
+        modal.querySelector('#modalContent').classList.add('fade-in');
+    }
+
+    function closeModal() {
+        modal.classList.remove('active');
+        modal.querySelector('#modalContent').classList.remove('fade-in');
+        if (modalAction) {
+            setTimeout(modalAction, 150);
+            modalAction = null;
+        }
+    }
+
+    function resetSimulation() {
+        dataPacket.style.opacity = '0';
+        dataPacket.style.transform = 'translateY(-50%) scale(0)';
+        dataPacket.style.left = 'calc(10% + 100px)';
+        encryptionShield.style.opacity = '0';
+        senderListeningIndicator.style.opacity = '0';
+        receiverListeningIndicator.style.opacity = '0';
+        interferingDevice.style.opacity = '0';
+        radioWaveContainer.innerHTML = '';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles = [];
+        quizAnswers = {};
+    }
+
+    // --- Animation & Visual Effects ---
+    function particleLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life--;
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+            } else {
+                ctx.globalAlpha = p.life / p.startLife;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+        requestAnimationFrame(particleLoop);
+    }
+
+    function triggerParticles(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 3 + 1;
+            particles.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: Math.random() * 50 + 20,
+                startLife: 70,
+                size: Math.random() * 3 + 1,
+                color: color
+            });
+        }
+    }
+
+
+    // --- Quiz Logic ---
+    function displayQuiz() {
+        quizContainer.classList.remove('hidden');
+        stepText.classList.add('hidden');
+        quizContainer.innerHTML = '<h3 class="text-xl font-bold mb-4 text-center">Quiz Time!</h3>';
+        
+        quizQuestions.forEach((q, index) => {
+            const questionEl = document.createElement('div');
+            questionEl.className = 'mb-6';
+            questionEl.innerHTML = `<p class="font-semibold mb-2">${index + 1}. ${q.question}</p>`;
+            
+            if (q.type === 'mcq') { const optionsContainer = document.createElement('div'); optionsContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-2'; optionsContainer.dataset.qIndex = index; q.options.forEach(opt => { const optionEl = document.createElement('button'); optionEl.className = 'quiz-option p-3 rounded-lg text-left'; optionEl.textContent = opt; optionEl.dataset.value = opt; optionsContainer.appendChild(optionEl); }); questionEl.appendChild(optionsContainer);
+            } else if (q.type === 'fill') { const input = document.createElement('input'); input.type = 'text'; input.className = 'bg-gray-700 border-2 border-gray-600 rounded-lg p-2 w-full focus:border-primary-color focus:ring-0 focus:outline-none'; input.dataset.qIndex = index; questionEl.appendChild(input);
+            } else if (q.type === 'drag') { const dragContainer = document.createElement('div'); dragContainer.className = 'flex flex-col md:flex-row gap-4'; const itemPool = document.createElement('div'); itemPool.className = 'w-full md:w-1/2 flex flex-col gap-2'; itemPool.innerHTML = '<p class="text-sm font-bold text-gray-400">Drag from here:</p>'; const dropZone = document.createElement('div'); dropZone.className = 'w-full md:w-1/2 drop-zone p-2 rounded-lg'; dropZone.innerHTML = '<p class="text-sm font-bold text-gray-400">Drop here in order:</p>'; dropZone.dataset.qIndex = index; const shuffledItems = [...q.items].sort(() => Math.random() - 0.5); shuffledItems.forEach((item, i) => { const dragItem = document.createElement('div'); dragItem.className = 'drag-item p-3 rounded-lg bg-gray-700'; dragItem.textContent = item; dragItem.draggable = true; dragItem.dataset.value = item; itemPool.appendChild(dragItem); }); dragContainer.appendChild(itemPool); dragContainer.appendChild(dropZone); questionEl.appendChild(dragContainer); }
+            
+            quizContainer.appendChild(questionEl);
+        });
+        
+        nextBtn.textContent = 'Submit Answers';
+    }
+    
+    function handleQuizInteraction(e) { const optionBtn = e.target.closest('.quiz-option'); if (optionBtn) { const container = optionBtn.parentElement; const qIndex = container.dataset.qIndex; container.querySelectorAll('.quiz-option').forEach(btn => btn.classList.remove('selected')); optionBtn.classList.add('selected'); quizAnswers[qIndex] = optionBtn.dataset.value; } }
+    
+    let draggedItem = null;
+    function handleDragAndDrop(e) { if (e.target.classList.contains('drag-item')) { if (e.type === 'dragstart') { draggedItem = e.target; setTimeout(() => { e.target.style.opacity = '0.5'; }, 0); } else if (e.type === 'dragend') { setTimeout(() => { if(draggedItem) { draggedItem.style.opacity = '1'; } draggedItem = null; }, 0); } } const dropZone = e.target.closest('.drop-zone'); if(dropZone) { if(e.type === 'dragover') { e.preventDefault(); dropZone.classList.add('over'); } else if (e.type === 'dragleave') { dropZone.classList.remove('over'); } else if (e.type === 'drop') { e.preventDefault(); dropZone.classList.remove('over'); if (draggedItem) { dropZone.appendChild(draggedItem); const qIndex = dropZone.dataset.qIndex; const droppedItems = Array.from(dropZone.querySelectorAll('.drag-item')).map(item => item.dataset.value); quizAnswers[qIndex] = droppedItems; } } } }
+
+    function checkAnswers() {
+        let allAnswered = true;
+        
+        quizQuestions.forEach((q, index) => {
+            const questionEl = quizContainer.children[index + 1];
+            
+            if (q.type === 'mcq') {
+                const selectedOption = questionEl.querySelector('.selected');
+                quizAnswers[index] = selectedOption ? selectedOption.dataset.value : undefined;
+            } else if (q.type === 'fill') {
+                const inputEl = questionEl.querySelector('input');
+                quizAnswers[index] = inputEl.value.trim().toLowerCase();
+            }
+
+            const savedAnswer = quizAnswers[index];
+            if (savedAnswer === undefined || savedAnswer.length < 3 || (Array.isArray(savedAnswer) && savedAnswer.length !== q.items.length) ) {
+                allAnswered = false;
+            }
+        });
+
+        if (!allAnswered) {
+            showModal("Incomplete Quiz", "Please provide a complete answer for every question before submitting.", closeModal);
+            return false;
+        }
+
+        let score = 0;
+        quizQuestions.forEach((q, index) => {
+             const questionEl = quizContainer.children[index + 1];
+             const savedAnswer = quizAnswers[index];
+             let isCorrect = false;
+
+            if (q.type === 'mcq') { const selectedOption = questionEl.querySelector('.selected'); if (savedAnswer === q.answer) { isCorrect = true; selectedOption.classList.add('correct'); } else if(selectedOption) { selectedOption.classList.add('incorrect'); questionEl.querySelector(`[data-value="${q.answer}"]`).classList.add('correct'); }
+            } else if (q.type === 'fill') { const inputEl = questionEl.querySelector('input'); if (savedAnswer === q.answer) { isCorrect = true; inputEl.classList.add('border-green-500', 'bg-green-900/50'); } else { inputEl.classList.add('border-red-500', 'bg-red-900/50'); const feedback = document.createElement('p'); feedback.className = 'text-green-400 text-sm mt-1'; feedback.textContent = `Correct answer: ${q.answer}`; inputEl.after(feedback); }
+            } else if (q.type === 'drag') { const dropZone = questionEl.querySelector('.drop-zone'); if (savedAnswer && JSON.stringify(savedAnswer) === JSON.stringify(q.answer)) { isCorrect = true; dropZone.classList.add('border-green-500'); } else { dropZone.classList.add('border-red-500'); const feedback = document.createElement('p'); feedback.className = 'text-green-400 text-sm mt-1'; feedback.innerHTML = `Correct order: <br> ${q.answer.join('<br>')}`; dropZone.after(feedback); } }
+            if (isCorrect) score++;
+        });
+
+        quizContainer.querySelectorAll('button, input').forEach(el => el.disabled = true);
+        quizContainer.querySelectorAll('.drag-item').forEach(el => el.draggable = false);
+
+        const resultTitle = document.createElement('h3');
+        resultTitle.className = 'text-2xl font-bold mt-8 text-center fade-in';
+        resultTitle.textContent = `You scored ${score} out of ${quizQuestions.length}`;
+        quizContainer.prepend(resultTitle);
+        stepTextContainer.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top to see score
+
+        nextBtn.textContent = 'Finish';
+        return true;
+    }
+    
+    function showResults() { 
+        quizContainer.classList.add('hidden'); 
+        stepText.classList.remove('hidden'); 
+        let score = 0; 
+        quizQuestions.forEach((q, index) => { 
+            const savedAnswer = quizAnswers[index]; 
+            if (q.type === 'mcq' && savedAnswer === q.answer) score++; 
+            if (q.type === 'fill' && savedAnswer === q.answer) score++; 
+            if (q.type === 'drag' && JSON.stringify(savedAnswer) === JSON.stringify(q.answer)) score++; 
+        }); 
+        stepText.innerHTML = ` <div class="fade-in text-center"> <h2 class="text-3xl font-bold mb-4">Simulation Complete!</h2> <p class="text-xl mb-6">Your final quiz score: <span class="font-bold text-primary-color">${score} / ${quizQuestions.length}</span></p> <button id="resetBtn" class="nav-btn text-white font-bold py-3 px-8 rounded-lg shadow-lg">Restart Simulation</button> </div> `; 
+        document.getElementById('resetBtn').addEventListener('click', () => { 
+            currentStep = 0; 
+            resetSimulation(); 
+            nextBtn.textContent = 'Next'; 
+            updateUI(); 
+        }); 
+    }
+
+    // --- Event Listeners & Initialization ---
+    function handleNext() {
+        if (nextBtn.disabled) return;
+        if (currentStep === steps.length - 2) { 
+            if (!checkAnswers()) return;
+        }
+        currentStep++;
+        resetSimulation();
+        updateUI();
+    }
+    
+    function handlePrev() {
+         if (prevBtn.disabled) return;
+         currentStep--;
+         resetSimulation();
+         if(currentStep >= 11){ currentStep = 10; }
+         nextBtn.textContent = 'Next';
+         updateUI();
+    }
+    
+    nextBtn.addEventListener('click', handleNext);
+    prevBtn.addEventListener('click', handlePrev);
+    modalCloseBtn.addEventListener('click', closeModal);
+
+    document.querySelectorAll('.nav-btn').forEach(button => { button.addEventListener('click', function (e) { if(this.disabled) return; const rect = this.getBoundingClientRect(); let ripple = this.querySelector('.ripple'); if (ripple) { ripple.remove(); } ripple = document.createElement('span'); ripple.className = 'ripple'; ripple.style.left = `${e.clientX - rect.left}px`; ripple.style.top = `${e.clientY - rect.top}px`; this.appendChild(ripple); }); });
+
+    quizContainer.addEventListener('click', handleQuizInteraction);
+    quizContainer.addEventListener('dragstart', handleDragAndDrop);
+    quizContainer.addEventListener('dragover', handleDragAndDrop);
+    quizContainer.addEventListener('dragleave', handleDragAndDrop);
+    quizContainer.addEventListener('drop', handleDragAndDrop);
+    quizContainer.addEventListener('dragend', handleDragAndDrop);
+
+    let keydownTimeout = null;
+    window.addEventListener('keydown', (e) => {
+        if (keydownTimeout) return;
+        if (modal.classList.contains('active')) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                closeModal();
+            }
+            return;
+        }
+        if (e.target.tagName === 'INPUT') return;
+        if (e.key === 'ArrowRight') { nextBtn.click(); } 
+        else if (e.key === 'ArrowLeft') { prevBtn.click(); }
+        keydownTimeout = setTimeout(() => { keydownTimeout = null; }, 100);
+    });
+
+    const styleSheet = document.createElement("style");
+    styleSheet.type = "text/css";
+    styleSheet.innerText = `
+        @keyframes radiate {
+            from { transform: scale(0); opacity: 0.7; }
+            to { transform: scale(var(--scale, 15)); opacity: 0; }
+        }
+        @keyframes radiate_path {
+            0% { transform: translate(-50%, -50%) scale(0); left: var(--start-x); top: var(--start-y); opacity: 0.7; }
+            100% { transform: translate(-50%, -50%) scale(var(--scale, 8)); left: var(--end-x); top: var(--end-y); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(styleSheet);
+    
+    const root = document.documentElement;
+    function setCSSVar(name, value) { root.style.setProperty(name, value); }
+    
+    function createRadioWave(type) {
+        const wave = document.createElement('div');
+        wave.className = 'radio-wave';
+        let duration = '2s';
+
+        switch(type) {
+            case 'sender':
+                setCSSVar('--scale', 15);
+                wave.style.left = 'calc(10% + 50px)';
+                wave.style.top = '50%';
+                wave.style.animation = `radiate ${duration} ease-out forwards`;
+                break;
+            case 'sender_to_wap':
+                setCSSVar('--start-x', 'calc(10% + 50px)');
+                setCSSVar('--start-y', '50%');
+                setCSSVar('--end-x', '50%');
+                setCSSVar('--end-y', '15%');
+                setCSSVar('--scale', 8);
+                wave.style.width = '50px'; wave.style.height = '50px';
+                wave.style.animation = `radiate_path ${duration} ease-out forwards`;
+                break;
+            case 'wap_to_receiver':
+                setCSSVar('--start-x', '50%');
+                setCSSVar('--start-y', '15%');
+                setCSSVar('--end-x', 'calc(90% - 50px)');
+                setCSSVar('--end-y', '50%');
+                setCSSVar('--scale', 8);
+                wave.style.width = '50px'; wave.style.height = '50px';
+                wave.style.animation = `radiate_path ${duration} ease-out forwards`;
+                break;
+            case 'interference':
+                 setCSSVar('--scale', 15);
+                 wave.style.left = 'calc(10% + 50px)';
+                 wave.style.top = '80%';
+                 wave.style.borderColor = 'var(--highlight-color)';
+                 wave.style.animation = `radiate ${duration} ease-out forwards`;
+                 break;
+        }
+
+        radioWaveContainer.appendChild(wave);
+        setTimeout(() => wave.remove(), parseFloat(duration) * 1000);
+    }
+
+    // --- Initial Load ---
+    setupCanvas();
+    updateUI();
+    particleLoop();
+});
+</script>
+
+</body>
+</html>

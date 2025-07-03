@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bit Streaming Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --secondary-color: #10b981;
+            --bg-color: #f3f4f6;
+            --text-color: #1f2937;
+            --container-bg: #ffffff;
+            --border-color: #d1d5db;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+        .simulation-container {
+            background-color: var(--container-bg);
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+            margin: 2rem auto;
+            max-width: 90vw;
+            width: 1200px;
+        }
+        .icon {
+            width: 64px;
+            height: 64px;
+            transition: transform 0.3s ease;
+        }
+        .icon-small {
+            width: 48px;
+            height: 48px;
+        }
+        .icon:hover {
+            transform: scale(1.1);
+        }
+        .path {
+            position: absolute;
+            height: 4px;
+            background-color: var(--border-color);
+            z-index: 0;
+        }
+        .stream {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            opacity: 0;
+            z-index: 1;
+            box-shadow: 0 0 10px var(--primary-color), 0 0 20px var(--primary-color);
+        }
+        .rt-stream { background-color: var(--secondary-color); box-shadow: 0 0 10px var(--secondary-color), 0 0 20px var(--secondary-color); }
+        
+        /* Animation for the stream */
+        @keyframes flow {
+            from { offset-distance: 0%; opacity: 1; }
+            to { offset-distance: 100%; opacity: 1; }
+        }
+
+        .step-label {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            text-align: center;
+        }
+        .player-controls button {
+            transition: all 0.2s ease;
+        }
+        .player-controls button:hover {
+            transform: scale(1.1);
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .player-controls button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            max-width: 500px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+        
+        .quiz-option {
+            border: 2px solid var(--border-color);
+            transition: all 0.2s ease-in-out;
+        }
+        .quiz-option:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+        .quiz-option.correct {
+            background-color: #dcfce7;
+            border-color: #22c55e;
+        }
+        .quiz-option.incorrect {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="simulation-container">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Interactive Bit Streaming Simulation</h1>
+            <p class="mt-2 text-lg text-gray-600">Explore On-Demand vs. Real-Time Streaming for A-Level Computer Science (9618)</p>
+        </div>
+        
+        <!-- Instructions -->
+        <div id="instructions" class="bg-blue-50 border-l-4 border-blue-500 text-blue-800 p-4 rounded-md mb-8">
+            <h3 class="font-bold text-lg mb-2">How to Use This Simulation:</h3>
+            <ol class="list-decimal list-inside space-y-1">
+                <li>Click the 'Start' button for either simulation to see a step-by-step animation.</li>
+                <li>Contextual pop-ups will appear to explain key processes like 'Encoding'. Read them carefully.</li>
+                <li>Notice the differences in the process flow and user controls.</li>
+                <li>After exploring the simulations, test your knowledge with the quiz below.</li>
+                <li>Use the master 'Reset All' button at any time to start over.</li>
+            </ol>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- On-Demand Streaming -->
+            <div class="border border-gray-200 p-6 rounded-lg">
+                <h2 class="text-2xl font-bold text-center mb-6 text-blue-600">On-Demand Streaming</h2>
+                <div id="on-demand" class="relative h-[450px]">
+                    <!-- Icons -->
+                    <div id="od-source" class="absolute top-[10%] left-[5%] flex flex-col items-center text-center">
+                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125v-12.75a1.125 1.125 0 0 1 1.125-1.125h17.25a1.125 1.125 0 0 1 1.125 1.125v12.75a1.125 1.125 0 0 1-1.125 1.125m-17.25 0h17.25m-17.25 0a1.125 1.125 0 0 0-1.125 1.125v2.25c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-2.25a1.125 1.125 0 0 0-1.125-1.125m-17.25 0h.008v.016h-.008v-.016Zm.75 0h.01v.016h-.01v-.016Zm.75 0h.01v.016h-.01v-.016Z" /></svg>
+                        <p class="font-semibold mt-1">Video Files</p>
+                    </div>
+                     <div id="od-encoder" class="absolute top-[10%] right-[5%] flex flex-col items-center text-center opacity-25">
+                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" /></svg>
+                        <p class="font-semibold mt-1">Encoder</p>
+                    </div>
+                    <div id="od-server" class="absolute top-[45%] left-1/2 -translate-x-1/2 flex flex-col items-center text-center opacity-25">
+                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 17.25v-.228a4.5 4.5 0 0 0-.12-1.03l-2.268-9.64a3.375 3.375 0 0 0-3.285-2.816H7.923a3.375 3.375 0 0 0-3.285 2.816l-2.268 9.64a4.5 4.5 0 0 0-.12 1.03v.228m15.56 0a2.25 2.25 0 0 1-2.25 2.25H4.69a2.25 2.25 0 0 1-2.25-2.25M16.125 4.5h-8.25" /></svg>
+                        <p class="font-semibold mt-1">Web Server</p>
+                    </div>
+                     <div id="od-user" class="absolute bottom-[10%] left-1/2 -translate-x-1/2 flex flex-col items-center text-center opacity-25">
+                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg>
+                        <p class="font-semibold mt-1">User</p>
+                    </div>
+                    <!-- Paths -->
+                    <svg id="od-paths" class="absolute top-0 left-0 w-full h-full z-[-1]" viewbox="0 0 400 450" preserveAspectRatio="none">
+                        <path id="od-path1" d="M 60 60 H 340" stroke="#d1d5db" stroke-width="4" fill="none" />
+                        <path id="od-path2" d="M 360 80 V 190 H 220" stroke="#d1d5db" stroke-width="4" fill="none" />
+                        <path id="od-path3" d="M 200 240 V 350" stroke="#d1d5db" stroke-width="4" fill="none" />
+                    </svg>
+                    <!-- Stream dots -->
+                    <div id="od-stream1" class="stream"></div>
+                    <div id="od-stream2" class="stream"></div>
+                    <div id="od-stream3" class="stream"></div>
+                    <!-- Step Labels -->
+                    <div id="od-label1" class="step-label top-[15%] left-[40%]">1. Encode Files</div>
+                    <div id="od-label2" class="step-label top-[35%] right-[5%]">2. Upload to Server</div>
+                    <div id="od-label3" class="step-label bottom-[35%] left-[25%]">3. User Requests Stream</div>
+                </div>
+                 <div class="flex justify-center items-center gap-4 mt-4">
+                    <button id="od-start-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Start On-Demand</button>
+                    <div class="player-controls opacity-25" id="od-controls">
+                        <button id="od-rewind-btn" class="p-2 rounded-full border border-gray-300">⏪</button>
+                        <button id="od-pause-btn" class="p-2 rounded-full border border-gray-300">⏸️</button>
+                        <button id="od-ff-btn" class="p-2 rounded-full border border-gray-300">⏩</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-Time Streaming -->
+            <div class="border border-gray-200 p-6 rounded-lg">
+                <h2 class="text-2xl font-bold text-center mb-6 text-green-600">Real-Time Streaming</h2>
+                <div id="real-time" class="relative h-[450px]">
+                    <!-- Icons -->
+                    <div id="rt-source" class="absolute top-[10%] left-[5%] flex flex-col items-center text-center">
+                       <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9A2.25 2.25 0 0 0 13.5 5.25h-9a2.25 2.25 0 0 0-2.25 2.25v9A2.25 2.25 0 0 0 4.5 18.75Z" /></svg>
+                        <p class="font-semibold mt-1">Live Event</p>
+                    </div>
+                     <div id="rt-encoder" class="absolute top-[10%] right-[5%] flex flex-col items-center text-center opacity-25">
+                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.97 2.122L7.03 22.5l-1.06-1.06a3 3 0 0 1-2.122-.97v-1.007M15 17.25v1.007a3 3 0 0 0 .97 2.122l1.06 1.06 1.06-1.06a3 3 0 0 0 2.122-.97v-1.007M9 11.25a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.97 2.122L7.03 22.5l-1.06-1.06a3 3 0 0 1-2.122-.97v-1.007M15 17.25v1.007a3 3 0 0 0 .97 2.122l1.06 1.06 1.06-1.06a3 3 0 0 0 2.122-.97v-1.007M9 11.25a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 1.5v5.25m0 0a1.5 1.5 0 0 1-1.5 1.5h-5.25a1.5 1.5 0 0 1-1.5-1.5v-2.25a1.5 1.5 0 0 1 1.5-1.5h5.25a1.5 1.5 0 0 1 1.5 1.5v2.25Z" /></svg>
+                        <p class="font-semibold mt-1">Live Encoder</p>
+                    </div>
+                    <div id="rt-server" class="absolute top-[45%] left-1/2 -translate-x-1/2 flex flex-col items-center text-center opacity-25">
+                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.042A5.25 5.25 0 0 1 7.5 14.25a5.25 5.25 0 0 1 5.25-5.25 5.25 5.25 0 0 1 5.25 5.25 5.25 5.25 0 0 1-.788.792m-11.212 0A5.25 5.25 0 0 1 7.5 14.25a5.25 5.25 0 0 1 5.25-5.25 5.25 5.25 0 0 1 5.25 5.25 5.25 5.25 0 0 1-.788.792m-11.212 0a13.5 13.5 0 0 1 11.212 0M2.25 10.5a11.94 11.94 0 0 1 .44-3.222 12.022 12.022 0 0 1 3.295-5.592A11.973 11.973 0 0 1 12 1.5c3.997 0 7.64.93 10.665 2.535a12.02 12.02 0 0 1 3.295 5.592 11.94 11.94 0 0 1 .44 3.222M2.25 13.5a11.94 11.94 0 0 0 .44 3.222 12.022 12.022 0 0 0 3.295 5.592A11.973 11.973 0 0 0 12 22.5c3.997 0 7.64-.93 10.665-2.535a12.02 12.02 0 0 0 3.295-5.592 11.94 11.94 0 0 0 .44-3.222" /></svg>
+                        <p class="font-semibold mt-1">Streaming Server</p>
+                    </div>
+                    <div class="absolute bottom-[10%] w-full flex justify-around">
+                        <div id="rt-user1" class="flex flex-col items-center text-center opacity-25">
+                            <svg class="icon icon-small" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg>
+                            <p class="font-semibold mt-1 text-sm">User A</p>
+                        </div>
+                        <div id="rt-user2" class="flex flex-col items-center text-center opacity-25">
+                             <svg class="icon icon-small" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg>
+                            <p class="font-semibold mt-1 text-sm">User B</p>
+                        </div>
+                        <div id="rt-user3" class="flex flex-col items-center text-center opacity-25">
+                            <svg class="icon icon-small" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg>
+                            <p class="font-semibold mt-1 text-sm">User C</p>
+                        </div>
+                    </div>
+                     <!-- Paths -->
+                    <svg id="rt-paths" class="absolute top-0 left-0 w-full h-full z-[-1]" viewbox="0 0 400 450" preserveAspectRatio="none">
+                        <path id="rt-path1" d="M 60 60 H 340" stroke="#d1d5db" stroke-width="4" fill="none" />
+                        <path id="rt-path2" d="M 360 80 V 190 H 220" stroke="#d1d5db" stroke-width="4" fill="none" />
+                        <path id="rt-path3a" d="M 200 240 V 370 H 80" stroke="#d1d5db" stroke-width="4" fill="none" />
+                        <path id="rt-path3b" d="M 200 240 V 380" stroke="#d1d5db" stroke-width="4" fill="none" />
+                        <path id="rt-path3c" d="M 200 240 V 370 H 320" stroke="#d1d5db" stroke-width="4" fill="none" />
+                    </svg>
+                    <!-- Stream dots -->
+                    <div id="rt-stream1" class="stream rt-stream"></div>
+                    <div id="rt-stream2" class="stream rt-stream"></div>
+                    <div id="rt-stream3a" class="stream rt-stream"></div>
+                    <div id="rt-stream3b" class="stream rt-stream"></div>
+                    <div id="rt-stream3c" class="stream rt-stream"></div>
+                    <!-- Step Labels -->
+                    <div id="rt-label1" class="step-label top-[15%] left-[40%]">1. Capture & Encode Live</div>
+                    <div id="rt-label2" class="step-label top-[35%] right-[5%]">2. Upload to Server</div>
+                    <div id="rt-label3" class="step-label bottom-[35%] left-[20%]">3. Server Broadcasts to Users</div>
+                </div>
+                 <div class="flex justify-center items-center gap-4 mt-4">
+                    <button id="rt-start-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Start Real-Time</button>
+                    <div class="flex items-center gap-2 text-gray-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clip-rule="evenodd" /></svg>
+                        <span class="font-semibold">No User Controls</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-12">
+            <button id="reset-all-btn" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-6 rounded-lg transition-colors text-lg">Reset All</button>
+        </div>
+        
+        <!-- Quiz Section -->
+        <div id="quiz-container" class="mt-16 border-t pt-8">
+            <h2 class="text-3xl font-bold text-center mb-6">Test Your Knowledge</h2>
+            <div id="quiz-content" class="max-w-3xl mx-auto bg-white p-8 rounded-lg shadow-md">
+                <!-- Quiz will be dynamically loaded here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal -->
+    <div id="modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-2xl font-bold mb-4"></h3>
+            <p id="modal-text" class="text-gray-700 mb-6"></p>
+            <button id="modal-close-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg w-full">Got it!</button>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const od = {
+                startBtn: document.getElementById('od-start-btn'),
+                controls: document.getElementById('od-controls'),
+                elements: {
+                    source: document.getElementById('od-source'),
+                    encoder: document.getElementById('od-encoder'),
+                    server: document.getElementById('od-server'),
+                    user: document.getElementById('od-user'),
+                },
+                labels: {
+                    l1: document.getElementById('od-label1'),
+                    l2: document.getElementById('od-label2'),
+                    l3: document.getElementById('od-label3'),
+                },
+                streams: {
+                    s1: document.getElementById('od-stream1'),
+                    s2: document.getElementById('od-stream2'),
+                    s3: document.getElementById('od-stream3'),
+                },
+                paths: {
+                    p1: document.getElementById('od-path1'),
+                    p2: document.getElementById('od-path2'),
+                    p3: document.getElementById('od-path3'),
+                }
+            };
+
+            const rt = {
+                startBtn: document.getElementById('rt-start-btn'),
+                elements: {
+                    source: document.getElementById('rt-source'),
+                    encoder: document.getElementById('rt-encoder'),
+                    server: document.getElementById('rt-server'),
+                    user1: document.getElementById('rt-user1'),
+                    user2: document.getElementById('rt-user2'),
+                    user3: document.getElementById('rt-user3'),
+                },
+                labels: {
+                    l1: document.getElementById('rt-label1'),
+                    l2: document.getElementById('rt-label2'),
+                    l3: document.getElementById('rt-label3'),
+                },
+                streams: {
+                    s1: document.getElementById('rt-stream1'),
+                    s2: document.getElementById('rt-stream2'),
+                    s3a: document.getElementById('rt-stream3a'),
+                    s3b: document.getElementById('rt-stream3b'),
+                    s3c: document.getElementById('rt-stream3c'),
+                },
+                paths: {
+                    p1: document.getElementById('rt-path1'),
+                    p2: document.getElementById('rt-path2'),
+                    p3a: document.getElementById('rt-path3a'),
+                    p3b: document.getElementById('rt-path3b'),
+                    p3c: document.getElementById('rt-path3c'),
+                }
+            };
+            
+            const modal = {
+                overlay: document.getElementById('modal'),
+                title: document.getElementById('modal-title'),
+                text: document.getElementById('modal-text'),
+                closeBtn: document.getElementById('modal-close-btn')
+            };
+
+            const resetAllBtn = document.getElementById('reset-all-btn');
+
+            let isOdRunning = false;
+            let isRtRunning = false;
+
+            // --- Modal Logic ---
+            const showModal = (title, text) => {
+                modal.title.textContent = title;
+                modal.text.textContent = text;
+                modal.overlay.classList.add('visible');
+            };
+            modal.closeBtn.addEventListener('click', () => modal.overlay.classList.remove('visible'));
+
+            // --- Animation Helpers ---
+            const animateElement = (el, delay, opacity = 1) => {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        el.style.opacity = opacity;
+                        resolve();
+                    }, delay);
+                });
+            };
+
+            const animateStream = (streamEl, pathEl, duration, delay) => {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        streamEl.style.offsetPath = `path('${pathEl.getAttribute('d')}')`;
+                        streamEl.style.animation = `flow ${duration}ms linear forwards`;
+                        setTimeout(resolve, duration);
+                    }, delay);
+                });
+            };
+
+            // --- Simulation Logic ---
+            const runOnDemandSimulation = async () => {
+                if (isOdRunning) return;
+                isOdRunning = true;
+                od.startBtn.disabled = true;
+
+                // 1. Encode Files
+                await animateElement(od.elements.encoder, 500);
+                await animateElement(od.labels.l1, 200);
+                await animateStream(od.streams.s1, od.paths.p1, 2000, 200);
+                od.labels.l1.style.opacity = 0;
+                showModal('Step 1: Encoding', 'Existing video files (like movies or TV shows) are converted into a compressed bit streaming format. This reduces the file size for efficient transmission over the internet without significant quality loss.');
+
+                // 2. Upload to Server
+                await animateElement(od.elements.server, 500);
+                await animateElement(od.labels.l2, 200);
+                await animateStream(od.streams.s2, od.paths.p2, 2500, 200);
+                od.labels.l2.style.opacity = 0;
+                showModal('Step 2: Upload to Server', 'The encoded files are uploaded and stored on a dedicated web server. They sit here, ready for users to access them whenever they want.');
+                
+                // 3. User requests stream
+                await animateElement(od.elements.user, 500);
+                await animateElement(od.labels.l3, 200);
+                await animateStream(od.streams.s3, od.paths.p3, 2000, 200);
+                od.labels.l3.style.opacity = 0;
+                showModal('Step 3: User Access', 'A user clicks a link on a website. The server begins streaming the file to that specific user. The user can pause, play, rewind, and fast-forward because the entire file already exists on the server.');
+                await animateElement(od.controls, 200);
+
+                isOdRunning = false;
+            };
+
+            const runRealTimeSimulation = async () => {
+                if (isRtRunning) return;
+                isRtRunning = true;
+                rt.startBtn.disabled = true;
+
+                // 1. Capture & Encode Live
+                await animateElement(rt.elements.encoder, 500);
+                await animateElement(rt.labels.l1, 200);
+                await animateStream(rt.streams.s1, rt.paths.p1, 2000, 200);
+                rt.labels.l1.style.opacity = 0;
+                showModal('Step 1: Live Capture & Encoding', 'An event (like a sports match or a news broadcast) is captured by a camera. The video signal is sent directly to a computer that encodes it into a streaming format in real-time.');
+
+                // 2. Upload to Server
+                await animateElement(rt.elements.server, 500);
+                await animateElement(rt.labels.l2, 200);
+                await animateStream(rt.streams.s2, rt.paths.p2, 2500, 200);
+                rt.labels.l2.style.opacity = 0;
+                showModal('Step 2: Upload to Streaming Server', 'The live encoded feed is continuously uploaded to a special streaming server. Unlike on-demand, the file is not stored in its entirety first; it\'s a constant flow of data.');
+
+                // 3. Server Broadcasts
+                await Promise.all([
+                    animateElement(rt.elements.user1, 500),
+                    animateElement(rt.elements.user2, 500),
+                    animateElement(rt.elements.user3, 500),
+                ]);
+                await animateElement(rt.labels.l3, 200);
+                await Promise.all([
+                    animateStream(rt.streams.s3a, rt.paths.p3a, 2000, 200),
+                    animateStream(rt.streams.s3b, rt.paths.p3b, 2000, 200),
+                    animateStream(rt.streams.s3c, rt.paths.p3c, 2000, 200),
+                ]);
+                rt.labels.l3.style.opacity = 0;
+                 showModal('Step 3: Real-Time Broadcast', 'The server immediately broadcasts the live stream to all users who have requested it. Since the event is happening now, users cannot pause, rewind, or fast-forward.');
+                
+                isRtRunning = false;
+            };
+
+            const resetSimulation = () => {
+                // Reset On-Demand
+                od.startBtn.disabled = false;
+                od.controls.style.opacity = 0.25;
+                Object.values(od.elements).forEach(el => el.style.opacity = el.id === 'od-source' ? 1 : 0.25);
+                Object.values(od.labels).forEach(el => el.style.opacity = 0);
+                Object.values(od.streams).forEach(el => {
+                    el.style.animation = 'none';
+                    el.style.opacity = 0;
+                });
+                isOdRunning = false;
+
+                // Reset Real-Time
+                rt.startBtn.disabled = false;
+                Object.values(rt.elements).forEach(el => el.style.opacity = el.id === 'rt-source' ? 1 : 0.25);
+                Object.values(rt.labels).forEach(el => el.style.opacity = 0);
+                Object.values(rt.streams).forEach(el => {
+                    el.style.animation = 'none';
+                    el.style.opacity = 0;
+                });
+                isRtRunning = false;
+                
+                // Reset Quiz
+                currentQuestionIndex = 0;
+                score = 0;
+                renderQuiz();
+            };
+
+            // --- Event Listeners ---
+            od.startBtn.addEventListener('click', runOnDemandSimulation);
+            rt.startBtn.addEventListener('click', runRealTimeSimulation);
+            resetAllBtn.addEventListener('click', resetSimulation);
+            
+            // --- Quiz Logic ---
+            const quizData = [
+                {
+                    question: "What is the primary purpose of 'encoding' in bit streaming?",
+                    options: ["To increase the video resolution", "To add subtitles to the video", "To convert the file to a compressed format for efficient transmission", "To store the video on multiple servers"],
+                    answer: "To convert the file to a compressed format for efficient transmission",
+                    explanation: "Encoding compresses video data, making the file size smaller so it can be streamed smoothly over the internet without requiring excessive bandwidth."
+                },
+                {
+                    question: "A user watching a pre-recorded lecture online can skip to the last 10 minutes. What type of streaming makes this possible?",
+                    options: ["Real-time streaming", "On-demand streaming", "Live-feed streaming", "Broadcast streaming"],
+                    answer: "On-demand streaming",
+                    explanation: "On-demand streaming uses pre-recorded files stored on a server, allowing users full control over playback, including pausing, rewinding, and fast-forwarding."
+                },
+                {
+                    question: "Which of the following is the best example of a real-time stream?",
+                    options: ["Watching a film on Netflix", "Listening to a saved podcast", "Watching a live online gaming tournament on Twitch", "Viewing a video from your computer's hard drive"],
+                    answer: "Watching a live online gaming tournament on Twitch",
+                    explanation: "Real-time streaming is for events happening live. A Twitch tournament is broadcast as it happens, with no ability to skip ahead."
+                },
+                {
+                    question: "What is a key difference in how files are handled in on-demand vs. real-time streaming?",
+                    options: [
+                        "On-demand files are encoded, but real-time files are not.", 
+                        "In on-demand, the entire file is stored on a server before access; in real-time, the data is streamed as it's created.", 
+                        "Real-time streaming requires a faster internet connection than on-demand.",
+                        "On-demand streaming is always lower quality than real-time."
+                    ],
+                    answer: "In on-demand, the entire file is stored on a server before access; in real-time, the data is streamed as it's created.",
+                    explanation: "This is the fundamental difference. On-demand serves a complete, stored file. Real-time transmits a continuous data feed from a live source."
+                },
+                 {
+                    question: "Why can't a user typically pause or rewind a real-time stream?",
+                    options: ["Because it would use too much data.", "Because the video player software doesn't support it.", "Because there is no stored file to go back to; the content is being generated live.", "Because it is illegal to record live broadcasts."],
+                    answer: "Because there is no stored file to go back to; the content is being generated live.",
+                    explanation: "Since the event is happening 'now', there's no future data to fast-forward to and no past data stored on the server to rewind to. You are watching it as it's created."
+                }
+            ];
+
+            let currentQuestionIndex = 0;
+            let score = 0;
+            const quizContent = document.getElementById('quiz-content');
+
+            function renderQuiz() {
+                if (currentQuestionIndex >= quizData.length) {
+                    quizContent.innerHTML = `
+                        <h3 class="text-2xl font-bold text-center">Quiz Complete!</h3>
+                        <p class="text-center text-xl my-4">Your final score is: <span class="font-bold text-blue-600">${score}</span> out of <span class="font-bold">${quizData.length}</span></p>
+                        <div class="text-center">
+                            <button id="restart-quiz-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Try Again</button>
+                        </div>
+                    `;
+                    document.getElementById('restart-quiz-btn').addEventListener('click', () => {
+                        currentQuestionIndex = 0;
+                        score = 0;
+                        renderQuiz();
+                    });
+                    return;
+                }
+
+                const question = quizData[currentQuestionIndex];
+                let optionsHtml = '';
+                question.options.forEach(option => {
+                    optionsHtml += `<button class="quiz-option w-full text-left p-4 rounded-lg mb-3">${option}</button>`;
+                });
+
+                quizContent.innerHTML = `
+                    <p class="text-gray-500 mb-2">Question ${currentQuestionIndex + 1} of ${quizData.length}</p>
+                    <h3 class="text-xl font-semibold mb-6">${question.question}</h3>
+                    <div id="options-container">${optionsHtml}</div>
+                    <div id="feedback-container" class="mt-4"></div>
+                `;
+                
+                const optionButtons = quizContent.querySelectorAll('.quiz-option');
+                optionButtons.forEach(button => {
+                    button.addEventListener('click', (e) => handleAnswer(e, button, question, optionButtons));
+                });
+            }
+            
+            function handleAnswer(e, selectedButton, question, allButtons) {
+                allButtons.forEach(btn => btn.disabled = true); // Disable all options
+                
+                const selectedAnswer = e.target.textContent;
+                const feedbackContainer = document.getElementById('feedback-container');
+                
+                let feedbackHtml = '';
+                if (selectedAnswer === question.answer) {
+                    score++;
+                    selectedButton.classList.add('correct');
+                    feedbackHtml = `<div class="p-4 rounded-md bg-green-50 text-green-800">
+                                        <h4 class="font-bold">Correct!</h4>
+                                        <p>${question.explanation}</p>
+                                    </div>`;
+                } else {
+                    selectedButton.classList.add('incorrect');
+                    allButtons.forEach(btn => {
+                        if (btn.textContent === question.answer) {
+                            btn.classList.add('correct');
+                        }
+                    });
+                    feedbackHtml = `<div class="p-4 rounded-md bg-red-50 text-red-800">
+                                        <h4 class="font-bold">Incorrect.</h4>
+                                        <p>${question.explanation}</p>
+                                    </div>`;
+                }
+                
+                feedbackContainer.innerHTML = feedbackHtml + `<button id="next-question-btn" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg mt-4 w-full">Next Question</button>`;
+                document.getElementById('next-question-btn').addEventListener('click', () => {
+                    currentQuestionIndex++;
+                    renderQuiz();
+                });
+            }
+
+            // Initial render
+            resetSimulation(); // Also calls renderQuiz()
+        });
+    </script>
+
+</body>
+</html>

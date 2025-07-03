@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Data Compression Mission</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background-color: #0c0a09;
+            color: #ff8c00; /* Amber */
+        }
+        .mission-header-glow {
+            font-family: 'Orbitron', sans-serif;
+            animation: missionHeaderGlow 3s ease-in-out infinite;
+        }
+        @keyframes missionHeaderGlow {
+            0%, 100% { text-shadow: 0 0 10px #ff4500, 0 0 20px #ff4500, 0 0 30px #ff8c00, 0 0 40px #ff8c00; }
+            50% { text-shadow: 0 0 20px #ff4500, 0 0 30px #ff8c00, 0 0 40px #ff8c00, 0 0 50px #ff8c00; }
+        }
+        .mission-section {
+            border: 1px solid #ff4500;
+            background: rgba(255, 69, 0, 0.05);
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 15px rgba(255, 69, 0, 0.2);
+        }
+        .mission-title {
+            font-family: 'Orbitron', sans-serif;
+            color: #ffa500; /* Orange */
+        }
+        .slider {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 8px;
+            background: #4a1c02; border-radius: 4px; outline: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 24px; height: 24px;
+            background: #ff8c00; border: 2px solid #0c0a09;
+            border-radius: 50%; cursor: pointer;
+        }
+        .draggable-item {
+            cursor: grab;
+            user-select: none;
+        }
+        .drop-zone {
+            border: 2px dashed #ff8c00;
+            min-height: 100px;
+        }
+        .drop-zone.drag-over {
+            background-color: rgba(255, 140, 0, 0.2);
+        }
+        .pixel-grid {
+            display: grid;
+            gap: 2px;
+            width: fit-content;
+            border: 2px solid #ff4500;
+            background-color: #4a1c02;
+        }
+        .pixel-cell {
+            width: 25px;
+            height: 25px;
+            background-color: #0c0a09;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .pixel-cell:hover {
+            border: 1px solid #ff8c00;
+        }
+        .pixel-cell.active {
+            background-color: #ff8c00;
+        }
+        .binary-pane {
+            background-color: #1a1a1a;
+            border: 1px solid #ff4500;
+            color: #00ff00; /* Green terminal text */
+            font-family: 'Roboto Mono', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .mission-button, .myth-button {
+            background-color: #ff4500;
+            color: #0c0a09;
+            font-family: 'Orbitron', sans-serif;
+            transition: all 0.3s ease;
+        }
+        .mission-button:hover, .myth-button:hover {
+            background-color: #ff8c00;
+            box-shadow: 0 0 15px #ff8c00;
+        }
+        .achievement-gallery .badge {
+            opacity: 0.3;
+            transition: opacity 0.5s ease;
+        }
+        .achievement-gallery .badge.unlocked {
+            opacity: 1;
+        }
+        .hint-button {
+            display: none; /* Hidden by default */
+        }
+        .checklist-item {
+            display: flex;
+            align-items: center;
+        }
+        .checklist-item input {
+             accent-color: #ff8c00;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto space-y-12">
+        <header class="text-center">
+            <h1 class="text-4xl md:text-6xl font-bold mission-header-glow mb-4">The Data Compression Mission</h1>
+            <p class="text-lg text-orange-400">Your objective: Compress and transmit vital data from deep space.</p>
+        </header>
+
+        <!-- Mission Control: Warm-up -->
+        <section id="mission-control" class="p-6 rounded-lg mission-section">
+            <h2 class="text-2xl md:text-3xl font-bold mission-title mb-4"><i class="fas fa-satellite-dish mr-3"></i>Mission Control: Warm-up</h2>
+            <p class="mb-4">Welcome, Data Specialist. Before we begin, let's establish why your mission is critical. Drag the reasons for data compression into the "Mission Critical" list.</p>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-xl font-bold text-orange-400 mb-2">Available Reasons</h3>
+                    <div id="reasons-pool" class="p-4 bg-black/50 rounded-md space-y-2">
+                        <div id="reason1" class="p-3 bg-gray-800 rounded-md draggable-item" draggable="true">Reduces storage space needed on the probe.</div>
+                        <div id="reason2" class="p-3 bg-gray-800 rounded-md draggable-item" draggable="true">Makes data transmission faster to Earth.</div>
+                        <div id="reason3" class="p-3 bg-gray-800 rounded-md draggable-item" draggable="true">Improves the quality of scientific readings.</div>
+                        <div id="reason4" class="p-3 bg-gray-800 rounded-md draggable-item" draggable="true">Saves transmission energy/power.</div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-orange-400 mb-2">Mission Critical</h3>
+                    <div id="critical-reasons" class="p-4 rounded-md drop-zone"></div>
+                </div>
+            </div>
+            <button id="check-warmup" class="mt-4 px-6 py-2 rounded-md mission-button">Verify Priorities</button>
+            <p id="warmup-feedback" class="mt-2 text-lg"></p>
+        </section>
+
+        <!-- Mission 1: Optimize Planetary Photos (Lossy Compression) -->
+        <section id="mission-1" class="p-6 rounded-lg mission-section">
+            <h2 class="text-2xl md:text-3xl font-bold mission-title mb-4"><i class="fas fa-camera-retro mr-3"></i>Mission 1: Optimize Planetary Photos</h2>
+            <p class="mb-4">First contact! We have an image from Planet X-1. It's too large to send directly. Use the optimizer to balance quality and file size.</p>
+            <div class="grid md:grid-cols-2 gap-8 items-start">
+                <div>
+                    <h3 class="text-xl font-bold text-orange-400 mb-2">Advanced Image Optimizer</h3>
+                    <canvas id="imageCanvas" width="400" height="300" class="bg-black border border-orange-600 rounded-md"></canvas>
+                    <div class="mt-4 space-y-4">
+                        <div>
+                            <label for="resolutionSlider" class="block mb-1">Resolution: <span id="resolutionValue">100</span>%</label>
+                            <input id="resolutionSlider" type="range" min="10" max="100" value="100" class="slider">
+                        </div>
+                        <div>
+                            <label for="colorDepthSlider" class="block mb-1">Color Depth: <span id="colorDepthValue">24</span>-bit</label>
+                            <input id="colorDepthSlider" type="range" min="1" max="24" value="24" class="slider">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-orange-400 mb-2">Behind the Bits</h3>
+                    <p class="text-sm text-orange-300 mb-2">Observe how the data for a single pixel changes as you reduce color depth.</p>
+                    <div id="binary-pane" class="p-4 rounded-md binary-pane h-64 overflow-y-auto">
+                        <p><strong>Pixel at (10,10):</strong></p>
+                        <p id="binary-representation">11110000 10100101 10111100</p>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <p class="text-lg">Estimated File Size: <span id="file-size" class="font-bold text-2xl text-red-500">2.4 MB</span></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Mission 2: Compress Scientific Telemetry (Lossless & RLE) -->
+        <section id="mission-2" class="p-6 rounded-lg mission-section">
+            <h2 class="text-2xl md:text-3xl font-bold mission-title mb-4"><i class="fas fa-wave-square mr-3"></i>Mission 2: Compress Scientific Telemetry</h2>
+            
+            <div class="mb-8">
+                <h3 class="text-xl font-bold text-orange-400 mb-2">2a. RLE Text Compressor</h3>
+                <p class="mb-2">The probe's atmospheric sensor sends long strings of repeating data. Use Run-Length Encoding (RLE) to compress it.</p>
+                <textarea id="rle-input" class="w-full p-2 bg-black/50 border border-orange-600 rounded-md h-24" placeholder="Enter sensor data, e.g., AAAAAABBBCCCCCC...">WWWWWWWWWWWBBWWWWWWWWWWWWBBBWWWWWWWWWWWWWWWWWWWWWWWBWWWWWWWWWWWWWW</textarea>
+                <button id="compress-rle" class="mt-2 px-6 py-2 rounded-md mission-button">Compress</button>
+                <div class="mt-2 p-4 binary-pane">
+                    <p><strong>Original Size:</strong> <span id="original-size">...</span> bits</p>
+                    <p><strong>Compressed Output:</strong> <span id="rle-output">...</span></p>
+                    <p><strong>Compressed Size:</strong> <span id="compressed-size">...</span> bits</p>
+                    <p><strong>Savings:</strong> <span id="savings-percent">...</span>%</p>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-xl font-bold text-orange-400 mb-2">2c. Alien Symbol Challenge</h3>
+                <p class="mb-4">We've intercepted a technology for encoding simple symbols. Create your own 8x8 "alien symbol" on the grid below. Then, generate a share code (its RLE data) to send to other specialists.</p>
+                <div class="flex flex-wrap gap-8">
+                    <div>
+                        <h4 class="text-lg text-orange-300 mb-2">Symbol Grid</h4>
+                        <div id="pixel-grid" class="pixel-grid"></div>
+                    </div>
+                    <div>
+                        <h4 class="text-lg text-orange-300 mb-2">Transmission</h4>
+                        <button id="generate-share-code" class="px-6 py-2 rounded-md mission-button">Generate Share Code</button>
+                        <textarea id="share-code-output" class="w-full mt-2 p-2 bg-black/50 border border-orange-600 rounded-md h-20" readonly placeholder="Your RLE share code will appear here..."></textarea>
+                        
+                        <h4 class="text-lg text-orange-300 mb-2 mt-4">Decode Incoming Symbol</h4>
+                        <textarea id="share-code-input" class="w-full p-2 bg-black/50 border border-orange-600 rounded-md h-20" placeholder="Paste a share code here..."></textarea>
+                        <button id="decode-share-code" class="mt-2 px-6 py-2 rounded-md mission-button">Decode Symbol</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mission 3: Analyze Alien Signals (Audio) -->
+        <section id="mission-3" class="p-6 rounded-lg mission-section">
+            <h2 class="text-2xl md:text-3xl font-bold mission-title mb-4"><i class="fas fa-volume-up mr-3"></i>Mission 3: Analyze Alien Signals</h2>
+             <p class="mb-4">A strange audio signal! We must save this recording, but storage is precious. Play it through different compression filters to understand the quality vs. size trade-offs.</p>
+             <div class="flex flex-wrap justify-center items-center gap-4">
+                 <button id="play-wav" class="px-6 py-3 rounded-lg mission-button text-lg"><i class="fas fa-file-audio mr-2"></i>Play WAV (Lossless)</button>
+                 <button id="play-mp3" class="px-6 py-3 rounded-lg mission-button text-lg"><i class="fas fa-file-audio mr-2"></i>Play MP3 (Lossy)</button>
+                 <button id="play-flac" class="px-6 py-3 rounded-lg mission-button text-lg"><i class="fas fa-file-audio mr-2"></i>Play FLAC (Lossless)</button>
+             </div>
+             <div id="audio-feedback" class="mt-4 p-4 text-center text-orange-300"></div>
+        </section>
+
+        <!-- Mission 4: Debunk Deep Space Myths -->
+        <section id="mission-4" class="p-6 rounded-lg mission-section">
+            <h2 class="text-2xl md:text-3xl font-bold mission-title mb-4"><i class="fas fa-ghost mr-3"></i>Mission 4: Debunk Deep Space Myths</h2>
+            <p class="mb-4">Misinformation travels fast, even in space. Let's separate myth from fact.</p>
+            <div class="space-y-6">
+                <div class="p-4 bg-black/50 rounded-md">
+                    <p class="mb-2">"Compressing a file twice makes it even smaller."</p>
+                    <div class="space-x-4">
+                        <button class="px-4 py-1 rounded-md myth-button" data-myth="1" data-answer="myth">Myth</button>
+                        <button class="px-4 py-1 rounded-md myth-button" data-myth="1" data-answer="fact">Fact</button>
+                    </div>
+                    <p id="myth1-feedback" class="mt-2"></p>
+                </div>
+                <div class="p-4 bg-black/50 rounded-md">
+                    <p class="mb-2">"Lossless compression means the file size is always smaller than lossy."</p>
+                    <div class="space-x-4">
+                        <button class="px-4 py-1 rounded-md myth-button" data-myth="2" data-answer="myth">Myth</button>
+                        <button class="px-4 py-1 rounded-md myth-button" data-myth="2" data-answer="fact">Fact</button>
+                    </div>
+                    <p id="myth2-feedback" class="mt-2"></p>
+                </div>
+                <div class="p-4 bg-black/50 rounded-md">
+                    <p class="mb-2">"Deleting data is a form of compression."</p>
+                    <div class="space-x-4">
+                        <button class="px-4 py-1 rounded-md myth-button" data-myth="3" data-answer="myth">Myth</button>
+                        <button class="px-4 py-1 rounded-md myth-button" data-myth="3" data-answer="fact">Fact</button>
+                    </div>
+                    <p id="myth3-feedback" class="mt-2"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mission 5: Final Transmission Calculations -->
+        <section id="mission-5" class="p-6 rounded-lg mission-section">
+            <h2 class="text-2xl md:text-3xl font-bold mission-title mb-4"><i class="fas fa-calculator mr-3"></i>Mission 5: Final Transmission Calculations</h2>
+            <p class="mb-4">Mission success depends on accurate calculations. Solve these problems to verify your readiness.</p>
+            <div class="space-y-6">
+                <div class="p-4 bg-black/50 rounded-md">
+                    <p class="mb-2">A 100x100 pixel black and white (1-bit) image is created. What is its size in bytes?</p>
+                    <input type="number" id="calc1-answer" class="p-2 bg-gray-800 rounded-md border border-orange-700">
+                    <button id="calc1-check" class="px-4 py-2 ml-2 rounded-md mission-button align-top">Check</button>
+                    <button id="calc1-hint-btn" class="px-4 py-2 ml-2 rounded-md mission-button hint-button">Show Hint</button>
+                    <p id="calc1-feedback" class="mt-2"></p>
+                    <p id="calc1-hint" class="mt-2 text-orange-300 hidden">Hint: Find the total number of pixels, then the total number of bits. Remember there are 8 bits in a byte.</p>
+                </div>
+                <div class="p-4 bg-black/50 rounded-md">
+                    <p class="mb-2">A 10-second audio clip is recorded at 2000Hz with an 8-bit depth. What is its size in kilobytes (KB), assuming 1KB = 1000 bytes?</p>
+                    <input type="number" id="calc2-answer" class="p-2 bg-gray-800 rounded-md border border-orange-700">
+                    <button id="calc2-check" class="px-4 py-2 ml-2 rounded-md mission-button align-top">Check</button>
+                    <button id="calc2-hint-btn" class="px-4 py-2 ml-2 rounded-md mission-button hint-button">Show Hint</button>
+                    <p id="calc2-feedback" class="mt-2"></p>
+                    <p id="calc2-hint" class="mt-2 text-orange-300 hidden">Hint: File size (bits) = Sample Rate × Bit Depth × Duration. Then convert bits to bytes, and bytes to kilobytes.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Extension Missions -->
+        <section id="extension-missions" class="p-6 rounded-lg mission-section">
+            <h2 class="text-2xl md:text-3xl font-bold mission-title mb-4"><i class="fas fa-rocket mr-3"></i>Extension Mission: Transmission Time</h2>
+            <p class="mb-4">Your compression efforts have a direct impact on transmission time. Use this calculator to see how long it would take to send a file back to Earth.</p>
+            <div class="p-4 bg-black/50 rounded-md grid md:grid-cols-2 gap-6 items-center">
+                <div>
+                    <div class="mb-4">
+                        <label for="file-size-input" class="block mb-1">File Size (MB):</label>
+                        <input type="number" id="file-size-input" value="5" class="p-2 w-full bg-gray-800 rounded-md border border-orange-700">
+                    </div>
+                    <div class="mb-4">
+                        <label for="speed-input" class="block mb-1">Connection Speed (Mbps):</label>
+                        <input type="number" id="speed-input" value="1" class="p-2 w-full bg-gray-800 rounded-md border border-orange-700">
+                    </div>
+                    <button id="calculate-time-btn" class="w-full px-4 py-2 rounded-md mission-button">Calculate Time</button>
+                </div>
+                <div class="text-center">
+                    <p class="text-lg">Estimated Transmission Time:</p>
+                    <p id="transmission-time-output" class="text-4xl font-bold text-green-400">...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mission Debrief -->
+        <section id="mission-debrief" class="p-6 rounded-lg mission-section">
+            <h2 class="text-2xl md:text-3xl font-bold mission-title mb-4"><i class="fas fa-clipboard-check mr-3"></i>Mission Debrief</h2>
+            <p class="mb-4">Confirm you have met all mission objectives by reviewing the learning outcomes checklist.</p>
+            <div id="learning-outcomes" class="space-y-3">
+                <div class="checklist-item"><input type="checkbox" id="lo1" class="mr-3 h-5 w-5"><label for="lo1">I can explain why data compression is necessary.</label></div>
+                <div class="checklist-item"><input type="checkbox" id="lo2" class="mr-3 h-5 w-5"><label for="lo2">I can describe the trade-off between quality and file size in lossy compression.</label></div>
+                <div class="checklist-item"><input type="checkbox" id="lo3" class="mr-3 h-5 w-5"><label for="lo3">I can use Run-Length Encoding (RLE) to perform lossless compression.</label></div>
+                <div class="checklist-item"><input type="checkbox" id="lo4" class="mr-3 h-5 w-5"><label for="lo4">I can calculate the file size of images and audio.</label></div>
+            </div>
+            <button id="debrief-complete-btn" class="mt-6 px-6 py-2 rounded-md mission-button">Mark Mission as Complete</button>
+            <p id="debrief-feedback" class="mt-2"></p>
+        </section>
+
+
+        <!-- Mission Commendations (Achievements) -->
+        <section id="mission-commendations" class="p-6 rounded-lg mission-section">
+            <h2 class="text-2xl md:text-3xl font-bold mission-title mb-4"><i class="fas fa-award mr-3"></i>Mission Commendations</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-center achievement-gallery">
+                <div id="badge-pixel-pincher" class="p-4 bg-black/50 rounded-lg badge"><i class="fas fa-camera-retro text-4xl text-orange-500"></i><p class="mt-2 font-bold">Pixel Pincher</p></div>
+                <div id="badge-pattern-pro" class="p-4 bg-black/50 rounded-lg badge"><i class="fas fa-wave-square text-4xl text-orange-500"></i><p class="mt-2 font-bold">Pattern Pro</p></div>
+                <div id="badge-symbol-scientist" class="p-4 bg-black/50 rounded-lg badge"><i class="fas fa-atom text-4xl text-orange-500"></i><p class="mt-2 font-bold">Symbol Scientist</p></div>
+                <div id="badge-myth-buster" class="p-4 bg-black/50 rounded-lg badge"><i class="fas fa-ghost text-4xl text-orange-500"></i><p class="mt-2 font-bold">Myth Buster</p></div>
+                <div id="badge-calculations-expert" class="p-4 bg-black/50 rounded-lg badge"><i class="fas fa-calculator text-4xl text-orange-500"></i><p class="mt-2 font-bold">Calculations Expert</p></div>
+                 <div id="badge-transmission-expert" class="p-4 bg-black/50 rounded-lg badge"><i class="fas fa-rocket text-4xl text-orange-500"></i><p class="mt-2 font-bold">Transmission Expert</p></div>
+                <div id="badge-data-shrinker" class="p-4 bg-black/50 rounded-lg badge"><i class="fas fa-star text-4xl text-yellow-400"></i><p class="mt-2 font-bold">Data Shrinker</p></div>
+            </div>
+        </section>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- General State ---
+    const achievements = {
+        pixelPincher: false,
+        patternPro: false,
+        symbolScientist: false,
+        mythBuster: { count: 0, unlocked: false },
+        calculationsExpert: { count: 0, unlocked: false },
+        transmissionExpert: false,
+        dataShrinker: false
+    };
+
+    function unlockAchievement(name) {
+        let ach = achievements[name];
+        if (typeof ach === 'object' && ach.unlocked) return;
+        if (typeof ach === 'boolean' && ach) return;
+
+        if (typeof ach === 'boolean') {
+             achievements[name] = true;
+        } else if (typeof ach === 'object') {
+            ach.unlocked = true;
+        }
+        
+        const badgeEl = document.getElementById(`badge-${name.replace(/([A-Z])/g, '-$1').toLowerCase()}`);
+        if(badgeEl) {
+            badgeEl.classList.add('unlocked');
+            
+            const coreAchievements = ['pixelPincher', 'patternPro', 'symbolScientist', 'mythBuster', 'calculationsExpert', 'transmissionExpert'];
+            const allCoreUnlocked = coreAchievements.every(coreAch => {
+                const achievementState = achievements[coreAch];
+                return typeof achievementState === 'boolean' ? achievementState : achievementState.unlocked;
+            });
+
+            if (allCoreUnlocked && !achievements.dataShrinker) {
+                 unlockAchievement('dataShrinker');
+            }
+        }
+    }
+
+
+    // --- Mission Control: Warm-up ---
+    const reasonsPool = document.getElementById('reasons-pool');
+    const criticalReasons = document.getElementById('critical-reasons');
+    const checkWarmupBtn = document.getElementById('check-warmup');
+    const warmupFeedback = document.getElementById('warmup-feedback');
+    const correctReasons = ['reason1', 'reason2', 'reason4'];
+    let draggedItem = null;
+
+    reasonsPool.addEventListener('dragstart', e => {
+        if (e.target.classList.contains('draggable-item')) {
+            draggedItem = e.target;
+            setTimeout(() => e.target.style.display = 'none', 0);
+        }
+    });
+
+    reasonsPool.addEventListener('dragend', e => {
+        if (draggedItem) {
+            setTimeout(() => {
+                draggedItem.style.display = 'block';
+                draggedItem = null;
+            }, 0);
+        }
+    });
+
+    criticalReasons.addEventListener('dragover', e => e.preventDefault());
+    criticalReasons.addEventListener('dragenter', e => {
+        e.preventDefault();
+        criticalReasons.classList.add('drag-over');
+    });
+    criticalReasons.addEventListener('dragleave', () => criticalReasons.classList.remove('drag-over'));
+    criticalReasons.addEventListener('drop', e => {
+        e.preventDefault();
+        criticalReasons.classList.remove('drag-over');
+        if (draggedItem) {
+            criticalReasons.appendChild(draggedItem);
+            draggedItem.style.display = 'block';
+            draggedItem = null;
+        }
+    });
+
+    checkWarmupBtn.addEventListener('click', () => {
+        const droppedIds = Array.from(criticalReasons.children).map(child => child.id);
+        const isCorrect = correctReasons.every(id => droppedIds.includes(id)) && !droppedIds.includes('reason3');
+        if (isCorrect) {
+            warmupFeedback.textContent = 'Correct! Those are the primary reasons compression is vital for our mission.';
+            warmupFeedback.style.color = '#00ff00';
+        } else {
+            warmupFeedback.textContent = 'Not quite. Re-evaluate the reasons. Does compression improve the quality of the initial reading?';
+            warmupFeedback.style.color = '#ff4500';
+        }
+    });
+    
+    // --- Mission 1: Image Optimizer ---
+    const canvas = document.getElementById('imageCanvas');
+    const ctx = canvas.getContext('2d');
+    const resolutionSlider = document.getElementById('resolutionSlider');
+    const colorDepthSlider = document.getElementById('colorDepthSlider');
+    const resolutionValue = document.getElementById('resolutionValue');
+    const colorDepthValue = document.getElementById('colorDepthValue');
+    const binaryRep = document.getElementById('binary-representation');
+    const fileSizeEl = document.getElementById('file-size');
+    let originalImageCanvas = document.createElement('canvas'); // Store the original drawing here
+    let originalImageData = null;
+
+    function drawPlanetImage() {
+        const w = canvas.width;
+        const h = canvas.height;
+        originalImageCanvas.width = w;
+        originalImageCanvas.height = h;
+        const oCtx = originalImageCanvas.getContext('2d');
+
+        oCtx.fillStyle = '#1a1a2e';
+        oCtx.fillRect(0, 0, w, h);
+        for (let i = 0; i < 100; i++) {
+            oCtx.fillStyle = `rgba(255, 255, 255, ${Math.random()})`;
+            oCtx.beginPath();
+            oCtx.arc(Math.random() * w, Math.random() * h, Math.random() * 1.5, 0, Math.PI * 2);
+            oCtx.fill();
+        }
+        const planetRadius = w / 4;
+        const planetX = w / 2;
+        const planetY = h / 2;
+        const gradient = oCtx.createRadialGradient(planetX - planetRadius / 2, planetY - planetRadius / 2, planetRadius / 10, planetX, planetY, planetRadius);
+        gradient.addColorStop(0, '#ffcc00');
+        gradient.addColorStop(0.8, '#ff8c00');
+        gradient.addColorStop(1, '#d2691e');
+        oCtx.fillStyle = gradient;
+        oCtx.beginPath();
+        oCtx.arc(planetX, planetY, planetRadius, 0, Math.PI * 2);
+        oCtx.fill();
+        
+        originalImageData = oCtx.getImageData(0, 0, w, h);
+        updateImage();
+    }
+    
+    function updateImage() {
+        if (!originalImageCanvas.width) return;
+        const w = canvas.width;
+        const h = canvas.height;
+        const res = resolutionSlider.value / 100;
+        const depth = parseInt(colorDepthSlider.value);
+
+        const newW = Math.round(w * res);
+        const newH = Math.round(h * res);
+
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = newW;
+        tempCanvas.height = newH;
+
+        // ALWAYS draw from the original, full-quality canvas
+        tempCtx.drawImage(originalImageCanvas, 0, 0, w, h, 0, 0, newW, newH);
+        
+        ctx.imageSmoothingEnabled = false;
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(tempCanvas, 0, 0, newW, newH, 0, 0, w, h);
+        ctx.imageSmoothingEnabled = true;
+
+        const imageData = ctx.getImageData(0, 0, w, h);
+        const data = imageData.data;
+        const step = 256 / Math.pow(2, Math.min(depth, 8));
+
+        for (let i = 0; i < data.length; i += 4) {
+             data[i] = Math.round(data[i] / step) * step;
+             data[i + 1] = Math.round(data[i + 1] / step) * step;
+             data[i + 2] = Math.round(data[i + 2] / step) * step;
+        }
+        ctx.putImageData(imageData, 0, 0);
+        
+        resolutionValue.textContent = `${resolutionSlider.value}%`;
+        colorDepthValue.textContent = `${depth}-bit`;
+
+        if (originalImageData) {
+            const pixelData = originalImageData.data;
+            const r = pixelData[4 * (10 * w + 10)].toString(2).padStart(8, '0');
+            const g = pixelData[4 * (10 * w + 10) + 1].toString(2).padStart(8, '0');
+            const b = pixelData[4 * (10 * w + 10) + 2].toString(2).padStart(8, '0');
+            let binaryString = r + " " + g + " " + b;
+            if (depth < 24) binaryString = binaryString.substring(0, Math.ceil(depth * (26/24)));
+            binaryRep.textContent = binaryString;
+        }
+        
+        const fileSizeBits = (w * res) * (h * res) * depth;
+        const fileSizeMB = fileSizeBits / 8 / 1000 / 1000;
+        fileSizeEl.textContent = `${fileSizeMB.toFixed(2)} MB`;
+        if (fileSizeMB < 1.0) { unlockAchievement('pixelPincher'); }
+    }
+
+    resolutionSlider.addEventListener('input', updateImage);
+    colorDepthSlider.addEventListener('input', updateImage);
+
+    // --- Mission 2: RLE ---
+    const rleInput = document.getElementById('rle-input');
+    const compressBtn = document.getElementById('compress-rle');
+    const originalSizeEl = document.getElementById('original-size');
+    const rleOutputEl = document.getElementById('rle-output');
+    const compressedSizeEl = document.getElementById('compressed-size');
+    const savingsEl = document.getElementById('savings-percent');
+
+    function compressRLE(text) {
+        if (!text) return "";
+        let encoded = "";
+        let count = 1;
+        for (let i = 0; i < text.length; i++) {
+            if (text[i] === text[i + 1]) {
+                count++;
+            } else {
+                encoded += count + text[i];
+                count = 1;
+            }
+        }
+        return encoded;
+    }
+    
+    compressBtn.addEventListener('click', () => {
+        const originalText = rleInput.value;
+        const compressedText = compressRLE(originalText);
+        const originalBits = originalText.length * 8;
+        const compressedBits = compressedText.length * 8;
+        const savings = originalBits > 0 ? ((originalBits - compressedBits) / originalBits * 100) : 0;
+        originalSizeEl.textContent = `${originalBits}`;
+        rleOutputEl.textContent = compressedText;
+        compressedSizeEl.textContent = `${compressedBits}`;
+        savingsEl.textContent = `${savings.toFixed(1)}%`;
+        if (savings > 50) { unlockAchievement('patternPro'); }
+    });
+
+    const pixelGrid = document.getElementById('pixel-grid');
+    const gridSize = 8;
+    const pixels = [];
+
+    for (let i = 0; i < gridSize * gridSize; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'pixel-cell';
+        cell.dataset.index = i;
+        cell.dataset.active = "0";
+        pixelGrid.appendChild(cell);
+        pixels.push(cell);
+        cell.addEventListener('click', () => {
+            cell.classList.toggle('active');
+            cell.dataset.active = cell.classList.contains('active') ? "1" : "0";
+        });
+    }
+    pixelGrid.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+
+    document.getElementById('generate-share-code').addEventListener('click', () => {
+        const pixelString = pixels.map(p => p.dataset.active).join('');
+        const rleCode = compressRLE(pixelString.replace(/0/g, 'A').replace(/1/g, 'B'));
+        document.getElementById('share-code-output').value = rleCode;
+        unlockAchievement('symbolScientist');
+    });
+
+    document.getElementById('decode-share-code').addEventListener('click', () => {
+        const rleCode = document.getElementById('share-code-input').value;
+        try {
+            let decodedString = "";
+            let i = 0;
+            while(i < rleCode.length) {
+                let countStr = "";
+                while(!isNaN(parseInt(rleCode[i]))) {
+                    countStr += rleCode[i]; i++;
+                }
+                const count = parseInt(countStr);
+                const char = rleCode[i];
+                decodedString += char.repeat(count); i++;
+            }
+            const pixelString = decodedString.replace(/A/g, '0').replace(/B/g, '1');
+            if (pixelString.length !== gridSize * gridSize) { alert('Invalid code length.'); return; }
+            pixels.forEach((p, index) => {
+                if (pixelString[index] === "1") {
+                    p.classList.add('active'); p.dataset.active = "1";
+                } else {
+                    p.classList.remove('active'); p.dataset.active = "0";
+                }
+            });
+        } catch (error) { alert('Invalid RLE code format.'); }
+    });
+
+    // --- Mission 3: Audio ---
+    let audioReady = false;
+    const audioFeedback = document.getElementById('audio-feedback');
+    async function initAudio() {
+        if (audioReady) return;
+        await Tone.start();
+        audioReady = true; console.log("Audio ready.");
+    }
+    document.body.addEventListener('click', initAudio, { once: true });
+    const synth = new Tone.Synth({
+        oscillator: { type: 'fmsquare', modulationType: 'sawtooth', modulationIndex: 3, harmonicity: 3.4 },
+        envelope: { attack: 0.001, decay: 0.1, sustain: 0.1, release: 0.1 },
+    }).toDestination();
+    const crusher = new Tone.BitCrusher(4).toDestination();
+    const filter = new Tone.AutoFilter("4n").toDestination().start();
+    document.getElementById('play-wav').addEventListener('click', () => {
+        if (!audioReady) return;
+        synth.disconnect(); synth.toDestination();
+        synth.triggerAttackRelease("C2", "8n");
+        synth.triggerAttackRelease("G2", "8n", "+0.2");
+        synth.triggerAttackRelease("E3", "8n", "+0.4");
+        audioFeedback.textContent = "WAV (Lossless): Crystal clear signal. Largest file size.";
+    });
+    document.getElementById('play-mp3').addEventListener('click', () => {
+        if (!audioReady) return;
+        synth.disconnect(); synth.connect(crusher);
+        synth.triggerAttackRelease("C2", "8n");
+        synth.triggerAttackRelease("G2", "8n", "+0.2");
+        synth.triggerAttackRelease("E3", "8n", "+0.4");
+        audioFeedback.textContent = "MP3 (Lossy): Some quality loss (digital artifacts), but much smaller file.";
+    });
+    document.getElementById('play-flac').addEventListener('click', () => {
+        if (!audioReady) return;
+        synth.disconnect(); synth.connect(filter);
+        synth.triggerAttackRelease("C2", "8n");
+        synth.triggerAttackRelease("G2", "8n", "+0.2");
+        synth.triggerAttackRelease("E3", "8n", "+0.4");
+        audioFeedback.textContent = "FLAC (Lossless): Perfect quality like WAV, but compressed to save space without losing data.";
+    });
+
+    // --- Mission 4: Myths ---
+    const mythAnswers = { myth1: 'myth', myth2: 'myth', myth3: 'myth' };
+    const mythFeedbacks = {
+        myth1: "Correct! Re-compressing a compressed file (especially lossy) usually adds size or degrades quality, it doesn't shrink it further.",
+        myth2: "Correct! For a simple image, lossless (like PNG) can be smaller. Lossy (like JPEG) excels at complex photos by discarding data.",
+        myth3: "Correct! Deleting data is just information loss. Compression reorganizes data to represent it with fewer bits."
+    };
+    document.querySelectorAll('.myth-button').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const mythId = `myth${e.target.dataset.myth}`;
+            const userAnswer = e.target.dataset.answer;
+            const feedbackEl = document.getElementById(`${mythId}-feedback`);
+            if (userAnswer === mythAnswers[mythId]) {
+                feedbackEl.textContent = mythFeedbacks[mythId];
+                feedbackEl.style.color = '#00ff00';
+                if (!achievements.mythBuster.unlocked) {
+                    achievements.mythBuster.count++;
+                    if (achievements.mythBuster.count >= 3) {
+                        achievements.mythBuster.unlocked = true;
+                        unlockAchievement('mythBuster');
+                    }
+                }
+            } else {
+                feedbackEl.textContent = "Incorrect. Try again.";
+                feedbackEl.style.color = '#ff4500';
+            }
+        });
+    });
+
+    // --- Mission 5: Calculations ---
+    const calcChecks = {
+        calc1: { answer: 1250, el: document.getElementById('calc1-check') },
+        calc2: { answer: 20, el: document.getElementById('calc2-check') }
+    };
+    Object.keys(calcChecks).forEach(key => {
+        calcChecks[key].el.addEventListener('click', () => {
+            const answerEl = document.getElementById(`${key}-answer`);
+            const feedbackEl = document.getElementById(`${key}-feedback`);
+            const hintBtn = document.getElementById(`${key}-hint-btn`);
+            if (parseInt(answerEl.value) === calcChecks[key].answer) {
+                feedbackEl.textContent = "Correct! Transmission authorized.";
+                feedbackEl.style.color = '#00ff00';
+                hintBtn.style.display = 'none';
+                if(!achievements.calculationsExpert.unlocked) {
+                    achievements.calculationsExpert.count++;
+                    if(achievements.calculationsExpert.count >= 2) {
+                        achievements.calculationsExpert.unlocked = true;
+                        unlockAchievement('calculationsExpert');
+                    }
+                }
+            } else {
+                feedbackEl.textContent = "Calculation error. Re-check your formula. Mission Control cannot authorize transmission.";
+                feedbackEl.style.color = '#ff4500';
+                hintBtn.style.display = 'inline-block';
+            }
+        });
+    });
+
+    document.querySelectorAll('.hint-button').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const hintId = `${e.target.id.replace('-btn', '')}-hint`;
+            document.getElementById(hintId).classList.remove('hidden');
+        });
+    });
+
+    // --- Extension Mission: Transmission Time ---
+    const calculateTimeBtn = document.getElementById('calculate-time-btn');
+    calculateTimeBtn.addEventListener('click', () => {
+        const fileSizeMB = parseFloat(document.getElementById('file-size-input').value);
+        const speedMbps = parseFloat(document.getElementById('speed-input').value);
+        const timeOutput = document.getElementById('transmission-time-output');
+        
+        if (fileSizeMB > 0 && speedMbps > 0) {
+            const fileSizeMbits = fileSizeMB * 8;
+            const timeSeconds = fileSizeMbits / speedMbps;
+            
+            let output = "";
+            if (timeSeconds < 60) {
+                output = `${timeSeconds.toFixed(1)} seconds`;
+            } else if (timeSeconds < 3600) {
+                output = `${(timeSeconds / 60).toFixed(1)} minutes`;
+            } else {
+                output = `${(timeSeconds / 3600).toFixed(1)} hours`;
+            }
+            timeOutput.textContent = output;
+            unlockAchievement('transmissionExpert');
+        } else {
+            timeOutput.textContent = "Invalid input";
+        }
+    });
+
+    // --- Mission Debrief ---
+    const debriefCompleteBtn = document.getElementById('debrief-complete-btn');
+    const debriefFeedback = document.getElementById('debrief-feedback');
+    debriefCompleteBtn.addEventListener('click', () => {
+        const outcomes = document.querySelectorAll('#learning-outcomes input[type="checkbox"]');
+        const allChecked = Array.from(outcomes).every(cb => cb.checked);
+        if (allChecked) {
+            debriefFeedback.textContent = "Mission successful. All objectives met. Well done, Specialist.";
+            debriefFeedback.style.color = '#00ff00';
+        } else {
+            debriefFeedback.textContent = "Review the objectives to ensure all knowledge has been acquired.";
+             debriefFeedback.style.color = '#ff8c00';
+        }
+    });
+
+
+    // --- Initializations ---
+    drawPlanetImage();
+});
+</script>
+
+</body>
+</html>

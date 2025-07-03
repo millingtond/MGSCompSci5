@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCSE CS: IP & MAC Addresses</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Open+Sans&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Dyslexia-friendly font */
+        .font-dyslexia {
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        /* High contrast mode */
+        .high-contrast {
+            background-color: #000;
+            color: #fff;
+        }
+        .high-contrast .bg-white { background-color: #111 !important; }
+        .high-contrast .bg-gray-100 { background-color: #222 !important; }
+        .high-contrast .bg-sky-100 { background-color: #003366 !important; }
+        .high-contrast .text-gray-800 { color: #fff !important; }
+        .high-contrast .text-gray-600 { color: #ccc !important; }
+        .high-contrast .text-sky-800 { color: #99ccff !important; }
+        .high-contrast .border-gray-300 { border-color: #777 !important; }
+        .high-contrast .shadow-lg { box-shadow: 0 10px 15px -3px rgba(255, 255, 255, 0.1), 0 4px 6px -2px rgba(255, 255, 255, 0.05) !important; }
+        .high-contrast button {
+            border: 2px solid #fff !important;
+        }
+        .high-contrast .section-nav a.active {
+            background-color: #99ccff !important;
+            color: #000 !important;
+        }
+        
+        /* General element styling */
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        .drop-zone {
+            min-height: 100px;
+            border: 2px dashed #ccc;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .drop-zone.drag-over {
+            background-color: #e0f2fe;
+            border-color: #38bdf8;
+        }
+        .drag-item {
+            cursor: grab;
+            user-select: none;
+        }
+        .drag-item.dragging {
+            opacity: 0.5;
+        }
+        .drop-zone .drag-item {
+            background-color: #60a5fa;
+            color: white;
+        }
+        .drop-zone .drag-item.incorrect {
+            background-color: #f87171;
+        }
+         .drop-zone .drag-item.correct {
+            background-color: #4ade80;
+        }
+
+        /* Achievement popup */
+        #achievement-popup {
+            position: fixed;
+            bottom: -150px;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: bottom 0.5s ease-in-out;
+            z-index: 1000;
+        }
+        #achievement-popup.show {
+            bottom: 20px;
+        }
+
+        /* Drawing Canvas */
+        #drawing-canvas {
+            touch-action: none;
+            cursor: crosshair;
+        }
+        
+        /* Particle effects container */
+        #particle-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Feedback Button */
+        #feedback-button {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            z-index: 100;
+        }
+        
+        /* Writing Scorer */
+        #scoreCircle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            transition: border-color 0.5s, color 0.5s;
+        }
+
+        /* Animation for simulation steps */
+        .sim-step {
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            max-height: 0;
+            overflow: hidden;
+        }
+        .sim-step.visible {
+            opacity: 1;
+            max-height: 500px; /* Adjust as needed */
+        }
+        /* Styles from embedded file for Task 1 */
+        #packet {
+            transition: all 1s ease-in-out;
+            z-index: 10;
+        }
+        .highlight-box {
+            box-shadow: 0 0 15px 4px rgba(59, 130, 246, 0.6); /* blue-500 */
+        }
+        .final-device {
+             box-shadow: 0 0 15px 4px rgba(34, 197, 94, 0.7); /* green-500 */
+        }
+        .quiz-option:hover {
+            background-color: #e0e7ff; /* indigo-100 */
+        }
+        .control-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .control-btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 text-base">
+
+    <div id="particle-container"></div>
+
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-2">
+            <div class="flex justify-between items-center">
+                <h1 class="text-xl md:text-2xl font-bold text-sky-800">GCSE CS: IP & MAC Addresses</h1>
+                <div class="flex items-center space-x-4">
+                    <div id="user-stats" class="text-sm font-semibold">
+                        <span>XP: <span id="xp-value">0</span></span> | 
+                        <span>Level: <span id="level-value">1</span></span>
+                    </div>
+                    <div class="text-xs">
+                        <label for="font-size-slider" class="block">Font Size</label>
+                        <input type="range" id="font-size-slider" min="12" max="24" value="16" class="w-20">
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-between items-center mt-2 flex-wrap">
+                 <nav class="section-nav text-sm font-medium">
+                    <a href="#home" class="p-2 rounded-md hover:bg-sky-100 transition-colors">Home</a>
+                    <a href="#starter" class="p-2 rounded-md hover:bg-sky-100 transition-colors">Starter</a>
+                    <a href="#task1" class="p-2 rounded-md hover:bg-sky-100 transition-colors">Task 1</a>
+                    <a href="#task2" class="p-2 rounded-md hover:bg-sky-100 transition-colors">Task 2</a>
+                    <a href="#task3" class="p-2 rounded-md hover:bg-sky-100 transition-colors">Task 3</a>
+                    <a href="#quiz" class="p-2 rounded-md hover:bg-sky-100 transition-colors">Quiz</a>
+                    <a href="#exam" class="p-2 rounded-md hover:bg-sky-100 transition-colors">Exam Practice</a>
+                    <a href="#extension" class="p-2 rounded-md hover:bg-sky-100 transition-colors">Extension</a>
+                </nav>
+                <div class="flex items-center space-x-2 text-sm mt-2 md:mt-0">
+                    <button id="contrast-toggle" class="px-2 py-1 border-2 border-gray-600 rounded-md">High Contrast</button>
+                    <button id="font-toggle" class="px-2 py-1 border-2 border-gray-600 rounded-md">Dyslexia Font</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-6">
+        
+        <section id="home" class="page active">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">Welcome!</h2>
+                <p class="mb-4">This interactive worksheet will guide you through the key concepts of IP and MAC addresses, a fundamental part of networking in computer science.</p>
+                <div class="bg-sky-100 p-4 rounded-lg">
+                    <h3 class="font-bold text-lg text-sky-800">Learning Outcomes</h3>
+                    <p class="mt-2">By the end of this lesson, you will be able to:</p>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li>Define the purpose of an IP and a MAC address.</li>
+                        <li>Explain the key differences between them.</li>
+                        <li>Describe the structure of IPv4 and IPv6 addresses.</li>
+                        <li>Understand why the world is moving from IPv4 to IPv6.</li>
+                    </ul>
+                </div>
+                <div id="achievements-display" class="mt-6">
+                    <h3 class="font-bold text-lg">Your Achievements</h3>
+                    <div id="achievements-list" class="flex flex-wrap gap-2 mt-2">
+                        <p class="text-gray-500">You haven't earned any achievements yet. Let's get started!</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="starter" class="page">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-1">Starter Activity: Address Sorting</h2>
+                <p class="text-gray-600 mb-4">Let's see what you already know. Drag each characteristic to the correct address type.</p>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="font-bold mb-2">Characteristics</h3>
+                        <div id="drag-source" class="space-y-2">
+                            </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <h3 class="font-bold text-center mb-2">IP Address</h3>
+                            <div id="drop-ip" data-type="ip" class="drop-zone p-2 rounded-lg space-y-2"></div>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-center mb-2">MAC Address</h3>
+                            <div id="drop-mac" data-type="mac" class="drop-zone p-2 rounded-lg space-y-2"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-end">
+                    <button id="starter-reset" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Reset</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="task1" class="page">
+             <div class="w-full max-w-4xl bg-white rounded-2xl shadow-xl p-6 md:p-8 mx-auto">
+                <div id="main-content-sim">
+                    <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">The Journey of a Data Packet</h1>
+                    <p class="text-center text-gray-600 mb-6">Based on our guide, let's see how IP and MAC addresses work together.</p>
+        
+                    <div id="simulation-area" class="relative bg-gray-50 h-[400px] md:h-[350px] border-2 border-gray-200 rounded-xl p-4 flex items-center justify-between">
+                        <div id="internet" class="text-center w-1/4">
+                            <svg class="w-20 h-20 text-blue-500 mx-auto" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM6.343 6.343a.5.5 0 01.707 0L10 9.293l2.95-2.95a.5.5 0 11.707.707L10.707 10l2.95 2.95a.5.5 0 01-.707.707L10 10.707l-2.95 2.95a.5.5 0 01-.707-.707L9.293 10 6.343 7.05a.5.5 0 010-.707z"></path></svg>
+                            <p class="font-bold mt-2">The Internet</p>
+                        </div>
+        
+                        <div id="router" class="text-center w-1/4">
+                             <svg class="w-16 h-16 md:w-20 md:h-20 mx-auto text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.5 16.5l-1.5 1.5m6-15l-1.5-1.5m-3 0l1.5 1.5m0 12l1.5 1.5M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>
+                            <p class="font-bold mt-2">Your Router</p>
+                            <p class="text-xs font-mono">IP: 192.168.1.1</p>
+                        </div>
+                        
+                        <div id="local-network" class="text-center w-1/2 h-full bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col justify-center items-center">
+                            <p class="font-bold mb-4">Your Local Network (The House)</p>
+                            <div class="space-y-3">
+                                <div id="device-1" class="device p-1 rounded-md text-xs font-mono text-left">💻 Laptop - MAC: 00:1A:2B:3C:4D:5E</div>
+                                <div id="device-2" class="device p-1 rounded-md text-xs font-mono text-left">📱 Phone - MAC: F6:E5:D4:C3:B2:A1</div>
+                                <div id="device-3" class="device p-1 rounded-md text-xs font-mono text-left">📺 TV - MAC: 98:76:54:32:10:FE</div>
+                            </div>
+                        </div>
+        
+                        <div id="packet" class="absolute top-1/2 -translate-y-1/2 left-10 w-48 bg-yellow-300 border-2 border-yellow-500 rounded-lg p-2 text-center text-xs shadow-lg">
+                            <p class="font-bold">Data Packet ✉️</p>
+                            <p>To IP: <span id="packet-ip" class="font-mono">192.168.1.1</span></p>
+                            <p>To MAC: <span id="packet-mac" class="font-mono">???</span></p>
+                        </div>
+                    </div>
+        
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg mt-6 min-h-[80px]">
+                        <p id="explanation-text" class="text-lg text-blue-800"></p>
+                    </div>
+                    
+                    <div id="controls" class="mt-6 flex justify-center space-x-4">
+                        <button id="sim-next-btn" class="control-btn bg-blue-600 text-white font-bold py-3 px-8 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300">
+                            Start
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="quiz-section-sim" class="hidden">
+                     <h2 class="text-2xl font-bold text-center text-gray-900 mb-6">Quick Quiz!</h2>
+                     <div id="quiz-content-sim" class="max-w-2xl mx-auto">
+                         <div class="mb-6">
+                             <p class="font-semibold text-lg mb-3">1. Which address is like a permanent, unique serial number for a device?</p>
+                             <div class="space-y-2">
+                                 <label class="flex items-center p-3 border rounded-lg cursor-pointer quiz-option"><input type="radio" name="q1" value="IP" class="mr-3"> IP Address</label>
+                                 <label class="flex items-center p-3 border rounded-lg cursor-pointer quiz-option"><input type="radio" name="q1" value="MAC" class="mr-3"> MAC Address</label>
+                             </div>
+                         </div>
+                         <div class="mb-6">
+                             <p class="font-semibold text-lg mb-3">2. Which address is like a temporary house address and changes when you join a new network?</p>
+                             <div class="space-y-2">
+                                 <label class="flex items-center p-3 border rounded-lg cursor-pointer quiz-option"><input type="radio" name="q2" value="IP" class="mr-3"> IP Address</label>
+                                 <label class="flex items-center p-3 border rounded-lg cursor-pointer quiz-option"><input type="radio" name="q2" value="MAC" class="mr-3"> MAC Address</label>
+                             </div>
+                         </div>
+                     </div>
+                     <div class="mt-6 flex justify-center">
+                         <button id="submit-quiz-btn" class="control-btn bg-green-600 text-white font-bold py-3 px-8 rounded-lg shadow-md hover:bg-green-700">Submit</button>
+                     </div>
+                </div>
+        
+                <div id="result-section-sim" class="hidden text-center">
+                     <h2 class="text-2xl font-bold text-gray-900 mb-4">Quiz Result</h2>
+                     <p id="result-text" class="text-xl mb-6 font-semibold"></p>
+                     <button id="restart-btn" class="control-btn bg-blue-600 text-white font-bold py-3 px-8 rounded-lg shadow-md hover:bg-blue-700">Restart</button>
+                </div>
+        
+            </div>
+        
+            <script>
+            // This script is self-contained for the simulation in Task 1.
+            // It runs when the Task 1 section becomes active.
+            (() => {
+                // Check if the simulation elements are on the page before running
+                const simContainer = document.getElementById('main-content-sim');
+                if (!simContainer) return;
+
+                const packet = document.getElementById('packet');
+                const explanationText = document.getElementById('explanation-text');
+                const simNextBtn = document.getElementById('sim-next-btn');
+                const routerEl = document.getElementById('router');
+                const localNetworkEl = document.getElementById('local-network');
+                const targetDevice = document.getElementById('device-2');
+                const packetMac = document.getElementById('packet-mac');
+        
+                const mainContent = document.getElementById('main-content-sim');
+                const quizSection = document.getElementById('quiz-section-sim');
+                const resultSection = document.getElementById('result-section-sim');
+                const submitQuizBtn = document.getElementById('submit-quiz-btn');
+                const restartBtn = document.getElementById('restart-btn');
+        
+                let step = 0;
+        
+                const steps = [
+                    { // 0: Initial
+                        explanation: "Click 'Start' to see how a data packet finds your phone.",
+                        action: () => {
+                            simNextBtn.textContent = 'Start';
+                        }
+                    },
+                    { // 1: Packet travels to Router
+                        explanation: "<strong>Step 1:</strong> The packet travels across the internet to your router using the public IP address. This is like a letter arriving at your house's postbox.",
+                        action: () => {
+                            simNextBtn.textContent = 'Next';
+                            packet.style.left = 'calc(50% - 8rem)'; // Move to router
+                            routerEl.classList.add('highlight-box');
+                        }
+                    },
+                    { // 2: Router looks for MAC
+                        explanation: "<strong>Step 2:</strong> The router now needs to find the specific device. It looks for the phone's unique MAC address inside the local network.",
+                        action: () => {
+                            routerEl.classList.remove('highlight-box');
+                            localNetworkEl.classList.add('highlight-box');
+                            packetMac.textContent = "F6:E5:D4:C3:B2:A1";
+                            packetMac.classList.add('text-green-600', 'font-bold');
+                        }
+                    },
+                    { // 3: Packet delivered to device
+                        explanation: "<strong>Step 3:</strong> Found it! The packet is delivered to the phone using its permanent MAC address. This is like finding the right person in the house.",
+                        action: () => {
+                            localNetworkEl.classList.remove('highlight-box');
+                            targetDevice.classList.add('final-device');
+                            packet.style.left = `calc(75% - 2rem)`; // Move to device area
+                            simNextBtn.textContent = 'Take Quiz';
+                        }
+                    },
+                    { // 4: Show Quiz
+                        action: () => {
+                           mainContent.classList.add('hidden');
+                           quizSection.classList.remove('hidden');
+                        }
+                    }
+                ];
+        
+                function reset() {
+                    step = 0;
+                    
+                    packet.style.left = '40px';
+                    routerEl.classList.remove('highlight-box');
+                    localNetworkEl.classList.remove('highlight-box');
+                    targetDevice.classList.remove('final-device');
+                    packetMac.textContent = '???';
+                    packetMac.classList.remove('text-green-600', 'font-bold');
+                    
+                    mainContent.classList.remove('hidden');
+                    quizSection.classList.add('hidden');
+                    resultSection.classList.add('hidden');
+                    
+                    explanationText.innerHTML = steps[0].explanation;
+                    simNextBtn.textContent = 'Start';
+                }
+        
+                simNextBtn.addEventListener('click', () => {
+                    step++;
+                    if (step < steps.length) {
+                        const currentStep = steps[step];
+                        explanationText.innerHTML = currentStep.explanation;
+                        currentStep.action();
+                    }
+                });
+        
+                submitQuizBtn.addEventListener('click', () => {
+                    const q1Answer = document.querySelector('input[name="q1"]:checked');
+                    const q2Answer = document.querySelector('input[name="q2"]:checked');
+                    let score = 0;
+                    if(q1Answer && q1Answer.value === 'MAC') score++;
+                    if(q2Answer && q2Answer.value === 'IP') score++;
+        
+                    const resultText = document.getElementById('result-text');
+                    if (score === 2) {
+                        resultText.textContent = "Perfect score! You've got it. 👍";
+                        resultText.className = "text-xl mb-6 font-semibold text-green-600";
+                    } else {
+                         resultText.textContent = `You got ${score}/2. Try the simulation again to solidify the ideas!`;
+                         resultText.className = "text-xl mb-6 font-semibold text-yellow-600";
+                    }
+                    
+                    quizSection.classList.add('hidden');
+                    resultSection.classList.remove('hidden');
+                });
+        
+                restartBtn.addEventListener('click', reset);
+        
+                // Initialize
+                reset();
+            })();
+            </script>
+        </section>
+
+        <section id="task2" class="page">
+             <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-1">Task 2: Deep Dive on IPv4</h2>
+                <p class="text-gray-600 mb-4">IPv4 addresses have been the standard for decades. Let's look at their structure.</p>
+                <div class="bg-sky-100 p-4 rounded-lg mb-6">
+                    <h3 class="font-bold text-lg text-sky-800">Key Facts: IPv4</h3>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li>Uses a **32-bit** (4-byte) address.</li>
+                        <li>Written as four **denary** numbers separated by dots (e.g., `192.168.1.1`).</li>
+                        <li>Each number can be from **0 to 255**.</li>
+                        <li>This allows for 2<sup>32</sup> (about **4.3 billion**) unique addresses. We have now run out!</li>
+                    </ul>
+                </div>
+                
+                <div id="ipv4-validator-quiz">
+                    <h3 class="font-bold text-lg">Activity: Is this IPv4 address valid?</h3>
+                    <p id="ipv4-question" class="font-mono text-xl my-4 p-3 bg-gray-100 rounded text-center"></p>
+                    <div id="ipv4-feedback" class="text-center mb-4 font-semibold"></div>
+                    <div class="flex justify-center gap-4">
+                        <button data-answer="valid" class="ipv4-answer-btn px-6 py-3 bg-green-500 text-white rounded-lg text-lg hover:bg-green-600">Valid</button>
+                        <button data-answer="invalid" class="ipv4-answer-btn px-6 py-3 bg-red-500 text-white rounded-lg text-lg hover:bg-red-600">Invalid</button>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                     <h3 class="font-bold text-lg">Calculation Corner</h3>
+                     <p class="mb-2">The total number of IPv4 addresses comes from 2 to the power of the number of bits. Use the canvas below to write out the calculation (e.g., X<sup>Y</sup>).</p>
+                     <canvas id="drawing-canvas" class="border-2 border-gray-400 rounded-lg w-full h-48 bg-white"></canvas>
+                     <button id="clear-canvas" class="mt-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Clear Canvas</button>
+                </div>
+                 <div class="mt-4 flex justify-end">
+                    <button id="task2-reset" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Reset</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="task3" class="page">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-1">Task 3: The Future is IPv6</h2>
+                <p class="text-gray-600 mb-4">With IPv4 addresses exhausted, IPv6 was created. It has a much larger address space.</p>
+                 <div class="bg-sky-100 p-4 rounded-lg mb-6">
+                    <h3 class="font-bold text-lg text-sky-800">Key Facts: IPv6</h3>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li>Uses a **128-bit** (16-byte) address.</li>
+                        <li>Written as eight groups of four **hexadecimal** digits, separated by colons.</li>
+                        <li>Example: `2001:0db8:85a3:0000:0000:8a2e:0370:7334`</li>
+                        <li>A leading block of zeros in a group can be removed. A double colon (`::`) can replace **one** consecutive group of all-zero groups to shorten the address.</li>
+                    </ul>
+                </div>
+                
+                <div id="ipv6-compression-quiz">
+                     <h3 class="font-bold text-lg">Activity: Compress the IPv6 Address</h3>
+                     <p class="mb-2">Given the following IPv6 address, select the correctly compressed version.</p>
+                     <p class="font-mono text-lg my-2 p-3 bg-gray-100 rounded text-center">2001:0db8:0000:0000:1234:0000:0000:5678</p>
+                     <div id="ipv6-options" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        </div>
+                     <div id="ipv6-feedback" class="mt-4 font-semibold"></div>
+                </div>
+                 <div class="mt-4 flex justify-end">
+                    <button id="task3-reset" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Reset</button>
+                </div>
+            </div>
+        </section>
+        
+        <section id="quiz" class="page">
+             <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">Final Knowledge Check</h2>
+                <div id="final-quiz-container">
+                    <div id="quiz-question-area" class="mb-4">
+                        <p id="quiz-question-text" class="text-lg font-semibold mb-4"></p>
+                        <div id="quiz-options-area" class="space-y-3"></div>
+                    </div>
+                    <div id="quiz-feedback" class="font-bold mb-4"></div>
+                    <div class="flex justify-between items-center">
+                        <p id="quiz-progress"></p>
+                        <button id="quiz-next-btn" class="px-5 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 hidden">Next Question</button>
+                    </div>
+                </div>
+                 <div id="quiz-results-area" class="hidden">
+                     <h3 class="text-xl font-bold">Quiz Complete!</h3>
+                     <p class="text-2xl my-4">Your score: <span id="quiz-score"></span></p>
+                     <button id="quiz-reset" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Try Again</button>
+                 </div>
+            </div>
+        </section>
+
+        <section id="exam" class="page">
+             <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">Exam-Style Practice</h2>
+                <p class="text-gray-600 mb-4">Apply your knowledge to these questions, similar to what you might see in an exam.</p>
+
+                <div class="mb-8">
+                    <p class="font-bold">Question 1: Compare two differences between MAC addresses and IP addresses. [4 marks]</p>
+                    <textarea id="exam-q1" rows="5" class="w-full mt-2 p-2 border border-gray-300 rounded-lg" placeholder="Write your first difference here...&#10;And your second difference here..."></textarea>
+                    <div class="flex justify-between items-start mt-2">
+                        <div>
+                            <label for="q1-marks" class="text-sm font-semibold">Self-Assessed Marks:</label>
+                            <input type="number" id="q1-marks" min="0" max="4" class="w-16 p-1 border border-gray-300 rounded"> / 4
+                        </div>
+                        <button data-question="q1" class="show-mark-scheme-btn px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 disabled:bg-gray-400" disabled>Show Mark Scheme</button>
+                    </div>
+                    <div id="mark-scheme-q1" class="hidden mt-4 bg-gray-100 p-4 rounded-lg">
+                        <h4 class="font-bold">Mark Scheme:</h4>
+                        <ul class="list-disc list-inside">
+                            <li>IP addresses are logical/can be changed; MAC addresses are physical/fixed. (1)</li>
+                            <li>IP addresses are configured by software; MAC addresses are set in hardware. (1)</li>
+                            <li>IP addresses are used for routing between networks (WAN); MAC addresses are used for communication within a single network (LAN). (1)</li>
+                            <li>IPv4 is 32-bit/4-bytes; MAC is 48-bit/6-bytes. (1)</li>
+                            <li>IP addresses are written in denary; MAC addresses are written in hexadecimal. (1)</li>
+                            <li>Award one mark for each valid, distinct point, up to a maximum of four.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="font-bold">Question 2: A company is running out of IPv4 addresses for its new smart devices. Explain why IPv6 is a more suitable alternative. [3 marks]</p>
+                    
+                    <div id="writingScorer" class="mt-2 p-4 border rounded-lg">
+                        <div>
+                            <textarea id="studentAnswer" rows="6" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Start your explanation here..."></textarea>
+                            <input type="hidden" id="keywords" value="IPv6,128-bit,addresses,more,IPv4,32-bit,exhaustion,billion">
+                             <div class="flex justify-between items-start mt-2">
+                                <div>
+                                    <label for="q2-marks" class="text-sm font-semibold">Self-Assessed Marks:</label>
+                                    <input type="number" id="q2-marks" min="0" max="3" class="w-16 p-1 border border-gray-300 rounded"> / 3
+                                </div>
+                                <button id="analyzeBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400" disabled>Check My Writing</button>
+                            </div>
+                        </div>
+                        <div id="resultsDashboard" style="display: none;" class="mt-4">
+                            <h3 class="font-bold text-lg mb-2">Your Writing Feedback</h3>
+                            <div class="grid md:grid-cols-3 gap-4">
+                                <div class="flex flex-col items-center justify-center bg-gray-100 p-4 rounded-lg">
+                                    <p class="font-semibold">Overall Score:</p>
+                                    <div id="scoreCircle">
+                                        <span id="scoreValue">0</span>
+                                    </div>
+                                </div>
+                                <div class="bg-green-100 p-4 rounded-lg">
+                                  <h4 class="font-bold text-green-800">Successes:</h4>
+                                  <ul id="successList" class="list-disc list-inside mt-2 text-green-700"></ul>
+                                </div>
+                                <div class="bg-red-100 p-4 rounded-lg">
+                                  <h4 class="font-bold text-red-800">Areas for Improvement:</h4>
+                                  <ul id="improvementList" class="list-disc list-inside mt-2 text-red-700"></ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="mark-scheme-q2" class="hidden mt-4 bg-gray-100 p-4 rounded-lg">
+                            <h4 class="font-bold">Mark Scheme:</h4>
+                            <ul class="list-disc list-inside">
+                                <li>IPv6 uses 128-bit addresses compared to IPv4's 32-bit addresses. (1)</li>
+                                <li>This provides a much larger number of available addresses... (1)</li>
+                                <li>...solving the problem of IPv4 address exhaustion. (1)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                 <div class="mt-4 flex justify-end">
+                    <button id="exam-reset" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">Reset</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="extension" class="page">
+             <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">Extension & Real World Context</h2>
+                 <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="font-bold text-lg">Extension Activity</h3>
+                        <p class="mt-2 mb-2">Beyond the spec: What is **NAT (Network Address Translation)**? Research how it allows a single public IP address to be shared by many devices on a private network, and how this helped to delay IPv4 exhaustion.</p>
+                        <textarea id="extension-answer" rows="6" class="w-full mt-2 p-2 border border-gray-300 rounded-lg" placeholder="Write your findings here..."></textarea>
+                        <button id="submit-extension" class="mt-2 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700">Submit</button>
+                    </div>
+                    <div class="bg-sky-100 p-4 rounded-lg">
+                        <h3 class="font-bold text-lg text-sky-800">Real World & Common Mistakes</h3>
+                        <p class="mt-2"><strong>Real World:</strong> Every time you visit a website, your device does a DNS lookup to find the site's IP address. But on your home WiFi, your router uses MAC addresses to make sure the data gets to *your* phone and not your sister's tablet!</p>
+                        <p class="mt-4"><strong>Common Mistake:</strong> Thinking a MAC address is a type of IP address. They are separate systems that work together. A good analogy is that your IP address is like your home address (which can change if you move), while your MAC address is like your National Insurance number (which is fixed to you for life).</p>
+                    </div>
+                 </div>
+                 
+                 <div class="mt-8">
+                     <h3 class="font-bold text-lg">Further Learning</h3>
+                     <p class="mb-2">Explore these topics further with some video resources.</p>
+                     <div class="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div class="bg-gray-200 h-40 rounded-lg flex items-center justify-center font-semibold text-gray-500">Placeholder: What is an IP Address?</div>
+                        <div class="bg-gray-200 h-40 rounded-lg flex items-center justify-center font-semibold text-gray-500">Placeholder: How Routers Work</div>
+                        <div class="bg-gray-200 h-40 rounded-lg flex items-center justify-center font-semibold text-gray-500">Placeholder: IPv4 vs IPv6 Explained</div>
+                     </div>
+                 </div>
+            </div>
+        </section>
+
+
+        <div class="mt-8 flex justify-between">
+            <button id="prev-btn" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Previous</button>
+            <button id="next-btn" class="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700">Next</button>
+        </div>
+    </main>
+    
+    <div id="achievement-popup" class="bg-gray-800 text-white p-4 rounded-lg shadow-2xl flex items-center space-x-4">
+        <span class="text-3xl">🏆</span>
+        <div>
+            <h4 class="font-bold">Achievement Unlocked!</h4>
+            <p id="achievement-text"></p>
+        </div>
+    </div>
+    
+    <div id="shame-message" class="hidden fixed top-5 left-1/2 -translate-x-1/2 bg-red-600 text-white p-3 rounded-lg shadow-lg z-50">
+        Pasting is disabled. Please type your own answers.
+    </div>
+
+    <button id="feedback-button" class="px-3 py-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-transform hover:scale-110">
+        ?
+    </button>
+    <div id="feedback-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-11/12 md:w-1/2">
+            <h2 class="text-xl font-bold mb-4">Submit Feedback</h2>
+            <p class="text-sm text-gray-600 mb-2">Found a bug or have a suggestion? Let us know! Your feedback will include information about the current page you are on.</p>
+            <textarea id="feedback-text" rows="5" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Describe the issue or your idea..."></textarea>
+            <div class="mt-4 flex justify-end gap-4">
+                <button id="feedback-cancel" class="px-4 py-2 bg-gray-300 rounded-lg">Cancel</button>
+                <button id="feedback-send" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Send</button>
+            </div>
+        </div>
+    </div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- STATE MANAGEMENT ---
+    const state = {
+        xp: 0,
+        level: 1,
+        achievements: new Set(),
+        completedTasks: new Set(),
+        currentPageIndex: 0,
+        pages: Array.from(document.querySelectorAll('.page')).map(p => p.id),
+        xpPerLevel: 250
+    };
+    
+    // --- DOM ELEMENT SELECTORS ---
+    const elements = {
+        xpValue: document.getElementById('xp-value'),
+        levelValue: document.getElementById('level-value'),
+        achievementsList: document.getElementById('achievements-list'),
+        achievementPopup: document.getElementById('achievement-popup'),
+        achievementText: document.getElementById('achievement-text'),
+        particleContainer: document.getElementById('particle-container'),
+        shameMessage: document.getElementById('shame-message'),
+        body: document.body,
+        fontSizeSlider: document.getElementById('font-size-slider'),
+        contrastToggle: document.getElementById('contrast-toggle'),
+        fontToggle: document.getElementById('font-toggle'),
+        navLinks: document.querySelectorAll('.section-nav a'),
+        prevBtn: document.getElementById('prev-btn'),
+        nextBtn: document.getElementById('next-btn'),
+    };
+
+    // --- GAMIFICATION & UI ---
+    
+    function addXP(amount, taskId) {
+        if (state.completedTasks.has(taskId)) return; // Prevent re-awarding XP
+
+        state.xp += amount;
+        state.completedTasks.add(taskId);
+        elements.xpValue.textContent = state.xp;
+
+        // Check for level up
+        if (state.xp >= state.level * state.xpPerLevel) {
+            state.level++;
+            elements.levelValue.textContent = state.level;
+            unlockAchievement('level-up', `Reached Level ${state.level}!`);
+            createParticleExplosion();
+        }
+        
+        // Check simple achievements
+        if (!state.achievements.has('first-xp')) {
+             unlockAchievement('first-xp', 'First Correct Answer!');
+        }
+    }
+
+    function unlockAchievement(id, text) {
+        if (state.achievements.has(id)) return;
+        state.achievements.add(id);
+
+        // Update main achievement list
+        if (state.achievements.size === 1) {
+            elements.achievementsList.innerHTML = '';
+        }
+        const achievementDiv = document.createElement('div');
+        achievementDiv.className = 'bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full text-sm font-semibold';
+        achievementDiv.textContent = `🏆 ${text}`;
+        elements.achievementsList.appendChild(achievementDiv);
+
+        // Show popup
+        elements.achievementText.textContent = text;
+        elements.achievementPopup.classList.add('show');
+        setTimeout(() => {
+            elements.achievementPopup.classList.remove('show');
+        }, 3000);
+    }
+
+    function createParticleExplosion() {
+        for (let i = 0; i < 50; i++) {
+            const particle = document.createElement('div');
+            particle.style.position = 'absolute';
+            particle.style.width = `${Math.random() * 5 + 2}px`;
+            particle.style.height = particle.style.width;
+            particle.style.borderRadius = '50%';
+            const colors = ['#facc15', '#4ade80', '#60a5fa', '#f87171'];
+            particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            
+            const x = window.innerWidth / 2;
+            const y = window.innerHeight / 2;
+            particle.style.left = `${x}px`;
+            particle.style.top = `${y}px`;
+
+            elements.particleContainer.appendChild(particle);
+
+            const angle = Math.random() * Math.PI * 2;
+            const velocity = Math.random() * 8 + 4;
+            const dx = Math.cos(angle) * velocity;
+            const dy = Math.sin(angle) * velocity;
+
+            let life = 0;
+            const maxLife = 60;
+
+            function animateParticle() {
+                if (life >= maxLife) {
+                    particle.remove();
+                    return;
+                }
+                particle.style.left = `${parseFloat(particle.style.left) + dx}px`;
+                particle.style.top = `${parseFloat(particle.style.top) + dy + life * 0.2}px`; // Add gravity
+                particle.style.opacity = 1 - life / maxLife;
+                life++;
+                requestAnimationFrame(animateParticle);
+            }
+            animateParticle();
+        }
+    }
+
+    // --- NAVIGATION ---
+    
+    function showPage(index) {
+        state.currentPageIndex = index;
+        
+        state.pages.forEach((pageId, i) => {
+            document.getElementById(pageId).classList.toggle('active', i === index);
+        });
+
+        // Update nav link styles
+        elements.navLinks.forEach(link => {
+            link.classList.toggle('active', link.hash === `#${state.pages[index]}`);
+            if (link.classList.contains('active')) {
+                link.classList.add('bg-sky-200', 'font-bold');
+            } else {
+                link.classList.remove('bg-sky-200', 'font-bold');
+            }
+        });
+
+        // Update arrow buttons visibility
+        elements.prevBtn.style.visibility = index === 0 ? 'hidden' : 'visible';
+        elements.nextBtn.style.visibility = index === state.pages.length - 1 ? 'hidden' : 'visible';
+        
+        window.scrollTo(0, 0); // Scroll to top on page change
+    }
+
+    elements.navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = e.target.hash.substring(1);
+            const index = state.pages.indexOf(targetId);
+            if (index !== -1) showPage(index);
+        });
+    });
+
+    elements.nextBtn.addEventListener('click', () => {
+        if (state.currentPageIndex < state.pages.length - 1) {
+            showPage(state.currentPageIndex + 1);
+        }
+    });
+
+    elements.prevBtn.addEventListener('click', () => {
+        if (state.currentPageIndex > 0) {
+            showPage(state.currentPageIndex - 1);
+        }
+    });
+
+    // --- ACCESSIBILITY ---
+
+    elements.contrastToggle.addEventListener('click', () => elements.body.classList.toggle('high-contrast'));
+    elements.fontToggle.addEventListener('click', () => elements.body.classList.toggle('font-dyslexia'));
+    elements.fontSizeSlider.addEventListener('input', (e) => {
+        elements.body.style.fontSize = `${e.target.value}px`;
+    });
+
+    // --- ANTI-PASTE ---
+
+    document.querySelectorAll('input[type="text"], textarea').forEach(el => {
+        el.addEventListener('paste', (e) => {
+            e.preventDefault();
+            elements.shameMessage.classList.remove('hidden');
+            setTimeout(() => {
+                elements.shameMessage.classList.add('hidden');
+            }, 2000);
+        });
+    });
+
+    // --- HELPER FUNCTIONS ---
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+    
+    // Fuzzy string comparison for forgiving text input checks
+    function isSimilar(str1, str2) {
+        const s1 = str1.toLowerCase().trim();
+        const s2 = str2.toLowerCase().trim();
+        if (s1 === s2) return true;
+        // This is a very simple check, more advanced logic like Levenshtein distance could be used.
+        return s1.includes(s2) || s2.includes(s1);
+    }
+    
+    // --- TASK: STARTER (DRAG & DROP) ---
+    const starter = {
+        items: [
+            { id: 's1', text: 'Changes when you join a new network', type: 'ip' },
+            { id: 's2', text: "Can't be changed / fixed to a device", type: 'mac' },
+            { id: 's3', text: 'Used for routing across the internet', type: 'ip' },
+            { id: 's4', text: 'Used only within the local network (LAN)', type: 'mac' },
+            { id: 's5', text: '4 bytes (32 bits) long (in its common form)', type: 'ip' },
+            { id: 's6', text: '6 bytes (48 bits) long', type: 'mac' },
+            { id: 's7', text: 'Written in Hexadecimal', type: 'mac' },
+            { id: 's8', text: 'Written in Denary', type: 'ip' }
+        ],
+        dragSource: document.getElementById('drag-source'),
+        dropZones: document.querySelectorAll('.drop-zone'),
+        draggedItem: null,
+        
+        init() {
+            this.renderItems();
+            this.addEventListeners();
+            document.getElementById('starter-reset').addEventListener('click', () => this.init());
+        },
+
+        renderItems() {
+            this.dragSource.innerHTML = '';
+            this.dropZones.forEach(dz => dz.innerHTML = '');
+            shuffleArray(this.items).forEach(item => {
+                const div = document.createElement('div');
+                div.id = item.id;
+                div.textContent = item.text;
+                div.className = 'drag-item p-2 bg-sky-500 text-white rounded-lg shadow';
+                div.draggable = true;
+                div.dataset.type = item.type;
+                this.dragSource.appendChild(div);
+            });
+        },
+        
+        addEventListeners() {
+            document.addEventListener('dragstart', e => {
+                if (e.target.classList.contains('drag-item')) {
+                    this.draggedItem = e.target;
+                    setTimeout(() => e.target.classList.add('dragging'), 0);
+                }
+            });
+
+            document.addEventListener('dragend', e => {
+                if (this.draggedItem) {
+                    this.draggedItem.classList.remove('dragging');
+                    this.draggedItem = null;
+                }
+            });
+
+            this.dropZones.forEach(zone => {
+                zone.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    zone.classList.add('drag-over');
+                });
+                zone.addEventListener('dragleave', e => {
+                    zone.classList.remove('drag-over');
+                });
+                zone.addEventListener('drop', e => {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+                    if (this.draggedItem && !zone.contains(this.draggedItem)) {
+                        zone.appendChild(this.draggedItem);
+                        this.checkDrop(this.draggedItem, zone);
+                    }
+                });
+            });
+        },
+
+        checkDrop(item, zone) {
+            const isCorrect = item.dataset.type === zone.dataset.type;
+            item.classList.remove('correct', 'incorrect');
+            if (isCorrect) {
+                item.classList.add('correct');
+                addXP(20, `starter-${item.id}`);
+            } else {
+                item.classList.add('incorrect');
+            }
+        }
+    };
+    starter.init();
+    
+    // --- TASK 2: IPv4 VALIDATOR & CANVAS ---
+    const ipv4Task = {
+        questions: shuffleArray([
+            { ip: '192.168.1.1', valid: true },
+            { ip: '10.0.0.255', valid: true },
+            { ip: '256.0.0.1', valid: false, reason: 'A part cannot be over 255.'},
+            { ip: '172.16.5', valid: false, reason: 'An IPv4 address must have four parts.'},
+            { ip: '0.0.0.0', valid: true },
+            { ip: '192.168.1.a', valid: false, reason: 'Only numbers are allowed.' },
+            { ip: '1.2.3.4.5', valid: false, reason: 'An IPv4 address can only have four parts.'},
+        ]),
+        currentQ: 0,
+        questionEl: document.getElementById('ipv4-question'),
+        feedbackEl: document.getElementById('ipv4-feedback'),
+        
+        init() {
+            this.loadQuestion();
+            document.querySelectorAll('.ipv4-answer-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => this.checkAnswer(e.target.dataset.answer === 'valid'));
+            });
+            document.getElementById('task2-reset').addEventListener('click', () => this.reset());
+        },
+        
+        loadQuestion() {
+            if (this.currentQ >= this.questions.length) {
+                this.questionEl.textContent = "Activity Complete!";
+                document.querySelector('#ipv4-validator-quiz .flex').style.display = 'none';
+                return;
+            }
+            this.questionEl.textContent = this.questions[this.currentQ].ip;
+            this.feedbackEl.textContent = '';
+        },
+        
+        checkAnswer(userAnswer) {
+            const correct = userAnswer === this.questions[this.currentQ].valid;
+            if (correct) {
+                this.feedbackEl.textContent = "Correct!";
+                this.feedbackEl.className = "text-center mb-4 font-semibold text-green-600";
+                addXP(20, `ipv4-${this.currentQ}`);
+            } else {
+                const reason = this.questions[this.currentQ].reason || '';
+                this.feedbackEl.textContent = `Incorrect. ${reason}`;
+                this.feedbackEl.className = "text-center mb-4 font-semibold text-red-600";
+            }
+            this.currentQ++;
+            setTimeout(() => this.loadQuestion(), 1500);
+        },
+
+        reset() {
+            this.currentQ = 0;
+            this.loadQuestion();
+            document.querySelector('#ipv4-validator-quiz .flex').style.display = 'flex';
+        }
+    };
+    ipv4Task.init();
+
+    const drawingCanvas = {
+        canvas: document.getElementById('drawing-canvas'),
+        ctx: null,
+        drawing: false,
+        
+        init() {
+            this.ctx = this.canvas.getContext('2d');
+            this.resizeCanvas();
+            window.addEventListener('resize', () => this.resizeCanvas());
+            
+            this.canvas.addEventListener('mousedown', (e) => this.startDrawing(this.getCoords(e)));
+            this.canvas.addEventListener('mouseup', () => this.stopDrawing());
+            this.canvas.addEventListener('mousemove', (e) => this.draw(this.getCoords(e)));
+            this.canvas.addEventListener('touchstart', (e) => this.startDrawing(this.getCoords(e.touches[0])));
+            this.canvas.addEventListener('touchend', () => this.stopDrawing());
+            this.canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                this.draw(this.getCoords(e.touches[0]));
+            });
+            
+            document.getElementById('clear-canvas').addEventListener('click', () => this.clear());
+        },
+        
+        getCoords(event) {
+            const rect = this.canvas.getBoundingClientRect();
+            // Adjust for canvas scaling
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
+            return {
+                x: (event.clientX - rect.left) * scaleX,
+                y: (event.clientY - rect.top) * scaleY
+            };
+        },
+        
+        resizeCanvas() {
+            const rect = this.canvas.getBoundingClientRect();
+            this.canvas.width = rect.width;
+            this.canvas.height = rect.height;
+            this.ctx.lineWidth = 3;
+            this.ctx.lineCap = 'round';
+            this.ctx.strokeStyle = '#333';
+        },
+
+        startDrawing(coords) {
+            this.drawing = true;
+            this.ctx.beginPath();
+            this.ctx.moveTo(coords.x, coords.y);
+        },
+        
+        stopDrawing() {
+            this.drawing = false;
+        },
+        
+        draw(coords) {
+            if (!this.drawing) return;
+            this.ctx.lineTo(coords.x, coords.y);
+            this.ctx.stroke();
+        },
+        
+        clear() {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+    };
+    drawingCanvas.init();
+
+    // --- TASK 3: IPv6 COMPRESSION ---
+    const ipv6Task = {
+        question: '2001:0db8:0000:0000:1234:0000:0000:5678',
+        optionsContainer: document.getElementById('ipv6-options'),
+        feedbackEl: document.getElementById('ipv6-feedback'),
+        
+        getOptions() {
+            return shuffleArray([
+                { text: '2001:db8::1234:0:0:5678', correct: true },
+                { text: '2001:db8::1234::5678', correct: false, reason: 'You can only use :: once.' },
+                { text: '2001:db8:0:0:1234::5678', correct: false, reason: 'This compression is not the shortest possible.' },
+                { text: '2001:0db8:1234::5678', correct: false, reason: 'You cannot remove non-zero parts.' }
+            ]);
+        },
+        
+        init() {
+            this.render();
+            document.getElementById('task3-reset').addEventListener('click', () => this.render());
+        },
+
+        render() {
+            this.optionsContainer.innerHTML = '';
+            this.feedbackEl.textContent = '';
+            this.getOptions().forEach(opt => {
+                const button = document.createElement('button');
+                button.className = 'w-full p-3 border-2 border-gray-300 rounded-lg text-left hover:bg-sky-100 font-mono';
+                button.textContent = opt.text;
+                button.onclick = () => this.checkAnswer(opt);
+                this.optionsContainer.appendChild(button);
+            });
+        },
+        
+        checkAnswer(option) {
+             if (option.correct) {
+                this.feedbackEl.textContent = "Correct! The double colon replaces the largest consecutive block of zeros.";
+                this.feedbackEl.className = "mt-4 font-semibold text-green-600";
+                addXP(50, 'ipv6-compress');
+            } else {
+                this.feedbackEl.textContent = `Incorrect. ${option.reason}`;
+                this.feedbackEl.className = "mt-4 font-semibold text-red-600";
+            }
+            this.optionsContainer.querySelectorAll('button').forEach(b => b.disabled = true);
+        }
+    };
+    ipv6Task.init();
+
+    // --- FINAL QUIZ ---
+    const finalQuiz = {
+        questions: shuffleArray([
+            { q: "How many bits are in an IPv4 address?", a: ["32", "64", "128", "48"], correct: "32" },
+            { q: "Which address type is permanently fixed to a network device?", a: ["MAC Address", "IP Address", "Port Address", "Subnet Mask"], correct: "MAC Address" },
+            { q: "What is the maximum value for each part of an IPv4 address?", a: ["255", "256", "128", "1024"], correct: "255" },
+            { q: "IPv6 addresses are typically written in which number system?", a: ["Hexadecimal", "Denary", "Binary", "Octal"], correct: "Hexadecimal" },
+            { q: "The main reason for moving to IPv6 is:", a: ["IPv4 address exhaustion", "IPv6 is faster", "IPv6 is more secure", "IPv4 is too complex"], correct: "IPv4 address exhaustion" },
+            { q: "Which address is used by a router to send a packet to a different network?", a: ["IP Address", "MAC Address", "Both", "Neither"], correct: "IP Address" },
+        ]),
+        currentQ: 0,
+        score: 0,
+        
+        container: document.getElementById('final-quiz-container'),
+        questionText: document.getElementById('quiz-question-text'),
+        optionsArea: document.getElementById('quiz-options-area'),
+        feedbackEl: document.getElementById('quiz-feedback'),
+        progressEl: document.getElementById('quiz-progress'),
+        nextBtn: document.getElementById('quiz-next-btn'),
+        resultsArea: document.getElementById('quiz-results-area'),
+
+        init() {
+            this.loadQuestion();
+            this.nextBtn.addEventListener('click', () => {
+                this.currentQ++;
+                if (this.currentQ < this.questions.length) {
+                    this.loadQuestion();
+                } else {
+                    this.showResults();
+                }
+            });
+            document.getElementById('quiz-reset').addEventListener('click', () => this.reset());
+        },
+
+        loadQuestion() {
+            this.feedbackEl.textContent = '';
+            this.nextBtn.classList.add('hidden');
+            this.questionText.textContent = `Q${this.currentQ + 1}: ${this.questions[this.currentQ].q}`;
+            this.optionsArea.innerHTML = '';
+            this.progressEl.textContent = `Question ${this.currentQ + 1} of ${this.questions.length}`;
+
+            const options = shuffleArray(this.questions[this.currentQ].a);
+            options.forEach(optionText => {
+                const button = document.createElement('button');
+                button.textContent = optionText;
+                button.className = "block w-full text-left p-3 border-2 border-gray-300 rounded-lg hover:bg-sky-100";
+                button.onclick = () => this.checkAnswer(optionText, button);
+                this.optionsArea.appendChild(button);
+            });
+        },
+
+        checkAnswer(answer, button) {
+            const isCorrect = answer === this.questions[this.currentQ].correct;
+            if (isCorrect) {
+                this.score++;
+                this.feedbackEl.textContent = "Correct!";
+                this.feedbackEl.className = "font-bold mb-4 text-green-600";
+                button.classList.add('bg-green-200', 'border-green-500');
+                addXP(25, `quiz-${this.currentQ}`);
+            } else {
+                this.feedbackEl.textContent = `Incorrect. The correct answer was ${this.questions[this.currentQ].correct}.`;
+                this.feedbackEl.className = "font-bold mb-4 text-red-600";
+                button.classList.add('bg-red-200', 'border-red-500');
+            }
+            this.optionsArea.querySelectorAll('button').forEach(b => b.disabled = true);
+            this.nextBtn.classList.remove('hidden');
+        },
+        
+        showResults() {
+            this.container.classList.add('hidden');
+            this.resultsArea.classList.remove('hidden');
+            document.getElementById('quiz-score').textContent = `${this.score} / ${this.questions.length}`;
+            if (this.score === this.questions.length) {
+                unlockAchievement('quiz-master', 'Aced the final quiz!');
+            }
+        },
+
+        reset() {
+            this.score = 0;
+            this.currentQ = 0;
+            this.container.classList.remove('hidden');
+            this.resultsArea.classList.add('hidden');
+            this.init();
+        }
+    };
+    finalQuiz.init();
+    
+    // --- EXAM PRACTICE ---
+    const examPractice = {
+        init() {
+            // Q1 logic
+            const q1Textarea = document.getElementById('exam-q1');
+            const q1Btn = document.querySelector('button[data-question="q1"]');
+            q1Textarea.addEventListener('input', () => {
+                q1Btn.disabled = q1Textarea.value.trim().length < 50; // Require a reasonable attempt
+            });
+            q1Btn.addEventListener('click', () => {
+                document.getElementById('mark-scheme-q1').classList.remove('hidden');
+                addXP(50, 'exam-q1-attempt');
+            });
+            
+            // Q2 (Writer Scorer) is handled separately
+            
+            document.getElementById('exam-reset').addEventListener('click', () => this.reset());
+        },
+        reset() {
+            document.getElementById('exam-q1').value = '';
+            document.getElementById('studentAnswer').value = '';
+            document.querySelector('button[data-question="q1"]').disabled = true;
+            document.getElementById('analyzeBtn').disabled = true;
+            document.getElementById('mark-scheme-q1').classList.add('hidden');
+            document.getElementById('mark-scheme-q2').classList.add('hidden');
+            document.getElementById('resultsDashboard').style.display = 'none';
+        }
+    };
+    examPractice.init();
+
+    // --- WRITING SCORER ---
+    const writingScorer = {
+        studentAnswer: document.getElementById('studentAnswer'),
+        analyzeBtn: document.getElementById('analyzeBtn'),
+        resultsDashboard: document.getElementById('resultsDashboard'),
+        scoreValue: document.getElementById('scoreValue'),
+        scoreCircle: document.getElementById('scoreCircle'),
+        successList: document.getElementById('successList'),
+        improvementList: document.getElementById('improvementList'),
+        keywords: document.getElementById('keywords').value.split(','),
+
+        init() {
+            this.analyzeBtn.addEventListener('click', () => this.analyzeWriting());
+            this.studentAnswer.addEventListener('input', () => {
+                this.analyzeBtn.disabled = this.studentAnswer.value.trim().length < 40;
+            });
+        },
+
+        analyzeWriting() {
+            const text = this.studentAnswer.value;
+            if (!text.trim()) {
+                alert("Please enter some text.");
+                return;
+            }
+
+            let score = 100;
+            let successes = [];
+            let improvements = [];
+            
+            const cleanedText = text.trim().replace(/\s+/g, ' ');
+            const sentences = cleanedText.match(/[^.!?]+[.!?]+/g) || [cleanedText];
+
+            // --- Run Checks ---
+            
+            // First letter of whole text
+            const firstLetterResult = this.checkFirstLetterCapital(cleanedText);
+            if (firstLetterResult.scoreChange < 0) {
+                score += firstLetterResult.scoreChange;
+                improvements.push(firstLetterResult.message);
+            } else {
+                successes.push(firstLetterResult.message);
+            }
+            
+            // Per-sentence checks
+            sentences.forEach(sentence => {
+                const sentenceTrimmed = sentence.trim();
+                if (!sentenceTrimmed) return;
+
+                const sentenceCapitalResult = this.checkSentenceCapitalization(sentenceTrimmed);
+                if (sentenceCapitalResult.scoreChange < 0) {
+                    score += sentenceCapitalResult.scoreChange;
+                    improvements.push(sentenceCapitalResult.message);
+                }
+
+                const punctuationResult = this.checkPunctuation(sentenceTrimmed);
+                if (punctuationResult.scoreChange < 0) {
+                    score += punctuationResult.scoreChange;
+                    improvements.push(punctuationResult.message);
+                }
+                
+                const lengthResult = this.checkSentenceLength(sentenceTrimmed);
+                if (lengthResult.scoreChange < 0) {
+                    score += lengthResult.scoreChange;
+                    improvements.push(lengthResult.message);
+                }
+            });
+
+            const iThinkResult = this.checkIThink(cleanedText);
+            if (iThinkResult.message) improvements.push(iThinkResult.message);
+
+            const keywordResult = this.checkKeywords(cleanedText, this.keywords);
+            if (keywordResult.message) successes.push(keywordResult.message);
+            
+            // Award XP based on keywords used
+            const keywordsFound = keywordResult.keywordsFound || 0;
+            addXP(keywordsFound * 10, 'exam-q2-keywords');
+
+
+            // Finalize and Display
+            score = Math.max(0, score);
+            this.displayResults(score, successes, improvements);
+            document.getElementById('mark-scheme-q2').classList.remove('hidden');
+        },
+
+        displayResults(score, successes, improvements) {
+            this.scoreValue.textContent = score;
+            this.scoreCircle.style.borderColor = score > 75 ? '#22c55e' : score > 50 ? '#f59e0b' : '#ef4444';
+            this.scoreCircle.style.color = this.scoreCircle.style.borderColor;
+            this.scoreCircle.style.borderWidth = '6px';
+            
+            this.successList.innerHTML = '';
+            successes.forEach(msg => {
+                const li = document.createElement('li');
+                li.textContent = msg;
+                this.successList.appendChild(li);
+            });
+            
+            this.improvementList.innerHTML = '';
+            if (improvements.length === 0) {
+                const li = document.createElement('li');
+                li.textContent = 'Great work! No major issues found.';
+                this.improvementList.appendChild(li);
+            } else {
+                 improvements.forEach(msg => {
+                    const li = document.createElement('li');
+                    li.innerHTML = msg; // Use innerHTML to render quotes etc.
+                    this.improvementList.appendChild(li);
+                });
+            }
+
+            this.resultsDashboard.style.display = 'block';
+        },
+        
+        // --- Analysis Functions ---
+        checkFirstLetterCapital(text) {
+            const firstChar = text.charAt(0);
+            if (firstChar !== firstChar.toUpperCase() || !isNaN(parseInt(firstChar))) {
+                return { scoreChange: -15, message: 'Your answer should begin with a capital letter.' };
+            }
+            return { scoreChange: 0, message: 'Started with a capital letter.' };
+        },
+
+        checkSentenceCapitalization(sentence) {
+            const firstChar = sentence.trim().charAt(0);
+             if (firstChar !== firstChar.toUpperCase() || !isNaN(parseInt(firstChar))) {
+                return { scoreChange: -5, message: `A sentence beginning with "<em>${sentence.substring(0,15)}...</em>" needs a capital letter.` };
+            }
+            return {};
+        },
+
+        checkPunctuation(sentence) {
+             if (!/[.!?]$/.test(sentence.trim())) {
+                return { scoreChange: -10, message: `The sentence "<em>${sentence.substring(0,15)}...</em>" is missing end punctuation.` };
+            }
+            return {};
+        },
+
+        checkSentenceLength(sentence) {
+            if (sentence.split(' ').length < 4) {
+                 return { scoreChange: -10, message: `The phrase "<em>${sentence.trim()}</em>" seems too short. Ensure you write in full sentences.` };
+            }
+            return {};
+        },
+
+        checkIThink(text) {
+            if (/\bi think/i.test(text)) {
+                 return { message: '💡 For formal answers, try to avoid "I think..." to sound more confident.' };
+            }
+            return {};
+        },
+
+        checkKeywords(text, keywords) {
+            const lowerText = text.toLowerCase();
+            const found = keywords.filter(k => lowerText.includes(k.toLowerCase()));
+            if (found.length > 0) {
+                return { 
+                    message: `You included key terms like: ${found.join(', ')}.`,
+                    keywordsFound: found.length
+                };
+            }
+            return {};
+        }
+    };
+    writingScorer.init();
+    
+    // --- Extension Activity ---
+    document.getElementById('submit-extension').addEventListener('click', () => {
+        const text = document.getElementById('extension-answer').value;
+        if(text.trim().length > 20) {
+            addXP(75, 'extension-nat');
+            unlockAchievement('deep-diver', 'Completed an extension task!');
+            document.getElementById('submit-extension').textContent = 'Submitted!';
+            document.getElementById('submit-extension').disabled = true;
+        } else {
+            alert("Please write a more detailed answer.");
+        }
+    });
+
+    // --- FEEDBACK MODAL ---
+    const feedback = {
+        modal: document.getElementById('feedback-modal'),
+        openBtn: document.getElementById('feedback-button'),
+        closeBtn: document.getElementById('feedback-cancel'),
+        sendBtn: document.getElementById('feedback-send'),
+        textArea: document.getElementById('feedback-text'),
+        
+        init() {
+            this.openBtn.addEventListener('click', () => this.open());
+            this.closeBtn.addEventListener('click', () => this.close());
+            this.sendBtn.addEventListener('click', () => this.send());
+        },
+        open() { this.modal.classList.remove('hidden'); },
+        close() { this.modal.classList.add('hidden'); },
+        send() {
+            const page = state.pages[state.currentPageIndex];
+            const subject = encodeURIComponent(`Feedback on Worksheet Page: ${page}`);
+            const body = encodeURIComponent(this.textArea.value);
+            window.location.href = `mailto:millingtond@mgs.org?subject=${subject}&body=${body}`;
+            this.close();
+            this.textArea.value = '';
+        }
+    };
+    feedback.init();
+
+    // --- INITIALIZE APP ---
+    showPage(0); // Show the first page on load
+
+});
+</script>
+</body>
+</html>

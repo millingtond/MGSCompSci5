@@ -1,0 +1,3362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interrupts & Scheduling - A Level Computer Science</title>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary-color: #8b5cf6;
+            --secondary-dark: #7c3aed;
+            --success-color: #10b981;
+            --success-dark: #059669;
+            --error-color: #ef4444;
+            --error-dark: #dc2626;
+            --warning-color: #f59e0b;
+            --warning-dark: #d97706;
+            --bg-color: #ffffff;
+            --bg-secondary: #f8fafc;
+            --text-color: #1e293b;
+            --text-secondary: #64748b;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --highlight-color: #fef3c7;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-success: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            --gradient-error: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-gold: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --animation-duration: 0.3s;
+            --animation-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Performance optimizations */
+        .will-animate {
+            will-change: transform, opacity;
+        }
+
+        /* Background pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* High Contrast Mode */
+        body.high-contrast {
+            --bg-color: #000000;
+            --bg-secondary: #0a0a0a;
+            --text-color: #ffffff;
+            --text-secondary: #e0e0e0;
+            --card-bg: #1a1a1a;
+            --border-color: #ffffff;
+            --primary-color: #00ff00;
+            --secondary-color: #ffff00;
+        }
+
+        /* Dyslexia Font */
+        body.dyslexia-font {
+            font-family: 'Comic Sans MS', 'OpenDyslexic', sans-serif;
+            letter-spacing: 0.05em;
+            word-spacing: 0.1em;
+            line-height: 1.8;
+        }
+
+        /* Modern Glass Header */
+        .header {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 1.5rem 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-lg);
+            transform: translateZ(0);
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.1) 100%);
+            pointer-events: none;
+            animation: headerShine 3s ease-in-out infinite;
+        }
+
+        @keyframes headerShine {
+            0%, 100% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            animation: fadeInLeft 0.6s ease-out;
+        }
+
+        /* XP Container */
+        .xp-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(255,255,255,0.15);
+            padding: 0.5rem 1.5rem;
+            border-radius: 2rem;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+            animation: fadeInRight 0.6s ease-out;
+        }
+
+        .xp-bar {
+            width: 200px;
+            height: 24px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+        }
+
+        .xp-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .level-badge {
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 1.5rem;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .level-badge::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+
+        .level-badge:hover::before {
+            transform: translateX(100%);
+        }
+
+        /* Navigation */
+        .nav-container {
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(20px);
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 80px;
+            z-index: 999;
+            box-shadow: var(--shadow-md);
+            transform: translateZ(0);
+        }
+
+        .nav-pills {
+            display: flex;
+            gap: 0.75rem;
+            overflow-x: auto;
+            padding: 0.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+
+        .nav-pills::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-pill {
+            padding: 0.625rem 1.25rem;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 2rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all var(--animation-duration) var(--animation-bounce);
+            font-size: 0.875rem;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0);
+        }
+
+        .nav-pill::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: var(--primary-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .nav-pill:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .nav-pill:hover::before {
+            width: 120%;
+            height: 120%;
+        }
+
+        .nav-pill.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+            animation: navPillActive 0.4s ease;
+        }
+
+        @keyframes navPillActive {
+            0% { transform: scale(0.95); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .nav-pill.completed {
+            border-color: var(--success-color);
+            position: relative;
+        }
+
+        .nav-pill.completed::after {
+            content: '✓';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--gradient-success);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            box-shadow: var(--shadow-md);
+            animation: bounceIn 0.5s var(--animation-bounce);
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            min-height: calc(100vh - 200px);
+        }
+
+        .section {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .section.active {
+            display: block;
+            animation: sectionFadeIn 0.5s ease forwards;
+        }
+
+        @keyframes sectionFadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            transition: transform var(--animation-duration) ease, box-shadow var(--animation-duration) ease;
+            transform: translateZ(0);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.6s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .card-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-title span {
+            font-size: 2rem;
+            -webkit-text-fill-color: initial;
+            animation: titleIcon 2s ease-in-out infinite;
+        }
+
+        @keyframes titleIcon {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* Interactive Areas */
+        .interactive-area {
+            background: var(--bg-secondary);
+            border: 2px dashed var(--border-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            transition: all var(--animation-duration) ease;
+            position: relative;
+            transform: translateZ(0);
+        }
+
+        .interactive-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(99, 102, 241, 0.05) 50%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .interactive-area:hover {
+            border-color: var(--primary-light);
+            transform: translateY(-2px);
+        }
+
+        .interactive-area:hover::before {
+            opacity: 1;
+        }
+
+        .highlight-active {
+            border-color: var(--primary-color);
+            background: rgba(99, 102, 241, 0.05);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+            50% { box-shadow: 0 0 0 12px rgba(99, 102, 241, 0); }
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            text-transform: none;
+            letter-spacing: 0.025em;
+            touch-action: manipulation;
+            transform: translateZ(0);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--card-bg);
+            color: var(--text-color);
+            border: 2px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-secondary);
+            border-color: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success-color), var(--success-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        /* Quiz Elements */
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 1.25rem;
+            margin: 0.75rem 0;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all var(--animation-duration) var(--animation-bounce);
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0);
+        }
+
+        .quiz-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .quiz-option:hover {
+            background: var(--bg-secondary);
+            border-color: var(--primary-light);
+            transform: translateX(8px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .quiz-option:hover::before {
+            left: 100%;
+        }
+
+        .quiz-option.selected {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+            animation: optionSelect 0.3s ease;
+        }
+
+        @keyframes optionSelect {
+            0% { transform: scale(0.95); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .quiz-option.correct {
+            background: linear-gradient(135deg, var(--success-color), var(--success-dark));
+            color: white;
+            border-color: var(--success-color);
+            animation: correctAnswer 0.6s ease;
+        }
+
+        .quiz-option.incorrect {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            border-color: var(--error-color);
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes correctAnswer {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        /* Input Fields */
+        .input-field {
+            width: 100%;
+            padding: 0.875rem 1.25rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            transition: all var(--animation-duration) ease;
+            background: var(--card-bg);
+            font-family: inherit;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            background: white;
+            transform: translateY(-1px);
+        }
+
+        .input-field::placeholder {
+            color: var(--text-secondary);
+        }
+
+        /* Process State Diagram */
+        .state-diagram {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .state-box {
+            width: 150px;
+            height: 150px;
+            background: var(--card-bg);
+            border: 3px solid var(--border-color);
+            border-radius: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all var(--animation-duration) var(--animation-bounce);
+            position: relative;
+            transform: translateZ(0);
+        }
+
+        .state-box::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            background: var(--gradient-primary);
+            border-radius: 1rem;
+            opacity: 0;
+            z-index: -1;
+            transition: opacity 0.3s;
+        }
+
+        .state-box:hover {
+            transform: scale(1.1) translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .state-box:hover::before {
+            opacity: 0.3;
+        }
+
+        .state-box.active {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--primary-color);
+            animation: stateActive 0.5s ease;
+        }
+
+        @keyframes stateActive {
+            0% { transform: scale(0.9) rotate(-5deg); }
+            50% { transform: scale(1.1) rotate(5deg); }
+            100% { transform: scale(1) rotate(0); }
+        }
+
+        .state-arrow {
+            position: absolute;
+            font-size: 2rem;
+            color: var(--primary-color);
+            font-weight: bold;
+            animation: arrowPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes arrowPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        /* Simulation Controls */
+        .sim-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+
+        .sim-step {
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 0.75rem;
+            margin: 0.5rem 0;
+            transition: all var(--animation-duration) ease;
+            border-left: 4px solid transparent;
+            position: relative;
+            transform: translateZ(0);
+        }
+
+        .sim-step::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--gradient-primary);
+            transform: scaleY(0);
+            transform-origin: bottom;
+            transition: transform 0.3s ease;
+        }
+
+        .sim-step.active {
+            background: var(--highlight-color);
+            border-left-color: var(--primary-color);
+            transform: translateX(10px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .sim-step.active::before {
+            transform: scaleY(1);
+        }
+
+        /* Draggable Items */
+        .draggable-item {
+            padding: 1rem;
+            margin: 0.5rem 0;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all var(--animation-duration) var(--animation-bounce);
+            position: relative;
+            user-select: none;
+            transform: translateZ(0);
+        }
+
+        .draggable-item:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .draggable-item.selected {
+            background: var(--gradient-primary);
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+            animation: itemSelect 0.3s ease;
+        }
+
+        @keyframes itemSelect {
+            0% { transform: scale(0.95) rotate(-2deg); }
+            50% { transform: scale(1.05) rotate(2deg); }
+            100% { transform: scale(1.05) rotate(0); }
+        }
+
+        .draggable-item.matched {
+            opacity: 0.5;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+
+        .drop-zone {
+            min-height: 80px;
+            border: 3px dashed var(--border-color);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            background: var(--bg-secondary);
+            transition: all var(--animation-duration) ease;
+            position: relative;
+            transform: translateZ(0);
+        }
+
+        .drop-zone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(99, 102, 241, 0.1);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .drop-zone.highlight {
+            border-color: var(--primary-color);
+            animation: dropZonePulse 1s infinite;
+        }
+
+        .drop-zone.highlight::before {
+            opacity: 1;
+        }
+
+        @keyframes dropZonePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .drop-zone.correct {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            border-color: var(--success-color);
+            animation: dropZoneCorrect 0.5s ease;
+        }
+
+        @keyframes dropZoneCorrect {
+            0% { transform: scale(0.95); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Achievement Popup */
+        .achievement-popup {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: white;
+            border-radius: 1.5rem;
+            padding: 1.5rem 2rem;
+            box-shadow: var(--shadow-xl);
+            transform: translateX(400px);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2000;
+            max-width: 320px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .achievement-popup::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-gold);
+        }
+
+        .achievement-popup.show {
+            transform: translateX(0);
+            animation: achievementBounce 0.6s ease;
+        }
+
+        @keyframes achievementBounce {
+            0% { transform: translateX(400px); }
+            60% { transform: translateX(-20px); }
+            80% { transform: translateX(10px); }
+            100% { transform: translateX(0); }
+        }
+
+        .achievement-icon {
+            font-size: 3.5rem;
+            text-align: center;
+            margin-bottom: 0.75rem;
+            animation: bounceRotate 0.6s ease;
+        }
+
+        @keyframes bounceRotate {
+            0% { transform: scale(0) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(180deg); }
+            100% { transform: scale(1) rotate(360deg); }
+        }
+
+        /* Canvas */
+        .drawing-canvas {
+            border: 3px solid var(--border-color);
+            border-radius: 1rem;
+            background: white;
+            touch-action: none;
+            cursor: crosshair;
+            margin: 1.5rem 0;
+            box-shadow: var(--shadow-md);
+            transition: border-color var(--animation-duration) ease;
+            display: block;
+            max-width: 100%;
+        }
+
+        .drawing-canvas:hover {
+            border-color: var(--primary-light);
+        }
+
+        /* Feedback Button */
+        .feedback-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: all var(--animation-duration) var(--animation-bounce);
+            z-index: 1000;
+            font-size: 1.5rem;
+            transform: translateZ(0);
+        }
+
+        .feedback-btn:hover {
+            transform: scale(1.1) rotate(15deg);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .feedback-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Accessibility Controls */
+        .accessibility-controls {
+            position: fixed;
+            top: 150px;
+            right: 20px;
+            background: white;
+            border-radius: 1rem;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            border: 1px solid var(--border-color);
+            transition: transform var(--animation-duration) ease;
+            transform: translateZ(0);
+        }
+
+        .accessibility-controls:hover {
+            transform: translateX(-5px);
+        }
+
+        .accessibility-controls h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .accessibility-controls button {
+            display: block;
+            width: 100%;
+            margin: 0.5rem 0;
+            padding: 0.625rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all var(--animation-duration) ease;
+            font-weight: 500;
+        }
+
+        .accessibility-controls button:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            transform: translateX(-2px);
+        }
+
+        /* Hint Container */
+        .hint-container {
+            margin-top: 1rem;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+            border-left: 4px solid var(--warning-color);
+            border-radius: 0.75rem;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        .hint-container.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Matching Container */
+        .matching-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        /* Shame Message */
+        .shame-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: var(--gradient-error);
+            color: white;
+            padding: 2rem 3rem;
+            border-radius: 1.5rem;
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-align: center;
+            z-index: 3000;
+            box-shadow: var(--shadow-xl);
+            animation: shameAnimation 3s ease forwards;
+        }
+
+        @keyframes shameAnimation {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+            20% { transform: translate(-50%, -50%) scale(1.2) rotate(-5deg); }
+            40% { transform: translate(-50%, -50%) scale(0.9) rotate(5deg); }
+            60% { transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
+            80% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+        }
+
+        /* Particle Container */
+        #particle-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2999;
+        }
+
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFall 2s linear forwards;
+        }
+
+        @keyframes particleFall {
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+
+        /* Font Size Adjustments */
+        body.font-small { font-size: 14px; }
+        body.font-large { font-size: 18px; }
+        body.font-xlarge { font-size: 20px; }
+
+        /* Loading State */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid transparent;
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.25rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .xp-container {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .xp-bar {
+                width: 150px;
+            }
+            
+            .matching-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .state-diagram {
+                flex-direction: column;
+            }
+            
+            .nav-container {
+                top: 140px;
+            }
+            
+            .btn-group {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .accessibility-controls {
+                top: auto;
+                bottom: 90px;
+                right: 10px;
+                padding: 1rem;
+            }
+            
+            .card {
+                padding: 1.5rem;
+            }
+            
+            .achievement-popup {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+            
+            .interactive-area {
+                padding: 1.5rem;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            .header, .nav-container, .feedback-btn, .accessibility-controls, .btn {
+                display: none !important;
+            }
+            
+            .section {
+                display: block !important;
+                opacity: 1 !important;
+                transform: none !important;
+                page-break-after: always;
+            }
+            
+            .card {
+                box-shadow: none;
+                border: 1px solid #000;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 6px;
+            border: 2px solid var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-color);
+        }
+
+        /* iframe styling */
+        iframe {
+            width: 100%;
+            height: 80vh;
+            border: none;
+            display: block;
+        }
+
+        /* Success Animation */
+        @keyframes successPulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .success-animation {
+            animation: successPulse 1s ease;
+        }
+
+        /* Reduced Motion Support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="header-content">
+            <h1>Interrupts & Scheduling</h1>
+            <div class="xp-container" role="status" aria-live="polite">
+                <span class="level-badge">Level <span id="current-level">1</span></span>
+                <div class="xp-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
+                </div>
+                <span id="xp-text">0 / 100 XP</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-container" role="navigation" aria-label="Lesson sections">
+        <div class="nav-pills" id="nav-pills">
+            <button class="nav-pill active" data-section="intro" aria-current="page">Introduction</button>
+            <button class="nav-pill" data-section="starter">Starter</button>
+            <button class="nav-pill" data-section="interrupts">Interrupts</button>
+            <button class="nav-pill" data-section="interrupt-handling">Interrupt Handling</button>
+            <button class="nav-pill" data-section="scheduling">Scheduling</button>
+            <button class="nav-pill" data-section="process-states">Process States</button>
+            <button class="nav-pill" data-section="algorithms">Scheduling Algorithms</button>
+            <button class="nav-pill" data-section="summary">Summary Quiz</button>
+            <button class="nav-pill" data-section="exam">Exam Practice</button>
+            <button class="nav-pill" data-section="extension">Extension</button>
+            <button class="nav-pill" data-section="videos">Videos</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" role="main">
+        <!-- Introduction Section -->
+        <section id="intro" class="section active">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📚</span> Welcome to Interrupts & Scheduling
+                </h2>
+                
+                <h3>Learning Outcomes</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem; line-height: 1.8;">
+                    <li>Understand what interrupts are and why they are needed</li>
+                    <li>Explain the interrupt handling process step-by-step</li>
+                    <li>Describe the need for process scheduling in operating systems</li>
+                    <li>Identify and explain the three main process states</li>
+                    <li>Compare different scheduling algorithms and their characteristics</li>
+                    <li>Apply knowledge to real-world scenarios</li>
+                </ul>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="navigateSection('next')">
+                        Start Learning →
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Starter Activity -->
+        <section id="starter" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎯</span> Starter Activity: Process Management
+                </h2>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Quick Check: What do you already know?</h4>
+                    <p>Select the best answer for each question:</p>
+                    
+                    <div style="margin-top: 1.5rem;">
+                        <p><strong>1. What allows a computer to appear to run multiple programs at once?</strong></p>
+                        <button class="quiz-option" data-q="s1" data-answer="a">More CPU cores</button>
+                        <button class="quiz-option" data-q="s1" data-answer="b">Process scheduling</button>
+                        <button class="quiz-option" data-q="s1" data-answer="c">Faster memory</button>
+                        <button class="quiz-option" data-q="s1" data-answer="d">Larger hard drive</button>
+                    </div>
+                    
+                    <div style="margin-top: 2rem;">
+                        <p><strong>2. When might a running program need to be temporarily stopped?</strong></p>
+                        <button class="quiz-option" data-q="s2" data-answer="e">When it crashes</button>
+                        <button class="quiz-option" data-q="s2" data-answer="f">When the computer shuts down</button>
+                        <button class="quiz-option" data-q="s2" data-answer="g">When a higher priority task needs the CPU</button>
+                        <button class="quiz-option" data-q="s2" data-answer="h">When the user closes it</button>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkStarterQuiz()" style="margin-top: 1.5rem;">
+                        Check Answers
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetStarterQuiz()" style="margin-top: 1.5rem;">
+                        Reset
+                    </button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interrupts Section -->
+        <section id="interrupts" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>⚡</span> Understanding Interrupts
+                </h2>
+                
+                <p>An <strong>interrupt</strong> is a signal from a device or program that requires attention from the processor.</p>
+                
+                <div class="interactive-area">
+                    <h4>Interactive: Types of Interrupts</h4>
+                    <p>Click on each type to learn more:</p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                        <div class="state-box" onclick="showInterruptInfo('hardware')" id="hardware-box">
+                            <h5>Hardware Interrupts</h5>
+                            <p style="font-size: 2rem;">🖱️</p>
+                        </div>
+                        <div class="state-box" onclick="showInterruptInfo('software')" id="software-box">
+                            <h5>Software Interrupts</h5>
+                            <p style="font-size: 2rem;">💾</p>
+                        </div>
+                        <div class="state-box" onclick="showInterruptInfo('timer')" id="timer-box">
+                            <h5>Timer Interrupts</h5>
+                            <p style="font-size: 2rem;">⏰</p>
+                        </div>
+                    </div>
+                    
+                    <div id="interrupt-info" style="margin-top: 1.5rem; padding: 1rem; background: var(--highlight-color); border-radius: 0.5rem; display: none;">
+                        <p id="interrupt-description"></p>
+                    </div>
+                </div>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Real-World Examples</h4>
+                    <p>Match each scenario to the type of interrupt it would generate:</p>
+                    
+                    <div class="matching-container" id="interrupt-matching">
+                        <div>
+                            <h5>Scenarios</h5>
+                            <div class="draggable-item" data-id="1">Mouse click detected</div>
+                            <div class="draggable-item" data-id="2">Division by zero error</div>
+                            <div class="draggable-item" data-id="3">Time slice expired</div>
+                            <div class="draggable-item" data-id="4">Keyboard key pressed</div>
+                            <div class="draggable-item" data-id="5">Program requests file access</div>
+                        </div>
+                        <div>
+                            <h5>Interrupt Types</h5>
+                            <div class="drop-zone" data-type="hardware">
+                                <strong>Hardware Interrupts</strong>
+                                <div class="dropped-items"></div>
+                            </div>
+                            <div class="drop-zone" data-type="software">
+                                <strong>Software Interrupts</strong>
+                                <div class="dropped-items"></div>
+                            </div>
+                            <div class="drop-zone" data-type="timer">
+                                <strong>Timer Interrupts</strong>
+                                <div class="dropped-items"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-secondary" onclick="resetInterruptMatching()">Reset</button>
+                    <button class="btn btn-primary" onclick="checkInterruptMatching()">Check Answers</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interrupt Handling Section -->
+        <section id="interrupt-handling" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🔧</span> Interrupt Handling Process
+                </h2>
+                
+                <p>When an interrupt occurs, the CPU must handle it systematically. Let's explore this process step by step.</p>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Interactive Simulation: Interrupt Handling Steps</h4>
+                    <p>Click "Next Step" to see how the CPU handles an interrupt:</p>
+                    
+                    <div id="interrupt-steps">
+                        <div class="sim-step" data-step="0">
+                            <strong>Step 1:</strong> Identify the source of the interrupt
+                        </div>
+                        <div class="sim-step" data-step="1">
+                            <strong>Step 2:</strong> Disable all interrupts of a lower priority
+                        </div>
+                        <div class="sim-step" data-step="2">
+                            <strong>Step 3:</strong> Save the contents of the Program Counter (PC)
+                        </div>
+                        <div class="sim-step" data-step="3">
+                            <strong>Step 4:</strong> Save the contents of other registers onto the stack
+                        </div>
+                        <div class="sim-step" data-step="4">
+                            <strong>Step 5:</strong> Load and run the appropriate Interrupt Service Routine (ISR)
+                        </div>
+                        <div class="sim-step" data-step="5">
+                            <strong>Step 6:</strong> Restore the registers from the stack
+                        </div>
+                        <div class="sim-step" data-step="6">
+                            <strong>Step 7:</strong> Enable all interrupts
+                        </div>
+                        <div class="sim-step" data-step="7">
+                            <strong>Step 8:</strong> Continue execution of the interrupted process
+                        </div>
+                    </div>
+                    
+                    <div class="sim-controls">
+                        <button class="btn btn-secondary" onclick="previousInterruptStep()">← Previous</button>
+                        <button class="btn btn-primary" onclick="nextInterruptStep()">Next →</button>
+                        <button class="btn btn-secondary" onclick="resetInterruptSimulation()">Reset</button>
+                    </div>
+                    
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                        <p id="step-explanation">Click "Next" to begin the simulation.</p>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Knowledge Check</h4>
+                    <p>Why must we save register contents during interrupt handling?</p>
+                    <textarea class="input-field" rows="3" id="interrupt-reason" placeholder="Explain why saving register contents is important..."></textarea>
+                    <button class="btn btn-primary" onclick="checkInterruptReason()" style="margin-top: 1rem;">Submit Answer</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Scheduling Section -->
+        <section id="scheduling" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📋</span> Process Scheduling
+                </h2>
+                
+                <p><strong>Scheduling</strong> is the process of managing which processes run on the CPU and when.</p>
+                
+                <div class="interactive-area">
+                    <h4>Why Do We Need Scheduling?</h4>
+                    <p>Select all the reasons why scheduling is important:</p>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label style="display: block; margin: 0.5rem 0; cursor: pointer;">
+                            <input type="checkbox" id="sched1"> To allow multitasking
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0; cursor: pointer;">
+                            <input type="checkbox" id="sched2"> To make the computer run faster
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0; cursor: pointer;">
+                            <input type="checkbox" id="sched3"> To prioritize important tasks
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0; cursor: pointer;">
+                            <input type="checkbox" id="sched4"> To keep the CPU busy
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0; cursor: pointer;">
+                            <input type="checkbox" id="sched5"> To increase RAM capacity
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0; cursor: pointer;">
+                            <input type="checkbox" id="sched6"> To ensure fair access to CPU
+                        </label>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkSchedulingReasons()" style="margin-top: 1rem;">Check Answers</button>
+                    <button class="btn btn-secondary" onclick="resetSchedulingReasons()" style="margin-top: 1rem;">Reset</button>
+                </div>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Fill in the Blanks</h4>
+                    <p>Complete the sentences about scheduling:</p>
+                    
+                    <p style="margin-top: 1rem;">Process scheduling allows more than one 
+                        <select class="input-field" style="width: 150px; display: inline;" id="blank1">
+                            <option value="">Choose...</option>
+                            <option value="user">user</option>
+                            <option value="program">program</option>
+                            <option value="file">file</option>
+                            <option value="window">window</option>
+                        </select>
+                        to appear to be executed at the same time.
+                    </p>
+                    
+                    <p style="margin-top: 1rem;">Scheduling prevents 
+                        <select class="input-field" style="width: 150px; display: inline;" id="blank2">
+                            <option value="">Choose...</option>
+                            <option value="crashes">crashes</option>
+                            <option value="overheating">overheating</option>
+                            <option value="starvation">starvation</option>
+                            <option value="viruses">viruses</option>
+                        </select>
+                        of some processes.
+                    </p>
+                    
+                    <button class="btn btn-primary" onclick="checkSchedulingBlanks()" style="margin-top: 1rem;">Check Answers</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Process States Section -->
+        <section id="process-states" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🔄</span> Process States
+                </h2>
+                
+                <p>A process can be in one of three main states:</p>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Interactive State Diagram</h4>
+                    <p>Click on each state to learn more, then explore the transitions:</p>
+                    
+                    <div class="state-diagram">
+                        <div class="state-box" id="ready-state" onclick="selectState('ready')">
+                            <h4>Ready</h4>
+                            <p>Waiting for CPU</p>
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <span class="state-arrow" style="position: relative;">→</span>
+                            <span class="state-arrow" style="position: relative; margin-top: 2rem;">←</span>
+                        </div>
+                        
+                        <div class="state-box" id="running-state" onclick="selectState('running')">
+                            <h4>Running</h4>
+                            <p>Using CPU</p>
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <span class="state-arrow" style="position: relative;">→</span>
+                            <span class="state-arrow" style="position: relative; margin-top: 2rem;">←</span>
+                        </div>
+                        
+                        <div class="state-box" id="blocked-state" onclick="selectState('blocked')">
+                            <h4>Blocked</h4>
+                            <p>Waiting for I/O</p>
+                        </div>
+                    </div>
+                    
+                    <div id="state-info" style="margin-top: 1.5rem; padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem; min-height: 100px;">
+                        <p>Click on a state to see its description.</p>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>State Transitions</h4>
+                    <p>Match each transition to its correct description:</p>
+                    
+                    <div class="matching-container" id="state-matching">
+                        <div>
+                            <h5>Transitions</h5>
+                            <div class="draggable-item" data-id="t1">Running → Ready</div>
+                            <div class="draggable-item" data-id="t2">Ready → Running</div>
+                            <div class="draggable-item" data-id="t3">Running → Blocked</div>
+                            <div class="draggable-item" data-id="t4">Blocked → Ready</div>
+                        </div>
+                        <div>
+                            <h5>Descriptions</h5>
+                            <div class="drop-zone" data-desc="timeslice">
+                                Time slice expired
+                            </div>
+                            <div class="drop-zone" data-desc="allocated">
+                                CPU allocated to process
+                            </div>
+                            <div class="drop-zone" data-desc="io-wait">
+                                Waiting for I/O operation
+                            </div>
+                            <div class="drop-zone" data-desc="io-complete">
+                                I/O operation completed
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-secondary" onclick="resetStateTransitions()">Reset</button>
+                    <button class="btn btn-primary" onclick="checkStateTransitions()">Check Answers</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Scheduling Algorithms Section -->
+        <section id="algorithms" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>⚙️</span> Scheduling Algorithms
+                </h2>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Algorithm Comparison</h4>
+                    <p>Click each algorithm to see how it works:</p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                        <div class="state-box" onclick="showAlgorithm('rr')" id="rr-box" style="height: auto; padding: 1rem;">
+                            <h5>Round Robin</h5>
+                        </div>
+                        <div class="state-box" onclick="showAlgorithm('sjf')" id="sjf-box" style="height: auto; padding: 1rem;">
+                            <h5>Shortest Job First</h5>
+                        </div>
+                        <div class="state-box" onclick="showAlgorithm('fcfs')" id="fcfs-box" style="height: auto; padding: 1rem;">
+                            <h5>First Come First Served</h5>
+                        </div>
+                        <div class="state-box" onclick="showAlgorithm('srt')" id="srt-box" style="height: auto; padding: 1rem;">
+                            <h5>Shortest Remaining Time</h5>
+                        </div>
+                    </div>
+                    
+                    <div id="algorithm-info" style="margin-top: 1.5rem; padding: 1.5rem; background: var(--bg-secondary); border-radius: 0.5rem; min-height: 120px;">
+                        <h5 id="algorithm-name">Select an algorithm</h5>
+                        <p id="algorithm-desc">Click on an algorithm above to see how it works.</p>
+                        <div id="algorithm-pros-cons" style="display: none; margin-top: 1rem;">
+                            <p><strong>Advantages:</strong> <span id="algorithm-pros"></span></p>
+                            <p><strong>Disadvantages:</strong> <span id="algorithm-cons"></span></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Algorithm Properties</h4>
+                    <p>Which statements are true? Select all that apply:</p>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label style="display: block; margin: 0.5rem 0; cursor: pointer;">
+                            <input type="checkbox" id="prop1"> Round Robin prevents starvation
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0; cursor: pointer;">
+                            <input type="checkbox" id="prop2"> FCFS always has the shortest wait time
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0; cursor: pointer;">
+                            <input type="checkbox" id="prop3"> SJF can cause starvation of long processes
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0; cursor: pointer;">
+                            <input type="checkbox" id="prop4"> SRT requires knowing process duration in advance
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0; cursor: pointer;">
+                            <input type="checkbox" id="prop5"> Round Robin uses time slices
+                        </label>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkAlgorithmProperties()" style="margin-top: 1rem;">Check Answers</button>
+                    <button class="btn btn-secondary" onclick="resetAlgorithmProperties()" style="margin-top: 1rem;">Reset</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary Quiz Section -->
+        <section id="summary" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📝</span> Summary Quiz
+                </h2>
+                <p>Test your understanding of interrupts and scheduling:</p>
+                
+                <div class="interactive-area highlight-active">
+                    <div id="summary-quiz">
+                        <!-- Question 1 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>1. What is an interrupt?</strong></p>
+                            <button class="quiz-option" data-q="1" data-a="a">A type of computer virus</button>
+                            <button class="quiz-option" data-q="1" data-a="b">A programming error</button>
+                            <button class="quiz-option" data-q="1" data-a="c">A signal requiring processor attention</button>
+                            <button class="quiz-option" data-q="1" data-a="d">A way to shut down the computer</button>
+                        </div>
+                        
+                        <!-- Question 2 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>2. Which is NOT a process state?</strong></p>
+                            <button class="quiz-option" data-q="2" data-a="a">Ready</button>
+                            <button class="quiz-option" data-q="2" data-a="b">Terminated</button>
+                            <button class="quiz-option" data-q="2" data-a="c">Running</button>
+                            <button class="quiz-option" data-q="2" data-a="d">Blocked</button>
+                        </div>
+                        
+                        <!-- Question 3 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>3. What happens first when handling an interrupt?</strong></p>
+                            <button class="quiz-option" data-q="3" data-a="a">Run the ISR</button>
+                            <button class="quiz-option" data-q="3" data-a="b">Save register contents</button>
+                            <button class="quiz-option" data-q="3" data-a="c">Identify interrupt source</button>
+                            <button class="quiz-option" data-q="3" data-a="d">Enable all interrupts</button>
+                        </div>
+                        
+                        <!-- Question 4 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>4. Which scheduling algorithm uses time slices?</strong></p>
+                            <button class="quiz-option" data-q="4" data-a="a">First Come First Served</button>
+                            <button class="quiz-option" data-q="4" data-a="b">Round Robin</button>
+                            <button class="quiz-option" data-q="4" data-a="c">Shortest Job First</button>
+                            <button class="quiz-option" data-q="4" data-a="d">Priority Scheduling</button>
+                        </div>
+                        
+                        <!-- Question 5 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>5. A process waiting for keyboard input is in which state?</strong></p>
+                            <button class="quiz-option" data-q="5" data-a="a">Ready</button>
+                            <button class="quiz-option" data-q="5" data-a="b">Running</button>
+                            <button class="quiz-option" data-q="5" data-a="c">Blocked</button>
+                            <button class="quiz-option" data-q="5" data-a="d">Terminated</button>
+                        </div>
+                        
+                        <!-- Question 6 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>6. Which algorithm can cause starvation?</strong></p>
+                            <button class="quiz-option" data-q="6" data-a="a">Round Robin</button>
+                            <button class="quiz-option" data-q="6" data-a="b">First Come First Served</button>
+                            <button class="quiz-option" data-q="6" data-a="c">Shortest Job First</button>
+                            <button class="quiz-option" data-q="6" data-a="d">Random Selection</button>
+                        </div>
+                        
+                        <!-- Question 7 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>7. What is saved on the stack during interrupt handling?</strong></p>
+                            <button class="quiz-option" data-q="7" data-a="a">User passwords</button>
+                            <button class="quiz-option" data-q="7" data-a="b">Register contents</button>
+                            <button class="quiz-option" data-q="7" data-a="c">File contents</button>
+                            <button class="quiz-option" data-q="7" data-a="d">Network settings</button>
+                        </div>
+                        
+                        <!-- Question 8 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>8. Why is scheduling needed?</strong></p>
+                            <button class="quiz-option" data-q="8" data-a="a">To increase hard drive space</button>
+                            <button class="quiz-option" data-q="8" data-a="b">To enable multitasking</button>
+                            <button class="quiz-option" data-q="8" data-a="c">To prevent viruses</button>
+                            <button class="quiz-option" data-q="8" data-a="d">To cool the CPU</button>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="submitSummaryQuiz()">Submit Quiz</button>
+                    <button class="btn btn-secondary" onclick="resetSummaryQuiz()">Reset Quiz</button>
+                    
+                    <div id="quiz-results" style="margin-top: 2rem; display: none;">
+                        <h4>Your Results:</h4>
+                        <p id="quiz-score"></p>
+                        <div id="quiz-feedback"></div>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exam Practice Section -->
+        <section id="exam" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📋</span> Exam Practice Questions
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Question 1 (4 marks)</h4>
+                    <p>Describe the steps involved in handling an interrupt when a key is pressed on the keyboard.</p>
+                    
+                    <textarea class="input-field" id="exam-q1" rows="8" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q1" min="0" max="4" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q1')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="hint-container" id="mark-scheme-q1">
+                        <h5>Mark Scheme:</h5>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>Identify keyboard as interrupt source (1 mark)</li>
+                            <li>Disable lower priority interrupts (1 mark)</li>
+                            <li>Save PC and register contents (1 mark)</li>
+                            <li>Load and run keyboard ISR (1 mark)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Question 2 (6 marks)</h4>
+                    <p>Compare Round Robin and Shortest Job First scheduling algorithms. Include advantages and disadvantages of each.</p>
+                    
+                    <textarea class="input-field" id="exam-q2" rows="10" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q2" min="0" max="6" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q2')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="hint-container" id="mark-scheme-q2">
+                        <h5>Mark Scheme:</h5>
+                        <p>Round Robin (3 marks):</p>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>Uses fixed time slices (1 mark)</li>
+                            <li>Prevents starvation (1 mark)</li>
+                            <li>May not be efficient for varying job sizes (1 mark)</li>
+                        </ul>
+                        <p>Shortest Job First (3 marks):</p>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>Executes shortest processes first (1 mark)</li>
+                            <li>Increases throughput (1 mark)</li>
+                            <li>Can cause starvation of long processes (1 mark)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 2rem;">Calculation Space</h4>
+                <canvas id="drawing-canvas" class="drawing-canvas" width="600" height="300"></canvas>
+                <button class="btn btn-secondary" onclick="clearCanvas()">Clear Canvas</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Extension Section -->
+        <section id="extension" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🌟</span> Extension Activities
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Beyond the Specification</h4>
+                    
+                    <p><strong>1. Real-time Scheduling:</strong></p>
+                    <p>Research real-time scheduling algorithms and explain how they differ from the algorithms we've studied.</p>
+                    <textarea class="input-field" rows="4" id="ext-1" placeholder="Your answer..."></textarea>
+                    
+                    <p style="margin-top: 1.5rem;"><strong>2. Multi-core Scheduling:</strong></p>
+                    <p>How does scheduling work on multi-core processors? What additional challenges does this present?</p>
+                    <textarea class="input-field" rows="4" id="ext-2" placeholder="Your answer..."></textarea>
+                    
+                    <p style="margin-top: 1.5rem;"><strong>3. Priority Inversion:</strong></p>
+                    <p>Research the priority inversion problem and explain how it can be solved.</p>
+                    <textarea class="input-field" rows="4" id="ext-3" placeholder="Your answer..."></textarea>
+                </div>
+                
+                <button class="btn btn-primary" onclick="submitExtension()" style="margin-top: 1rem;">Submit Extension Work</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Videos Section -->
+        <section id="videos" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎥</span> Video Resources
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Supplementary Videos</h4>
+                    <p>Your teacher will add video links here to support your learning:</p>
+                    
+                    <div style="background: var(--bg-secondary); padding: 3rem; border-radius: 1rem; text-align: center; margin: 2rem 0;">
+                        <p style="color: var(--text-secondary); font-size: 4rem;">📹</p>
+                        <p style="color: var(--text-secondary);">Video content will be added here</p>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('intro')">Start Over</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Achievement Popup -->
+    <div class="achievement-popup" id="achievement-popup">
+        <div class="achievement-icon" id="achievement-icon">🏆</div>
+        <h4 id="achievement-title">Achievement Unlocked!</h4>
+        <p id="achievement-desc">You've earned a new achievement</p>
+    </div>
+
+    <!-- Shame Message -->
+    <div class="shame-message" id="shame-message">
+        🚫 No pasting allowed! Do your own work! 🚫
+    </div>
+
+    <!-- Particle Container -->
+    <div id="particle-container"></div>
+
+    <!-- Feedback Button -->
+    <button class="feedback-btn" onclick="openFeedback()" aria-label="Send feedback">💬</button>
+
+    <!-- Feedback Modal -->
+    <div class="modal" id="feedback-modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 1rem; color: var(--primary-color);">Send Feedback</h3>
+            <p>Found a bug or have a suggestion? Let us know!</p>
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                Current page: <span id="feedback-page" style="font-weight: 600;"></span>
+            </p>
+            <textarea class="input-field" id="feedback-text" rows="5" placeholder="Describe the issue or suggestion..." style="margin-top: 1rem;"></textarea>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeFeedback()">Cancel</button>
+                <button class="btn btn-primary" onclick="sendFeedback()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accessibility Controls -->
+    <div class="accessibility-controls">
+        <h4>Accessibility</h4>
+        <button onclick="toggleHighContrast()">High Contrast</button>
+        <button onclick="toggleDyslexiaFont()">Dyslexia Font</button>
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+            <button onclick="changeFontSize('small')">A-</button>
+            <button onclick="changeFontSize('normal')">A</button>
+            <button onclick="changeFontSize('large')">A+</button>
+        </div>
+    </div>
+
+    <script>
+        // ======================
+        // Global State Management
+        // ======================
+        const GameState = {
+            xp: 0,
+            level: 1,
+            completedSections: new Set(),
+            achievements: new Set(),
+            actionsPerformed: new Set(),
+            currentSection: 'intro',
+            currentInterruptStep: -1,
+            selectedItems: {},
+            matchedItems: {},
+            hintUsage: {},
+            sectionScores: {},
+            startTime: Date.now()
+        };
+
+        // Constants
+        const XP_PER_LEVEL = [0, 100, 200, 300, 400, 500];
+        const ANIMATION_DURATION = 300;
+
+        // DOM Cache
+        const DOM = {
+            xpFill: null,
+            xpText: null,
+            currentLevel: null,
+            navPills: null,
+            sections: null,
+            achievementPopup: null,
+            shameMessage: null,
+            feedbackModal: null,
+            feedbackPage: null,
+            feedbackText: null,
+            particleContainer: null
+        };
+
+        // ======================
+        // Initialize Application
+        // ======================
+        function initializeDOM() {
+            DOM.xpFill = document.getElementById('xp-fill');
+            DOM.xpText = document.getElementById('xp-text');
+            DOM.currentLevel = document.getElementById('current-level');
+            DOM.navPills = document.querySelectorAll('.nav-pill');
+            DOM.sections = document.querySelectorAll('.section');
+            DOM.achievementPopup = document.getElementById('achievement-popup');
+            DOM.shameMessage = document.getElementById('shame-message');
+            DOM.feedbackModal = document.getElementById('feedback-modal');
+            DOM.feedbackPage = document.getElementById('feedback-page');
+            DOM.feedbackText = document.getElementById('feedback-text');
+            DOM.particleContainer = document.getElementById('particle-container');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDOM();
+            setupEventListeners();
+            updateXPDisplay();
+            setupMatchingActivities();
+            initializeCanvas();
+            
+            // Show intro animation
+            setTimeout(() => {
+                awardXP(5, 'Welcome', 'welcome_bonus');
+            }, 500);
+        });
+
+        // ======================
+        // Event Management
+        // ======================
+        function setupEventListeners() {
+            // Navigation with event delegation
+            if (DOM.navPills) {
+                DOM.navPills.forEach(pill => {
+                    pill.addEventListener('click', function() {
+                        navigateToSection(this.dataset.section);
+                    });
+                });
+            }
+
+            // Quiz option selection with event delegation
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('quiz-option')) {
+                    selectQuizOption(e.target);
+                }
+            });
+
+            // Prevent paste
+            document.addEventListener('paste', preventPaste);
+
+            // Keyboard navigation
+            document.addEventListener('keydown', handleKeyboardNavigation);
+
+            // Touch support
+            let touchStartX = 0;
+            document.addEventListener('touchstart', function(e) {
+                touchStartX = e.touches[0].clientX;
+            }, { passive: true });
+
+            document.addEventListener('touchend', function(e) {
+                const touchEndX = e.changedTouches[0].clientX;
+                const diffX = touchStartX - touchEndX;
+                
+                if (Math.abs(diffX) > 50) {
+                    if (diffX > 0) navigateSection('next');
+                    else navigateSection('prev');
+                }
+            }, { passive: true });
+
+            // Close modal on outside click
+            DOM.feedbackModal?.addEventListener('click', function(e) {
+                if (e.target === this) closeFeedback();
+            });
+        }
+
+        function preventPaste(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                e.preventDefault();
+                e.stopPropagation();
+                showShameMessage();
+                return false;
+            }
+        }
+
+        function handleKeyboardNavigation(e) {
+            if (e.key === 'ArrowLeft' && !e.target.matches('input, textarea')) {
+                navigateSection('prev');
+            } else if (e.key === 'ArrowRight' && !e.target.matches('input, textarea')) {
+                navigateSection('next');
+            } else if (e.key === 'Escape') {
+                closeFeedback();
+            }
+        }
+
+        // ======================
+        // Navigation System
+        // ======================
+        function navigateSection(direction) {
+            const sections = Array.from(DOM.navPills).map(p => p.dataset.section);
+            const currentIndex = sections.indexOf(GameState.currentSection);
+            
+            if (direction === 'next' && currentIndex < sections.length - 1) {
+                navigateToSection(sections[currentIndex + 1]);
+            } else if (direction === 'prev' && currentIndex > 0) {
+                navigateToSection(sections[currentIndex - 1]);
+            }
+        }
+
+        function navigateToSection(sectionId) {
+            // Update sections
+            DOM.sections.forEach(s => s.classList.remove('active'));
+            DOM.navPills.forEach(p => p.classList.remove('active'));
+            
+            const targetSection = document.getElementById(sectionId);
+            const targetPill = document.querySelector(`[data-section="${sectionId}"]`);
+            
+            if (targetSection && targetPill) {
+                targetSection.classList.add('active');
+                targetPill.classList.add('active');
+                
+                GameState.currentSection = sectionId;
+                updateFeedbackPage();
+                
+                // Award XP for first visit
+                if (!GameState.completedSections.has(sectionId)) {
+                    awardXP(5, 'Section Visit', `visit_${sectionId}`);
+                }
+                
+                // Smooth scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                // Scroll nav into view if needed
+                targetPill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+        }
+
+        // ======================
+        // Quiz Functions
+        // ======================
+        function selectQuizOption(option) {
+            const question = option.dataset.q;
+            if (!question) return;
+            
+            // Deselect all options for this question
+            document.querySelectorAll(`.quiz-option[data-q="${question}"]`).forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            
+            // Select this option
+            option.classList.add('selected');
+        }
+
+        function checkStarterQuiz() {
+            const q1 = document.querySelector('[data-q="s1"].selected');
+            const q2 = document.querySelector('[data-q="s2"].selected');
+            
+            let correct = 0;
+            let feedback = [];
+            
+            // Question 1
+            if (q1) {
+                if (q1.dataset.answer === 'b') {
+                    q1.classList.add('correct');
+                    correct++;
+                } else {
+                    q1.classList.add('incorrect');
+                    document.querySelector('[data-q="s1"][data-answer="b"]').classList.add('correct');
+                    feedback.push("Process scheduling allows multitasking");
+                }
+            }
+            
+            // Question 2
+            if (q2) {
+                if (q2.dataset.answer === 'g') {
+                    q2.classList.add('correct');
+                    correct++;
+                } else {
+                    q2.classList.add('incorrect');
+                    document.querySelector('[data-q="s2"][data-answer="g"]').classList.add('correct');
+                    feedback.push("Higher priority tasks can interrupt running processes");
+                }
+            }
+            
+            if (correct === 2) {
+                awardXP(20, 'Starter Complete', 'starter_complete');
+                markSectionComplete('starter');
+                showAchievement('Quick Start!', 'Perfect starter quiz score', '🎯');
+            } else if (feedback.length > 0) {
+                alert('Review: ' + feedback.join('; '));
+            }
+        }
+
+        function resetStarterQuiz() {
+            document.querySelectorAll('[data-q^="s"]').forEach(opt => {
+                opt.classList.remove('selected', 'correct', 'incorrect');
+            });
+        }
+
+        // ======================
+        // Interrupts Section Functions
+        // ======================
+        function showInterruptInfo(type) {
+            const descriptions = {
+                hardware: "Hardware interrupts come from physical devices like keyboards, mice, or network cards. They signal that a device needs attention.",
+                software: "Software interrupts are generated by programs, such as when an error occurs (division by zero) or when a system call is made.",
+                timer: "Timer interrupts occur at regular intervals to allow the OS to perform scheduling and maintain system time."
+            };
+            
+            // Update all boxes
+            document.querySelectorAll('#interrupts .state-box').forEach(box => {
+                box.classList.remove('active');
+            });
+            
+            // Activate selected box
+            document.getElementById(`${type}-box`)?.classList.add('active');
+            
+            // Show description
+            const infoDiv = document.getElementById('interrupt-info');
+            const descDiv = document.getElementById('interrupt-description');
+            
+            if (infoDiv && descDiv) {
+                descDiv.textContent = descriptions[type];
+                infoDiv.style.display = 'block';
+                infoDiv.classList.add('success-animation');
+                
+                setTimeout(() => {
+                    infoDiv.classList.remove('success-animation');
+                }, 1000);
+            }
+            
+            awardXP(5, 'Explore Interrupts', `interrupt_${type}`);
+        }
+
+        // ======================
+        // Matching Activities
+        // ======================
+        function setupMatchingActivities() {
+            setupMatching('interrupt-matching', {
+                '1': 'hardware',  // Mouse click
+                '2': 'software',  // Division by zero
+                '3': 'timer',     // Time slice expired
+                '4': 'hardware',  // Keyboard key
+                '5': 'software'   // File access
+            });
+            
+            setupMatching('state-matching', {
+                't1': 'timeslice',   // Running → Ready
+                't2': 'allocated',   // Ready → Running
+                't3': 'io-wait',     // Running → Blocked
+                't4': 'io-complete'  // Blocked → Ready
+            });
+        }
+
+        function setupMatching(containerId, answers) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            const items = container.querySelectorAll('.draggable-item');
+            const zones = container.querySelectorAll('.drop-zone');
+            
+            items.forEach(item => {
+                item.addEventListener('click', function() {
+                    if (this.classList.contains('matched')) return;
+                    
+                    // Deselect all items in this container
+                    items.forEach(i => i.classList.remove('selected'));
+                    
+                    // Select this item
+                    this.classList.add('selected');
+                    GameState.selectedItems[containerId] = this;
+                });
+            });
+            
+            zones.forEach(zone => {
+                zone.addEventListener('click', function() {
+                    const selected = GameState.selectedItems[containerId];
+                    if (!selected || selected.classList.contains('matched')) return;
+                    
+                    const itemId = selected.dataset.id;
+                    const zoneType = this.dataset.type || this.dataset.desc;
+                    
+                    if (answers[itemId] === zoneType) {
+                        // Correct match
+                        const clone = selected.cloneNode(true);
+                        clone.classList.remove('selected');
+                        clone.classList.add('matched');
+                        
+                        const droppedArea = this.querySelector('.dropped-items');
+                        if (droppedArea) {
+                            droppedArea.appendChild(clone);
+                        }
+                        
+                        selected.style.display = 'none';
+                        selected.classList.add('matched');
+                        this.classList.add('correct');
+                        
+                        awardXP(10, 'Correct Match', `match_${containerId}_${itemId}`);
+                        
+                        // Check if all matched
+                        const allMatched = Array.from(items).every(item => item.classList.contains('matched'));
+                        if (allMatched) {
+                            setTimeout(() => {
+                                if (containerId === 'interrupt-matching') {
+                                    markSectionComplete('interrupts');
+                                    showAchievement('Interrupt Master', 'Matched all interrupt types!', '⚡');
+                                } else if (containerId === 'state-matching') {
+                                    markSectionComplete('process-states');
+                                    showAchievement('State Expert', 'Understood all state transitions!', '🔄');
+                                }
+                            }, 500);
+                        }
+                    } else {
+                        // Wrong match
+                        this.classList.add('highlight');
+                        setTimeout(() => {
+                            this.classList.remove('highlight');
+                        }, 1000);
+                    }
+                });
+            });
+        }
+
+        function resetInterruptMatching() {
+            resetMatching('interrupt-matching');
+        }
+
+        function resetStateTransitions() {
+            resetMatching('state-matching');
+        }
+
+        function resetMatching(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            // Reset items
+            container.querySelectorAll('.draggable-item').forEach(item => {
+                item.classList.remove('selected', 'matched');
+                item.style.display = 'block';
+            });
+            
+            // Reset zones
+            container.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.classList.remove('correct', 'highlight');
+                const droppedArea = zone.querySelector('.dropped-items');
+                if (droppedArea) droppedArea.innerHTML = '';
+            });
+            
+            // Clear selected item
+            delete GameState.selectedItems[containerId];
+        }
+
+        function checkInterruptMatching() {
+            const container = document.getElementById('interrupt-matching');
+            if (!container) return;
+            
+            const allItems = container.querySelectorAll('.draggable-item');
+            const matchedItems = container.querySelectorAll('.draggable-item.matched');
+            
+            if (allItems.length === matchedItems.length) {
+                markSectionComplete('interrupts');
+            } else {
+                alert('Please match all items before checking.');
+            }
+        }
+
+        function checkStateTransitions() {
+            const container = document.getElementById('state-matching');
+            if (!container) return;
+            
+            const allItems = container.querySelectorAll('.draggable-item');
+            const matchedItems = container.querySelectorAll('.draggable-item.matched');
+            
+            if (allItems.length === matchedItems.length) {
+                markSectionComplete('process-states');
+            } else {
+                alert('Please match all transitions before checking.');
+            }
+        }
+
+        // ======================
+        // Interrupt Handling Simulation
+        // ======================
+        const interruptStepExplanations = [
+            "The CPU detects an interrupt signal and identifies which device or program generated it.",
+            "Lower priority interrupts are disabled to prevent them from interrupting the current handler.",
+            "The Program Counter value is saved so we know where to return after handling the interrupt.",
+            "All CPU register values are pushed onto the stack to preserve the process state.",
+            "The appropriate Interrupt Service Routine (ISR) is loaded and executed to handle the interrupt.",
+            "Register values are restored from the stack to their previous state.",
+            "All interrupts are re-enabled now that handling is complete.",
+            "The CPU resumes execution from where it was interrupted."
+        ];
+
+        function nextInterruptStep() {
+            if (GameState.currentInterruptStep < 7) {
+                GameState.currentInterruptStep++;
+                updateInterruptSimulation();
+                awardXP(5, 'Simulation Step', `interrupt_step_${GameState.currentInterruptStep}`);
+            }
+        }
+
+        function previousInterruptStep() {
+            if (GameState.currentInterruptStep > 0) {
+                GameState.currentInterruptStep--;
+                updateInterruptSimulation();
+            }
+        }
+
+        function resetInterruptSimulation() {
+            GameState.currentInterruptStep = -1;
+            updateInterruptSimulation();
+        }
+
+        function updateInterruptSimulation() {
+            const steps = document.querySelectorAll('.sim-step');
+            steps.forEach((step, index) => {
+                step.classList.toggle('active', index === GameState.currentInterruptStep);
+            });
+            
+            const explanation = document.getElementById('step-explanation');
+            if (explanation) {
+                if (GameState.currentInterruptStep >= 0) {
+                    explanation.textContent = interruptStepExplanations[GameState.currentInterruptStep];
+                    explanation.style.background = 'var(--highlight-color)';
+                } else {
+                    explanation.textContent = "Click 'Next' to begin the simulation.";
+                    explanation.style.background = 'var(--bg-secondary)';
+                }
+            }
+            
+            if (GameState.currentInterruptStep === 7) {
+                markSectionComplete('interrupt-handling');
+                showAchievement('Interrupt Handler', 'Completed the interrupt simulation!', '🔧');
+            }
+        }
+
+        function checkInterruptReason() {
+            const textarea = document.getElementById('interrupt-reason');
+            if (!textarea) return;
+            
+            const answer = textarea.value.toLowerCase();
+            const keywords = ['state', 'preserve', 'process', 'return', 'continue'];
+            const matchCount = keywords.filter(word => answer.includes(word)).length;
+            
+            if (answer.length > 50 && matchCount >= 2) {
+                awardXP(15, 'Interrupt Understanding', 'interrupt_reason');
+                alert('Excellent explanation! Register contents must be saved to preserve the state of the interrupted process.');
+                textarea.style.borderColor = 'var(--success-color)';
+            } else {
+                alert('Please provide a more detailed explanation including why we need to preserve the process state.');
+                textarea.style.borderColor = 'var(--error-color)';
+            }
+        }
+
+        // ======================
+        // Scheduling Section Functions
+        // ======================
+        function checkSchedulingReasons() {
+            const correct = ['sched1', 'sched3', 'sched4', 'sched6'];
+            const incorrect = ['sched2', 'sched5'];
+            
+            let score = 0;
+            let wrongAnswers = 0;
+            
+            correct.forEach(id => {
+                if (document.getElementById(id).checked) score++;
+            });
+            
+            incorrect.forEach(id => {
+                if (document.getElementById(id).checked) wrongAnswers++;
+            });
+            
+            if (score === 4 && wrongAnswers === 0) {
+                awardXP(20, 'Scheduling Reasons', 'scheduling_reasons');
+                showAchievement('Scheduler', 'Understood all scheduling reasons!', '📋');
+                alert('Perfect! You understand why scheduling is important.');
+            } else {
+                alert(`You got ${score} correct answers. Remember: Scheduling enables multitasking, prioritization, CPU efficiency, and fair access.`);
+            }
+        }
+
+        function resetSchedulingReasons() {
+            ['sched1', 'sched2', 'sched3', 'sched4', 'sched5', 'sched6'].forEach(id => {
+                document.getElementById(id).checked = false;
+            });
+        }
+
+        function checkSchedulingBlanks() {
+            const blank1 = document.getElementById('blank1').value;
+            const blank2 = document.getElementById('blank2').value;
+            
+            if (blank1 === 'program' && blank2 === 'starvation') {
+                awardXP(15, 'Scheduling Knowledge', 'scheduling_blanks');
+                markSectionComplete('scheduling');
+                alert('Correct! Process scheduling manages programs and prevents starvation.');
+                
+                // Visual feedback
+                document.getElementById('blank1').style.borderColor = 'var(--success-color)';
+                document.getElementById('blank2').style.borderColor = 'var(--success-color)';
+            } else {
+                let feedback = [];
+                if (blank1 !== 'program') feedback.push('First blank: think about what runs on the CPU');
+                if (blank2 !== 'starvation') feedback.push('Second blank: what happens when processes never get CPU time?');
+                alert('Not quite right. ' + feedback.join('; '));
+            }
+        }
+
+        // ======================
+        // Process States Functions
+        // ======================
+        function selectState(state) {
+            const descriptions = {
+                ready: "Ready State: The process is capable of running but is waiting for CPU time. It's in the ready queue.",
+                running: "Running State: The process is currently being executed by the CPU. Only one process per CPU core can be in this state.",
+                blocked: "Blocked State: The process cannot continue until an I/O operation completes or a resource becomes available."
+            };
+            
+            const infoDiv = document.getElementById('state-info');
+            if (infoDiv) {
+                infoDiv.innerHTML = `
+                    <strong style="color: var(--primary-color);">${state.charAt(0).toUpperCase() + state.slice(1)} State</strong><br>
+                    ${descriptions[state]}
+                `;
+                infoDiv.classList.add('success-animation');
+                setTimeout(() => {
+                    infoDiv.classList.remove('success-animation');
+                }, 1000);
+            }
+            
+            // Update state boxes
+            document.querySelectorAll('#process-states .state-box').forEach(box => {
+                box.classList.remove('active');
+            });
+            document.getElementById(`${state}-state`)?.classList.add('active');
+            
+            awardXP(5, 'Explore States', `state_${state}`);
+        }
+
+        // ======================
+        // Scheduling Algorithms Functions
+        // ======================
+        function showAlgorithm(alg) {
+            const algorithms = {
+                rr: {
+                    name: "Round Robin",
+                    desc: "Each process is given a fixed time slice. When the time expires, the process moves to ready state and the next process runs.",
+                    pros: "Fair to all processes, prevents starvation, good response time",
+                    cons: "Not efficient for processes with varying sizes, overhead from context switching"
+                },
+                sjf: {
+                    name: "Shortest Job First",
+                    desc: "Processes are executed in order of their CPU burst time, shortest first.",
+                    pros: "Minimizes average waiting time, increases throughput",
+                    cons: "Can cause starvation of long processes, requires knowing burst time in advance"
+                },
+                fcfs: {
+                    name: "First Come First Served",
+                    desc: "Processes are executed in the order they arrive. Simple queue-based approach.",
+                    pros: "Simple to implement, no starvation, low overhead",
+                    cons: "Poor average waiting time, convoy effect with long processes"
+                },
+                srt: {
+                    name: "Shortest Remaining Time",
+                    desc: "Preemptive version of SJF. If a new process arrives with shorter remaining time, it preempts the current process.",
+                    pros: "Optimal average waiting time",
+                    cons: "High overhead, can cause starvation, requires accurate time predictions"
+                }
+            };
+            
+            const algo = algorithms[alg];
+            if (!algo) return;
+            
+            // Update UI
+            document.getElementById('algorithm-name').textContent = algo.name;
+            document.getElementById('algorithm-desc').textContent = algo.desc;
+            document.getElementById('algorithm-pros').textContent = algo.pros;
+            document.getElementById('algorithm-cons').textContent = algo.cons;
+            document.getElementById('algorithm-pros-cons').style.display = 'block';
+            
+            // Update boxes
+            document.querySelectorAll('#algorithms .state-box').forEach(box => {
+                box.classList.remove('active');
+            });
+            document.getElementById(`${alg}-box`)?.classList.add('active');
+            
+            awardXP(5, 'Explore Algorithm', `algorithm_${alg}`);
+        }
+
+        function checkAlgorithmProperties() {
+            const correct = ['prop1', 'prop3', 'prop4', 'prop5'];
+            const incorrect = ['prop2'];
+            
+            let score = 0;
+            let wrongAnswers = 0;
+            
+            correct.forEach(id => {
+                if (document.getElementById(id).checked) score++;
+            });
+            
+            incorrect.forEach(id => {
+                if (document.getElementById(id).checked) wrongAnswers++;
+            });
+            
+            if (score === 4 && wrongAnswers === 0) {
+                awardXP(20, 'Algorithm Properties', 'algorithm_properties');
+                markSectionComplete('algorithms');
+                showAchievement('Algorithm Expert', 'Mastered scheduling algorithms!', '⚙️');
+                alert('Excellent! You understand the key properties of scheduling algorithms.');
+            } else {
+                alert(`You got ${score} correct. Remember: RR prevents starvation and uses time slices, SJF can cause starvation, SRT needs time predictions.`);
+            }
+        }
+
+        function resetAlgorithmProperties() {
+            ['prop1', 'prop2', 'prop3', 'prop4', 'prop5'].forEach(id => {
+                document.getElementById(id).checked = false;
+            });
+        }
+
+        // ======================
+        // Summary Quiz Functions
+        // ======================
+        function submitSummaryQuiz() {
+            const answers = {
+                '1': 'c',  // Interrupt = signal requiring attention
+                '2': 'b',  // Terminated is NOT a main state
+                '3': 'c',  // Identify source first
+                '4': 'b',  // Round Robin uses time slices
+                '5': 'c',  // Waiting for I/O = Blocked
+                '6': 'c',  // SJF can cause starvation
+                '7': 'b',  // Register contents saved on stack
+                '8': 'b'   // Scheduling enables multitasking
+            };
+            
+            let score = 0;
+            const feedback = [];
+            
+            Object.keys(answers).forEach(q => {
+                const selected = document.querySelector(`.quiz-option[data-q="${q}"].selected`);
+                if (selected) {
+                    if (selected.dataset.a === answers[q]) {
+                        selected.classList.add('correct');
+                        score++;
+                    } else {
+                        selected.classList.add('incorrect');
+                        const correct = document.querySelector(`.quiz-option[data-q="${q}"][data-a="${answers[q]}"]`);
+                        if (correct) correct.classList.add('correct');
+                        
+                        // Add feedback
+                        const topics = {
+                            '1': 'An interrupt is a signal requiring processor attention',
+                            '2': 'The three main states are Ready, Running, and Blocked',
+                            '3': 'First step is to identify the interrupt source',
+                            '4': 'Round Robin uses fixed time slices',
+                            '5': 'Processes waiting for I/O are in Blocked state',
+                            '6': 'SJF can cause starvation of long processes',
+                            '7': 'Register contents are saved on the stack',
+                            '8': 'Scheduling enables multitasking'
+                        };
+                        feedback.push(`Q${q}: ${topics[q]}`);
+                    }
+                } else {
+                    feedback.push(`Q${q}: Not answered`);
+                }
+            });
+            
+            // Show results
+            const scoreEl = document.getElementById('quiz-score');
+            const feedbackEl = document.getElementById('quiz-feedback');
+            const resultsEl = document.getElementById('quiz-results');
+            
+            if (scoreEl) {
+                scoreEl.textContent = `You scored ${score}/8 (${Math.round(score/8*100)}%)`;
+            }
+            
+            if (feedbackEl) {
+                if (feedback.length > 0) {
+                    feedbackEl.innerHTML = '<h5>Review these topics:</h5><ul style="padding-left: 1.5rem;">' + 
+                        feedback.map(f => `<li>${f}</li>`).join('') + '</ul>';
+                } else {
+                    feedbackEl.innerHTML = '<p style="color: var(--success-color);">Perfect score! Excellent work!</p>';
+                }
+            }
+            
+            if (resultsEl) {
+                resultsEl.style.display = 'block';
+            }
+            
+            // Award XP
+            awardXP(score * 10, 'Summary Quiz', 'summary_quiz');
+            markSectionComplete('summary');
+            
+            // Achievements
+            if (score === 8) {
+                showAchievement('Perfect Score!', 'Aced the summary quiz!', '💯');
+            } else if (score >= 6) {
+                showAchievement('Good Understanding', 'Well done on the quiz!', '👍');
+            }
+            
+            GameState.sectionScores.summaryQuiz = score;
+        }
+
+        function resetSummaryQuiz() {
+            document.querySelectorAll('#summary .quiz-option').forEach(opt => {
+                opt.classList.remove('selected', 'correct', 'incorrect');
+            });
+            document.getElementById('quiz-results').style.display = 'none';
+        }
+
+        // ======================
+        // Exam Practice Functions
+        // ======================
+        function showMarkScheme(question) {
+            const textarea = document.getElementById(`exam-${question}`);
+            const marks = document.getElementById(`marks-${question}`);
+            const scheme = document.getElementById(`mark-scheme-${question}`);
+            
+            if (!textarea || !marks || !scheme) return;
+            
+            const minLength = question === 'q1' ? 100 : 150;
+            
+            if (textarea.value.length < minLength || !marks.value) {
+                alert(`Please write a more detailed answer (minimum ${minLength} characters) and enter predicted marks`);
+                return;
+            }
+            
+            scheme.classList.add('show');
+            awardXP(15, 'Exam Practice', `exam_${question}`);
+            
+            // If predicted marks match actual marks
+            const actualMarks = question === 'q1' ? 4 : 6;
+            if (parseInt(marks.value) === actualMarks) {
+                showAchievement('Accurate Prediction', 'Your mark prediction was spot on!', '🎯');
+            }
+        }
+
+        // ======================
+        // Extension Functions
+        // ======================
+        function submitExtension() {
+            const textareas = ['ext-1', 'ext-2', 'ext-3'];
+            let totalWords = 0;
+            let completed = 0;
+            
+            textareas.forEach(id => {
+                const ta = document.getElementById(id);
+                if (ta) {
+                    const words = ta.value.split(/\s+/).filter(word => word.length > 0).length;
+                    totalWords += words;
+                    if (words > 20) completed++;
+                }
+            });
+            
+            if (totalWords > 50) {
+                awardXP(30, 'Extension Work', 'extension_complete');
+                markSectionComplete('extension');
+                
+                if (completed === 3) {
+                    showAchievement('Going Beyond!', 'Completed all extension activities', '🚀');
+                }
+                
+                alert('Excellent extension work! Your teacher will review your responses.');
+            } else {
+                alert('Please provide more detailed responses for the extension activities (aim for at least 20 words each).');
+            }
+        }
+
+        // ======================
+        // Canvas Drawing Functions
+        // ======================
+        function initializeCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            
+            // Set up drawing
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            
+            function getCoordinates(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                
+                if (e.touches) {
+                    return {
+                        x: (e.touches[0].clientX - rect.left) * scaleX,
+                        y: (e.touches[0].clientY - rect.top) * scaleY
+                    };
+                } else {
+                    return {
+                        x: (e.clientX - rect.left) * scaleX,
+                        y: (e.clientY - rect.top) * scaleY
+                    };
+                }
+            }
+            
+            function startDrawing(e) {
+                isDrawing = true;
+                const coords = getCoordinates(e);
+                lastX = coords.x;
+                lastY = coords.y;
+                e.preventDefault();
+            }
+            
+            function draw(e) {
+                if (!isDrawing) return;
+                
+                const coords = getCoordinates(e);
+                
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(coords.x, coords.y);
+                ctx.stroke();
+                
+                lastX = coords.x;
+                lastY = coords.y;
+                e.preventDefault();
+            }
+            
+            function stopDrawing(e) {
+                isDrawing = false;
+                e.preventDefault();
+            }
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events
+            canvas.addEventListener('touchstart', startDrawing, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing, { passive: false });
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            awardXP(1, 'Canvas Cleared', 'canvas_clear');
+        }
+
+        // ======================
+        // XP & Achievement System
+        // ======================
+        function awardXP(amount, action, actionId = null) {
+            // Check if action already performed
+            if (actionId && GameState.actionsPerformed.has(actionId)) return;
+            if (actionId) GameState.actionsPerformed.add(actionId);
+            
+            // Add XP
+            GameState.xp += amount;
+            updateXPDisplay();
+            checkLevelUp();
+            checkAchievements();
+            
+            // Create floating XP indicator
+            createFloatingXP(amount);
+        }
+
+        function createFloatingXP(amount) {
+            const xpFloat = document.createElement('div');
+            xpFloat.style.cssText = `
+                position: fixed;
+                top: 120px;
+                right: 100px;
+                color: var(--warning-color);
+                font-weight: bold;
+                font-size: 1.5rem;
+                pointer-events: none;
+                z-index: 3000;
+                animation: floatUp 2s ease-out forwards;
+            `;
+            xpFloat.textContent = `+${amount} XP`;
+            document.body.appendChild(xpFloat);
+            
+            setTimeout(() => xpFloat.remove(), 2000);
+        }
+
+        function updateXPDisplay() {
+            if (!DOM.xpFill || !DOM.xpText || !DOM.currentLevel) return;
+            
+            const currentLevelXP = XP_PER_LEVEL[GameState.level - 1] || 0;
+            const nextLevelXP = XP_PER_LEVEL[GameState.level] || XP_PER_LEVEL[XP_PER_LEVEL.length - 1];
+            const xpInLevel = GameState.xp - currentLevelXP;
+            const xpForLevel = nextLevelXP - currentLevelXP;
+            const xpProgress = Math.min((xpInLevel / xpForLevel) * 100, 100);
+            
+            DOM.xpFill.style.width = xpProgress + '%';
+            DOM.xpText.textContent = `${xpInLevel} / ${xpForLevel} XP`;
+            DOM.currentLevel.textContent = GameState.level;
+        }
+
+        function checkLevelUp() {
+            const newLevel = Math.min(5, 
+                XP_PER_LEVEL.findIndex(req => GameState.xp < req) || 5
+            );
+            
+            if (newLevel > GameState.level) {
+                GameState.level = newLevel;
+                showAchievement('Level Up!', `You reached Level ${newLevel}!`, '⬆️');
+                createParticleEffect();
+            }
+        }
+
+        function checkAchievements() {
+            // Speed Learner
+            if (!GameState.achievements.has('speed_learner') && 
+                GameState.completedSections.size >= 3 && 
+                Date.now() - GameState.startTime < 300000) { // 5 minutes
+                GameState.achievements.add('speed_learner');
+                showAchievement('Speed Learner', 'Completed 3 sections in under 5 minutes!', '⚡');
+            }
+            
+            // Completionist
+            if (!GameState.achievements.has('completionist') && 
+                GameState.completedSections.size >= 10) {
+                GameState.achievements.add('completionist');
+                showAchievement('Completionist', 'Finished all main sections!', '🎓');
+            }
+        }
+
+        function showAchievement(title, desc, icon) {
+            if (!DOM.achievementPopup) return;
+            
+            const titleEl = document.getElementById('achievement-title');
+            const descEl = document.getElementById('achievement-desc');
+            const iconEl = document.getElementById('achievement-icon');
+            
+            if (titleEl) titleEl.textContent = title;
+            if (descEl) descEl.textContent = desc;
+            if (iconEl) iconEl.textContent = icon;
+            
+            DOM.achievementPopup.classList.add('show');
+            
+            setTimeout(() => {
+                if (DOM.achievementPopup) {
+                    DOM.achievementPopup.classList.remove('show');
+                }
+            }, 3000);
+            
+            // Award bonus XP for achievement
+            awardXP(50, 'Achievement');
+            
+            // Haptic feedback on mobile
+            if ('vibrate' in navigator) {
+                navigator.vibrate([100, 50, 100]);
+            }
+        }
+
+        function createParticleEffect() {
+            if (!DOM.particleContainer) return;
+            
+            const colors = ['#fbbf24', '#f59e0b', '#6366f1', '#8b5cf6', '#10b981'];
+            const particleCount = 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.cssText = `
+                        left: ${Math.random() * window.innerWidth}px;
+                        top: -10px;
+                        background: ${colors[Math.floor(Math.random() * colors.length)]};
+                        animation-duration: ${2 + Math.random() * 2}s;
+                        animation-delay: ${Math.random() * 0.5}s;
+                    `;
+                    DOM.particleContainer.appendChild(particle);
+                    
+                    particle.addEventListener('animationend', () => particle.remove());
+                }, i * 50);
+            }
+        }
+
+        // ======================
+        // Utility Functions
+        // ======================
+        function markSectionComplete(section) {
+            GameState.completedSections.add(section);
+            const pill = document.querySelector(`[data-section="${section}"]`);
+            if (pill) {
+                pill.classList.add('completed');
+            }
+            saveProgress();
+        }
+
+        function showShameMessage() {
+            if (!DOM.shameMessage) return;
+            
+            DOM.shameMessage.style.display = 'block';
+            DOM.shameMessage.style.animation = 'shameAnimation 3s ease forwards';
+            
+            // Remove XP as penalty
+            GameState.xp = Math.max(0, GameState.xp - 10);
+            updateXPDisplay();
+            
+            setTimeout(() => {
+                if (DOM.shameMessage) {
+                    DOM.shameMessage.style.display = 'none';
+                }
+            }, 3000);
+        }
+
+        // ======================
+        // Feedback System
+        // ======================
+        function openFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'flex';
+                updateFeedbackPage();
+            }
+        }
+
+        function closeFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'none';
+            }
+            if (DOM.feedbackText) {
+                DOM.feedbackText.value = '';
+            }
+        }
+
+        function updateFeedbackPage() {
+            const sectionTitles = {
+                'intro': 'Introduction',
+                'starter': 'Starter Activity',
+                'interrupts': 'Interrupts',
+                'interrupt-handling': 'Interrupt Handling',
+                'scheduling': 'Scheduling',
+                'process-states': 'Process States',
+                'algorithms': 'Scheduling Algorithms',
+                'summary': 'Summary Quiz',
+                'exam': 'Exam Practice',
+                'extension': 'Extension Activities',
+                'videos': 'Videos'
+            };
+            
+            if (DOM.feedbackPage) {
+                DOM.feedbackPage.textContent = sectionTitles[GameState.currentSection] || 'Unknown';
+            }
+        }
+
+        function sendFeedback() {
+            if (!DOM.feedbackText) return;
+            
+            const text = DOM.feedbackText.value.trim();
+            if (!text) {
+                alert('Please enter your feedback');
+                return;
+            }
+            
+            const subject = encodeURIComponent('Interrupts & Scheduling Feedback');
+            const body = encodeURIComponent(
+                `Page: ${DOM.feedbackPage ? DOM.feedbackPage.textContent : 'Unknown'}\n\n` +
+                `Feedback: ${text}\n\n` +
+                `Section ID: ${GameState.currentSection}\n` +
+                `Level: ${GameState.level}, XP: ${GameState.xp}\n` +
+                `Completed Sections: ${Array.from(GameState.completedSections).join(', ')}`
+            );
+            
+            window.location.href = `mailto:millingtond@mgs.org?subject=${subject}&body=${body}`;
+            closeFeedback();
+            awardXP(5, 'Feedback Sent', 'feedback');
+        }
+
+        // ======================
+        // Accessibility Functions
+        // ======================
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+            saveProgress();
+        }
+
+        function toggleDyslexiaFont() {
+            document.body.classList.toggle('dyslexia-font');
+            saveProgress();
+        }
+
+        function changeFontSize(size) {
+            document.body.classList.remove('font-small', 'font-large', 'font-xlarge');
+            if (size !== 'normal') {
+                document.body.classList.add('font-' + size);
+            }
+            saveProgress();
+        }
+
+        // ======================
+        // Progress Management
+        // ======================
+        function saveProgress() {
+            const data = {
+                gameState: {
+                    xp: GameState.xp,
+                    level: GameState.level,
+                    completedSections: Array.from(GameState.completedSections),
+                    achievements: Array.from(GameState.achievements),
+                    actionsPerformed: Array.from(GameState.actionsPerformed),
+                    currentSection: GameState.currentSection,
+                    sectionScores: GameState.sectionScores,
+                    hintUsage: GameState.hintUsage
+                },
+                accessibility: {
+                    highContrast: document.body.classList.contains('high-contrast'),
+                    dyslexiaFont: document.body.classList.contains('dyslexia-font'),
+                    fontSize: Array.from(document.body.classList).find(c => c.startsWith('font-')) || 'normal'
+                }
+            };
+            
+            try {
+                sessionStorage.setItem('interruptsSchedulingProgress', JSON.stringify(data));
+            } catch (e) {
+                console.warn('Could not save progress:', e);
+            }
+        }
+
+        function loadProgress() {
+            try {
+                const saved = sessionStorage.getItem('interruptsSchedulingProgress');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    
+                    // Restore game state
+                    if (data.gameState) {
+                        GameState.xp = data.gameState.xp || 0;
+                        GameState.level = data.gameState.level || 1;
+                        GameState.completedSections = new Set(data.gameState.completedSections || []);
+                        GameState.achievements = new Set(data.gameState.achievements || []);
+                        GameState.actionsPerformed = new Set(data.gameState.actionsPerformed || []);
+                        GameState.currentSection = data.gameState.currentSection || 'intro';
+                        GameState.sectionScores = data.gameState.sectionScores || {};
+                        GameState.hintUsage = data.gameState.hintUsage || {};
+                    }
+                    
+                    // Restore accessibility settings
+                    if (data.accessibility) {
+                        if (data.accessibility.highContrast) {
+                            document.body.classList.add('high-contrast');
+                        }
+                        if (data.accessibility.dyslexiaFont) {
+                            document.body.classList.add('dyslexia-font');
+                        }
+                        if (data.accessibility.fontSize && data.accessibility.fontSize !== 'normal') {
+                            document.body.classList.add(data.accessibility.fontSize);
+                        }
+                    }
+                    
+                    // Restore visual state
+                    GameState.completedSections.forEach(section => {
+                        const pill = document.querySelector(`[data-section="${section}"]`);
+                        if (pill) pill.classList.add('completed');
+                    });
+                    
+                    // Navigate to last section
+                    if (GameState.currentSection !== 'intro') {
+                        navigateToSection(GameState.currentSection);
+                    }
+                }
+            } catch (e) {
+                console.error('Error loading progress:', e);
+            }
+        }
+
+        // ======================
+        // Performance Optimizations
+        // ======================
+        // Debounce function
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Throttle function
+        function throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        // ======================
+        // Easter Eggs
+        // ======================
+        const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+        let konamiIndex = 0;
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === konamiCode[konamiIndex]) {
+                konamiIndex++;
+                if (konamiIndex === konamiCode.length) {
+                    showAchievement('Secret Found!', 'You discovered the Konami code!', '🎮');
+                    awardXP(100, 'Easter Egg', 'konami_code');
+                    konamiIndex = 0;
+                    createParticleEffect();
+                }
+            } else {
+                konamiIndex = 0;
+            }
+        });
+
+        // ======================
+        // Auto-save
+        // ======================
+        const autoSave = debounce(saveProgress, 30000);
+        setInterval(autoSave, 30000);
+
+        // Save on page unload
+        window.addEventListener('beforeunload', saveProgress);
+
+        // ======================
+        // Load saved progress on start
+        // ======================
+        window.addEventListener('load', function() {
+            loadProgress();
+            updateXPDisplay();
+        });
+
+        // ======================
+        // Performance Monitoring
+        // ======================
+        if (typeof performance !== 'undefined' && performance.mark) {
+            performance.mark('worksheet-loaded');
+            console.log('Worksheet initialized successfully');
+        }
+
+        // ======================
+        // Prevent right-click
+        // ======================
+        document.addEventListener('contextmenu', function(e) {
+            if (e.target.tagName !== 'A') {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // ======================
+        // Animation Frame Optimization
+        // ======================
+        let animationFrameId = null;
+        
+        function optimizedAnimation(callback) {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            animationFrameId = requestAnimationFrame(callback);
+        }
+
+        // ======================
+        // Intersection Observer for lazy loading
+        // ======================
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.1
+        };
+
+        const sectionObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        // Observe all sections
+        document.querySelectorAll('.section').forEach(section => {
+            sectionObserver.observe(section);
+        });
+    </script>
+</body>
+</html>

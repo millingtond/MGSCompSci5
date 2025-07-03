@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Lesson: Iteration (Loops)</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Third-party Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.15.2/ace.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <!-- Skulpt - Python in Browser with fallback loading -->
+    <script>
+        // Initialize diagnostic array
+        window.skulptLoadAttempts = [];
+        
+        // Function to load Skulpt from CDN with multiple fallbacks
+            function loadSkulptFromCDN() {
+        // First attempt - Working version from CDNjs
+        var script1 = document.createElement('script');
+        script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/skulpt/0.11.1/skulpt.min.js';
+        script1.crossOrigin = 'anonymous';
+        script1.onerror = function() {
+            console.log('CDNjs failed, trying jsdelivr...');
+            window.skulptLoadAttempts.push('CDNjs 0.11.1 failed');
+            // Second attempt - jsdelivr
+            var script2 = document.createElement('script');
+            script2.src = 'https://cdn.jsdelivr.net/npm/skulpt@0.11.1/dist/skulpt.min.js';
+            script2.crossOrigin = 'anonymous';
+            script2.onerror = function() {
+                console.log('jsdelivr failed, trying unpkg...');
+                window.skulptLoadAttempts.push('jsdelivr 0.11.1 failed');
+                // Third attempt - unpkg
+                var script3 = document.createElement('script');
+                script3.src = 'https://unpkg.com/skulpt@0.11.1/dist/skulpt.min.js';
+                script3.crossOrigin = 'anonymous';
+                script3.onerror = function() {
+                    window.skulptLoadAttempts.push('unpkg 0.11.1 failed');
+                };
+                document.head.appendChild(script3);
+            };
+            document.head.appendChild(script2);
+        };
+        script1.onload = function() {
+            window.skulptLoadAttempts.push('CDNjs 0.11.1 loaded successfully');
+        };
+        document.head.appendChild(script1);
+        
+        // Load stdlib after a delay
+        setTimeout(function() {
+            if (typeof Sk !== 'undefined') {
+                var stdlib = document.createElement('script');
+                stdlib.src = 'https://cdnjs.cloudflare.com/ajax/libs/skulpt/0.11.1/skulpt-stdlib.js';
+                stdlib.crossOrigin = 'anonymous';
+                stdlib.onerror = function() {
+                    var stdlib2 = document.createElement('script');
+                    stdlib2.src = 'https://cdn.jsdelivr.net/npm/skulpt@0.11.1/dist/skulpt-stdlib.js';
+                    stdlib2.crossOrigin = 'anonymous';
+                    document.head.appendChild(stdlib2);
+                };
+                document.head.appendChild(stdlib);
+            }
+        }, 1000);
+    }
+        
+        // Start loading immediately
+        loadSkulptFromCDN();
+    </script>
+
+    <!-- Custom Stylesheet -->
+    <style>/* Base Styling & Variables */
+:root {
+    --primary-bg: #f0f4f8;
+    --secondary-bg: #ffffff;
+    --primary-text: #1e293b;
+    --secondary-text: #475569;
+    --accent-color: #3b82f6;
+    --accent-hover: #2563eb;
+    --correct-color: #22c55e;
+    --incorrect-color: #ef4444;
+    --border-color: #e2e8f0;
+    --shadow-color: rgba(0, 0, 0, 0.05);
+    --font-family-main: 'Inter', sans-serif;
+    --font-family-dyslexia: 'OpenDyslexic', sans-serif;
+}
+
+/* High Contrast Theme */
+body.high-contrast {
+    --primary-bg: #000000;
+    --secondary-bg: #1a1a1a;
+    --primary-text: #ffffff;
+    --secondary-text: #e0e0e0;
+    --accent-color: #facc15;
+    --accent-hover: #eab308;
+    --correct-color: #86efac;
+    --incorrect-color: #fca5a5;
+    --border-color: #666666;
+}
+
+/* Shame Theme */
+body.shame-mode {
+    --primary-bg: #450a0a;
+    --secondary-bg: #7f1d1d;
+    --primary-text: #fecaca;
+    --secondary-text: #fca5a5;
+    --accent-color: #ef4444;
+    --accent-hover: #dc2626;
+    --border-color: #991b1b;
+}
+
+/* Dyslexia Friendly Font */
+@font-face {
+    font-family: 'OpenDyslexic';
+    src: url('https://cdn.jsdelivr.net/gh/antijingoist/opendyslexic@master/packages/fonts/OpenDyslexic-Regular.otf') format('opentype');
+}
+body.dyslexia-font {
+    font-family: var(--font-family-dyslexia);
+}
+
+html { scroll-behavior: smooth; }
+body {
+    font-family: var(--font-family-main);
+    background-color: var(--primary-bg);
+    color: var(--primary-text);
+    margin: 0;
+    padding-top: 80px;
+    transition: background-color 0.3s, color 0.3s;
+    -webkit-user-select: none; user-select: none;
+}
+
+/* Header & Navigation */
+header.main-header {
+    position: fixed; top: 0; left: 0; width: 100%;
+    background-color: var(--secondary-bg);
+    border-bottom: 1px solid var(--border-color);
+    z-index: 1000; padding: 0 2rem;
+    box-shadow: 0 2px 10px var(--shadow-color);
+    display: flex; align-items: center; justify-content: space-between;
+    height: 80px;
+}
+.logo-title { font-size: 1.5rem; font-weight: 700; }
+.quick-access-nav { display: flex; gap: 0.5rem; }
+.quick-access-nav a {
+    padding: 0.5rem 1rem; text-decoration: none;
+    color: var(--secondary-text); font-weight: 500;
+    border-radius: 999px; transition: background-color 0.2s, color 0.2s;
+}
+.quick-access-nav a.active, .quick-access-nav a:hover { background-color: var(--accent-color); color: white; }
+
+/* XP System */
+.xp-level-system { display: flex; align-items: center; gap: 1rem; min-width: 250px; }
+.level-badge {
+    background-color: var(--accent-color); color: white;
+    padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600;
+}
+.xp-bar-container { flex-grow: 1; height: 12px; background-color: var(--border-color); border-radius: 999px; overflow: hidden; }
+.xp-bar { height: 100%; width: 0%; background-color: var(--correct-color); border-radius: 999px; transition: width 0.5s ease-in-out; }
+.xp-text { font-size: 0.8rem; font-weight: 500; color: var(--secondary-text); }
+
+/* Main Content */
+main { padding: 2rem; max-width: 1000px; margin: 0 auto; }
+section { display: none; animation: fadeIn 0.5s ease-in-out; }
+section.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.card { background-color: var(--secondary-bg); border-radius: 1rem; padding: 2rem; margin-bottom: 2rem; border: 1px solid var(--border-color); box-shadow: 0 4px 15px var(--shadow-color); }
+h1, h2, h3, h4 { color: var(--primary-text); font-weight: 700; }
+h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+h2 { font-size: 2rem; border-bottom: 2px solid var(--accent-color); padding-bottom: 0.5rem; margin-top: 2.5rem; margin-bottom: 1.5rem; }
+h3 { font-size: 1.5rem; margin-top: 2rem; margin-bottom: 1rem; }
+p, li { line-height: 1.6; color: var(--secondary-text); }
+
+/* Buttons & Interactive Elements */
+.btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-radius: 0.5rem; border: none; font-weight: 600; cursor: pointer; transition: transform 0.1s, background-color 0.2s; text-decoration: none; }
+.btn:hover { transform: translateY(-2px); } .btn:active { transform: translateY(0); }
+.btn-primary { background-color: var(--accent-color); color: white; }
+.btn-primary:hover { background-color: var(--accent-hover); }
+.btn-secondary { background-color: var(--border-color); color: var(--primary-text); }
+.btn-secondary:hover { background-color: #d1d5db; }
+.btn-hint { background-color: #f59e0b; color: white; } .btn-hint:hover { background-color: #d97706; }
+.btn:disabled { background-color: #9ca3af; cursor: not-allowed; transform: none; }
+.section-nav { display: flex; justify-content: space-between; margin-top: 2rem; }
+
+/* Pretty Print Code Snippets */
+pre code {
+    display: block;
+    background-color: #1e293b; color: #e2e8f0; padding: 1.5rem;
+    border-radius: 0.5rem; font-family: 'Courier New', Courier, monospace;
+    white-space: pre-wrap; margin: 1rem 0;
+    line-height: 1.5;
+}
+.ocr-lang { border-left: 5px solid #3b82f6; }
+.python-lang { border-left: 5px solid #facc15; }
+code .kw { color: #c792ea; font-weight: bold; } /* Keyword */
+code .str { color: #c3e88d; } /* String */
+code .num { color: #f78c6c; } /* Number */
+code .com { color: #637777; font-style: italic; } /* Comment */
+code .func { color: #82aaff; } /* Function */
+
+.ace_editor { width: 100% !important; height: 300px; border-radius: 0.5rem; border: 1px solid var(--border-color); }
+.output-box, .hint-box { background-color: var(--primary-bg); border: 1px dashed var(--border-color); padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; min-height: 50px; font-family: 'Courier New', Courier, monospace; }
+.hint-box { display: none; }
+.feedback-box { padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; font-weight: 500; display: flex; align-items: center; gap: 1rem; }
+.feedback-correct { background-color: #dcfce7; color: #166534; border-left: 5px solid var(--correct-color); }
+.feedback-incorrect { background-color: #fee2e2; color: #991b1b; border-left: 5px solid var(--incorrect-color); }
+
+/* Drag & Drop Styles */
+.drag-container { display: flex; gap: 2rem; justify-content: space-around; margin-top: 1rem; }
+.drop-zone, .source-zone { background-color: var(--primary-bg); border: 2px dashed var(--border-color); border-radius: 0.5rem; padding: 1rem; min-height: 200px; width: 45%; }
+.drag-item { background-color: var(--secondary-bg); color: var(--primary-text); padding: 0.75rem; margin-bottom: 0.5rem; border-radius: 0.5rem; cursor: grab; border: 1px solid var(--border-color); box-shadow: 0 2px 4px var(--shadow-color); font-family: 'Courier New', Courier, monospace; }
+.drag-item.sortable-ghost { opacity: 0.4; background: #c8ebfb; }
+
+/* Exam & Trace Table Styles */
+textarea.long-answer { width: 100%; min-height: 150px; padding: 1rem; border-radius: 0.5rem; border: 1px solid var(--border-color); background-color: var(--primary-bg); font-family: inherit; font-size: 1rem; resize: vertical; }
+.mark-scheme { display: none; margin-top: 1rem; padding: 1.5rem; background-color: #eef2ff; border: 1px solid #c7d2fe; border-left: 5px solid #6366f1; border-radius: 0.5rem; }
+.trace-table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+.trace-table th, .trace-table td { border: 1px solid var(--border-color); padding: 0.8rem; text-align: center; }
+.trace-table th { background-color: var(--primary-bg); }
+.trace-table input { width: 100%; border: none; background: transparent; text-align: center; font-family: inherit; font-size: 1rem; }
+.trace-table input:focus { outline: 2px solid var(--accent-color); }
+
+/* Modals, Popups, Overlays */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); display: none; justify-content: center; align-items: center; z-index: 2000; animation: fadeIn 0.3s; }
+.modal-content { background-color: var(--secondary-bg); padding: 2rem; border-radius: 1rem; width: 90%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+#drawing-canvas { border: 1px solid var(--border-color); border-radius: 0.5rem; cursor: crosshair; }
+.achievement-popup { position: fixed; bottom: -150px; left: 50%; transform: translateX(-50%); background-color: #1e293b; color: white; padding: 1rem 2rem; border-radius: 1rem; z-index: 3000; display: flex; align-items: center; gap: 1rem; box-shadow: 0 5px 20px rgba(0,0,0,0.3); transition: bottom 0.5s ease-in-out; }
+.achievement-popup.show { bottom: 20px; }
+.achievement-popup i { color: #facc15; font-size: 2rem; }
+#shame-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--shame-mode-bg, #7f1d1d); z-index: 9999; display: none; justify-content: center; align-items: center; text-align: center; color: #fecaca; }
+#shame-overlay h1 { font-size: 4rem; color: #fecaca; }
+.access-controls { position: fixed; bottom: 20px; left: 20px; background-color: var(--secondary-bg); border-radius: 0.5rem; box-shadow: 0 4px 15px var(--shadow-color); padding: 0.5rem; display: flex; gap: 0.5rem; z-index: 1001; }
+.access-controls button { background: none; border: 1px solid var(--border-color); border-radius: 0.25rem; width: 40px; height: 40px; cursor: pointer; color: var(--secondary-text); }
+.access-controls button:hover { background-color: var(--primary-bg); }
+
+/* Loading message */
+#loading-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    text-align: center;
+    z-index: 5000;
+}
+
+.spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid var(--accent-color);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 1rem auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+    .quick-access-nav { display: none; }
+    main { padding: 1rem; }
+    .card { padding: 1.5rem; }
+    h1 { font-size: 2rem; }
+    .drag-container { flex-direction: column; }
+    .drop-zone, .source-zone { width: 100%; }
+    .xp-level-system { min-width: 150px; }
+    .logo-title { font-size: 1.2rem; }
+    header.main-header { padding: 0 1rem; }
+}
+</style>
+</head>
+<body onpaste="return false;">
+    <!-- Loading indicator -->
+    <div id="loading-message">
+        <h2>Loading Python Environment...</h2>
+        <div class="spinner"></div>
+        <p>Please wait while we set up the Python interpreter.</p>
+    </div>
+
+    <!-- HEADER -->
+    <header class="main-header" style="display: none;">
+        <div class="logo-title">OCR Loops Lesson</div>
+        <nav class="quick-access-nav">
+            <a href="#welcome" data-section="section-welcome" class="active">Start</a>
+            <a href="#for-loop" data-section="section-for-loop">For</a>
+            <a href="#while-loop" data-section="section-while-loop">While</a>
+            <a href="#do-until" data-section="section-do-until">Do-Until</a>
+            <a href="#trace-table" data-section="section-trace-table">Trace Table</a>
+            <a href="#exam-practice" data-section="section-exam-practice">Exam Practice</a>
+            <a href="#extension" data-section="section-extension">Extension</a>
+        </nav>
+        <div class="xp-level-system">
+            <div class="level-badge" id="level-display">Level 1</div>
+            <div class="xp-bar-container"><div class="xp-bar" id="xp-bar"></div></div>
+            <div class="xp-text" id="xp-text">0 / 100 XP</div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main style="display: none;">
+        <!-- SECTION 0: WELCOME & STARTER -->
+        <section id="section-welcome" class="active">
+            <h1><i class="fa-solid fa-repeat"></i> Iteration: The Power of Loops</h1>
+            <div class="card">
+                <h3><i class="fa-solid fa-graduation-cap"></i> Lesson Outcomes</h3>
+                <p>By the end of this lesson, you will be able to:</p>
+                <ul>
+                    <li>Define iteration and its purpose in programming.</li>
+                    <li>Explain the difference between count-controlled (For) and condition-controlled (While, Do-Until) loops.</li>
+                    <li>Construct For, While, and Do-Until loops using OCR Reference Language.</li>
+                    <li>Implement loops in Python to solve practical problems.</li>
+                    <li>Trace the execution of algorithms containing loops.</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3><i class="fa-solid fa-puzzle-piece"></i> Starter Activity: Code Scramble</h3>
+                <p>The code below is meant to print the numbers from 1 to 3. Drag the lines from the 'Jumbled Code' box into the 'Correct Order' box to fix it.</p>
+                <div class="drag-container">
+                    <div class="source-zone">
+                        <h4>Jumbled Code</h4>
+                        <div id="starter-source" class="list-group">
+                            <div class="drag-item" data-id="3">next i</div>
+                            <div class="drag-item" data-id="1">for i = 1 to 3</div>
+                            <div class="drag-item" data-id="2">&nbsp;&nbsp;&nbsp;&nbsp;print(i)</div>
+                        </div>
+                    </div>
+                    <div class="drop-zone">
+                        <h4>Correct Order</h4>
+                        <div id="starter-target" class="list-group"></div>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <button id="check-starter-btn" class="btn btn-primary"><i class="fa-solid fa-check"></i> Check My Code</button>
+                    <button id="reset-starter-btn" class="btn btn-secondary"><i class="fa-solid fa-arrow-rotate-left"></i> Reset</button>
+                </div>
+                <div id="starter-feedback" class="feedback-box" style="display: none;"></div>
+            </div>
+        </section>
+
+        <!-- SECTION 1: FOR LOOP -->
+        <section id="section-for-loop">
+            <h2>The FOR Loop: Count-Controlled Iteration</h2>
+            <div class="card">
+                <p>A <strong>FOR loop</strong> is used when you know exactly how many times you want to repeat a block of code. This is known as <strong>count-controlled iteration</strong>.</p>
+                <h3>OCR Reference Language</h3>
+                <pre><code class="ocr-lang"><span class="kw">for</span> i = <span class="num">1</span> <span class="kw">to</span> <span class="num">5</span>
+    <span class="func">print</span>(<span class="str">"Hello"</span>)
+<span class="kw">next</span> i</code></pre>
+                <p>This loop will print "Hello" five times. The variable `i` is the counter, starting at 1 and finishing at 5.</p>
+                <h3>Python Equivalent</h3>
+                <pre><code class="python-lang"><span class="kw">for</span> i <span class="kw">in</span> <span class="func">range</span>(<span class="num">1</span>, <span class="num">6</span>):
+    <span class="func">print</span>(<span class="str">"Hello"</span>)</code></pre>
+                <p><strong>Important:</strong> In Python, `range(1, 6)` includes the number 1 but goes <em>up to (but not including)</em> 6. This is a common point of confusion!</p>
+            </div>
+            <div class="card">
+                <h3><i class="fa-solid fa-laptop-code"></i> Coding Challenge: Times Table Trainer</h3>
+                <p>Write a Python program that takes a number, then uses a `for` loop to print its times table from 1 to 12. </p>
+                <strong>Example Output (for input 7):</strong> `7 14 21 28 35 42 49 56 63 70 77 84`
+                <div id="task1-editor"></div>
+                <div style="margin-top: 1.5rem;">
+                    <button id="run-task1-btn" class="btn btn-primary"><i class="fa-solid fa-play"></i> Run Code</button>
+                    <button id="hint-task1-btn" class="btn btn-hint"><i class="fa-solid fa-lightbulb"></i> Hint</button>
+                    <button id="reset-task1-btn" class="btn btn-secondary"><i class="fa-solid fa-arrow-rotate-left"></i> Reset</button>
+                </div>
+                <div id="hint-task1" class="hint-box">Remember `range()`! To loop 12 times from 1, you'll need `range(1, 13)`. To print without a new line each time, use `print(your_number, end=" ")`.</div>
+                <h4>Output:</h4>
+                <pre id="task1-output" class="output-box"></pre>
+                <div id="task1-feedback" class="feedback-box" style="display: none;"></div>
+            </div>
+        </section>
+        
+        <!-- SECTION 2: WHILE LOOP -->
+        <section id="section-while-loop">
+            <h2>The WHILE Loop: Pre-Condition Iteration</h2>
+            <div class="card">
+                <p>A <strong>WHILE loop</strong> repeats a block of code <em>as long as</em> a specified condition is true. The condition is checked <strong>before</strong> each iteration. This means it's possible the loop might never run at all!</p>
+                <h3>OCR Reference Language</h3>
+                <pre><code class="ocr-lang">count = <span class="num">0</span>
+<span class="kw">while</span> count < <span class="num">5</span>
+    <span class="func">print</span>(<span class="str">"Looping..."</span>)
+    count = count + <span class="num">1</span>
+<span class="kw">endwhile</span></code></pre>
+                <h3>Python Equivalent</h3>
+                <pre><code class="python-lang">count = <span class="num">0</span>
+<span class="kw">while</span> count < <span class="num">5</span>:
+    <span class="func">print</span>(<span class="str">"Looping..."</span>)
+    count = count + <span class="num">1</span></code></pre>
+                <p>Crucially, something inside the loop must change the condition variable (`count` in this case), otherwise you'll create an <strong>infinite loop</strong>!</p>
+            </div>
+            <div class="card">
+                <h3><i class="fa-solid fa-rocket"></i> Simulation: Rocket Launch</h3>
+                <p>This simulation demonstrates a `while` loop. The rocket can only travel while it has fuel. The condition (`fuel > 0`) is checked *before* each part of the journey.</p>
+                <p>Current Fuel: <strong id="rocket-fuel">100</strong> units.</p>
+                <button id="rocket-sim-btn" class="btn btn-primary">Travel 30 Units</button>
+                <div id="rocket-output" class="output-box">Ready for launch.</div>
+                <hr style="margin: 1rem 0; border: 1px solid var(--border-color);">
+                <h4>Reflection Question</h4>
+                <p>In this simulation, what would happen if the rocket started with 0 fuel? Why is this a good example of a pre-condition loop?</p>
+                <textarea id="reflection-q1" class="long-answer" placeholder="Type your answer here..."></textarea>
+                <button id="submit-reflection1" class="btn btn-primary" style="margin-top:1rem;">Submit Answer</button>
+                <div id="reflection1-feedback" class="feedback-box" style="display: none;"></div>
+            </div>
+            <div class="card">
+                <h3><i class="fa-solid fa-gamepad"></i> Coding Challenge: Guess the Number</h3>
+                <p>Write a Python program where the computer picks a secret number. The user must keep guessing until they find it. You'll need a `while` loop that continues as long as the user's guess is not equal to the secret number.</p>
+                <div id="task2-editor"></div>
+                <div style="margin-top: 1.5rem;">
+                    <button id="run-task2-btn" class="btn btn-primary"><i class="fa-solid fa-play"></i> Run Code</button>
+                    <button id="reset-task2-btn" class="btn btn-secondary"><i class="fa-solid fa-arrow-rotate-left"></i> Reset</button>
+                </div>
+                <h4>Output:</h4>
+                <pre id="task2-output" class="output-box"></pre>
+                <div id="task2-feedback" class="feedback-box" style="display: none;"></div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: DO UNTIL LOOP -->
+        <section id="section-do-until">
+            <h2>The DO...UNTIL Loop: Post-Condition Iteration</h2>
+            <div class="card">
+                <p>The <strong>DO...UNTIL loop</strong> is a <strong>post-condition</strong> loop. The code inside the loop is executed first, and *then* the condition is checked. A `do...until` loop will <strong>always run at least once</strong>.</p>
+                <h3>OCR Reference Language</h3>
+                <pre><code class="ocr-lang"><span class="kw">do</span>
+    password = <span class="func">input</span>(<span class="str">"Enter password"</span>)
+<span class="kw">until</span> password == <span class="str">"secret"</span></code></pre>
+                <h3>Python Equivalent</h3>
+                <p><strong>Python does not have a built-in `do...until` loop!</strong> We simulate it by using a boolean flag to control a `while` loop.</p>
+                <pre><code class="python-lang">password_correct = <span class="kw">False</span>
+<span class="kw">while not</span> password_correct:
+    password = <span class="func">input</span>(<span class="str">"Enter password"</span>)
+    <span class="kw">if</span> password == <span class="str">"secret"</span>:
+        password_correct = <span class="kw">True</span></code></pre>
+                <p>This structure guarantees the loop runs at least once because `password_correct` starts as `False`.</p>
+            </div>
+            <div class="card">
+                <h3><i class="fa-solid fa-right-left"></i> Concept Comparison</h3>
+                <p>Drag the properties from the bank below into the correct loop category.</p>
+                <div class="drag-container">
+                    <div class="drop-zone"><h4>WHILE Loop</h4><div id="while-dropzone" class="list-group"></div></div>
+                    <div class="drop-zone"><h4>DO...UNTIL Loop</h4><div id="do-until-dropzone" class="list-group"></div></div>
+                </div>
+                <div class="source-zone" style="margin-top: 1rem;">
+                    <h4>Properties Bank</h4>
+                    <div id="properties-source" class="list-group">
+                        <div class="drag-item" data-target="do-until">Always runs at least once</div>
+                        <div class="drag-item" data-target="while">Might never run</div>
+                        <div class="drag-item" data-target="while">Condition checked at the start</div>
+                        <div class="drag-item" data-target="do-until">Condition checked at the end</div>
+                        <div class="drag-item" data-target="while">Pre-condition loop</div>
+                        <div class="drag-item" data-target="do-until">Post-condition loop</div>
+                    </div>
+                </div>
+                 <div style="text-align: center; margin-top: 1.5rem;">
+                    <button id="check-comparison-btn" class="btn btn-primary"><i class="fa-solid fa-check"></i> Check Answers</button>
+                    <button id="reset-comparison-btn" class="btn btn-secondary"><i class="fa-solid fa-arrow-rotate-left"></i> Reset</button>
+                </div>
+                <div id="comparison-feedback" class="feedback-box" style="display: none;"></div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: TRACE TABLE -->
+        <section id="section-trace-table">
+            <h2>Trace Table Practice</h2>
+            <div class="card">
+                <p>A trace table is a technique used to test algorithms to make sure that no logical errors occur while the calculations are being processed. Complete the trace table below for the given OCR Reference Language algorithm. The first line has been done for you.</p>
+                <pre><code class="ocr-lang"><span class="num">1.</span>  total = <span class="num">100</span>
+<span class="num">2.</span>  value = <span class="num">10</span>
+<span class="num">3.</span>  <span class="kw">while</span> total > value
+<span class="num">4.</span>      total = total - value
+<span class="num">5.</span>      value = value + <span class="num">10</span>
+<span class="num">6.</span>  <span class="kw">endwhile</span>
+<span class="num">7.</span>  <span class="func">print</span>(total)</code></pre>
+                <table class="trace-table">
+                    <thead>
+                        <tr><th>Line No.</th><th>total</th><th>value</th><th>Condition: total > value</th><th>Output</th></tr>
+                    </thead>
+                    <tbody id="trace-table-body">
+                        <tr><td>1</td><td>100</td><td></td><td></td><td></td></tr>
+                        <tr><td>2</td><td></td><td><input type="text" data-answer="10"></td><td></td><td></td></tr>
+                        <tr><td>3</td><td></td><td></td><td><input type="text" data-answer="True"></td><td></td></tr>
+                        <tr><td>4</td><td><input type="text" data-answer="90"></td><td></td><td></td><td></td></tr>
+                        <tr><td>5</td><td></td><td><input type="text" data-answer="20"></td><td></td><td></td></tr>
+                        <tr><td>3</td><td></td><td></td><td><input type="text" data-answer="True"></td><td></td></tr>
+                        <tr><td>4</td><td><input type="text" data-answer="70"></td><td></td><td></td><td></td></tr>
+                        <tr><td>5</td><td></td><td><input type="text" data-answer="30"></td><td></td><td></td></tr>
+                        <tr><td>3</td><td></td><td></td><td><input type="text" data-answer="True"></td><td></td></tr>
+                        <tr><td>4</td><td><input type="text" data-answer="40"></td><td></td><td></td><td></td></tr>
+                        <tr><td>5</td><td></td><td><input type="text" data-answer="40"></td><td></td><td></td></tr>
+                        <tr><td>3</td><td></td><td></td><td><input type="text" data-answer="False"></td><td></td></tr>
+                        <tr><td>7</td><td></td><td></td><td></td><td><input type="text" data-answer="40"></td></tr>
+                    </tbody>
+                </table>
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <button id="check-trace-btn" class="btn btn-primary">Check Trace Table</button>
+                </div>
+                <div id="trace-feedback" class="feedback-box" style="display: none;"></div>
+            </div>
+        </section>
+        
+        <!-- SECTION 5: EXAM PRACTICE -->
+        <section id="section-exam-practice">
+            <h2>Exam-Style Practice</h2>
+            <div class="card">
+                <h3>Question 1 (2 marks)</h3>
+                <p>Explain the key difference between a pre-condition loop (like `while`) and a post-condition loop (like `do...until`).</p>
+                <textarea id="exam-q1-answer" class="long-answer" placeholder="Focus on when the condition is checked and how many times the loop is guaranteed to run."></textarea>
+                <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
+                    <button id="show-q1-markscheme" class="btn btn-primary" disabled>Show Mark Scheme</button>
+                    <span>Predicted Mark: <input type="number" id="q1-predict" min="0" max="2" style="width: 50px;"> / 2</span>
+                </div>
+                <div id="q1-markscheme" class="mark-scheme">
+                    <h4>Mark Scheme</h4>
+                    <ul>
+                        <li><strong>[1 mark]</strong> A pre-condition loop (e.g. WHILE) checks the condition <strong>before</strong> executing the loop's code. A post-condition loop (e.g. DO...UNTIL) checks it <strong>after</strong>.</li>
+                        <li><strong>[1 mark]</strong> Therefore, a post-condition loop is guaranteed to run at least once, whereas a pre-condition loop might not run at all if the condition is initially false.</li>
+                    </ul>
+                </div>
+                <div id="exam-q1-feedback" class="feedback-box" style="display: none;"></div>
+            </div>
+        </section>
+
+        <!-- SECTION 6: EXTENSION -->
+        <section id="section-extension">
+            <h2>Extension: Nested Loops</h2>
+            <div class="card">
+                <p>A <strong>nested loop</strong> is a loop inside another loop. This is useful for working with two-dimensional structures, like grids, tables, or pixels on a screen.</p>
+                <p>The outer loop controls the rows, and the inner loop controls the columns.</p>
+                <pre><code class="python-lang"><span class="com"># Outer loop for rows 1, 2, 3</span>
+<span class="kw">for</span> row <span class="kw">in</span> <span class="func">range</span>(<span class="num">1</span>, <span class="num">4</span>):
+    <span class="com"># Inner loop for columns 1, 2, 3, 4</span>
+    <span class="kw">for</span> col <span class="kw">in</span> <span class="func">range</span>(<span class="num">1</span>, <span class="num">5</span>):
+        <span class="func">print</span>(<span class="str">f"({row},{col})"</span>, end=<span class="str">" "</span>)
+    <span class="func">print</span>() <span class="com"># Print a new line after each row is complete</span></code></pre>
+                <h4>Output of the above code:</h4>
+                <pre class="output-box">(1,1) (1,2) (1,3) (1,4) 
+(2,1) (2,2) (2,3) (2,4) 
+(3,1) (3,2) (3,3) (3,4) </pre>
+            </div>
+            <div class="card">
+                <h3><i class="fa-solid fa-border-all"></i> Extension Challenge: Draw a Box</h3>
+                <p>Use a nested loop in Python to draw a 5x5 box made of asterisks (`*`).</p>
+                <div id="task3-editor"></div>
+                <div style="margin-top: 1.5rem;">
+                    <button id="run-task3-btn" class="btn btn-primary"><i class="fa-solid fa-play"></i> Run Code</button>
+                    <button id="reset-task3-btn" class="btn btn-secondary"><i class="fa-solid fa-arrow-rotate-left"></i> Reset</button>
+                </div>
+                <h4>Output:</h4>
+                <pre id="task3-output" class="output-box"></pre>
+                <div id="task3-feedback" class="feedback-box" style="display: none;"></div>
+            </div>
+        </section>
+
+        <!-- Navigation Arrows -->
+        <div class="section-nav">
+            <button id="prev-section-btn" class="btn btn-secondary"><i class="fa-solid fa-arrow-left"></i> Previous</button>
+            <button id="next-section-btn" class="btn btn-primary">Next <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+    </main>
+
+    <!-- MODALS & POPUPS -->
+    <div id="drawing-modal" class="modal-overlay"> <!-- ... content ... --> </div>
+    <div id="achievement-popup" class="achievement-popup">
+        <i class="fa-solid fa-trophy"></i>
+        <div>
+            <h4 style="margin:0; padding:0; color:white;">Achievement Unlocked!</h4>
+            <p id="achievement-name" style="margin:0; padding:0; color:#e0e0e0;"></p>
+        </div>
+    </div>
+    <div id="shame-overlay"> <!-- ... content ... --> </div>
+    <div class="access-controls"> <!-- ... content ... --> </div>
+    
+    <!-- Main Application Script -->
+    <script src="gcse-prog-for.js" defer></script>
+</body>
+</html>

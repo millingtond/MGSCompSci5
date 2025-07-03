@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Storage Prefixes: IEC vs. SI Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --primary-color: #16213e;
+            --secondary-color: #0f3460;
+            --accent-color: #e94560;
+            --text-color: #dcdde1;
+            --glass-bg: rgba(22, 33, 62, 0.6);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --success-color: #4CAF50;
+            --error-color: #F44336;
+            --info-color: #3498db;
+            --font-family: 'Inter', sans-serif;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px 0;
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1200px;
+            background: var(--primary-color);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.75);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        header {
+            background: linear-gradient(45deg, var(--secondary-color), #2a477a);
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+            position: relative;
+        }
+        
+        header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -50%;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            animation: shine 5s infinite linear;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-50%); }
+            100% { transform: translateX(50%); }
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: clamp(1.5rem, 4vw, 2rem);
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        header p { margin: 5px 0 0; opacity: 0.8; }
+
+        .progress-bar-container {
+            width: 100%;
+            background-color: var(--bg-color);
+            height: 8px;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #e94560, #a22f44);
+            transition: width 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        
+        main {
+            padding: clamp(15px, 4vw, 30px);
+            position: relative;
+        }
+
+        .simulation-step {
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+            animation: fadeIn 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+        
+        .simulation-step.active { display: flex; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .content-box {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            padding: clamp(15px, 4vw, 25px);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .content-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+        }
+        
+        .content-box h2 {
+            margin-top: 0; color: var(--accent-color);
+            font-size: clamp(1.4rem, 4vw, 1.6rem);
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 10px; margin-bottom: 20px;
+        }
+
+        .viz-container {
+            background: #111;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 250px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            flex-wrap: wrap;
+            gap: 5px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .binary-char {
+            font-size: 2rem; font-weight: bold; color: var(--accent-color);
+            animation: flip 4s infinite steps(1); display: inline-block;
+        }
+        
+        @keyframes flip {
+            0%, 100% { transform: rotateY(0deg); content: '0'; }
+            50% { transform: rotateY(180deg); content: '1'; }
+        }
+        
+        .byte-group {
+            display: flex; gap: 10px; padding: 10px;
+            background: rgba(0,0,0,0.2); border-radius: 8px;
+        }
+
+        .bit-box {
+            width: 15px; height: 15px; background-color: var(--text-color);
+            border-radius: 3px; animation: popIn 0.5s ease-out forwards; opacity: 0;
+        }
+        
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        .comparison-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .comparison-table tr { opacity: 0; animation: slideInRow 0.5s ease-out forwards; }
+        .comparison-table th, .comparison-table td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .comparison-table th { background-color: var(--secondary-color); font-weight: 600; }
+        .comparison-table td:first-child { font-weight: bold; }
+        .comparison-table code { background: var(--bg-color); padding: 3px 6px; border-radius: 5px; font-family: 'Courier New', Courier, monospace; }
+        
+        @keyframes slideInRow {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .task-box { margin-top: 20px; border-top: 2px dashed var(--accent-color); padding-top: 20px; }
+        .task-box h3 { margin-top: 0; font-size: 1.2rem; }
+        
+        .task-input {
+            background-color: var(--bg-color); border: 1px solid var(--border-color);
+            color: var(--text-color); padding: 12px; border-radius: 8px; font-size: 1rem;
+            width: 200px; margin-right: 10px; transition: border-color 0.3s;
+        }
+        .task-input:focus { outline: none; border-color: var(--accent-color); }
+
+        .feedback {
+            margin-top: 10px; padding: 10px; border-radius: 8px; font-weight: bold;
+            display: none; animation: fadeIn 0.5s;
+        }
+        .feedback.correct { background-color: var(--success-color); }
+        .feedback.incorrect { background-color: var(--error-color); }
+
+        /* Quiz Styles */
+        .quiz-option {
+            background: var(--glass-bg); padding: 15px; border-radius: 10px;
+            margin-bottom: 10px; cursor: pointer; transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+        }
+        .quiz-option:hover { background: var(--secondary-color); transform: translateY(-3px); }
+        .quiz-option.selected { border-color: var(--accent-color); background: #e9456033; }
+        .quiz-option.correct { background: #4caf50aa; border-color: var(--success-color); }
+        .quiz-option.incorrect { background: #f44336aa; border-color: var(--error-color); }
+
+        .drag-drop-quiz { display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; align-items: flex-start; }
+        .drag-items, .drop-zones { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        .drag-item { padding: 10px 20px; background: var(--info-color); cursor: grab; border-radius: 8px; text-align: center; }
+        .drag-item.dragging { opacity: 0.5; }
+        .drop-zone-container { flex-basis: 48%; }
+        .drop-zone { min-height: 50px; background: rgba(0,0,0,0.2); border: 2px dashed var(--border-color); border-radius: 8px; padding: 10px; transition: background-color 0.3s, border-color 0.3s; }
+        .drop-zone.hover { border-color: var(--accent-color); background-color: rgba(233, 69, 96, 0.2); }
+        .drop-zone .drag-item { cursor: default; }
+
+        @media (min-width: 768px) {
+            .drag-items { width: 30%; }
+            .drop-zones { width: 65%; }
+        }
+
+        /* Navigation */
+        .navigation { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; }
+        
+        .nav-button {
+            background: var(--accent-color); color: white; border: none; padding: 12px 25px;
+            border-radius: 50px; font-size: 1rem; font-weight: 600; cursor: pointer;
+            transition: all 0.3s ease; position: relative; overflow: hidden; will-change: transform;
+        }
+        .nav-button:hover { background: #c73850; box-shadow: 0 5px 15px #e9456044; transform: translateY(-3px); }
+        .nav-button:active { transform: translateY(-1px); }
+        .nav-button.disabled { background-color: #555; cursor: not-allowed; opacity: 0.7; transform: translateY(0); box-shadow: none;}
+
+        #reset-btn { background-color: var(--secondary-color); }
+        #reset-btn:hover { background: var(--primary-color); box-shadow: 0 5px 15px #0f346044; }
+
+        .ripple { position: absolute; border-radius: 50%; background: rgba(255, 255, 255, 0.7); transform: scale(0); animation: ripple 0.6s linear; }
+        @keyframes ripple { to { transform: scale(4); opacity: 0; } }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7);
+            z-index: 1000; display: flex; justify-content: center; align-items: center; animation: fadeIn 0.3s ease;
+        }
+        .modal-content {
+            background: var(--primary-color); padding: 30px; border-radius: 15px; max-width: 600px;
+            width: 90%; border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: slideInModal 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes slideInModal { from { transform: translateY(-50px) scale(0.9); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+        .modal-content h2 { margin-top: 0; color: var(--accent-color); }
+        .modal-content ul { padding-left: 20px; }
+        .modal-content li { margin-bottom: 10px; }
+        .modal-close-btn { display: block; margin: 20px auto 0; }
+        
+        /* Final Score & Shake Animation */
+        .final-score { text-align: center; font-size: 1.5rem; margin-bottom: 20px; }
+        .final-score strong { color: var(--accent-color); font-size: 2rem; display: inline-block; }
+        .pop-score { animation: popScore 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popScore { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+        
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Understanding Data Storage Units</h1>
+            <p>An Interactive Guide to Binary (IEC) vs. Decimal (SI) Prefixes</p>
+        </header>
+        <div class="progress-bar-container">
+            <div id="progress-bar"></div>
+        </div>
+        <main>
+            <!-- Step 0: Introduction -->
+            <div id="step-0" class="simulation-step">
+                <div class="content-box">
+                    <h2>Welcome!</h2>
+                    <p>This simulation will guide you through the often-confusing world of data storage units. You'll learn why a 1 Terabyte hard drive doesn't show up as 1000 Gigabytes on your computer.</p>
+                    <p>We'll explore the two competing systems for measuring data:</p>
+                    <ul>
+                        <li><strong>Decimal (SI) Prefixes:</strong> Based on powers of 1000 (kilo, mega, giga). Often used in marketing and data transfer speeds.</li>
+                        <li><strong>Binary (IEC) Prefixes:</strong> Based on powers of 1024 (kibi, mebi, gibi). Used by computer operating systems because computers work in binary.</li>
+                    </ul>
+                    <p>Click "Start Simulation" to begin your journey!</p>
+                </div>
+            </div>
+
+            <!-- Step 1: The Bit and Byte -->
+            <div id="step-1" class="simulation-step">
+                <div class="content-box">
+                    <h2>Step 1: The Fundamentals - Bit & Byte</h2>
+                    <p>All data in a computer is stored as binary digits, or <strong>bits</strong>. A single bit can only be a 0 or a 1.</p>
+                    <div class="viz-container"><span class="binary-char">0</span></div>
+                    <p style="margin-top: 20px;">To represent more complex information, bits are grouped together. A group of 8 bits is called a <strong>byte</strong>. A byte is the smallest addressable unit of memory in many computer architectures.</p>
+                    <div class="viz-container" id="byte-viz"></div>
+                </div>
+            </div>
+            
+            <!-- Step 2: Decimal Prefixes (SI System) -->
+            <div id="step-2" class="simulation-step">
+                <div class="content-box">
+                    <h2>Step 2: Decimal Prefixes (The SI System)</h2>
+                    <p>The International System of Units (SI) uses prefixes based on powers of 10. In computing, this system is often used by manufacturers to advertise storage capacity.</p>
+                    <table class="comparison-table">
+                        <thead><tr><th>Prefix (Symbol)</th><th>Meaning</th><th>Value in Bytes</th></tr></thead>
+                        <tbody>
+                            <tr><td>Kilobyte (KB)</td><td>1000¹</td><td>1,000 bytes</td></tr>
+                            <tr><td>Megabyte (MB)</td><td>1000²</td><td>1,000,000 bytes</td></tr>
+                            <tr><td>Gigabyte (GB)</td><td>1000³</td><td>1,000,000,000 bytes</td></tr>
+                            <tr><td>Terabyte (TB)</td><td>1000⁴</td><td>1,000,000,000,000 bytes</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="task-box">
+                        <h3>Quick Task:</h3>
+                        <p>A network provider advertises a download speed of 500 MB/s (megabytes per second). How many bytes per second is this?</p>
+                        <input type="text" id="si-task-input" class="task-input">
+                        <button class="nav-button" id="si-task-check">Check</button>
+                        <div id="si-task-feedback" class="feedback"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Binary Prefixes (IEC System) -->
+            <div id="step-3" class="simulation-step">
+                <div class="content-box">
+                    <h2>Step 3: Binary Prefixes (The IEC System)</h2>
+                    <p>Computers fundamentally operate on a base-2 (binary) number system. Because of this, it's more efficient to handle data in sizes that are powers of 2 (1024 = 2¹⁰).</p>
+                    <p>1024 is a "rounder" number in binary (<code>10000000000</code>) than 1000 (<code>1111101000</code>). This led to the creation of binary prefixes by the IEC.</p>
+                    <table class="comparison-table">
+                        <thead><tr><th>Prefix (Symbol)</th><th>Meaning</th><th>Value in Bytes</th></tr></thead>
+                        <tbody>
+                            <tr><td>Kibibyte (KiB)</td><td>1024¹</td><td>1,024 bytes</td></tr>
+                            <tr><td>Mebibyte (MiB)</td><td>1024²</td><td>1,048,576 bytes</td></tr>
+                            <tr><td>Gibibyte (GiB)</td><td>1024³</td><td>1,073,741,824 bytes</td></tr>
+                            <tr><td>Tebibyte (TiB)</td><td>1024⁴</td><td>1,099,511,627,776 bytes</td></tr>
+                        </tbody>
+                    </table>
+                     <div class="task-box">
+                        <h3>Quick Task:</h3>
+                        <p>A RAM module has a capacity of 16 GiB (gibibytes). How many bytes can it hold?</p>
+                        <input type="text" id="iec-task-input" class="task-input">
+                        <button class="nav-button" id="iec-task-check">Check</button>
+                        <div id="iec-task-feedback" class="feedback"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: The Real-World Discrepancy -->
+            <div id="step-4" class="simulation-step">
+                <div class="content-box">
+                    <h2>Step 4: The Real-World Discrepancy</h2>
+                    <p>Here's where the confusion begins. Storage manufacturers advertise using the SI (base-1000) system, but most operating systems calculate and report storage using the IEC (base-1024) system, even if they sometimes use the wrong symbols (GB instead of GiB)!</p>
+                    <p>Let's take a <strong>1 TB</strong> hard drive:</p>
+                    <ol>
+                        <li><strong>Manufacturer advertises:</strong> 1 TB = <strong>1,000,000,000,000 bytes</strong>.</li>
+                        <li><strong>Your OS calculates:</strong> It divides those bytes by 1024 three times to find the value in Gibibytes.</li>
+                    </ol>
+                    <p><code>1,000,000,000,000 bytes ÷ 1024³ = <strong>931.32 GiB</strong></code></p>
+                    <p>Your OS then displays this as "931.32 GB", causing the confusion. You haven't lost space; it's just being measured with a different "ruler".</p>
+                    <div class="task-box">
+                        <h3>Quick Task:</h3>
+                        <p>You buy an SSD advertised as <strong>512 GB</strong>. Calculate its approximate capacity in <strong>GiB</strong>. (Round to two decimal places).</p>
+                        <input type="text" id="discrepancy-task-input" class="task-input">
+                        <button class="nav-button" id="discrepancy-task-check">Check</button>
+                        <div id="discrepancy-task-feedback" class="feedback"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 5: Final Quiz -->
+            <div id="step-5" class="simulation-step">
+                <div class="content-box">
+                    <h2>Final Quiz: Test Your Knowledge!</h2>
+                    <p>Answer the following questions to see what you've learned. Once you answer a question, you'll see immediate feedback.</p>
+                    <div id="quiz-container"></div>
+                </div>
+            </div>
+            
+            <!-- Step 6: Results -->
+            <div id="step-6" class="simulation-step">
+                <div class="content-box">
+                    <h2>Simulation Complete!</h2>
+                    <p class="final-score">Your final score is: <strong id="final-score-text"></strong></p>
+                    <p>You've successfully navigated the differences between SI and IEC prefixes. Key takeaways:</p>
+                    <ul>
+                        <li><strong>Marketing vs. Reality:</strong> Manufacturers use base-1000 (GB, TB), while operating systems use base-1024 (calculating GiB, TiB) for measuring storage space.</li>
+                        <li><strong>RAM and CPU Caches:</strong> These are almost always measured and advertised in binary prefixes (e.g., 16 GiB RAM) because they are so closely tied to the computer's binary architecture.</li>
+                        <li><strong>Networking and Storage:</strong> Hard drives and network speeds often use decimal prefixes.</li>
+                    </ul>
+                    <p>Click the "Restart" button below to go through the simulation again.</p>
+                </div>
+            </div>
+
+            <div class="navigation">
+                <button id="prev-btn" class="nav-button disabled">Previous Step</button>
+                <button id="reset-btn" class="nav-button">Restart</button>
+                <button id="next-btn" class="nav-button">Start Simulation</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Instructions Modal -->
+    <div id="instructions-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>How to Use This Simulation</h2>
+            <p>Welcome to the Data Storage Prefixes simulation!</p>
+            <ul>
+                <li>Navigate through the steps using the <strong>"Next Step"</strong> and <strong>"Previous Step"</strong> buttons, or the <strong>Left (←) and Right (→) arrow keys</strong>.</li>
+                <li>Complete the interactive tasks to proceed. Your answers will be checked instantly.</li>
+                <li>The final quiz includes multiple choice, text input, and a drag-and-drop question.</li>
+            </ul>
+            <p>Let's demystify these storage units!</p>
+            <button id="start-sim-btn" class="nav-button modal-close-btn">Let's Go!</button>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Caching frequently accessed DOM elements ---
+    const elements = {
+        container: document.querySelector('.container'),
+        progressBar: document.getElementById('progress-bar'),
+        steps: document.querySelectorAll('.simulation-step'),
+        nextBtn: document.getElementById('next-btn'),
+        prevBtn: document.getElementById('prev-btn'),
+        resetBtn: document.getElementById('reset-btn'),
+        instructionsModal: document.getElementById('instructions-modal'),
+        startSimBtn: document.getElementById('start-sim-btn'),
+        quizContainer: document.getElementById('quiz-container'),
+        finalScoreText: document.getElementById('final-score-text'),
+    };
+
+    // --- State Management ---
+    let state = {
+        currentStep: -1,
+        totalSteps: elements.steps.length,
+        quizScore: 0,
+        quizAnswers: {},
+        isModalOpen: true,
+        draggedItem: null,
+    };
+    
+    // --- Quiz Data ---
+    const quizData = [
+        { question: "Which of the following correctly represents 1024 Bytes?", type: "mcq", options: ["1 Kilobyte (KB)", "1 Kibibyte (KiB)", "1 Megabyte (MB)", "1 Mebibyte (MiB)"], answer: "1 Kibibyte (KiB)" },
+        { question: "A hard drive is advertised with a capacity of 4 TB. What is its capacity in bytes according to the manufacturer (SI system)?", type: "input", answer: "4000000000000" },
+        { question: "Match the prefix to the correct system. Drag the prefixes on the left to the correct category on the right.", type: "drag-drop", items: ["KiB", "MB", "GiB", "TB"], targets: { "Binary (IEC) System": ["KiB", "GiB"], "Decimal (SI) System": ["MB", "TB"] } },
+        { question: "Why do operating systems typically use the binary (IEC) system for reporting file sizes?", type: "mcq", options: ["It results in larger, more impressive numbers.", "It's a global marketing standard for software.", "It aligns with the base-2 architecture of computer hardware.", "It's easier for humans to calculate."], answer: "It aligns with the base-2 architecture of computer hardware." },
+    ];
+
+    // --- Utility Functions ---
+    const debounce = (func, delay) => {
+        let timeout;
+        return (...args) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
+        };
+    };
+    
+    const createRipple = (event) => {
+        const button = event.currentTarget;
+        const circle = document.createElement("span");
+        const diameter = Math.max(button.clientWidth, button.clientHeight);
+        const radius = diameter / 2;
+
+        circle.style.width = circle.style.height = `${diameter}px`;
+        circle.style.left = `${event.clientX - (button.offsetLeft + radius)}px`;
+        circle.style.top = `${event.clientY - (button.offsetTop + radius)}px`;
+        circle.classList.add("ripple");
+
+        const ripple = button.getElementsByClassName("ripple")[0];
+        if (ripple) ripple.remove();
+        button.appendChild(circle);
+    };
+
+    // --- Core Application Logic ---
+    const updateProgressBar = () => {
+        const progress = state.currentStep >= 0 ? ((state.currentStep + 1) / state.totalSteps) * 100 : 0;
+        elements.progressBar.style.width = `${progress}%`;
+    };
+    
+    const updateNavButtons = () => {
+        elements.prevBtn.classList.toggle('disabled', state.currentStep <= 0);
+        
+        if (state.currentStep === -1) {
+            elements.nextBtn.textContent = 'Start Simulation';
+            elements.nextBtn.classList.add('disabled');
+        } else if (state.currentStep === state.totalSteps - 2) {
+            elements.nextBtn.textContent = 'Finish & See Score';
+        } else if (state.currentStep >= state.totalSteps - 1) {
+            elements.nextBtn.classList.add('disabled');
+        } else {
+            elements.nextBtn.textContent = 'Next Step';
+            elements.nextBtn.classList.remove('disabled');
+        }
+    };
+
+    const showStep = (stepIndex) => {
+        if (stepIndex < 0 || stepIndex >= state.totalSteps) return;
+        
+        elements.steps.forEach((step, index) => step.classList.toggle('active', index === stepIndex));
+        state.currentStep = stepIndex;
+        updateProgressBar();
+        updateNavButtons();
+
+        // Trigger step-specific animations/initializations
+        switch(stepIndex) {
+            case 1: runByteAnimation(); break;
+            case 2: case 3: runTableAnimation(stepIndex); break;
+            case 5: initializeQuiz(); break;
+            case 6: calculateFinalScore(); break;
+        }
+    };
+    
+    const changeStep = (direction) => {
+        const nextStep = state.currentStep + direction;
+        if (nextStep < 0 || nextStep >= state.totalSteps) return;
+
+        // --- Navigation Gatekeeping Logic for Quiz ---
+        // Prevent advancing from the quiz page until all questions are answered.
+        if (direction > 0 && state.currentStep === 5 && Object.keys(state.quizAnswers).length < quizData.length) {
+            elements.quizContainer.classList.add('shake');
+            setTimeout(() => elements.quizContainer.classList.remove('shake'), 500);
+            return;
+        }
+        showStep(nextStep);
+    };
+    
+    // --- Animations ---
+    const runByteAnimation = () => {
+        const byteViz = document.getElementById('byte-viz');
+        if (!byteViz || byteViz.children.length > 0) return;
+        byteViz.innerHTML = '';
+        const byteGroup = document.createElement('div');
+        byteGroup.className = 'byte-group';
+        byteViz.appendChild(byteGroup);
+        for (let i = 0; i < 8; i++) {
+            if (state.isModalOpen) break;
+            setTimeout(() => {
+                const bit = document.createElement('div');
+                bit.className = 'bit-box';
+                bit.style.animationDelay = `${i * 0.1}s`;
+                byteGroup.appendChild(bit);
+            }, i * 100);
+        }
+    };
+    
+    const runTableAnimation = (stepIndex) => {
+        const tableRows = document.querySelectorAll(`#step-${stepIndex} .comparison-table tr`);
+        tableRows.forEach((row, i) => row.style.animationDelay = `${i * 0.1}s`);
+    };
+
+    // --- Task & Quiz Logic ---
+    const checkTaskAnswer = (inputId, feedbackId, correctAnswer, normalizationFn) => {
+        const input = document.getElementById(inputId);
+        const feedback = document.getElementById(feedbackId);
+        let userAnswer = input.value.trim();
+
+        if (userAnswer.length < 3) {
+             feedback.textContent = 'Please provide a more complete answer.';
+             feedback.className = 'feedback incorrect';
+             feedback.style.display = 'block';
+             return;
+        }
+
+        const isCorrect = normalizationFn ? normalizationFn(userAnswer) === correctAnswer : userAnswer === correctAnswer;
+        
+        feedback.textContent = isCorrect ? 'Correct! Well done.' : `Not quite. The correct answer is ${correctAnswer}.`;
+        feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+        feedback.style.display = 'block';
+        if (isCorrect) input.closest('.task-box').dataset.completed = 'true';
+    };
+
+    const initializeQuiz = () => {
+        if (elements.quizContainer.children.length > 0) return;
+        quizData.forEach((q, index) => {
+            const questionEl = document.createElement('div');
+            questionEl.className = 'task-box';
+            questionEl.innerHTML = `<h3>Question ${index + 1}: ${q.question}</h3>`;
+            const answerContainer = document.createElement('div');
+            answerContainer.dataset.questionIndex = index;
+
+            if (q.type === 'mcq') {
+                q.options.forEach(option => {
+                    const optionEl = document.createElement('div');
+                    optionEl.className = 'quiz-option';
+                    optionEl.textContent = option;
+                    answerContainer.appendChild(optionEl);
+                });
+            } else if (q.type === 'input') {
+                answerContainer.innerHTML = `<input type="text" class="task-input quiz-input">`;
+            } else if (q.type === 'drag-drop') {
+                answerContainer.innerHTML = `
+                    <div class="drag-drop-quiz">
+                        <div class="drag-items">
+                            ${q.items.map(item => `<div class="drag-item" draggable="true">${item}</div>`).join('')}
+                        </div>
+                        <div class="drop-zones">
+                            ${Object.keys(q.targets).map(target => `
+                                <div class="drop-zone-container">
+                                    <h4>${target}</h4>
+                                    <div class="drop-zone" data-target="${target}"></div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+                answerContainer.addEventListener('dragstart', e => { if(e.target.classList.contains('drag-item')) state.draggedItem = e.target; });
+            }
+            questionEl.appendChild(answerContainer);
+            elements.quizContainer.appendChild(questionEl);
+        });
+    };
+    
+    const handleQuizInteraction = (e) => {
+        const questionContainer = e.target.closest('[data-question-index]');
+        if (!questionContainer) return;
+        const questionIndex = questionContainer.dataset.questionIndex;
+        if (state.quizAnswers[questionIndex] !== undefined) return;
+
+        const qData = quizData[questionIndex];
+        // --- MCQ Logic ---
+        if (qData.type === 'mcq' && e.target.classList.contains('quiz-option')) {
+            const selectedOption = e.target.textContent;
+            state.quizAnswers[questionIndex] = selectedOption;
+            const isCorrect = selectedOption === qData.answer;
+            if (isCorrect) state.quizScore++;
+            Array.from(e.target.parentElement.children).forEach(opt => {
+                opt.style.cursor = 'not-allowed';
+                if (opt.textContent === qData.answer) opt.classList.add('correct');
+            });
+            if (!isCorrect) e.target.classList.add('incorrect');
+        }
+        // --- Input Logic ---
+        if (qData.type === 'input' && e.target.classList.contains('quiz-input')) {
+            e.target.addEventListener('blur', () => {
+                if (state.quizAnswers[questionIndex] !== undefined) return;
+                const userAnswer = e.target.value.trim().replace(/,/g, '');
+                if (userAnswer.length === 0) return;
+                state.quizAnswers[questionIndex] = userAnswer;
+                e.target.disabled = true;
+                if (userAnswer === qData.answer) {
+                    e.target.style.borderColor = 'var(--success-color)';
+                    state.quizScore++;
+                } else {
+                    e.target.style.borderColor = 'var(--error-color)';
+                    const hint = document.createElement('p');
+                    hint.textContent = `Correct answer: ${qData.answer}`;
+                    hint.style.color = 'var(--error-color)';
+                    e.target.parentElement.appendChild(hint);
+                }
+            }, { once: true });
+        }
+    };
+    
+    const handleDragDrop = (e) => {
+        e.preventDefault();
+        const dropZone = e.target.closest('.drop-zone');
+        if (e.type === 'dragover' && dropZone) dropZone.classList.add('hover');
+        if (e.type === 'dragleave' && dropZone) dropZone.classList.remove('hover');
+        if (e.type === 'drop' && dropZone && state.draggedItem) {
+            dropZone.classList.remove('hover');
+            dropZone.appendChild(state.draggedItem);
+            state.draggedItem.draggable = false;
+            // Check if all items are dropped
+            const questionContainer = dropZone.closest('[data-question-index]');
+            const qIndex = questionContainer.dataset.questionIndex;
+            const dragItemsContainer = questionContainer.querySelector('.drag-items');
+            if(dragItemsContainer.children.length === 0){
+                // All items dropped, now score it
+                const qData = quizData[qIndex];
+                let correct = true;
+                Object.entries(qData.targets).forEach(([target, items]) => {
+                    const zone = questionContainer.querySelector(`.drop-zone[data-target="${target}"]`);
+                    const droppedItems = Array.from(zone.children).map(child => child.textContent);
+                    if (droppedItems.length !== items.length || !items.every(item => droppedItems.includes(item))) {
+                        correct = false;
+                    }
+                });
+                if (correct) state.quizScore++;
+                state.quizAnswers[qIndex] = 'answered'; // Mark as answered
+                questionContainer.querySelectorAll('.drop-zone').forEach(dz => dz.style.borderColor = correct ? 'var(--success-color)' : 'var(--error-color)');
+            }
+        }
+    };
+
+    const calculateFinalScore = () => {
+        const scorePercentage = Math.round((state.quizScore / quizData.length) * 100);
+        elements.finalScoreText.textContent = `${scorePercentage}% (${state.quizScore}/${quizData.length})`;
+        elements.finalScoreText.classList.add('pop-score');
+    };
+
+    // --- Event Listeners Setup ---
+    const setupEventListeners = () => {
+        elements.nextBtn.addEventListener('click', () => changeStep(1));
+        elements.prevBtn.addEventListener('click', () => changeStep(-1));
+        elements.resetBtn.addEventListener('click', () => window.location.reload());
+        
+        elements.startSimBtn.addEventListener('click', () => {
+            elements.instructionsModal.style.display = 'none';
+            state.isModalOpen = false;
+            elements.nextBtn.classList.remove('disabled');
+            showStep(0);
+        });
+
+        const handleKeyDown = debounce(e => {
+            // If the event target is an input field, do not navigate.
+            if (e.target.tagName === 'INPUT') {
+                return;
+            }
+            
+            if (state.isModalOpen) return;
+            
+            if (e.key === 'ArrowRight') {
+                elements.nextBtn.click();
+            } else if (e.key === 'ArrowLeft') {
+                elements.prevBtn.click();
+            }
+        }, 100);
+        document.addEventListener('keydown', handleKeyDown);
+        
+        // Button ripple effect
+        document.querySelectorAll('.nav-button').forEach(button => button.addEventListener('click', createRipple));
+
+        // Event delegation for tasks and quiz
+        elements.container.addEventListener('click', (e) => {
+            if (e.target.id === 'si-task-check') checkTaskAnswer('si-task-input', 'si-task-feedback', '500000000', val => val.replace(/,/g, ''));
+            if (e.target.id === 'iec-task-check') checkTaskAnswer('iec-task-input', 'iec-task-feedback', '17179869184', val => val.replace(/,/g, ''));
+            if (e.target.id === 'discrepancy-task-check') checkTaskAnswer('discrepancy-task-input', 'discrepancy-task-feedback', '476.84', val => { const num = parseFloat(val); return isNaN(num) ? '' : num.toFixed(2); });
+            if (e.target.closest('#quiz-container')) handleQuizInteraction(e);
+        });
+        elements.quizContainer.addEventListener('focusin', handleQuizInteraction);
+        elements.quizContainer.addEventListener('dragover', handleDragDrop);
+        elements.quizContainer.addEventListener('dragleave', handleDragDrop);
+        elements.quizContainer.addEventListener('drop', handleDragDrop);
+    };
+    
+    // --- App Initialization ---
+    const init = () => {
+        elements.instructionsModal.style.display = 'flex';
+        updateNavButtons();
+        setupEventListeners();
+    };
+
+    init();
+});
+</script>
+</body>
+</html>

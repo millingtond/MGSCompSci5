@@ -1,0 +1,2469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two's Complement & Floating Point Binary - Interactive Lesson</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        /* Header with animated gradient */
+        .header {
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Glassmorphism container */
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .section {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+            position: relative;
+            background-color: rgba(255, 255, 255, 0.95);
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Navigation */
+        .nav-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1rem;
+            margin: 2rem auto;
+            max-width: 1200px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 1rem;
+            z-index: 100;
+        }
+
+        .nav-pills {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .nav-pill {
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.9rem;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-pill::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .nav-pill:hover::before {
+            width: 100px;
+            height: 100px;
+        }
+
+        .nav-pill:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .nav-pill.active {
+            background: linear-gradient(135deg, var(--secondary), #db2777);
+            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+        }
+
+        /* XP and Progress System */
+        .progress-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .xp-bar {
+            width: 100%;
+            height: 20px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            margin-top: 0.5rem;
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), #059669);
+            width: 0%;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .xp-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shine 2s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+            color: white;
+        }
+
+        /* Interactive Elements */
+        .binary-bit {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            text-align: center;
+            background: white;
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            margin: 0 2px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: bold;
+            user-select: none;
+        }
+
+        .binary-bit:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .binary-bit.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Quiz Options */
+        .quiz-option {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quiz-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .quiz-option:hover::before {
+            left: 100%;
+        }
+
+        .quiz-option:hover {
+            border-color: var(--primary);
+            transform: translateX(5px);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.1);
+        }
+
+        .quiz-option.correct {
+            background: #d1fae5;
+            border-color: var(--success);
+        }
+
+        .quiz-option.incorrect {
+            background: #fee2e2;
+            border-color: var(--danger);
+        }
+
+        /* Achievement Popup */
+        .achievement-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            z-index: 2000;
+            text-align: center;
+            animation: achievementPop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+        }
+
+        @keyframes achievementPop {
+            to {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        /* Particles */
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            animation: float 3s ease-out forwards;
+            font-size: 1.5rem;
+            z-index: 1500;
+        }
+
+        @keyframes float {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px) scale(0.5);
+            }
+        }
+
+        /* Canvas for Drawing */
+        .drawing-canvas {
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            background: white;
+            cursor: crosshair;
+            margin: 1rem 0;
+            touch-action: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Simulation Container */
+        .simulation-container {
+            background: #f3f4f6;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        .simulation-step {
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .simulation-step.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Input styling */
+        input[type="text"], input[type="number"], textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        /* Feedback Button */
+        .feedback-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--warning), #d97706);
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            z-index: 100;
+        }
+
+        .feedback-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 30px rgba(245, 158, 11, 0.4);
+        }
+
+        /* Navigation Buttons */
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+            gap: 1rem;
+        }
+
+        /* Mark Scheme */
+        .mark-scheme {
+            background: #fef3c7;
+            border: 2px solid #fbbf24;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .mark-scheme.visible {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-container {
+                position: relative;
+                top: 0;
+            }
+            
+            .progress-container {
+                position: relative;
+                top: 0;
+                right: 0;
+                margin: 1rem auto;
+                max-width: 100%;
+            }
+            
+            .binary-bit {
+                width: 35px;
+                height: 35px;
+                line-height: 35px;
+                font-size: 0.9rem;
+            }
+            
+            .section {
+                padding: 1.5rem;
+            }
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            display: none;
+        }
+
+        /* Highlighting for active elements */
+        .highlight {
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.5);
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+            }
+        }
+
+        /* Paste prevention message */
+        .paste-warning {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #dc2626;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            font-weight: bold;
+            display: none;
+            z-index: 3000;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translate(-50%, -50%) translateX(0); }
+            25% { transform: translate(-50%, -50%) translateX(-10px); }
+            75% { transform: translate(-50%, -50%) translateX(10px); }
+        }
+
+        /* Hint system */
+        .hint-container {
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        .hint-text {
+            background: #dbeafe;
+            border: 1px solid #60a5fa;
+            border-radius: 8px;
+            padding: 0.75rem;
+            color: #1e40af;
+            font-size: 0.9rem;
+        }
+
+        /* Code display */
+        .code-block {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 1rem;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        /* XP indicator animation */
+        .xp-indicator {
+            position: fixed;
+            color: var(--success);
+            font-weight: bold;
+            font-size: 1.5rem;
+            pointer-events: none;
+            z-index: 2000;
+            animation: xpFloat 2s ease-out forwards;
+        }
+
+        @keyframes xpFloat {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-50px) scale(1.5);
+            }
+        }
+
+        /* Drag and drop */
+        .draggable {
+            cursor: move;
+            transition: transform 0.2s;
+        }
+
+        .draggable:hover {
+            transform: scale(1.05);
+        }
+
+        .drop-zone {
+            min-height: 50px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            transition: all 0.3s;
+        }
+
+        .drop-zone.drag-over {
+            background: #dbeafe;
+            border-color: var(--primary);
+        }
+
+        /* Fill in the blank options */
+        .fill-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .fill-option {
+            padding: 0.5rem 1rem;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .fill-option:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .fill-option.used {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>Two's Complement & Floating Point Binary</h1>
+        <p>A-Level Computer Science - Cambridge 9618</p>
+    </div>
+
+    <!-- Progress Container -->
+    <div class="progress-container">
+        <div style="font-weight: bold; margin-bottom: 0.5rem;">
+            Level <span id="level">1</span> - <span id="xp">0</span> XP
+        </div>
+        <div class="xp-bar">
+            <div class="xp-fill" id="xpBar"></div>
+        </div>
+        <div style="font-size: 0.8rem; margin-top: 0.5rem; color: #6b7280;">
+            Next level: <span id="nextLevel">100</span> XP
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-container">
+        <div class="nav-pills">
+            <button class="nav-pill active" onclick="showSection(0)">Starter</button>
+            <button class="nav-pill" onclick="showSection(1)">Two's Complement</button>
+            <button class="nav-pill" onclick="showSection(2)">Floating Point Basics</button>
+            <button class="nav-pill" onclick="showSection(3)">Conversions</button>
+            <button class="nav-pill" onclick="showSection(4)">Normalisation</button>
+            <button class="nav-pill" onclick="showSection(5)">Errors & Accuracy</button>
+            <button class="nav-pill" onclick="showSection(6)">Summary</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Section 0: Starter Activity -->
+        <div class="section active" id="section-0">
+            <h2>🚀 Starter Activity: Binary Recap</h2>
+            <p style="margin-bottom: 1.5rem;">Let's warm up with a quick review of binary basics. This will help prepare you for today's advanced topics!</p>
+            
+            <div class="simulation-container">
+                <h3>Interactive Binary Explorer</h3>
+                <p>Click the bits to toggle between 0 and 1. Watch how the decimal value changes!</p>
+                
+                <div style="margin: 1.5rem 0; text-align: center;">
+                    <div id="binaryBits" style="margin-bottom: 1rem;">
+                        <!-- Binary bits will be generated here -->
+                    </div>
+                    <div style="font-size: 1.5rem; font-weight: bold;">
+                        Decimal Value: <span id="decimalValue" style="color: var(--primary);">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <h3>Quick Knowledge Check</h3>
+                <div id="starterQuiz">
+                    <div class="quiz-question" data-question="1">
+                        <p><strong>Question 1:</strong> What is the decimal value of binary 1010?</p>
+                        <div class="quiz-options">
+                            <div class="quiz-option" onclick="checkStarterAnswer(this, 1, 'b')">
+                                <span>A) 8</span>
+                            </div>
+                            <div class="quiz-option" onclick="checkStarterAnswer(this, 1, 'a')">
+                                <span>B) 10</span>
+                            </div>
+                            <div class="quiz-option" onclick="checkStarterAnswer(this, 1, 'c')">
+                                <span>C) 12</span>
+                            </div>
+                            <div class="quiz-option" onclick="checkStarterAnswer(this, 1, 'd')">
+                                <span>D) 5</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="quiz-question" data-question="2" style="margin-top: 1.5rem; display: none;">
+                        <p><strong>Question 2:</strong> How many values can be represented with 4 bits?</p>
+                        <div class="quiz-options">
+                            <div class="quiz-option" onclick="checkStarterAnswer(this, 2, 'c')">
+                                <span>A) 8</span>
+                            </div>
+                            <div class="quiz-option" onclick="checkStarterAnswer(this, 2, 'd')">
+                                <span>B) 15</span>
+                            </div>
+                            <div class="quiz-option" onclick="checkStarterAnswer(this, 2, 'a')">
+                                <span>C) 16</span>
+                            </div>
+                            <div class="quiz-option" onclick="checkStarterAnswer(this, 2, 'b')">
+                                <span>D) 4</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-primary" disabled>Previous</button>
+                <button class="btn btn-primary" onclick="showSection(1)">Next: Two's Complement →</button>
+            </div>
+            
+            <button class="btn btn-danger" onclick="resetSection(0)" style="margin-top: 1rem;">
+                <span>🔄</span> Reset Section
+            </button>
+        </div>
+
+        <!-- Section 1: Two's Complement -->
+        <div class="section" id="section-1">
+            <h2>📊 Two's Complement</h2>
+            
+            <div style="background: #e0e7ff; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h3>🎯 Learning Outcome</h3>
+                <p>Understand how negative numbers are represented in binary using two's complement notation.</p>
+            </div>
+
+            <div class="simulation-container">
+                <h3>Two's Complement Converter</h3>
+                <p>Enter a positive binary number and watch the step-by-step conversion to its negative equivalent!</p>
+                
+                <div class="simulation-step active" id="tc-step-1">
+                    <p><strong>Step 1:</strong> Enter an 8-bit positive binary number</p>
+                    <input type="text" id="tcInput" placeholder="e.g., 00010101" maxlength="8" 
+                           oninput="validateBinaryInput(this)" style="width: 200px; text-align: center; font-family: monospace;">
+                    <button class="btn btn-primary" onclick="startTCConversion()" style="margin-left: 1rem;">
+                        Start Conversion
+                    </button>
+                </div>
+
+                <div class="simulation-step" id="tc-step-2">
+                    <p><strong>Step 2:</strong> Flip all bits (0→1, 1→0)</p>
+                    <div style="font-family: monospace; font-size: 1.2rem; margin: 1rem 0;">
+                        Original: <span id="tcOriginal" style="color: var(--primary);"></span><br>
+                        Flipped: <span id="tcFlipped" style="color: var(--secondary);"></span>
+                    </div>
+                    <button class="btn btn-primary" onclick="nextTCStep()">Next Step →</button>
+                </div>
+
+                <div class="simulation-step" id="tc-step-3">
+                    <p><strong>Step 3:</strong> Add 1 to the result</p>
+                    <div style="font-family: monospace; font-size: 1.2rem; margin: 1rem 0;">
+                        Flipped: <span id="tcFlipped2" style="color: var(--secondary);"></span><br>
+                        + 1 = <span id="tcFinal" style="color: var(--success); font-weight: bold;"></span>
+                    </div>
+                    <p style="margin-top: 1rem;">
+                        Decimal equivalent: <span id="tcDecimal" style="font-weight: bold;"></span>
+                    </p>
+                    <button class="btn btn-success" onclick="resetTCSimulation()">Try Another</button>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <button class="btn btn-primary" id="tcPrevBtn" onclick="prevTCStep()" style="display: none;">
+                        ← Previous
+                    </button>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <h3>Practice Exercise</h3>
+                <p>Convert the following decimal numbers to 8-bit two's complement binary:</p>
+                
+                <div style="margin-top: 1rem;">
+                    <p><strong>1. Convert -25 to two's complement</strong></p>
+                    <input type="text" id="tc-practice-1" placeholder="Enter 8-bit binary" maxlength="8" 
+                           style="width: 200px; font-family: monospace;">
+                    <button class="btn btn-primary" onclick="checkTCPractice(1, '11100111')">Check</button>
+                    <span id="tc-feedback-1" style="margin-left: 1rem;"></span>
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <p><strong>2. Convert -64 to two's complement</strong></p>
+                    <input type="text" id="tc-practice-2" placeholder="Enter 8-bit binary" maxlength="8" 
+                           style="width: 200px; font-family: monospace;">
+                    <button class="btn btn-primary" onclick="checkTCPractice(2, '11000000')">Check</button>
+                    <span id="tc-feedback-2" style="margin-left: 1rem;"></span>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; background: #fee2e2; padding: 1rem; border-radius: 10px;">
+                <h3>⚠️ Common Mistakes</h3>
+                <ul style="margin-left: 1.5rem;">
+                    <li>Forgetting to add 1 after flipping the bits</li>
+                    <li>Not using the correct number of bits (padding with zeros)</li>
+                    <li>Confusing two's complement with one's complement</li>
+                </ul>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-primary" onclick="showSection(0)">← Previous</button>
+                <button class="btn btn-primary" onclick="showSection(2)">Next: Floating Point →</button>
+            </div>
+            
+            <button class="btn btn-danger" onclick="resetSection(1)" style="margin-top: 1rem;">
+                <span>🔄</span> Reset Section
+            </button>
+        </div>
+
+        <!-- Section 2: Floating Point Basics -->
+        <div class="section" id="section-2">
+            <h2>🔢 Floating Point Basics</h2>
+            
+            <div style="background: #e0e7ff; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h3>🎯 Learning Outcomes</h3>
+                <ul style="margin-left: 1.5rem;">
+                    <li>Understand mantissa and exponent components</li>
+                    <li>Explain how accuracy and range are affected by bit allocation</li>
+                </ul>
+            </div>
+
+            <div class="simulation-container">
+                <h3>Mantissa vs Exponent Visualizer</h3>
+                <p>Adjust the bit allocation to see how it affects accuracy and range!</p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1.5rem;">
+                    <div>
+                        <label style="font-weight: bold;">Mantissa Bits: <span id="mantissaBits">8</span></label>
+                        <input type="range" id="mantissaSlider" min="4" max="12" value="8" 
+                               oninput="updateFloatingPointDisplay()" style="width: 100%;">
+                        <p style="font-size: 0.9rem; color: #6b7280;">More bits = Higher accuracy</p>
+                    </div>
+                    <div>
+                        <label style="font-weight: bold;">Exponent Bits: <span id="exponentBits">4</span></label>
+                        <input type="range" id="exponentSlider" min="2" max="8" value="4" 
+                               oninput="updateFloatingPointDisplay()" style="width: 100%;">
+                        <p style="font-size: 0.9rem; color: #6b7280;">More bits = Larger range</p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem; text-align: center;">
+                    <div style="font-size: 1.2rem; margin-bottom: 1rem;">
+                        Total Bits: <span id="totalBits" style="font-weight: bold;">12</span>
+                    </div>
+                    <div style="display: flex; justify-content: center; gap: 2px;" id="bitVisualization">
+                        <!-- Bits will be visualized here -->
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div style="background: #dbeafe; padding: 1rem; border-radius: 8px;">
+                        <h4>Accuracy</h4>
+                        <div style="font-size: 2rem; font-weight: bold; color: var(--primary);" id="accuracyDisplay">
+                            ±0.00391
+                        </div>
+                        <p style="font-size: 0.9rem;">Smallest representable fraction</p>
+                    </div>
+                    <div style="background: #d1fae5; padding: 1rem; border-radius: 8px;">
+                        <h4>Range</h4>
+                        <div style="font-size: 2rem; font-weight: bold; color: var(--success);" id="rangeDisplay">
+                            ±128
+                        </div>
+                        <p style="font-size: 0.9rem;">Maximum value</p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <h3>Understanding Check</h3>
+                <div class="quiz-question">
+                    <p><strong>Which statement is correct about floating point representation?</strong></p>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkFPAnswer(this, 'b')">
+                            <span>A) Increasing mantissa bits increases the range of numbers</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkFPAnswer(this, 'c')">
+                            <span>B) Exponent determines the precision of the number</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkFPAnswer(this, 'a')">
+                            <span>C) Mantissa determines the accuracy/precision of the number</span>
+                        </div>
+                        <div class="quiz-option" onclick="checkFPAnswer(this, 'd')">
+                            <span>D) Both mantissa and exponent affect accuracy equally</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-primary" onclick="showSection(1)">← Previous</button>
+                <button class="btn btn-primary" onclick="showSection(3)">Next: Conversions →</button>
+            </div>
+            
+            <button class="btn btn-danger" onclick="resetSection(2)" style="margin-top: 1rem;">
+                <span>🔄</span> Reset Section
+            </button>
+        </div>
+
+        <!-- Section 3: Binary-Denary Conversions -->
+        <div class="section" id="section-3">
+            <h2>🔄 Binary-Denary Conversions</h2>
+            
+            <div style="background: #e0e7ff; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h3>🎯 Learning Outcome</h3>
+                <p>Convert between binary floating point and denary representations, including negative numbers.</p>
+            </div>
+
+            <div class="simulation-container">
+                <h3>Step-by-Step Conversion Tool</h3>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="font-weight: bold;">Select conversion type:</label>
+                    <select id="conversionType" onchange="updateConversionDisplay()" style="margin-left: 0.5rem; padding: 0.5rem;">
+                        <option value="btod">Binary to Denary</option>
+                        <option value="dtob">Denary to Binary</option>
+                    </select>
+                </div>
+
+                <div id="btodConversion">
+                    <p>Convert: <code style="background: #f3f4f6; padding: 0.25rem 0.5rem;">01101100 0100</code> to denary</p>
+                    
+                    <div class="simulation-step active" id="btod-step-1">
+                        <p><strong>Step 1:</strong> Identify mantissa and exponent</p>
+                        <div style="font-family: monospace; font-size: 1.2rem; margin: 1rem 0;">
+                            Mantissa: <span style="color: var(--primary);">01101100</span><br>
+                            Exponent: <span style="color: var(--secondary);">0100</span> = 4 in denary
+                        </div>
+                        <button class="btn btn-primary" onclick="nextBTODStep()">Next →</button>
+                    </div>
+
+                    <div class="simulation-step" id="btod-step-2">
+                        <p><strong>Step 2:</strong> Place binary point after first digit</p>
+                        <div style="font-family: monospace; font-size: 1.2rem; margin: 1rem 0;">
+                            0<span style="color: red; font-weight: bold;">.</span>1101100
+                        </div>
+                        <button class="btn btn-primary" onclick="nextBTODStep()">Next →</button>
+                    </div>
+
+                    <div class="simulation-step" id="btod-step-3">
+                        <p><strong>Step 3:</strong> Move binary point RIGHT by exponent value (4 places)</p>
+                        <div style="font-family: monospace; font-size: 1.2rem; margin: 1rem 0;">
+                            01101<span style="color: red; font-weight: bold;">.</span>100
+                        </div>
+                        <button class="btn btn-primary" onclick="nextBTODStep()">Next →</button>
+                    </div>
+
+                    <div class="simulation-step" id="btod-step-4">
+                        <p><strong>Step 4:</strong> Convert to denary</p>
+                        <div style="margin: 1rem 0;">
+                            <p>Integer part: 01101₂ = 13₁₀</p>
+                            <p>Fractional part: .100₂ = 0.5₁₀</p>
+                            <p style="font-size: 1.2rem; font-weight: bold; color: var(--success);">
+                                Answer: 13.5
+                            </p>
+                        </div>
+                        <button class="btn btn-success" onclick="resetBTODSimulation()">Try Another</button>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button class="btn btn-primary" id="btodPrevBtn" onclick="prevBTODStep()" style="display: none;">
+                            ← Previous
+                        </button>
+                    </div>
+                </div>
+
+                <div id="dtobConversion" style="display: none;">
+                    <p>Convert 88 to normalised floating point binary (8-bit mantissa, 4-bit exponent)</p>
+                    
+                    <div class="simulation-step active" id="dtob-step-1">
+                        <p><strong>Step 1:</strong> Convert to fixed point binary</p>
+                        <div style="font-family: monospace; font-size: 1.2rem; margin: 1rem 0;">
+                            88₁₀ = 01011000₂
+                        </div>
+                        <button class="btn btn-primary" onclick="nextDTOBStep()">Next →</button>
+                    </div>
+
+                    <div class="simulation-step" id="dtob-step-2">
+                        <p><strong>Step 2:</strong> Normalise - place point after first significant digit</p>
+                        <div style="font-family: monospace; font-size: 1.2rem; margin: 1rem 0;">
+                            0<span style="color: red; font-weight: bold;">.</span>1011000
+                        </div>
+                        <p>Binary point moved 7 places LEFT</p>
+                        <button class="btn btn-primary" onclick="nextDTOBStep()">Next →</button>
+                    </div>
+
+                    <div class="simulation-step" id="dtob-step-3">
+                        <p><strong>Step 3:</strong> Set exponent to 7</p>
+                        <div style="font-family: monospace; font-size: 1.2rem; margin: 1rem 0;">
+                            Mantissa: 01011000<br>
+                            Exponent: 0111
+                        </div>
+                        <p style="font-size: 1.2rem; font-weight: bold; color: var(--success); margin-top: 1rem;">
+                            Answer: 01011000 0111
+                        </p>
+                        <button class="btn btn-success" onclick="resetDTOBSimulation()">Try Another</button>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button class="btn btn-primary" id="dtobPrevBtn" onclick="prevDTOBStep()" style="display: none;">
+                            ← Previous
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <h3>Practice Conversions</h3>
+                <p>Try these conversions yourself:</p>
+                
+                <div style="margin-top: 1rem;">
+                    <p><strong>1. Convert 10110000 0011 to denary</strong></p>
+                    <input type="text" id="conv-practice-1" placeholder="Enter decimal answer">
+                    <button class="btn btn-primary" onclick="checkConvPractice(1, '5.5')">Check</button>
+                    <span id="conv-feedback-1" style="margin-left: 1rem;"></span>
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <p><strong>2. Convert -17.75 to normalised floating point</strong></p>
+                    <input type="text" id="conv-practice-2" placeholder="mantissa exponent" maxlength="13">
+                    <button class="btn btn-primary" onclick="checkConvPractice(2, '10111001 0101')">Check</button>
+                    <span id="conv-feedback-2" style="margin-left: 1rem;"></span>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-primary" onclick="showSection(2)">← Previous</button>
+                <button class="btn btn-primary" onclick="showSection(4)">Next: Normalisation →</button>
+            </div>
+            
+            <button class="btn btn-danger" onclick="resetSection(3)" style="margin-top: 1rem;">
+                <span>🔄</span> Reset Section
+            </button>
+        </div>
+
+        <!-- Section 4: Normalisation -->
+        <div class="section" id="section-4">
+            <h2>📐 Normalisation</h2>
+            
+            <div style="background: #e0e7ff; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h3>🎯 Learning Outcome</h3>
+                <p>Understand why normalisation is important and how to normalise floating point numbers correctly.</p>
+            </div>
+
+            <div class="simulation-container">
+                <h3>Normalisation Rules</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                    <div style="background: #dbeafe; padding: 1rem; border-radius: 8px;">
+                        <h4>Positive Numbers</h4>
+                        <p>Must start with: <code style="background: white; padding: 0.25rem;">0.1...</code></p>
+                        <p style="font-size: 0.9rem; margin-top: 0.5rem;">First two bits are different</p>
+                    </div>
+                    <div style="background: #fce7f3; padding: 1rem; border-radius: 8px;">
+                        <h4>Negative Numbers</h4>
+                        <p>Must start with: <code style="background: white; padding: 0.25rem;">1.0...</code></p>
+                        <p style="font-size: 0.9rem; margin-top: 0.5rem;">First two bits are different</p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <h3>Normalisation Practice</h3>
+                <p>Determine if these floating point numbers are normalised:</p>
+                
+                <div id="normQuiz">
+                    <div style="margin-top: 1rem;">
+                        <p><strong>1. Is 00110000 0011 normalised?</strong></p>
+                        <div style="display: flex; gap: 1rem;">
+                            <button class="btn btn-primary" onclick="checkNormAnswer(1, false)">Yes</button>
+                            <button class="btn btn-primary" onclick="checkNormAnswer(1, true)">No</button>
+                        </div>
+                        <span id="norm-feedback-1" style="display: block; margin-top: 0.5rem;"></span>
+                    </div>
+
+                    <div style="margin-top: 1.5rem;">
+                        <p><strong>2. Is 01100000 0100 normalised?</strong></p>
+                        <div style="display: flex; gap: 1rem;">
+                            <button class="btn btn-primary" onclick="checkNormAnswer(2, true)">Yes</button>
+                            <button class="btn btn-primary" onclick="checkNormAnswer(2, false)">No</button>
+                        </div>
+                        <span id="norm-feedback-2" style="display: block; margin-top: 0.5rem;"></span>
+                    </div>
+
+                    <div style="margin-top: 1.5rem;">
+                        <p><strong>3. Is 10111111 1000 normalised?</strong></p>
+                        <div style="display: flex; gap: 1rem;">
+                            <button class="btn btn-primary" onclick="checkNormAnswer(3, true)">Yes</button>
+                            <button class="btn btn-primary" onclick="checkNormAnswer(3, false)">No</button>
+                        </div>
+                        <span id="norm-feedback-3" style="display: block; margin-top: 0.5rem;"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <h3>Fill in the Blanks: Why Normalise?</h3>
+                <p>Complete the following statements about normalisation:</p>
+                
+                <div style="margin-top: 1rem;">
+                    <p>Normalisation ensures we store the <span class="fill-blank" id="fill-1"></span> range of numbers in the <span class="fill-blank" id="fill-2"></span> number of bits.</p>
+                    
+                    <div class="fill-options">
+                        <div class="fill-option" onclick="fillBlank(this, 'minimum')">minimum</div>
+                        <div class="fill-option" onclick="fillBlank(this, 'average')">average</div>
+                        <div class="fill-option" onclick="fillBlank(this, 'exact')">exact</div>
+                        <div class="fill-option" onclick="fillBlank(this, 'maximum')">maximum</div>
+                        <div class="fill-option" onclick="fillBlank(this, 'largest')">largest</div>
+                        <div class="fill-option" onclick="fillBlank(this, 'optimal')">optimal</div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkFillBlanks()" style="margin-top: 1rem;">Check Answers</button>
+                    <span id="fill-feedback" style="display: block; margin-top: 0.5rem;"></span>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-primary" onclick="showSection(3)">← Previous</button>
+                <button class="btn btn-primary" onclick="showSection(5)">Next: Errors →</button>
+            </div>
+            
+            <button class="btn btn-danger" onclick="resetSection(4)" style="margin-top: 1rem;">
+                <span>🔄</span> Reset Section
+            </button>
+        </div>
+
+        <!-- Section 5: Errors and Accuracy -->
+        <div class="section" id="section-5">
+            <h2>⚠️ Errors and Accuracy</h2>
+            
+            <div style="background: #e0e7ff; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h3>🎯 Learning Outcomes</h3>
+                <ul style="margin-left: 1.5rem;">
+                    <li>Identify and explain rounding errors</li>
+                    <li>Understand overflow and underflow errors</li>
+                    <li>Calculate absolute and relative errors</li>
+                </ul>
+            </div>
+
+            <div class="simulation-container">
+                <h3>Rounding Error Demonstration</h3>
+                <p>Watch how small rounding errors accumulate when adding 0.1 repeatedly:</p>
+                
+                <div style="margin-top: 1rem;">
+                    <button class="btn btn-primary" onclick="startRoundingDemo()">Start Demo</button>
+                    <button class="btn btn-danger" onclick="resetRoundingDemo()" style="margin-left: 0.5rem;">Reset</button>
+                </div>
+                
+                <div id="roundingDemo" style="margin-top: 1rem; display: none;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f3f4f6;">
+                                <th style="padding: 0.5rem; border: 1px solid #e5e7eb;">Iteration</th>
+                                <th style="padding: 0.5rem; border: 1px solid #e5e7eb;">Expected Value</th>
+                                <th style="padding: 0.5rem; border: 1px solid #e5e7eb;">Actual Value (Binary)</th>
+                                <th style="padding: 0.5rem; border: 1px solid #e5e7eb;">Error</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roundingTable">
+                            <!-- Results will be added here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <h3>Error Types Quiz</h3>
+                <div class="quiz-question">
+                    <p><strong>Match the error type to its description:</strong></p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div>
+                            <h4>Error Types</h4>
+                            <div class="draggable" draggable="true" ondragstart="drag(event)" id="overflow" style="background: #dbeafe; padding: 0.5rem; margin: 0.5rem 0; border-radius: 5px; cursor: pointer;" onclick="selectErrorType(this)">
+                                Overflow Error
+                            </div>
+                            <div class="draggable" draggable="true" ondragstart="drag(event)" id="underflow" style="background: #d1fae5; padding: 0.5rem; margin: 0.5rem 0; border-radius: 5px; cursor: pointer;" onclick="selectErrorType(this)">
+                                Underflow Error
+                            </div>
+                            <div class="draggable" draggable="true" ondragstart="drag(event)" id="rounding" style="background: #fef3c7; padding: 0.5rem; margin: 0.5rem 0; border-radius: 5px; cursor: pointer;" onclick="selectErrorType(this)">
+                                Rounding Error
+                            </div>
+                        </div>
+                        <div>
+                            <h4>Descriptions</h4>
+                            <div class="drop-zone" ondrop="drop(event)" ondragover="allowDrop(event)" id="drop1" data-answer="overflow" onclick="dropErrorType(this)">
+                                Number too large to represent
+                            </div>
+                            <div class="drop-zone" ondrop="drop(event)" ondragover="allowDrop(event)" id="drop2" data-answer="rounding" onclick="dropErrorType(this)">
+                                Inexact binary representation
+                            </div>
+                            <div class="drop-zone" ondrop="drop(event)" ondragover="allowDrop(event)" id="drop3" data-answer="underflow" onclick="dropErrorType(this)">
+                                Number too small to represent
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkErrorMatching()" style="margin-top: 1rem;">Check Answers</button>
+                    <span id="error-match-feedback" style="display: block; margin-top: 0.5rem;"></span>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <h3>Calculate Relative Error</h3>
+                <p>When representing 0.6 in 8-bit fixed point binary, we get 0.10011001₂ = 0.59765625₁₀</p>
+                <p><strong>Calculate the relative error:</strong></p>
+                
+                <div style="margin-top: 1rem;">
+                    <p>Absolute error = |0.6 - 0.59765625| = 0.00234375</p>
+                    <p>Relative error = Absolute error ÷ Actual value = ?</p>
+                    
+                    <input type="text" id="relativeError" placeholder="Enter answer to 5 decimal places">
+                    <button class="btn btn-primary" onclick="checkRelativeError()">Check</button>
+                    <span id="relative-error-feedback" style="margin-left: 1rem;"></span>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; background: #e0f2fe; padding: 1rem; border-radius: 10px;">
+                <h3>🌍 Real-World Context</h3>
+                <p>Floating point errors have caused real problems:</p>
+                <ul style="margin-left: 1.5rem;">
+                    <li><strong>Patriot Missile Failure (1991):</strong> Rounding error in time calculations led to failed interception</li>
+                    <li><strong>Vancouver Stock Exchange (1982):</strong> Index undervalued by 50% due to truncation errors</li>
+                    <li><strong>Ariane 5 Rocket (1996):</strong> Overflow error caused $370 million loss</li>
+                </ul>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-primary" onclick="showSection(4)">← Previous</button>
+                <button class="btn btn-primary" onclick="showSection(6)">Next: Summary →</button>
+            </div>
+            
+            <button class="btn btn-danger" onclick="resetSection(5)" style="margin-top: 1rem;">
+                <span>🔄</span> Reset Section
+            </button>
+        </div>
+
+        <!-- Section 6: Summary and Assessment -->
+        <div class="section" id="section-6">
+            <h2>📋 Summary and Assessment</h2>
+            
+            <div style="background: #e0e7ff; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
+                <h3>🎯 Key Takeaways</h3>
+                <ul style="margin-left: 1.5rem;">
+                    <li>Two's complement allows representation of negative numbers</li>
+                    <li>Floating point trades accuracy for range</li>
+                    <li>Normalisation maximises precision for given bits</li>
+                    <li>Binary representation introduces unavoidable errors</li>
+                </ul>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <h3>Final Assessment</h3>
+                <p>Test your understanding with these questions:</p>
+                
+                <div id="finalQuiz" style="margin-top: 1.5rem;">
+                    <!-- Questions will be dynamically added here -->
+                </div>
+                
+                <button class="btn btn-success" onclick="submitFinalQuiz()" style="margin-top: 1.5rem; display: none;" id="submitQuizBtn">
+                    Submit Assessment
+                </button>
+                
+                <div id="quizResults" style="margin-top: 1.5rem; display: none;">
+                    <!-- Results will be shown here -->
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <h3>Practice Exam Question</h3>
+                <div style="background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 10px; padding: 1.5rem;">
+                    <p><strong>[8 marks]</strong> A computer uses 10 bits for the mantissa and 6 bits for the exponent in floating point representation.</p>
+                    <p style="margin-top: 1rem;">(a) State the effect on accuracy and range if the mantissa is increased to 12 bits and the exponent reduced to 4 bits. [2 marks]</p>
+                    <p style="margin-top: 0.5rem;">(b) Convert the normalised floating point number 1011010000 000101 to denary. [4 marks]</p>
+                    <p style="margin-top: 0.5rem;">(c) What is the denary value of the normalised floating point number 01100000 0010? [2 marks]</p>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Your answer:</label>
+                        <textarea id="examAnswer" rows="6" placeholder="Write your answer here..."></textarea>
+                        
+                        <div style="margin-top: 1rem;">
+                            <label>Predicted marks: </label>
+                            <input type="number" id="predictedMarks" min="0" max="8" style="width: 60px;">
+                            <button class="btn btn-primary" onclick="showMarkScheme()" style="margin-left: 1rem;">
+                                Show Mark Scheme
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mark-scheme" id="markScheme">
+                        <h4>Mark Scheme:</h4>
+                        <p><strong>(a) [2 marks]</strong></p>
+                        <ul>
+                            <li>Accuracy increases / more precise representation [1]</li>
+                            <li>Range decreases / smaller maximum values [1]</li>
+                        </ul>
+                        <p><strong>(b) [4 marks]</strong></p>
+                        <ul>
+                            <li>Mantissa is negative (starts with 1) [1]</li>
+                            <li>Apply two's complement: 0100110000 [1]</li>
+                            <li>Exponent = 000101 = 5, move point 5 places right [1]</li>
+                            <li>Result: -19 [1]</li>
+                        </ul>
+                        <p><strong>(c) [2 marks]</strong></p>
+                        <ul>
+                            <li>Mantissa: 01100000, Exponent: 0010 (2) [1]</li>
+                            <li>Move binary point 2 places right: 01.100000 = 1.5 [1]</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <h3>📹 Video Resources</h3>
+                <div style="background: #f3f4f6; padding: 1rem; border-radius: 10px; text-align: center;">
+                    <p style="color: #6b7280;">Video content placeholder - Additional tutorials will be linked here</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <h3>🚀 Extension Activity</h3>
+                <div style="background: #fef3c7; padding: 1rem; border-radius: 10px;">
+                    <p><strong>Research Task:</strong> Investigate IEEE 754 floating point standard</p>
+                    <p>Write a short report (200-300 words) explaining how real computers implement floating point numbers.</p>
+                    <textarea id="extensionAnswer" rows="8" placeholder="Write your research findings here..."></textarea>
+                    <button class="btn btn-primary" onclick="saveExtension()" style="margin-top: 1rem;">
+                        Save Response
+                    </button>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-primary" onclick="showSection(5)">← Previous</button>
+                <button class="btn btn-success" onclick="completeLesson()">Complete Lesson ✓</button>
+            </div>
+            
+            <button class="btn btn-danger" onclick="resetSection(6)" style="margin-top: 1rem;">
+                <span>🔄</span> Reset Section
+            </button>
+        </div>
+    </div>
+
+    <!-- Drawing Canvas (Hidden by default) -->
+    <div id="canvasContainer" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 1rem; border-radius: 10px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2); z-index: 2000;">
+        <h3>Calculation Space</h3>
+        <canvas class="drawing-canvas" id="drawingCanvas" width="400" height="300"></canvas>
+        <div style="margin-top: 1rem;">
+            <button class="btn btn-danger" onclick="clearCanvas()">Clear</button>
+            <button class="btn btn-primary" onclick="closeCanvas()">Close</button>
+        </div>
+    </div>
+
+    <!-- Feedback Button -->
+    <button class="feedback-btn" onclick="openFeedback()" title="Send Feedback">
+        <span style="font-size: 1.5rem;">💬</span>
+    </button>
+
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); z-index: 3000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 15px; width: 90%; max-width: 500px;">
+            <h3>Send Feedback</h3>
+            <p>Found a bug or have a suggestion? Let us know!</p>
+            <textarea id="feedbackText" rows="5" placeholder="Describe the issue or suggestion..."></textarea>
+            <div style="margin-top: 1rem;">
+                <button class="btn btn-primary" onclick="sendFeedback()">Send</button>
+                <button class="btn btn-danger" onclick="closeFeedback()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Achievement Popup (Hidden) -->
+    <div class="achievement-popup" id="achievementPopup" style="display: none;">
+        <h2 id="achievementTitle">Achievement Unlocked!</h2>
+        <p id="achievementDesc">Description</p>
+        <div style="font-size: 3rem; margin: 1rem 0;">🏆</div>
+    </div>
+
+    <!-- Paste Warning -->
+    <div class="paste-warning" id="pasteWarning">
+        🚫 No pasting allowed! Type it yourself!
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div style="background: white; padding: 2rem; border-radius: 10px;">
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentSection = 0;
+        let xp = 0;
+        let level = 1;
+        let achievements = new Set();
+        let completedTasks = new Set();
+        let selectedErrorType = null;
+        let currentTCStep = 1;
+        let currentBTODStep = 1;
+        let currentDTOBStep = 1;
+        let fillSelections = {};
+
+        // XP thresholds for each level
+        const levelThresholds = [0, 100, 250, 450, 700, 1000];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeBinaryBits();
+            initializeFinalQuiz();
+            preventPasting();
+            updateFloatingPointDisplay();
+            
+            // Initialize canvas
+            const canvas = document.getElementById('drawingCanvas');
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('touchstart', handleTouch);
+            canvas.addEventListener('touchmove', handleTouch);
+            canvas.addEventListener('touchend', stopDrawing);
+            
+            function startDrawing(e) {
+                isDrawing = true;
+                const rect = canvas.getBoundingClientRect();
+                ctx.beginPath();
+                ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+            }
+            
+            function draw(e) {
+                if (!isDrawing) return;
+                const rect = canvas.getBoundingClientRect();
+                ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+                ctx.stroke();
+            }
+            
+            function stopDrawing() {
+                isDrawing = false;
+            }
+            
+            function handleTouch(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                                e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                canvas.dispatchEvent(mouseEvent);
+            }
+        });
+
+        // Initialize binary bits for starter activity
+        function initializeBinaryBits() {
+            const container = document.getElementById('binaryBits');
+            for (let i = 7; i >= 0; i--) {
+                const bit = document.createElement('div');
+                bit.className = 'binary-bit';
+                bit.textContent = '0';
+                bit.dataset.position = i;
+                bit.onclick = function() {
+                    toggleBit(this);
+                };
+                container.appendChild(bit);
+            }
+        }
+
+        // Toggle binary bit
+        function toggleBit(element) {
+            const value = element.textContent === '0' ? '1' : '0';
+            element.textContent = value;
+            element.classList.toggle('active', value === '1');
+            updateDecimalDisplay();
+            
+            if (!completedTasks.has('binary-toggle')) {
+                completedTasks.add('binary-toggle');
+                awardXP(10, 'First bit toggle!');
+            }
+        }
+
+        // Update decimal display
+        function updateDecimalDisplay() {
+            const bits = document.querySelectorAll('.binary-bit');
+            let decimal = 0;
+            bits.forEach(bit => {
+                const position = parseInt(bit.dataset.position);
+                const value = parseInt(bit.textContent);
+                decimal += value * Math.pow(2, position);
+            });
+            document.getElementById('decimalValue').textContent = decimal;
+        }
+
+        // Show section
+        function showSection(index) {
+            const sections = document.querySelectorAll('.section');
+            const pills = document.querySelectorAll('.nav-pill');
+            
+            sections.forEach(section => section.classList.remove('active'));
+            pills.forEach(pill => pill.classList.remove('active'));
+            
+            sections[index].classList.add('active');
+            pills[index].classList.add('active');
+            currentSection = index;
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Award XP for section progression
+            const sectionKey = `section-${index}`;
+            if (!completedTasks.has(sectionKey) && index > 0) {
+                completedTasks.add(sectionKey);
+                awardXP(20, `Reached Section ${index + 1}`);
+            }
+        }
+
+        // Award XP
+        function awardXP(amount, reason) {
+            const prevLevel = level;
+            xp += amount;
+            
+            // Update level
+            for (let i = levelThresholds.length - 1; i >= 0; i--) {
+                if (xp >= levelThresholds[i]) {
+                    level = i + 1;
+                    break;
+                }
+            }
+            
+            // Update display
+            document.getElementById('xp').textContent = xp;
+            document.getElementById('level').textContent = level;
+            
+            const nextThreshold = levelThresholds[level] || levelThresholds[levelThresholds.length - 1];
+            const currentThreshold = levelThresholds[level - 1];
+            const progress = ((xp - currentThreshold) / (nextThreshold - currentThreshold)) * 100;
+            
+            document.getElementById('xpBar').style.width = progress + '%';
+            document.getElementById('nextLevel').textContent = nextThreshold;
+            
+            // Show XP indicator
+            showXPIndicator(amount, reason);
+            
+            // Check for level up
+            if (level > prevLevel) {
+                showAchievement('Level Up!', `You reached Level ${level}!`);
+                createParticles();
+            }
+        }
+
+        // Show XP indicator
+        function showXPIndicator(amount, reason) {
+            const indicator = document.createElement('div');
+            indicator.className = 'xp-indicator';
+            indicator.textContent = `+${amount} XP`;
+            indicator.style.left = Math.random() * window.innerWidth + 'px';
+            indicator.style.top = Math.random() * window.innerHeight + 'px';
+            document.body.appendChild(indicator);
+            
+            setTimeout(() => indicator.remove(), 2000);
+        }
+
+        // Show achievement
+        function showAchievement(title, description) {
+            const popup = document.getElementById('achievementPopup');
+            document.getElementById('achievementTitle').textContent = title;
+            document.getElementById('achievementDesc').textContent = description;
+            
+            popup.style.display = 'block';
+            setTimeout(() => {
+                popup.style.display = 'none';
+            }, 3000);
+        }
+
+        // Create particles
+        function createParticles() {
+            const particleCount = 20;
+            const emojis = ['✨', '⭐', '🌟', '💫', '🎉'];
+            
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                    particle.style.left = Math.random() * window.innerWidth + 'px';
+                    particle.style.top = window.innerHeight + 'px';
+                    document.body.appendChild(particle);
+                    
+                    setTimeout(() => particle.remove(), 3000);
+                }, i * 100);
+            }
+        }
+
+        // Check starter quiz answer
+        function checkStarterAnswer(element, question, selected) {
+            const options = element.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => {
+                opt.onclick = null;
+                opt.style.cursor = 'default';
+            });
+            
+            const correct = question === 1 ? 'a' : 'a';
+            
+            if (selected === correct) {
+                element.classList.add('correct');
+                awardXP(15, 'Correct answer!');
+            } else {
+                element.classList.add('incorrect');
+                options.forEach(opt => {
+                    if (opt.textContent.includes(correct.toUpperCase() + ')')) {
+                        opt.classList.add('correct');
+                    }
+                });
+            }
+            
+            // Show next question
+            if (question === 1) {
+                setTimeout(() => {
+                    document.querySelector('[data-question="2"]').style.display = 'block';
+                }, 1000);
+            }
+        }
+
+        // Validate binary input
+        function validateBinaryInput(input) {
+            input.value = input.value.replace(/[^01]/g, '');
+        }
+
+        // Two's complement conversion
+        function startTCConversion() {
+            const input = document.getElementById('tcInput').value;
+            if (input.length !== 8 || !/^[01]+$/.test(input)) {
+                alert('Please enter exactly 8 binary digits');
+                return;
+            }
+            
+            document.getElementById('tcOriginal').textContent = input;
+            
+            // Flip bits
+            const flipped = input.split('').map(bit => bit === '0' ? '1' : '0').join('');
+            document.getElementById('tcFlipped').textContent = flipped;
+            document.getElementById('tcFlipped2').textContent = flipped;
+            
+            // Add 1
+            let carry = 1;
+            const result = flipped.split('').reverse().map(bit => {
+                const sum = parseInt(bit) + carry;
+                carry = sum > 1 ? 1 : 0;
+                return sum % 2;
+            }).reverse().join('');
+            
+            document.getElementById('tcFinal').textContent = result;
+            
+            // Calculate decimal
+            const decimal = -128 * parseInt(result[0]) + 
+                          parseInt(result.substring(1), 2);
+            document.getElementById('tcDecimal').textContent = decimal;
+            
+            // Show next step
+            document.getElementById('tc-step-1').classList.remove('active');
+            document.getElementById('tc-step-2').classList.add('active');
+            document.getElementById('tcPrevBtn').style.display = 'inline-block';
+            currentTCStep = 2;
+            
+            if (!completedTasks.has('tc-conversion')) {
+                completedTasks.add('tc-conversion');
+                awardXP(30, 'First Two\'s Complement conversion!');
+            }
+        }
+
+        function nextTCStep() {
+            if (currentTCStep < 3) {
+                document.getElementById(`tc-step-${currentTCStep}`).classList.remove('active');
+                currentTCStep++;
+                document.getElementById(`tc-step-${currentTCStep}`).classList.add('active');
+            }
+        }
+
+        function prevTCStep() {
+            if (currentTCStep > 1) {
+                document.getElementById(`tc-step-${currentTCStep}`).classList.remove('active');
+                currentTCStep--;
+                document.getElementById(`tc-step-${currentTCStep}`).classList.add('active');
+                
+                if (currentTCStep === 1) {
+                    document.getElementById('tcPrevBtn').style.display = 'none';
+                }
+            }
+        }
+
+        function resetTCSimulation() {
+            currentTCStep = 1;
+            document.querySelectorAll('.simulation-step').forEach(step => {
+                step.classList.remove('active');
+            });
+            document.getElementById('tc-step-1').classList.add('active');
+            document.getElementById('tcInput').value = '';
+            document.getElementById('tcPrevBtn').style.display = 'none';
+        }
+
+        // Check two's complement practice
+        function checkTCPractice(num, answer) {
+            const input = document.getElementById(`tc-practice-${num}`).value;
+            const feedback = document.getElementById(`tc-feedback-${num}`);
+            
+            if (input === answer) {
+                feedback.textContent = '✓ Correct!';
+                feedback.style.color = 'var(--success)';
+                awardXP(20, 'Practice problem solved!');
+            } else {
+                feedback.textContent = '✗ Try again';
+                feedback.style.color = 'var(--danger)';
+            }
+        }
+
+        // Update floating point display
+        function updateFloatingPointDisplay() {
+            const mantissaBits = parseInt(document.getElementById('mantissaSlider').value);
+            const exponentBits = parseInt(document.getElementById('exponentSlider').value);
+            
+            document.getElementById('mantissaBits').textContent = mantissaBits;
+            document.getElementById('exponentBits').textContent = exponentBits;
+            document.getElementById('totalBits').textContent = mantissaBits + exponentBits;
+            
+            // Update visualization
+            const viz = document.getElementById('bitVisualization');
+            viz.innerHTML = '';
+            
+            // Mantissa bits
+            for (let i = 0; i < mantissaBits; i++) {
+                const bit = document.createElement('div');
+                bit.style.width = '20px';
+                bit.style.height = '30px';
+                bit.style.background = 'var(--primary)';
+                bit.style.borderRadius = '3px';
+                viz.appendChild(bit);
+            }
+            
+            // Separator
+            const sep = document.createElement('div');
+            sep.style.width = '10px';
+            viz.appendChild(sep);
+            
+            // Exponent bits
+            for (let i = 0; i < exponentBits; i++) {
+                const bit = document.createElement('div');
+                bit.style.width = '20px';
+                bit.style.height = '30px';
+                bit.style.background = 'var(--success)';
+                bit.style.borderRadius = '3px';
+                viz.appendChild(bit);
+            }
+            
+            // Update accuracy and range
+            const accuracy = Math.pow(2, -mantissaBits);
+            const range = Math.pow(2, Math.pow(2, exponentBits - 1));
+            
+            document.getElementById('accuracyDisplay').textContent = '±' + accuracy.toFixed(5);
+            document.getElementById('rangeDisplay').textContent = '±' + range.toFixed(0);
+        }
+
+        // Check floating point answer
+        function checkFPAnswer(element, selected) {
+            const options = element.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => {
+                opt.onclick = null;
+                opt.style.cursor = 'default';
+            });
+            
+            if (selected === 'a') {
+                element.classList.add('correct');
+                awardXP(25, 'Floating point understanding!');
+            } else {
+                element.classList.add('incorrect');
+                options[2].classList.add('correct');
+            }
+        }
+
+        // Conversion display
+        function updateConversionDisplay() {
+            const type = document.getElementById('conversionType').value;
+            document.getElementById('btodConversion').style.display = type === 'btod' ? 'block' : 'none';
+            document.getElementById('dtobConversion').style.display = type === 'dtob' ? 'block' : 'none';
+        }
+
+        // BTOD steps
+        function nextBTODStep() {
+            if (currentBTODStep < 4) {
+                document.getElementById(`btod-step-${currentBTODStep}`).classList.remove('active');
+                currentBTODStep++;
+                document.getElementById(`btod-step-${currentBTODStep}`).classList.add('active');
+                
+                if (currentBTODStep > 1) {
+                    document.getElementById('btodPrevBtn').style.display = 'inline-block';
+                }
+            }
+        }
+
+        function prevBTODStep() {
+            if (currentBTODStep > 1) {
+                document.getElementById(`btod-step-${currentBTODStep}`).classList.remove('active');
+                currentBTODStep--;
+                document.getElementById(`btod-step-${currentBTODStep}`).classList.add('active');
+                
+                if (currentBTODStep === 1) {
+                    document.getElementById('btodPrevBtn').style.display = 'none';
+                }
+            }
+        }
+
+        function resetBTODSimulation() {
+            currentBTODStep = 1;
+            document.querySelectorAll('#btodConversion .simulation-step').forEach(step => {
+                step.classList.remove('active');
+            });
+            document.getElementById('btod-step-1').classList.add('active');
+            document.getElementById('btodPrevBtn').style.display = 'none';
+        }
+
+        // DTOB steps
+        function nextDTOBStep() {
+            if (currentDTOBStep < 3) {
+                document.getElementById(`dtob-step-${currentDTOBStep}`).classList.remove('active');
+                currentDTOBStep++;
+                document.getElementById(`dtob-step-${currentDTOBStep}`).classList.add('active');
+                
+                if (currentDTOBStep > 1) {
+                    document.getElementById('dtobPrevBtn').style.display = 'inline-block';
+                }
+            }
+        }
+
+        function prevDTOBStep() {
+            if (currentDTOBStep > 1) {
+                document.getElementById(`dtob-step-${currentDTOBStep}`).classList.remove('active');
+                currentDTOBStep--;
+                document.getElementById(`dtob-step-${currentDTOBStep}`).classList.add('active');
+                
+                if (currentDTOBStep === 1) {
+                    document.getElementById('dtobPrevBtn').style.display = 'none';
+                }
+            }
+        }
+
+        function resetDTOBSimulation() {
+            currentDTOBStep = 1;
+            document.querySelectorAll('#dtobConversion .simulation-step').forEach(step => {
+                step.classList.remove('active');
+            });
+            document.getElementById('dtob-step-1').classList.add('active');
+            document.getElementById('dtobPrevBtn').style.display = 'none';
+        }
+
+        // Check conversion practice
+        function checkConvPractice(num, answer) {
+            const input = document.getElementById(`conv-practice-${num}`).value.trim();
+            const feedback = document.getElementById(`conv-feedback-${num}`);
+            
+            // Handle different formats and synonyms
+            let isCorrect = false;
+            if (num === 1) {
+                // Accept various decimal formats
+                const numValue = parseFloat(input);
+                isCorrect = Math.abs(numValue - 5.5) < 0.001;
+            } else {
+                // Remove spaces and check binary
+                const cleaned = input.replace(/\s+/g, '');
+                isCorrect = cleaned === answer.replace(/\s+/g, '');
+            }
+            
+            if (isCorrect) {
+                feedback.textContent = '✓ Correct!';
+                feedback.style.color = 'var(--success)';
+                awardXP(30, 'Conversion mastered!');
+            } else {
+                feedback.textContent = '✗ Try again';
+                feedback.style.color = 'var(--danger)';
+            }
+        }
+
+        // Check normalisation answer
+        function checkNormAnswer(num, isCorrect) {
+            const feedback = document.getElementById(`norm-feedback-${num}`);
+            const buttons = feedback.parentElement.querySelectorAll('.btn');
+            
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.style.cursor = 'default';
+            });
+            
+            if (isCorrect) {
+                feedback.textContent = '✓ Correct!';
+                feedback.style.color = 'var(--success)';
+                awardXP(15, 'Normalisation check!');
+                
+                // Add explanation
+                if (num === 1) {
+                    feedback.textContent += ' The first two bits (00) are the same, so not normalised.';
+                } else if (num === 2) {
+                    feedback.textContent += ' First two bits (01) are different, so normalised.';
+                } else {
+                    feedback.textContent += ' First two bits (10) are different, so normalised.';
+                }
+            } else {
+                feedback.textContent = '✗ Incorrect. Think about the first two bits.';
+                feedback.style.color = 'var(--danger)';
+            }
+        }
+
+        // Fill in the blank
+        function fillBlank(option, word) {
+            if (option.classList.contains('used')) return;
+            
+            // Find empty blank
+            const blanks = document.querySelectorAll('.fill-blank');
+            for (let blank of blanks) {
+                if (!blank.textContent) {
+                    blank.textContent = word;
+                    blank.style.background = '#dbeafe';
+                    blank.style.padding = '0.25rem 0.5rem';
+                    blank.style.borderRadius = '5px';
+                    blank.style.cursor = 'pointer';
+                    blank.onclick = function() {
+                        this.textContent = '';
+                        this.style.background = 'transparent';
+                        option.classList.remove('used');
+                    };
+                    option.classList.add('used');
+                    break;
+                }
+            }
+        }
+
+        function checkFillBlanks() {
+            const blank1 = document.getElementById('fill-1').textContent.toLowerCase();
+            const blank2 = document.getElementById('fill-2').textContent.toLowerCase();
+            const feedback = document.getElementById('fill-feedback');
+            
+            if (blank1 === 'maximum' && blank2 === 'minimum') {
+                feedback.textContent = '✓ Perfect! Normalisation maximises range in minimum bits.';
+                feedback.style.color = 'var(--success)';
+                awardXP(25, 'Fill in the blanks complete!');
+            } else if (!blank1 || !blank2) {
+                feedback.textContent = 'Please fill in both blanks';
+                feedback.style.color = 'var(--warning)';
+            } else {
+                feedback.textContent = '✗ Not quite right. Think about efficiency.';
+                feedback.style.color = 'var(--danger)';
+            }
+        }
+
+        // Rounding error demo
+        function startRoundingDemo() {
+            const demo = document.getElementById('roundingDemo');
+            const table = document.getElementById('roundingTable');
+            demo.style.display = 'block';
+            table.innerHTML = '';
+            
+            let value = 0;
+            let binaryValue = 0;
+            
+            for (let i = 1; i <= 10; i++) {
+                setTimeout(() => {
+                    value = i * 0.1;
+                    binaryValue += 0.1; // This accumulates error
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td style="padding: 0.5rem; border: 1px solid #e5e7eb;">${i}</td>
+                        <td style="padding: 0.5rem; border: 1px solid #e5e7eb;">${value.toFixed(1)}</td>
+                        <td style="padding: 0.5rem; border: 1px solid #e5e7eb;">${binaryValue.toFixed(10)}</td>
+                        <td style="padding: 0.5rem; border: 1px solid #e5e7eb; color: var(--danger);">
+                            ${(Math.abs(value - binaryValue)).toExponential(2)}
+                        </td>
+                    `;
+                    table.appendChild(row);
+                    
+                    if (i === 10 && !completedTasks.has('rounding-demo')) {
+                        completedTasks.add('rounding-demo');
+                        awardXP(20, 'Explored rounding errors!');
+                    }
+                }, i * 200);
+            }
+        }
+
+        function resetRoundingDemo() {
+            document.getElementById('roundingDemo').style.display = 'none';
+            document.getElementById('roundingTable').innerHTML = '';
+        }
+
+        // Error matching (click-based instead of drag)
+        function selectErrorType(element) {
+            document.querySelectorAll('.draggable').forEach(d => {
+                d.style.border = 'none';
+            });
+            element.style.border = '2px solid var(--primary)';
+            selectedErrorType = element.id;
+        }
+
+        function dropErrorType(dropZone) {
+            if (!selectedErrorType) return;
+            
+            const selectedElement = document.getElementById(selectedErrorType);
+            dropZone.innerHTML = selectedElement.textContent;
+            dropZone.dataset.dropped = selectedErrorType;
+            
+            selectedElement.style.border = 'none';
+            selectedErrorType = null;
+        }
+
+        function checkErrorMatching() {
+            const feedback = document.getElementById('error-match-feedback');
+            let correct = 0;
+            
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                if (zone.dataset.dropped === zone.dataset.answer) {
+                    correct++;
+                    zone.style.background = '#d1fae5';
+                } else {
+                    zone.style.background = '#fee2e2';
+                }
+            });
+            
+            if (correct === 3) {
+                feedback.textContent = '✓ All correct! Excellent understanding of error types.';
+                feedback.style.color = 'var(--success)';
+                awardXP(30, 'Error types mastered!');
+            } else {
+                feedback.textContent = `${correct}/3 correct. Review the incorrect matches.`;
+                feedback.style.color = 'var(--warning)';
+            }
+        }
+
+        // Drag and drop fallback
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        function drag(ev) {
+            ev.dataTransfer.setData("text", ev.target.id);
+        }
+
+        function drop(ev) {
+            ev.preventDefault();
+            const data = ev.dataTransfer.getData("text");
+            const element = document.getElementById(data);
+            ev.target.innerHTML = element.textContent;
+            ev.target.dataset.dropped = data;
+        }
+
+        // Check relative error
+        function checkRelativeError() {
+            const input = parseFloat(document.getElementById('relativeError').value);
+            const feedback = document.getElementById('relative-error-feedback');
+            const answer = 0.00391;
+            
+            if (Math.abs(input - answer) < 0.00001) {
+                feedback.textContent = '✓ Correct! 0.00391 or 0.391%';
+                feedback.style.color = 'var(--success)';
+                awardXP(25, 'Relative error calculated!');
+            } else {
+                feedback.textContent = '✗ Not quite. Remember: absolute error ÷ actual value';
+                feedback.style.color = 'var(--danger)';
+            }
+        }
+
+        // Initialize final quiz
+        function initializeFinalQuiz() {
+            const quiz = document.getElementById('finalQuiz');
+            const questions = [
+                {
+                    question: "What is the range of values for 8-bit two's complement?",
+                    options: ["-127 to 128", "-128 to 127", "-256 to 255", "0 to 255"],
+                    correct: 1
+                },
+                {
+                    question: "In floating point, what increases accuracy?",
+                    options: ["Larger exponent", "Smaller mantissa", "Larger mantissa", "Smaller exponent"],
+                    correct: 2
+                },
+                {
+                    question: "Which floating point number is normalised?",
+                    options: ["00011000 0010", "01100000 0011", "11111000 0001", "00001111 0100"],
+                    correct: 1
+                },
+                {
+                    question: "What causes a floating point overflow error?",
+                    options: ["Number too small", "Number too large", "Inexact representation", "Division by zero"],
+                    correct: 1
+                },
+                {
+                    question: "Convert 11000000 (two's complement) to decimal:",
+                    options: ["-128", "-64", "192", "-32"],
+                    correct: 1
+                },
+                {
+                    question: "Why can't 0.1 be represented exactly in binary?",
+                    options: ["Too small", "Repeating binary fraction", "Too large", "Negative value"],
+                    correct: 1
+                },
+                {
+                    question: "What's the first step in normalising a positive floating point number?",
+                    options: ["Add one", "Flip bits", "Move point after first 1", "Set exponent to zero"],
+                    correct: 2
+                }
+            ];
+            
+            quiz.innerHTML = questions.map((q, i) => `
+                <div style="margin-bottom: 1.5rem;">
+                    <p><strong>Question ${i + 1}:</strong> ${q.question}</p>
+                    <div class="quiz-options">
+                        ${q.options.map((opt, j) => `
+                            <div class="quiz-option" onclick="selectQuizOption(${i}, ${j})">
+                                <input type="radio" name="q${i}" value="${j}" style="margin-right: 0.5rem;">
+                                <span>${opt}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('submitQuizBtn').style.display = 'block';
+            
+            // Store correct answers
+            window.quizAnswers = questions.map(q => q.correct);
+        }
+
+        function selectQuizOption(question, option) {
+            const radio = document.querySelector(`input[name="q${question}"][value="${option}"]`);
+            radio.checked = true;
+        }
+
+        function submitFinalQuiz() {
+            let score = 0;
+            const results = [];
+            
+            window.quizAnswers.forEach((correct, i) => {
+                const selected = document.querySelector(`input[name="q${i}"]:checked`);
+                if (selected && parseInt(selected.value) === correct) {
+                    score++;
+                    results.push(true);
+                } else {
+                    results.push(false);
+                }
+            });
+            
+            const percentage = Math.round((score / window.quizAnswers.length) * 100);
+            
+            // Show results
+            const resultsDiv = document.getElementById('quizResults');
+            resultsDiv.innerHTML = `
+                <h3>Quiz Results</h3>
+                <p style="font-size: 1.5rem; font-weight: bold; color: ${percentage >= 70 ? 'var(--success)' : 'var(--warning)'};">
+                    Score: ${score}/${window.quizAnswers.length} (${percentage}%)
+                </p>
+                <p style="margin-top: 1rem;">
+                    ${percentage >= 90 ? 'Outstanding! You\'ve mastered this topic!' :
+                      percentage >= 70 ? 'Well done! You have a good understanding.' :
+                      percentage >= 50 ? 'Good effort. Review the sections you found challenging.' :
+                      'Keep practicing. Review the material and try again.'}
+                </p>
+            `;
+            resultsDiv.style.display = 'block';
+            
+            // Highlight correct/incorrect
+            results.forEach((correct, i) => {
+                const options = document.querySelectorAll(`[name="q${i}"]`);
+                options.forEach(opt => {
+                    const optionDiv = opt.closest('.quiz-option');
+                    if (parseInt(opt.value) === window.quizAnswers[i]) {
+                        optionDiv.classList.add('correct');
+                    } else if (opt.checked && !correct) {
+                        optionDiv.classList.add('incorrect');
+                    }
+                });
+            });
+            
+            // Award XP based on score
+            const xpEarned = score * 15;
+            awardXP(xpEarned, `Quiz completed: ${score}/${window.quizAnswers.length}`);
+            
+            // Disable submit button
+            document.getElementById('submitQuizBtn').disabled = true;
+        }
+
+        // Show mark scheme
+        function showMarkScheme() {
+            const answer = document.getElementById('examAnswer').value;
+            const marks = document.getElementById('predictedMarks').value;
+            
+            if (answer.length < 100) {
+                alert('Please write a more detailed answer before viewing the mark scheme.');
+                return;
+            }
+            
+            if (!marks) {
+                alert('Please predict your marks first.');
+                return;
+            }
+            
+            document.getElementById('markScheme').classList.add('visible');
+            
+            if (!completedTasks.has('exam-attempt')) {
+                completedTasks.add('exam-attempt');
+                awardXP(50, 'Attempted exam question!');
+            }
+        }
+
+        // Canvas functions
+        function clearCanvas() {
+            const canvas = document.getElementById('drawingCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function closeCanvas() {
+            document.getElementById('canvasContainer').style.display = 'none';
+        }
+
+        function openCanvas() {
+            document.getElementById('canvasContainer').style.display = 'block';
+        }
+
+        // Save extension activity
+        function saveExtension() {
+            const answer = document.getElementById('extensionAnswer').value;
+            if (answer.length < 100) {
+                alert('Please write at least 100 words for the extension activity.');
+                return;
+            }
+            
+            alert('Extension activity saved!');
+            
+            if (!completedTasks.has('extension')) {
+                completedTasks.add('extension');
+                awardXP(100, 'Extension activity completed!');
+                showAchievement('Going Beyond!', 'You completed the extension activity!');
+            }
+        }
+
+        // Complete lesson
+        function completeLesson() {
+            if (level < 5) {
+                alert('Complete more activities to reach Level 5 before finishing the lesson!');
+                return;
+            }
+            
+            showAchievement('Lesson Complete!', 'Congratulations on mastering Two\'s Complement and Floating Point!');
+            createParticles();
+            awardXP(200, 'Lesson completed!');
+        }
+
+        // Reset section
+        function resetSection(sectionNum) {
+            // Reset specific section elements based on section number
+            switch(sectionNum) {
+                case 0:
+                    document.querySelectorAll('.binary-bit').forEach(bit => {
+                        bit.textContent = '0';
+                        bit.classList.remove('active');
+                    });
+                    updateDecimalDisplay();
+                    document.querySelectorAll('#starterQuiz .quiz-option').forEach(opt => {
+                        opt.classList.remove('correct', 'incorrect');
+                    });
+                    break;
+                case 1:
+                    resetTCSimulation();
+                    document.querySelectorAll('[id^="tc-practice-"]').forEach(input => {
+                        input.value = '';
+                    });
+                    document.querySelectorAll('[id^="tc-feedback-"]').forEach(span => {
+                        span.textContent = '';
+                    });
+                    break;
+                case 2:
+                    document.getElementById('mantissaSlider').value = 8;
+                    document.getElementById('exponentSlider').value = 4;
+                    updateFloatingPointDisplay();
+                    break;
+                case 3:
+                    resetBTODSimulation();
+                    resetDTOBSimulation();
+                    document.querySelectorAll('[id^="conv-practice-"]').forEach(input => {
+                        input.value = '';
+                    });
+                    break;
+                case 4:
+                    document.querySelectorAll('.fill-blank').forEach(blank => {
+                        blank.textContent = '';
+                        blank.style.background = 'transparent';
+                    });
+                    document.querySelectorAll('.fill-option').forEach(opt => {
+                        opt.classList.remove('used');
+                    });
+                    break;
+                case 5:
+                    resetRoundingDemo();
+                    document.querySelectorAll('.drop-zone').forEach(zone => {
+                        zone.innerHTML = zone.textContent;
+                        zone.dataset.dropped = '';
+                        zone.style.background = 'transparent';
+                    });
+                    break;
+                case 6:
+                    location.reload(); // Full reset for summary
+                    break;
+            }
+        }
+
+        // Feedback system
+        function openFeedback() {
+            document.getElementById('feedbackModal').style.display = 'block';
+        }
+
+        function closeFeedback() {
+            document.getElementById('feedbackModal').style.display = 'none';
+            document.getElementById('feedbackText').value = '';
+        }
+
+        function sendFeedback() {
+            const feedback = document.getElementById('feedbackText').value;
+            if (!feedback) {
+                alert('Please enter your feedback');
+                return;
+            }
+            
+            const sectionName = document.querySelector('.section.active h2').textContent;
+            const sectionCode = document.querySelector('.section.active').innerHTML.substring(0, 200);
+            
+            // Create mailto link
+            const subject = `Lesson Feedback - ${sectionName}`;
+            const body = `Feedback: ${feedback}\n\nSection: ${sectionName}\n\nRelevant Code:\n${sectionCode}`;
+            
+            window.location.href = `mailto:millingtond@mgs.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            
+            closeFeedback();
+            alert('Thank you for your feedback!');
+            
+            if (!completedTasks.has('feedback')) {
+                completedTasks.add('feedback');
+                awardXP(10, 'Feedback provided!');
+            }
+        }
+
+        // Prevent pasting
+        function preventPasting() {
+            document.addEventListener('paste', function(e) {
+                e.preventDefault();
+                showPasteWarning();
+                return false;
+            });
+            
+            document.addEventListener('drop', function(e) {
+                e.preventDefault();
+                showPasteWarning();
+                return false;
+            });
+            
+            // Also prevent context menu on inputs
+            document.addEventListener('contextmenu', function(e) {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+        }
+
+        function showPasteWarning() {
+            const warning = document.getElementById('pasteWarning');
+            warning.style.display = 'block';
+            setTimeout(() => {
+                warning.style.display = 'none';
+            }, 2000);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft' && currentSection > 0) {
+                showSection(currentSection - 1);
+            } else if (e.key === 'ArrowRight' && currentSection < 6) {
+                showSection(currentSection + 1);
+            }
+        });
+
+        // Touch gesture support
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50 && currentSection < 6) {
+                showSection(currentSection + 1);
+            }
+            if (touchEndX > touchStartX + 50 && currentSection > 0) {
+                showSection(currentSection - 1);
+            }
+        }
+
+        // Performance optimization: Intersection Observer for animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animationPlayState = 'running';
+                } else {
+                    entry.target.style.animationPlayState = 'paused';
+                }
+            });
+        });
+
+        document.querySelectorAll('.section').forEach(section => {
+            observer.observe(section);
+        });
+
+        // Reduced motion support
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.documentElement.style.setProperty('--animation-duration', '0.01s');
+        }
+    </script>
+</body>
+</html>

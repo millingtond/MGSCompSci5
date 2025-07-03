@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Sound: From Analogue Waves to Digital Bits</title>
+    <script src="https://cdn.tailwindcss.com"></script> 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
+        .lesson-header-glow {
+            animation: lessonHeaderGlowDS 3s ease-in-out infinite;
+        }
+        @keyframes lessonHeaderGlowDS {
+            0%, 100% { text-shadow: 0 0 10px #fff, 0 0 20px #2dd4bf, 0 0 30px #2dd4bf, 0 0 40px #2dd4bf; }
+            50% { text-shadow: 0 0 20px #fff, 0 0 30px #a855f7, 0 0 40px #a855f7, 0 0 50px #a855f7; }
+        }
+        .achievement-unlocked {
+            animation: achievementPopDS 0.6s ease-out; 
+            opacity: 1 !important;
+            transform: scale(1);
+        }
+        @keyframes achievementPopDS {
+            0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+            60% { transform: scale(1.2) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); padding-top: 60px; }
+        .modal-content { background-color: #1e293b; color: #e2e8f0; margin: 5% auto; padding: 24px; border: 1px solid #7c3aed; width: 80%; max-width: 500px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-close { color: #94a3b8; float: right; font-size: 28px; font-weight: bold; }
+        .modal-close:hover, .modal-close:focus { color: #e2e8f0; text-decoration: none; cursor: pointer; }
+        #modalMessageTextDS { font-size: 1.125rem; line-height: 1.75rem; }
+
+        .flash-notification-container { position: fixed; top: 20px; right: 20px; z-index: 1050; display: flex; flex-direction: column; gap: 10px;}
+        .flash-message { background-color: #10b981; color: white; padding: 12px 18px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); opacity: 0; transform: translateX(100%); transition: opacity 0.5s ease-out, transform 0.5s ease-out; font-size: 0.9rem; display: flex; align-items: center;}
+        .flash-message.show { opacity: 1; transform: translateX(0); }
+        .flash-message.hide { opacity: 0; transform: translateX(100%); }
+        .flash-message i { margin-right: 8px; }
+
+        .reset-button { background-color: #f43f5e; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; transition: background-color 0.2s ease-in-out; border: none; cursor: pointer; }
+        .reset-button:hover { background-color: #e11d48; }
+        
+        section { border: 1px solid #334155; border-radius: 0.75rem; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(10px); }
+        section p, section li { font-size: 1rem; line-height: 1.625; }
+        .section-title { font-size: 1.75rem; }
+        @media (min-width: 768px) { /* Tailwind's 'md' breakpoint is 768px */
+            .section-title {
+                font-size: 2rem;
+            }
+        }
+        .interactive-canvas { 
+            border: 1px solid #4a044e; 
+            border-radius: 0.5rem; 
+            background-color: #0c0a09;
+            display: block; 
+            margin: 1rem auto; 
+        }
+        .slider { -webkit-appearance: none; width: 100%; height: 8px; background: #374151; outline: none; transition: opacity .2s; border-radius: 4px; }
+        .slider:hover { opacity: 1; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; background: #2dd4bf; cursor: pointer; border-radius: 50%; border: 3px solid #111827; }
+        .slider::-moz-range-thumb { width: 22px; height: 22px; background: #2dd4bf; cursor: pointer; border-radius: 50%; border: 3px solid #111827; }
+
+        .draggable-unit { padding: 0.5rem; margin: 0.25rem; background-color: #6d28d9; color: white; border-radius: 0.25rem; cursor: grab; text-align: center; }
+        .drop-zone-units { padding: 0.5rem; margin: 0.25rem 0; border: 2px dashed #8b5cf6; border-radius: 0.25rem; min-height: 40px; }
+        .drop-zone-units.drag-over { background-color: #5b21b660; }
+
+        .working-out-canvas { border: 1px dashed #7c3aed; border-radius: 0.375rem; cursor: crosshair; background-color: #5b21b61a; transition: height 0.3s ease-in-out; }
+        .working-out-canvas.default-size { width:100%; height: 100px; }
+        .working-out-canvas.expanded-size { width:100%; height: 250px; }
+        .canvas-controls button { background-color: #9333ea; color:white; padding: 0.25rem 0.5rem; font-size:0.75rem; border-radius:0.25rem; margin-top:0.25rem; margin-left: 0.25rem;}
+        .canvas-controls button:hover { background-color: #7e22ce; }
+        
+        .control-button { background-color: #581c87; color: #e9d5ff; padding: 0.5rem 0.75rem; border-radius: 0.375rem; border: 1px solid #7e22ce; transition: all 0.2s ease-in-out; }
+        .control-button:hover { background-color: #6b21a8; color: white; }
+        .control-button.active-button { background-color: #a855f7; color: white; border-color: #d8b4fe; font-weight: bold; }
+
+        .formula-value {
+            display: inline-block;
+            min-width: 50px;
+            text-align: center;
+            color: #67e8f9;
+            background-color: #1e293b;
+            padding: 2px 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease-out;
+            animation: pop-in 0.3s ease-out;
+        }
+        @keyframes pop-in {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .play-button {
+            background-color: #155e75;
+            color: #a5f3fc;
+            border: 1px solid #0891b2;
+        }
+        .play-button:hover {
+            background-color: #0e7490;
+            color: white;
+        }
+
+
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-blue-900 min-h-screen p-4 md:p-8 text-slate-200">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-12 relative">
+            <h1 class="text-4xl md:text-6xl font-bold lesson-header-glowDS mb-3 relative z-10">
+                Digital Sound: From Analogue Waves to Digital Bits <i class="fas fa-wave-square text-teal-300"></i>
+            </h1>
+            <p class="text-slate-400 text-lg md:text-xl relative z-10">Understanding the Language of Digital Audio</p>
+            
+            <div class="mt-8 bg-slate-800 rounded-full p-2 shadow-xl max-w-lg mx-auto relative z-10 border border-purple-500">
+                <div class="flex items-center justify-between">
+                    <span id="levelDisplayDS" class="text-sm font-semibold text-slate-300 ml-4">Level 1: Audio Novice</span>
+                    <span class="text-sm font-semibold text-teal-400 mr-4"><span id="xpPointsDS">0</span> XP</span>
+                </div>
+                <div class="bg-slate-700 rounded-full h-4 mt-2 mx-1">
+                    <div id="xpBarDS" class="bg-gradient-to-r from-purple-500 to-teal-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="mb-10 bg-slate-800/80 backdrop-blur-md p-3 rounded-lg shadow-lg sticky top-4 z-50 border border-purple-700">
+            <ul class="flex flex-wrap justify-center gap-x-3 md:gap-x-4 gap-y-2">
+                <li><a href="#section-ds-warmup" class="text-sm md:text-base text-purple-300 hover:text-teal-300 font-medium">⚙️ Sound Check</a></li>
+                <li><a href="#section-ds-starter" class="text-sm md:text-base text-purple-300 hover:text-teal-300 font-medium">🤔 Starter</a></li>
+                <li><a href="#section-sampling" class="text-sm md:text-base text-purple-300 hover:text-teal-300 font-medium">📈 Sampling</a></li>
+                <li><a href="#section-bit-depth" class="text-sm md:text-base text-purple-300 hover:text-teal-300 font-medium">📊 Bit Depth</a></li>
+                <li><a href="#section-file-size" class="text-sm md:text-base text-purple-300 hover:text-teal-300 font-medium">💾 File Size</a></li>
+                <li><a href="#section-metadata" class="text-sm md:text-base text-purple-300 hover:text-teal-300 font-medium">ℹ️ Metadata</a></li>
+                <li><a href="#section-ds-exam-prep" class="text-sm md:text-base text-purple-300 hover:text-teal-300 font-medium">📝 Exam Prep</a></li>
+                <li><a href="#section-ds-extensions" class="text-sm md:text-base text-purple-300 hover:text-teal-300 font-medium">🚀 Extensions</a></li>
+                <li><a href="#section-ds-plenary" class="text-sm md:text-base text-purple-300 hover:text-teal-300 font-medium">🏁 Plenary</a></li>
+                <li><a href="#section-ds-achievements" class="text-sm md:text-base text-purple-300 hover:text-teal-300 font-medium">🏆 Achievements</a></li>
+            </ul>
+        </nav>
+
+        <!-- Flash Notification Container -->
+        <div id="flashNotificationContainerDS" class="flash-notification-container"></div>
+
+        <!-- Section 1: Warm-up -->
+        <section id="section-ds-warmup" class="p-6 md:p-8 mb-10">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="section-title font-bold text-purple-400"><i class="fas fa-sliders-h mr-3"></i>Warm-up: Sound Check!</h2>
+                <button onclick="resetDSWarmup(false)" class="reset-button">Reset</button>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold text-purple-300 mb-2">1. File Size Units</h3>
+                    <p class="text-sm text-slate-400 mb-2">Drag and drop the units into order, from smallest to largest.</p>
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <div id="draggableUnitsContainerDS" class="p-2 bg-slate-700/30 rounded-md space-y-2"></div>
+                        <div id="fileSizeDropZoneDS" class="p-2 bg-slate-700/30 rounded-md drop-zone-units space-y-1"><p class="text-xs text-slate-500 text-center py-4">Drop here</p></div>
+                    </div>
+                    <button onclick="checkFileSizeRankingDS()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded text-sm w-full">Check Order</button>
+                    <p id="fileSizeRankingFeedbackDS" class="text-xs mt-2 min-h-[16px] text-center"></p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-purple-300 mb-2">2. True or False?</h3>
+                    <div id="trueFalseContainerDS" class="space-y-3"></div>
+                    <button onclick="checkTrueFalseAnswersDS()" class="mt-3 bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded text-sm w-full">Check Answers</button>
+                    <p id="trueFalseOverallFeedbackDS" class="text-xs mt-2 min-h-[16px] text-center"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Starter -->
+        <section id="section-ds-starter" class="p-6 md:p-8 mb-10">
+            <h2 class="section-title font-bold text-teal-400 mb-5"><i class="fas fa-question-circle mr-3"></i>Starter: Analogue vs Digital</h2>
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+                <div>
+                    <p class="text-slate-300 mb-3">Sound in the real world is <strong>analogue</strong>. It's a continuous wave of pressure vibrations. This wave has infinite detail, smoothly changing over time.</p>
+                    <canvas id="analogueWaveCanvas" width="400" height="150" class="interactive-canvas"></canvas>
+                </div>
+                <div class="bg-slate-700/50 p-4 rounded-lg">
+                    <label for="starterDSThoughts" class="block font-semibold text-teal-300 mb-2">Think Point: How can a computer, which only understands distinct numbers (0s and 1s), possibly store and recreate this smooth, continuous wave?</label>
+                    <textarea id="starterDSThoughts" class="w-full p-2 bg-slate-700 border-2 border-slate-600 rounded-md focus:border-teal-500 focus:ring-teal-500 text-slate-200 h-28" placeholder="Your initial thoughts..." onblur="checkDSStarterThoughts()"></textarea>
+                    <div id="starterDSFeedback" class="mt-2 p-2 bg-slate-800 rounded-lg text-slate-300 min-h-[30px] text-sm"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Sampling -->
+        <section id="section-sampling" class="p-6 md:p-8 mb-10">
+             <h2 class="section-title font-bold text-sky-400 mb-3"><i class="fas fa-chart-line mr-3"></i>Task 1: Sampling - From Wave to Data Points</h2>
+             <div class="grid md:grid-cols-2 gap-8 items-center">
+                <div class="prose text-slate-300">
+                    <p>To convert an analogue wave to digital, we take measurements, or <strong>samples</strong>, at regular time intervals.</p>
+                    <p>The <strong>sampling rate</strong> is how often we take these samples, measured in <strong>Hertz (Hz)</strong>. 1Hz means one sample per second.</p>
+                    <div class="mt-6">
+                        <label for="samplingRateSlider" class="font-semibold text-sky-300 text-lg">Sampling Rate: <span id="samplingRateValue" class="font-bold text-white">10</span> Hz</label>
+                        <input type="range" min="2" max="50" value="10" class="slider mt-2" id="samplingRateSlider">
+                    </div>
+                    <button onclick="triggerSamplingQuiz()" class="control-button play-button mt-4 w-full"><i class="fas fa-play mr-2"></i>Play Sound</button>
+                     <div id="samplingFeedback" class="mt-4 p-3 bg-sky-800/30 border border-sky-700 rounded-lg">
+                        <p class="text-sky-200 text-sm">Notice how a higher sampling rate creates a digital wave that more accurately follows the original analogue wave. This results in higher sound quality, but also a larger file size.</p>
+                    </div>
+                </div>
+                <div>
+                     <canvas id="samplingCanvas" width="600" height="300" class="interactive-canvas"></canvas>
+                </div>
+             </div>
+        </section>
+
+        <!-- Section 4: Sample Resolution (Bit Depth) -->
+        <section id="section-bit-depth" class="p-6 md:p-8 mb-10">
+            <h2 class="section-title font-bold text-fuchsia-400 mb-3"><i class="fas fa-layer-group mr-3"></i>Task 2: Sample Resolution (Bit Depth)</h2>
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+                 <div>
+                    <h3 class="text-lg font-semibold text-fuchsia-300 mb-2">Quantization Visualizer</h3>
+                    <p class="text-sm text-slate-400 mb-2">A higher <strong>bit depth</strong> provides more possible levels to measure amplitude, increasing accuracy.</p>
+                    <canvas id="bitDepthCanvas" width="300" height="300" class="interactive-canvas"></canvas>
+                    <div id="bitDepthControls" class="text-center space-x-2">
+                        <button onclick="setBitDepth(2, this)" class="control-button">2-bit</button>
+                        <button onclick="setBitDepth(3, this)" class="control-button active-button">3-bit</button>
+                        <button onclick="setBitDepth(4, this)" class="control-button">4-bit</button>
+                        <button onclick="setBitDepth(8, this)" class="control-button">8-bit</button>
+                    </div>
+                     <button onclick="triggerBitDepthQuiz()" class="control-button play-button mt-4 w-full"><i class="fas fa-play mr-2"></i>Play Sound</button>
+                </div>
+                <div class="bg-slate-700/50 p-4 rounded-lg space-y-6">
+                    <div>
+                        <h3 class="text-lg font-semibold text-fuchsia-300 mb-2">Check Your Understanding</h3>
+                        <p class="text-sm text-slate-300 mb-1">If we increase the bit depth to <strong>6 bits</strong>, what is the total number of possible amplitude levels?</p>
+                        <input type="number" id="bitDepthQuestionAnswer" class="w-1/2 p-1 bg-slate-600 border-slate-500 rounded text-sm" placeholder="Your answer">
+                        <button onclick="checkBitDepthQuestion()" class="bg-fuchsia-500 text-white px-3 py-1 text-xs rounded ml-1">Check</button>
+                        <p id="bitDepthQuestionFeedback" class="text-xs mt-1 min-h-[16px]"></p>
+                    </div>
+                    <div class="mt-4">
+                        <label for="bitDepthEffect" class="block text-sm font-semibold text-fuchsia-300 mb-2">Describe the effect that increasing the bit depth has on the quality of the audio and the size of the file.</label>
+                        <textarea id="bitDepthEffect" class="w-full p-2 bg-slate-600 border-slate-500 rounded h-20 text-sm" placeholder="Your explanation..." onblur="checkBitDepthEffect()"></textarea>
+                        <p id="bitDepthEffectFeedback" class="text-xs mt-1 min-h-[16px]"></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: File Size -->
+        <section id="section-file-size" class="p-6 md:p-8 mb-10">
+            <h2 class="section-title font-bold text-green-400 mb-3"><i class="fas fa-calculator mr-3"></i>Task 3: Calculating Sound File Size</h2>
+            <p class="text-slate-300 mb-3">You can calculate the uncompressed file size of a sound file using this formula:</p>
+            <div id="fileSizeFormula" class="text-center bg-slate-900 p-3 rounded-lg text-green-300 font-mono text-lg mb-6 shadow-lg">
+                File size (bits) = <span id="formulaRate" class="formula-value">----</span> × <span id="formulaDepth" class="formula-value">----</span> × <span id="formulaTime" class="formula-value">----</span>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-slate-700/50 p-4 rounded-lg">
+                    <h4 class="text-md font-semibold text-green-300 mb-2">File Size Calculator</h4>
+                    <div class="mb-2"><label for="fsSampleRate" class="block text-sm">Sample Rate (Hz):</label><input type="number" id="fsSampleRate" class="w-full p-1 bg-slate-600 border-slate-500 rounded text-sm" placeholder="e.g., 44100"></div>
+                    <div class="mb-2"><label for="fsBitDepth" class="block text-sm">Bit Depth:</label><input type="number" id="fsBitDepth" class="w-full p-1 bg-slate-600 border-slate-500 rounded text-sm" placeholder="e.g., 16"></div>
+                    <div class="mb-3"><label for="fsDuration" class="block text-sm">Duration (seconds):</label><input type="number" id="fsDuration" class="w-full p-1 bg-slate-600 border-slate-500 rounded text-sm" placeholder="e.g., 180"></div>
+                    <button onclick="calculateFileSize()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded text-sm w-full">Calculate</button>
+                    <div id="fileSizeOutput" class="mt-3 space-y-1 text-sm bg-slate-800 p-3 rounded"></div>
+                </div>
+                <div>
+                    <h4 class="text-md font-semibold text-green-300 mb-2">Practice Problem</h4>
+                    <div class="bg-slate-700/60 p-3 rounded-md">
+                        <p class="text-sm text-slate-300 mb-1">Calculate the file size in <strong>bytes</strong> for a 3-second audio file with a sampling rate of 20Hz and a 4-bit sample resolution. Show your working on the canvas.</p>
+                        <input type="number" id="fileSizeProblemAnswer" class="w-1/2 p-1 bg-slate-600 border-slate-500 rounded text-sm" placeholder="Bytes">
+                        <button onclick="checkFileSizeProblem()" class="bg-green-500 text-white px-2 py-1 text-xs rounded ml-1">Check</button>
+                        <span id="fileSizeProblemFeedback" class="text-xs ml-2"></span>
+                        <div class="mt-1">
+                            <canvas id="fileSizeWorkingCanvas" class="working-out-canvas mx-auto"></canvas>
+                            <div class="text-center canvas-controls"><button id="fileSizeWorkingCanvasClear">Clear</button><button id="fileSizeWorkingCanvasToggle">Toggle Size</button></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: Metadata -->
+        <section id="section-metadata" class="p-6 md:p-8 mb-10">
+            <h2 class="section-title font-bold text-blue-400 mb-3"><i class="fas fa-info-circle mr-3"></i>Task 4: Audio Metadata - The Track Info</h2>
+            <p class="text-slate-300 mb-4">Just like image files, audio files contain <strong>metadata</strong> - data that describes the audio file. This helps media players organize and display your music correctly.</p>
+            <div class="bg-slate-700/50 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold text-blue-300 mb-4">Understanding Audio Metadata</h3>
+                <p class="text-sm text-slate-400 mb-3">Answer the following questions to demonstrate your understanding of metadata.</p>
+                <div id="metadataDisplayPanelDS" class="bg-slate-800 p-4 rounded text-sm">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="metadataQ1DS_general" class="block font-semibold text-blue-300 mb-1">1. Explain what "metadata" is in the context of digital audio files.</label>
+                            <textarea id="metadataQ1DS_general" class="w-full p-2 bg-slate-700 border-slate-600 rounded text-sm h-20" placeholder="Your explanation..."></textarea>
+                        </div>
+                        <div>
+                            <label for="metadataQ2DS_general" class="block font-semibold text-blue-300 mb-1">2. Give two examples of metadata commonly found in an audio file.</label>
+                            <textarea id="metadataQ2DS_general" class="w-full p-2 bg-slate-700 border-slate-600 rounded text-sm h-16" placeholder="Example 1, Example 2..."></textarea>
+                        </div>
+                        <div>
+                            <label for="metadataQ3DS_general" class="block font-semibold text-blue-300 mb-1">3. Identify one profession where viewing audio metadata might be important, and briefly explain why.</label>
+                            <textarea id="metadataQ3DS_general" class="w-full p-2 bg-slate-700 border-slate-600 rounded text-sm h-20" placeholder="Profession and reason..."></textarea>
+                        </div>
+                    </div>
+                    <button onclick="submitGeneralMetadataAnswersDS()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm w-full">Submit Answers</button>
+                    <p id="metadataGeneralFeedbackDS" class="text-xs mt-2 min-h-[16px]"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Exam Prep -->
+        <section id="section-ds-exam-prep" class="p-6 md:p-8 mb-10">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="section-title font-bold text-orange-400"><i class="fas fa-graduation-cap mr-3"></i>Exam Prep</h2>
+                <button onclick="resetDSExamPrep(false)" class="reset-button">Reset</button>
+            </div>
+            <div id="dsExamQuestionsContainer"></div>
+        </section>
+
+        <!-- Section 8: Extensions -->
+        <section id="section-ds-extensions" class="p-6 md:p-8 mb-10">
+            <h2 class="section-title font-bold text-yellow-400 mb-5"><i class="fas fa-rocket mr-3"></i>Extension Activities</h2>
+            <div class="space-y-8">
+                <div class="bg-slate-700/50 p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-bold text-yellow-300 mb-3">1. Lossy vs. Lossless Compression</h3>
+                    <div id="lossyLosslessContainer" class="space-y-4"></div>
+                    <button onclick="checkLossyLosslessAnswers()" class="mt-4 bg-yellow-600 text-white px-4 py-1.5 rounded hover:bg-yellow-700 text-sm w-full">Submit Answers</button>
+                    <p id="lossyLosslessFeedback" class="text-xs mt-2 min-h-[16px] text-center"></p>
+                </div>
+                <div class="bg-slate-700/50 p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-bold text-yellow-300 mb-3">2. Challenge: The Nyquist Theorem</h3>
+                    <p class="text-slate-300 mb-2 text-sm">The <strong>Nyquist theorem</strong> states that to accurately capture a frequency, the sampling rate must be at least <strong>twice</strong> that frequency. Below, a low-frequency wave (blue) and a high-frequency wave (purple) are on top of each other. The red dots are the samples.</p>
+                    <canvas id="nyquistCanvas" width="500" height="200" class="interactive-canvas"></canvas>
+                    <p class="text-slate-300 text-sm">At this low sampling rate, the computer "sees" both the blue and purple waves as the same slow wave, failing to capture the high-pitched sound. This error is called <strong>aliasing</strong>. This is why CDs use a 44.1kHz sampling rate - to capture human hearing up to ~20kHz.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 9: Plenary -->
+        <section id="section-ds-plenary" class="p-6 md:p-8 mb-10">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="section-title font-bold text-teal-400"><i class="fas fa-check-double mr-3"></i>Plenary: Learning Outcomes</h2>
+            </div>
+            <p class="text-slate-300 mb-4">Reflect on what you've learned. Tick the outcomes you feel you have achieved today:</p>
+            <div id="learningOutcomesDSContainer" class="space-y-2"></div>
+            <button onclick="submitLearningOutcomesDS()" class="mt-4 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded text-sm w-full">Mark as Reviewed</button>
+            <p id="learningOutcomesFeedbackDS" class="text-xs mt-2 min-h-[16px] text-center"></p>
+        </section>
+        
+        <!-- Section 10: Achievements -->
+        <section id="section-ds-achievements" class="p-6 md:p-8 mb-10"> 
+            <h2 class="section-title font-bold text-purple-300 mb-5"><i class="fas fa-trophy mr-3"></i>Your Studio Badges!</h2>
+            <div id="achievementsContainerDS" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+        </section>
+
+        <footer class="text-center mt-12 py-6 border-t border-slate-700">
+            <p class="text-slate-500 text-sm">&copy; Your School Name/Your Name - Digital Sound Lesson</p>
+        </footer>
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="messageModalDS" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModalDS('messageModalDS')">&times;</span>
+            <p id="modalMessageTextDS" class="text-lg"></p>
+            <button onclick="closeModalDS('messageModalDS')" class="mt-4 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Utility Functions ---
+        window.showModalDS = function(message) {
+            const modalEl = document.getElementById('messageModalDS');
+            const modalTextEl = document.getElementById('modalMessageTextDS');
+            if (modalEl && modalTextEl) {
+                modalTextEl.innerHTML = message;
+                modalEl.style.display = 'block';
+            }
+        }
+
+        window.closeModalDS = function(modalId) {
+            const modalEl = document.getElementById(modalId);
+            if (modalEl) modalEl.style.display = 'none';
+            // Reset the specific button in this modal if it was changed for the quiz
+            if (modalEl && modalId === 'messageModalDS') {
+                const modalButton = modalEl.querySelector('.modal-content button.bg-purple-600');
+                if (modalButton && modalButton.textContent === 'Submit Answers') {
+                    modalButton.textContent = 'OK';
+                    modalButton.onclick = function() { closeModalDS(modalId); };
+                }
+            }
+        }
+        
+        window.addEventListener('click', (event) => {
+            const modal = document.getElementById('messageModalDS');
+            if (modal && event.target == modal) {
+                window.closeModalDS('messageModalDS');
+            }
+        });
+        
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Core Systems: XP, Levels, Achievements ---
+            let totalXPDS = 0;
+            const MAX_XP_PER_LEVEL_DS = 80;
+            let currentLevelDS = 1;
+            const levelsDS = ["Audio Novice", "Sample Apprentice", "Bit Depth Expert", "Frequency Wizard", "Digital Maestro"];
+            
+            const activityStatesDS = {
+                warmupRanked: false, warmupTFDone: false, starterThoughts: false,
+                bitDepthQuestion: false, bitDepthEffect: false, fileSizeProblem: false,
+                metadataViewed: false, lossyLossless: false, plenaryReviewed: false,
+                samplingSliderUsed: false, bitDepthButtonsUsed: false, calculatorUsed: false,
+                samplingQuizAttempted: false, bitDepthQuizAttempted: false
+            };
+
+            const achievementsDS = {
+                'sound-checker': { name: "Sound Checker", icon: "⚙️", desc: "Completed the warm-up", unlocked: false, points: 15, condition: () => activityStatesDS.warmupRanked && activityStatesDS.warmupTFDone },
+                'wave-whisperer': { name: "Wave Whisperer", icon: "🤔", desc: "Shared starter thoughts", unlocked: false, points: 10, condition: () => activityStatesDS.starterThoughts },
+                'sample-selector': { name: "Sample Selector", icon: "?", desc: "Used the sampling slider", unlocked: false, points: 15, condition: () => activityStatesDS.samplingSliderUsed },
+                'resolution-ruler': { name: "Resolution Ruler", icon: "📊", desc: "Mastered Bit Depth", unlocked: false, points: 25, condition: () => activityStatesDS.bitDepthButtonsUsed && activityStatesDS.bitDepthQuestion && activityStatesDS.bitDepthEffect },
+                'file-size-guru': { name: "File Size Guru", icon: "💾", desc: "Aced file size calculations", unlocked: false, points: 20, condition: () => activityStatesDS.calculatorUsed && activityStatesDS.fileSizeProblem },
+                'metadata-miner': { name: "Metadata Miner", icon: "ℹ️", desc: "Explained audio metadata concepts", unlocked: false, points: 10, condition: () => activityStatesDS.metadataViewed },
+                'exam-expert': { name: "Exam Expert", icon: "🎓", desc: "Passed the exam prep", unlocked: false, points: 40, condition: () => Object.values(dsExamPrepState).filter(q => q.selfMark && q.markSchemeViewed).length >= 2 },
+                'compression-commander': { name: "Compression Commander", icon: "🚀", desc: "Completed the extension", unlocked: false, points: 20, condition: () => activityStatesDS.lossyLossless },
+                'digital-maestro': { name: "Digital Maestro", icon: "🏆", desc: "Mastered Digital Sound!", unlocked: false, points: 100, condition: () => {
+                    const core = ['sound-checker', 'wave-whisperer', 'sample-selector', 'resolution-ruler', 'file-size-guru', 'exam-expert'];
+                    return core.every(key => achievementsDS[key]?.unlocked);
+                }}
+            };
+            
+            // --- Audio Context Setup ---
+            let audioReady = false;
+            const bitCrusher = new Tone.BitCrusher(4).toDestination();
+            const synth = new Tone.Synth().connect(bitCrusher);
+            
+            function initAudio() {
+                if (!audioReady) {
+                    Tone.start();
+                    audioReady = true;
+                    showFlashNotificationDS('Audio engine ready!', 'info');
+                }
+            }
+            document.body.addEventListener('click', initAudio, { once: true });
+
+
+            // --- Utility Functions ---
+            function showFlashNotificationDS(message, type = 'success', isInitialSetup = false) {
+                if (isInitialSetup) return;
+                const container = document.getElementById('flashNotificationContainerDS');
+                if (!container) return;
+                const flashMessage = document.createElement('div');
+                flashMessage.className = 'flash-message';
+                let iconClass = 'fas fa-check-circle';
+                if (type === 'badge') { iconClass = 'fas fa-award'; flashMessage.style.backgroundColor = '#facc15'; }
+                else if (type === 'error') { iconClass = 'fas fa-exclamation-circle'; flashMessage.style.backgroundColor = '#f43f5e'; }
+                else if (type === 'info') { iconClass = 'fas fa-info-circle'; flashMessage.style.backgroundColor = '#38bdf8'; }
+                flashMessage.innerHTML = `<i class="${iconClass}"></i><span>${message}</span>`;
+                container.appendChild(flashMessage);
+                setTimeout(() => { flashMessage.classList.add('show'); }, 10);
+                setTimeout(() => {
+                    flashMessage.classList.remove('show');
+                    flashMessage.classList.add('hide');
+                    setTimeout(() => { if (container.contains(flashMessage)) { container.removeChild(flashMessage); } }, 500);
+                }, 3500);
+            }
+
+            function addXPDS(points, feedbackMessage = "", isInitialSetup = false) {
+                if (isInitialSetup && points > 0) return;
+                totalXPDS += points;
+                document.getElementById('xpPointsDS').textContent = totalXPDS;
+                
+                const newLevelCalc = Math.floor(totalXPDS / MAX_XP_PER_LEVEL_DS) + 1;
+                if (newLevelCalc > currentLevelDS) {
+                    currentLevelDS = newLevelCalc;
+                    window.showModalDS(`<strong>Level Up!</strong> You are now Level ${currentLevelDS}: ${levelsDS[Math.min(currentLevelDS - 1, levelsDS.length - 1)]}!`);
+                }
+                let xpForCurrentLevel = totalXPDS - ((currentLevelDS - 1) * MAX_XP_PER_LEVEL_DS);
+                document.getElementById('levelDisplayDS').textContent = `Level ${currentLevelDS}: ${levelsDS[Math.min(currentLevelDS - 1, levelsDS.length - 1)]}`;
+                const xpBarPercentage = Math.min(100, (xpForCurrentLevel / MAX_XP_PER_LEVEL_DS) * 100);
+                document.getElementById('xpBarDS').style.width = xpBarPercentage + '%';
+                
+                if (feedbackMessage && points > 0 && !isInitialSetup) {
+                    showFlashNotificationDS(`${feedbackMessage} (+${points} XP)`);
+                }
+                checkAchievementsDS(isInitialSetup);
+            }
+
+            function checkAchievementsDS(isInitialSetup = false) {
+                if (isInitialSetup) return;
+                for (const key in achievementsDS) {
+                    const ach = achievementsDS[key];
+                    if (ach && !ach.unlocked && ach.condition && ach.condition()) {
+                        ach.unlocked = true;
+                        const achEl = document.getElementById(`achieve-${key}`);
+                        if (achEl) {
+                            achEl.classList.remove('opacity-40');
+                            achEl.classList.add('achievement-unlocked');
+                            addXPDS(ach.points, "", isInitialSetup);
+                            showFlashNotificationDS(`🏆 Badge Unlocked: <strong>${ach.name}</strong>! (+${ach.points} XP)`, 'badge');
+                        }
+                    }
+                }
+            }
+            
+            function debounce(func, wait) {
+                let timeout;
+                return function executedFunction(...args) {
+                    const later = () => {
+                        clearTimeout(timeout);
+                        func(...args);
+                    };
+                    clearTimeout(timeout);
+                    timeout = setTimeout(later, wait);
+                };
+            }
+
+            // --- General Canvas Utility ---
+            window.initializeCanvas = function(canvasId, clearButtonId, toggleButtonId) {
+                const canvas = document.getElementById(canvasId);
+                const clearButton = document.getElementById(clearButtonId);
+                const toggleButton = document.getElementById(toggleButtonId);
+                if (!canvas || !clearButton || !toggleButton) { return; }
+
+                const ctx = canvas.getContext('2d');
+                let drawing = false; let lastX = 0; let lastY = 0;
+                canvas.classList.add('default-size');
+
+                function setCanvasDimensions() {
+                    canvas.width = canvas.clientWidth;
+                    canvas.height = canvas.clientHeight;
+                    ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+                }
+
+                function getMousePos(evt) { 
+                    const rect = canvas.getBoundingClientRect(); 
+                    return { x: evt.clientX - rect.left, y: evt.clientY - rect.top }; 
+                }
+                function getTouchPos(evt) { 
+                    const rect = canvas.getBoundingClientRect(); 
+                    return { x: evt.touches[0].clientX - rect.left, y: evt.touches[0].clientY - rect.top }; 
+                }
+
+                function startDrawing(e) { drawing = true; const pos = e.touches ? getTouchPos(e) : getMousePos(e); [lastX, lastY] = [pos.x, pos.y]; e.preventDefault(); }
+                function draw(e) { if (!drawing) return; const pos = e.touches ? getTouchPos(e) : getMousePos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke(); [lastX, lastY] = [pos.x, pos.y]; e.preventDefault(); }
+                function stopDrawing() { drawing = false; }
+
+                canvas.addEventListener('mousedown', startDrawing);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseup', stopDrawing);
+                canvas.addEventListener('mouseout', stopDrawing);
+                canvas.addEventListener('touchstart', startDrawing, { passive: false });
+                canvas.addEventListener('touchmove', draw, { passive: false });
+                canvas.addEventListener('touchend', stopDrawing);
+                
+                clearButton.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+                
+                toggleButton.addEventListener('click', () => { 
+                    canvas.classList.toggle('expanded-size');
+                    canvas.classList.toggle('default-size');
+                    
+                    // Wait for the CSS transition on 'height' to complete
+                    // before resetting canvas drawing dimensions.
+                    function onTransitionEnd() {
+                        setCanvasDimensions();
+                        canvas.removeEventListener('transitionend', onTransitionEnd);
+                    }
+                    canvas.addEventListener('transitionend', onTransitionEnd);
+                });
+
+                setCanvasDimensions();
+                window.addEventListener('resize', setCanvasDimensions);
+            }
+
+
+            // --- Section 1: Warm-up ---
+            let draggedUnitDS = null;
+            const fileSizeUnits = [
+                { id: "byte", name: "Byte (B)", order: 1 }, { id: "kb", name: "Kilobyte (KB)", order: 2 },
+                { id: "mb", name: "Megabyte (MB)", order: 3 }, { id: "gb", name: "Gigabyte (GB)", order: 4 }
+            ];
+            const trueFalseQuestionsDS = [
+                { id: "tfq1", text: "Sound can travel through a vacuum.", answer: false },
+                { id: "tfq2", text: "A higher frequency sound wave results in a higher pitch.", answer: true },
+                { id: "tfq3", text: "Analogue signals are continuous and have infinite detail.", answer: true }
+            ];
+
+            function setupDSWarmup() {
+                const draggableContainer = document.getElementById('draggableUnitsContainerDS');
+                draggableContainer.innerHTML = '';
+                const shuffledUnits = [...fileSizeUnits].sort(() => Math.random() - 0.5);
+                shuffledUnits.forEach(unit => {
+                    const div = document.createElement('div');
+                    div.id = `drag_${unit.id}`;
+                    div.className = 'draggable-unit';
+                    div.textContent = unit.name;
+                    div.draggable = true;
+                    div.dataset.order = unit.order;
+                    div.addEventListener('dragstart', (e) => { draggedUnitDS = e.target; });
+                    draggableContainer.appendChild(div);
+                });
+                const dropZone = document.getElementById('fileSizeDropZoneDS');
+                dropZone.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Drop here</p>';
+                dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+                dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('drag-over');
+                    if (draggedUnitDS) {
+                        if (dropZone.querySelector('p')) dropZone.innerHTML = '';
+                        dropZone.appendChild(draggedUnitDS);
+                        draggedUnitDS = null;
+                    }
+                });
+
+                const tfContainer = document.getElementById('trueFalseContainerDS');
+                tfContainer.innerHTML = '';
+                trueFalseQuestionsDS.forEach(q => {
+                    tfContainer.innerHTML += `
+                        <div class="p-2 bg-slate-700/30 rounded-md">
+                            <p class="text-sm text-slate-300">${q.text}</p>
+                            <div class="flex space-x-4 mt-1 justify-center">
+                                <label><input type="radio" name="${q.id}" value="true" class="mr-1">True</label>
+                                <label><input type="radio" name="${q.id}" value="false" class="mr-1">False</label>
+                            </div>
+                        </div>`;
+                });
+            }
+            window.checkFileSizeRankingDS = function() {
+                const dropZone = document.getElementById('fileSizeDropZoneDS');
+                const droppedItems = Array.from(dropZone.children).filter(child => child.classList.contains('draggable-unit'));
+                let correct = droppedItems.length === fileSizeUnits.length && droppedItems.every((item, i) => parseInt(item.dataset.order) === (i + 1));
+                const feedbackEl = document.getElementById('fileSizeRankingFeedbackDS');
+                feedbackEl.innerHTML = correct ? `<span class="text-green-400">Correct!</span>` : `<span class="text-red-400">Not quite right. Try again.</span>`;
+                if (correct && !activityStatesDS.warmupRanked) {
+                    addXPDS(10, "Ordered file sizes");
+                    activityStatesDS.warmupRanked = true;
+                }
+            }
+            window.checkTrueFalseAnswersDS = function() {
+                let allCorrect = true;
+                trueFalseQuestionsDS.forEach(q => {
+                    const userAnswer = document.querySelector(`input[name="${q.id}"]:checked`)?.value;
+                    if (userAnswer !== String(q.answer)) {
+                        allCorrect = false;
+                    }
+                });
+                const feedbackEl = document.getElementById('trueFalseOverallFeedbackDS');
+                feedbackEl.innerHTML = allCorrect ? `<span class="text-green-400">All correct!</span>` : `<span class="text-red-400">Some answers are incorrect. Review them.</span>`;
+                if (allCorrect && !activityStatesDS.warmupTFDone) {
+                    addXPDS(10, "Answered T/F correctly");
+                    activityStatesDS.warmupTFDone = true;
+                }
+            }
+            window.resetDSWarmup = function(isInitialSetup = false) {
+                setupDSWarmup();
+                document.getElementById('fileSizeRankingFeedbackDS').textContent = '';
+                document.getElementById('trueFalseOverallFeedbackDS').textContent = '';
+                if (!isInitialSetup) showFlashNotificationDS("Warm-up reset.", "info");
+            }
+
+            // --- Section 2: Starter ---
+            let sineOffset = 0;
+            let animationFrameId;
+            function animateAnalogueWave() {
+                const canvas = document.getElementById('analogueWaveCanvas');
+                if(!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const w = canvas.width, h = canvas.height;
+                const amp = h / 3, freq = 0.05;
+                ctx.clearRect(0,0,w,h);
+                ctx.beginPath();
+                ctx.strokeStyle = '#2dd4bf';
+                ctx.lineWidth = 3;
+                ctx.shadowColor = '#2dd4bf';
+                ctx.shadowBlur = 10;
+                for(let x=0; x<w; x++){
+                    let y = h/2 + amp * Math.sin(x * freq + sineOffset);
+                    if (x === 0) ctx.moveTo(x,y);
+                    else ctx.lineTo(x,y);
+                }
+                ctx.stroke();
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                sineOffset += 0.05;
+                animationFrameId = requestAnimationFrame(animateAnalogueWave);
+            }
+            window.checkDSStarterThoughts = function() {
+                const thoughts = document.getElementById('starterDSThoughts').value;
+                const feedbackEl = document.getElementById('starterDSFeedback');
+                if(thoughts.trim().length > 10) {
+                    if(!activityStatesDS.starterThoughts) {
+                        addXPDS(10, "Shared starter thoughts");
+                        activityStatesDS.starterThoughts = true;
+                    }
+                    feedbackEl.innerHTML = `<span class="text-green-400">Great thinking! Let's find out how.</span>`;
+                }
+            }
+
+            // --- Section 3: Sampling ---
+            const samplingSlider = document.getElementById('samplingRateSlider');
+            const samplingRateValueEl = document.getElementById('samplingRateValue');
+            function drawSampling() {
+                const canvas = document.getElementById('samplingCanvas');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const w = canvas.width, h = canvas.height;
+                const amp = h / 2.5, freq = 0.02, yOffset = h / 2;
+                const sampleRate = parseInt(samplingSlider.value);
+                const pixelsPerSample = w / (sampleRate * (w/100));
+                ctx.clearRect(0, 0, w, h);
+                ctx.strokeStyle = 'rgba(156, 163, 175, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let x = 0; x < w; x++) {
+                    let y = yOffset + amp * Math.sin(x * freq);
+                    if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.strokeStyle = '#ef4444'; 
+                ctx.lineWidth = 3;
+                ctx.fillStyle = '#f9a826';
+                let lastX = 0;
+                let lastY = yOffset + amp * Math.sin(0 * freq);
+                ctx.beginPath();
+                ctx.arc(lastX, lastY, 5, 0, 2 * Math.PI);
+                ctx.fill();
+                for (let x = pixelsPerSample; x <= w; x += pixelsPerSample) {
+                    const currentY = yOffset + amp * Math.sin(x * freq);
+                    ctx.beginPath();
+                    ctx.moveTo(lastX, lastY);
+                    ctx.lineTo(x, lastY);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(x, lastY);
+                    ctx.lineTo(x, currentY);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(x, currentY, 5, 0, 2 * Math.PI);
+                    ctx.fill();
+                    lastX = x;
+                    lastY = currentY;
+                }
+            }
+            const debouncedDrawSampling = debounce(drawSampling, 150);
+            if (samplingSlider) {
+                samplingSlider.addEventListener('input', () => {
+                    if (samplingRateValueEl) samplingRateValueEl.textContent = samplingSlider.value;
+                    if(!activityStatesDS.samplingSliderUsed) {
+                        addXPDS(15, "Used sampling slider");
+                        activityStatesDS.samplingSliderUsed = true;
+                    }
+                    debouncedDrawSampling();
+                });
+            }
+            
+            window.triggerSamplingQuiz = function() {
+                if (!audioReady) {
+                    window.showModalDS('Click anywhere on the page first to enable audio.');
+                    return;
+                }
+
+                const quizHTML = `
+                    <h3 class="text-xl font-semibold text-sky-300 mb-4">Quick Quiz: Sampling!</h3>
+                    <div id="samplingQuizForm">
+                        <div class="mb-4 text-left">
+                            <p class="mb-1 font-semibold text-slate-200">1. What does a higher sampling rate generally lead to?</p>
+                            <label class="block text-slate-300"><input type="radio" name="q1_sampling" value="a" class="mr-2">Lower sound quality, smaller file size</label>
+                            <label class="block text-slate-300"><input type="radio" name="q1_sampling" value="b" class="mr-2">Higher sound quality, smaller file size</label>
+                            <label class="block text-slate-300"><input type="radio" name="q1_sampling" value="c" class="mr-2">Higher sound quality, larger file size</label>
+                            <label class="block text-slate-300"><input type="radio" name="q1_sampling" value="d" class="mr-2">Lower sound quality, larger file size</label>
+                        </div>
+                        <div class="mb-4 text-left">
+                            <p class="mb-1 font-semibold text-slate-200">2. Sampling rate is measured in?</p>
+                            <label class="block text-slate-300"><input type="radio" name="q2_sampling" value="a" class="mr-2">Bits</label>
+                            <label class="block text-slate-300"><input type="radio" name="q2_sampling" value="b" class="mr-2">Bytes</label>
+                            <label class="block text-slate-300"><input type="radio" name="q2_sampling" value="c" class="mr-2">Hertz (Hz)</label>
+                            <label class="block text-slate-300"><input type="radio" name="q2_sampling" value="d" class="mr-2">Decibels (dB)</label>
+                        </div>
+                        <p id="samplingQuizFeedback" class="text-sm mt-2 min-h-[20px]"></p>
+                    </div>
+                `;
+
+                const modalEl = document.getElementById('messageModalDS');
+                const modalTextEl = document.getElementById('modalMessageTextDS');
+                const modalButton = modalEl.querySelector('.modal-content button.bg-purple-600');
+
+                if (modalEl && modalTextEl && modalButton) {
+                    modalTextEl.innerHTML = quizHTML;
+                    modalButton.textContent = 'Submit Answers';
+                    modalButton.onclick = function() { checkSamplingQuizAnswersAndPlaySound(); };
+                    modalEl.style.display = 'block';
+                }
+            }
+
+            window.checkSamplingQuizAnswersAndPlaySound = function() {
+                const q1Answer = document.querySelector('input[name="q1_sampling"]:checked');
+                const q2Answer = document.querySelector('input[name="q2_sampling"]:checked');
+                const feedbackEl = document.getElementById('samplingQuizFeedback');
+
+                let score = 0;
+                let correctQ1 = false;
+                let correctQ2 = false;
+
+                if (q1Answer && q1Answer.value === 'c') { score++; correctQ1 = true; }
+                if (q2Answer && q2Answer.value === 'c') { score++; correctQ2 = true; }
+
+                let feedbackMessage = "";
+                if (score === 2) {
+                    feedbackMessage = "<span class='text-green-400'>Great job! Both answers are correct.</span>";
+                    if (!activityStatesDS.samplingQuizAttempted) addXPDS(10, "Answered sampling quiz correctly");
+                } else if (score === 1) {
+                    feedbackMessage = "<span class='text-yellow-400'>One answer correct. ";
+                    if (!correctQ1) feedbackMessage += "Review question 1. ";
+                    if (!correctQ2) feedbackMessage += "Review question 2. ";
+                    feedbackMessage += "</span>";
+                    if (!activityStatesDS.samplingQuizAttempted) addXPDS(5, "Partially answered sampling quiz");
+                } else {
+                    feedbackMessage = "<span class='text-red-400'>Incorrect. Please review the material on sampling.</span>";
+                }
+                
+                if (q1Answer || q2Answer) { // If any answer was submitted
+                    if (!activityStatesDS.samplingQuizAttempted) {
+                        activityStatesDS.samplingQuizAttempted = true;
+                        checkAchievementsDS();
+                    }
+                }
+                if (feedbackEl) feedbackEl.innerHTML = feedbackMessage;
+
+                const delay = (q1Answer || q2Answer) ? (score === 2 ? 1500 : 2500) : 0;
+                setTimeout(() => {
+                    closeModalDS('messageModalDS'); // This will also reset the button text/onclick
+                    const currentSamplingSlider = document.getElementById('samplingRateSlider');
+                    if (synth && currentSamplingSlider) {
+                        const baseFreq = 440;
+                        const sliderValue = parseInt(currentSamplingSlider.value);
+                        const playbackRate = 0.1 + (sliderValue - 2) / (50 - 2) * 0.9;
+                        synth.triggerAttackRelease(baseFreq * playbackRate, "8n");
+                    }
+                }, delay);
+            }
+
+            window.triggerBitDepthQuiz = function() {
+                if (!audioReady) {
+                    window.showModalDS('Click anywhere on the page first to enable audio.');
+                    return;
+                }
+
+                const quizHTML = `
+                    <h3 class="text-xl font-semibold text-fuchsia-300 mb-4">Quick Quiz: Bit Depth!</h3>
+                    <div id="bitDepthQuizForm">
+                        <div class="mb-4 text-left">
+                            <p class="mb-1 font-semibold text-slate-200">1. What does bit depth determine in digital audio?</p>
+                            <label class="block text-slate-300"><input type="radio" name="q1_bitdepth" value="a" class="mr-2">The speed at which samples are taken.</label>
+                            <label class="block text-slate-300"><input type="radio" name="q1_bitdepth" value="b" class="mr-2">The number of possible amplitude levels for each sample.</label>
+                            <label class="block text-slate-300"><input type="radio" name="q1_bitdepth" value="c" class="mr-2">The overall length of the audio file.</label>
+                            <label class="block text-slate-300"><input type="radio" name="q1_bitdepth" value="d" class="mr-2">The type of compression used.</label>
+                        </div>
+                        <div class="mb-4 text-left">
+                            <p class="mb-1 font-semibold text-slate-200">2. If an audio sample is stored using 4 bits, how many different amplitude levels can be represented?</p>
+                            <label class="block text-slate-300"><input type="radio" name="q2_bitdepth" value="a" class="mr-2">4 levels</label>
+                            <label class="block text-slate-300"><input type="radio" name="q2_bitdepth" value="b" class="mr-2">8 levels</label>
+                            <label class="block text-slate-300"><input type="radio" name="q2_bitdepth" value="c" class="mr-2">16 levels</sup>)</label>
+                            <label class="block text-slate-300"><input type="radio" name="q2_bitdepth" value="d" class="mr-2">24 levels</label>
+                        </div>
+                        <p id="bitDepthQuizFeedback" class="text-sm mt-2 min-h-[20px]"></p>
+                    </div>
+                `;
+
+                const modalEl = document.getElementById('messageModalDS');
+                const modalTextEl = document.getElementById('modalMessageTextDS');
+                const modalButton = modalEl.querySelector('.modal-content button.bg-purple-600');
+
+                if (modalEl && modalTextEl && modalButton) {
+                    modalTextEl.innerHTML = quizHTML;
+                    modalButton.textContent = 'Submit Answers';
+                    modalButton.onclick = function() { checkBitDepthQuizAnswersAndPlaySound(); };
+                    modalEl.style.display = 'block';
+                }
+            }
+
+            window.checkBitDepthQuizAnswersAndPlaySound = function() {
+                const q1Answer = document.querySelector('input[name="q1_bitdepth"]:checked');
+                const q2Answer = document.querySelector('input[name="q2_bitdepth"]:checked');
+                const feedbackEl = document.getElementById('bitDepthQuizFeedback');
+                let score = 0;
+                if (q1Answer && q1Answer.value === 'b') score++;
+                if (q2Answer && q2Answer.value === 'c') score++;
+
+                let feedbackMessage = "";
+                if (score === 2) {
+                    feedbackMessage = "<span class='text-green-400'>Excellent! Both answers are correct.</span>";
+                    if (!activityStatesDS.bitDepthQuizAttempted) addXPDS(10, "Answered bit depth quiz correctly");
+                } else if (score === 1) {
+                    feedbackMessage = "<span class='text-yellow-400'>One correct. Review the bit depth concepts.</span>";
+                    if (!activityStatesDS.bitDepthQuizAttempted) addXPDS(5, "Partially answered bit depth quiz");
+                } else {
+                    feedbackMessage = "<span class='text-red-400'>Incorrect. Please review the material on bit depth.</span>";
+                }
+                if (q1Answer || q2Answer) { if (!activityStatesDS.bitDepthQuizAttempted) activityStatesDS.bitDepthQuizAttempted = true; checkAchievementsDS(); }
+                if (feedbackEl) feedbackEl.innerHTML = feedbackMessage;
+                const delay = (q1Answer || q2Answer) ? (score === 2 ? 1500 : 2500) : 0;
+                setTimeout(() => { closeModalDS('messageModalDS'); playBitDepthSound(); }, delay);
+            }
+
+            // --- Section 4: Bit Depth ---
+            let currentBitDepth = 3;
+            const bitDepthAmplitude = 0.75;
+            function drawBitDepth() {
+                const canvas = document.getElementById('bitDepthCanvas');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const w = canvas.width, h = canvas.height;
+                const numLevels = Math.pow(2, currentBitDepth);
+                const levelHeight = h / numLevels;
+                ctx.clearRect(0,0,w,h);
+                ctx.strokeStyle = 'rgba(139, 92, 246, 0.2)';
+                ctx.lineWidth = 1;
+                for(let i=1; i < numLevels; i++){
+                    ctx.beginPath();
+                    ctx.moveTo(0, i * levelHeight);
+                    ctx.lineTo(w, i * levelHeight);
+                    ctx.stroke();
+                }
+                const trueY = h * (1 - bitDepthAmplitude);
+                const levelIndex = Math.min(numLevels - 1, Math.floor(bitDepthAmplitude * numLevels));
+                const quantizedY = h - (levelIndex * levelHeight + levelHeight / 2);
+                ctx.strokeStyle = '#2dd4bf';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(w / 4, trueY);
+                ctx.lineTo(w * 3 / 4, trueY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+                ctx.setLineDash([2, 3]);
+                ctx.beginPath();
+                ctx.moveTo(w/2, trueY);
+                ctx.lineTo(w/2, quantizedY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#f43f5e';
+                ctx.strokeStyle = '#be123c';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(w/2, quantizedY, 8, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#e2e8f0';
+                ctx.font = '14px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${currentBitDepth}-bit allows for`, w/2, 20);
+                ctx.font = 'bold 16px Inter';
+                ctx.fillText(`${numLevels} possible levels`, w/2, 40);
+            }
+            window.setBitDepth = function(depth, clickedButton) {
+                currentBitDepth = depth;
+                if(!activityStatesDS.bitDepthButtonsUsed) {
+                    addXPDS(10, "Used bit depth visualizer");
+                    activityStatesDS.bitDepthButtonsUsed = true;
+                }
+                const buttons = document.querySelectorAll('#bitDepthControls .control-button');
+                buttons.forEach(btn => btn.classList.remove('active-button'));
+                clickedButton.classList.add('active-button');
+                drawBitDepth();
+            }
+            window.playBitDepthSound = function() {
+                if (!audioReady) { window.showModalDS('Click anywhere on the page first to enable audio.'); return; }
+                bitCrusher.bits.value = currentBitDepth;
+                synth.triggerAttackRelease("C4", "8n");
+            }
+            window.checkBitDepthQuestion = function() {
+                const answer = parseInt(document.getElementById('bitDepthQuestionAnswer').value);
+                const feedbackEl = document.getElementById('bitDepthQuestionFeedback');
+                const isCorrect = (answer === 64);
+                feedbackEl.innerHTML = isCorrect ? `<span class="text-green-400">Correct! 2^6 = 64.</span>` : `<span class="text-red-400">Incorrect. Remember it's 2 to the power of the bit depth.</span>`;
+                if (isCorrect && !activityStatesDS.bitDepthQuestion) {
+                    addXPDS(10, "Answered bit depth question");
+                    activityStatesDS.bitDepthQuestion = true;
+                }
+            }
+            window.checkBitDepthEffect = function() {
+                const answer = document.getElementById('bitDepthEffect').value.toLowerCase();
+                const feedbackEl = document.getElementById('bitDepthEffectFeedback');
+                const hasQuality = answer.includes('quality') || answer.includes('accurate') || answer.includes('better');
+                const hasSize = answer.includes('size') || answer.includes('bigger');
+                const isCorrect = hasQuality && hasSize;
+                feedbackEl.innerHTML = isCorrect ? `<span class="text-green-400">Excellent explanation!</span>` : `<span class="text-yellow-400">Good start. Make sure you mention both quality AND file size.</span>`;
+                if (isCorrect && !activityStatesDS.bitDepthEffect) {
+                    addXPDS(10, "Explained bit depth effect");
+                    activityStatesDS.bitDepthEffect = true;
+                }
+            }
+
+            // --- Section 5: File Size ---
+            function updateFormulaValue(inputId, spanId, placeholder) {
+                const inputEl = document.getElementById(inputId);
+                const spanEl = document.getElementById(spanId);
+                if(inputEl && spanEl) {
+                    spanEl.textContent = inputEl.value || placeholder;
+                    spanEl.style.animation = 'none';
+                    spanEl.offsetHeight;
+                    spanEl.style.animation = null; 
+                }
+            }
+            document.getElementById('fsSampleRate').addEventListener('input', () => updateFormulaValue('fsSampleRate', 'formulaRate', '----'));
+            document.getElementById('fsBitDepth').addEventListener('input', () => updateFormulaValue('fsBitDepth', 'formulaDepth', '----'));
+            document.getElementById('fsDuration').addEventListener('input', () => updateFormulaValue('fsDuration', 'formulaTime', '----'));
+            window.calculateFileSize = function() {
+                const rate = parseInt(document.getElementById('fsSampleRate').value);
+                const depth = parseInt(document.getElementById('fsBitDepth').value);
+                const time = parseInt(document.getElementById('fsDuration').value);
+                const outputEl = document.getElementById('fileSizeOutput');
+                if (rate > 0 && depth > 0 && time > 0) {
+                    if(!activityStatesDS.calculatorUsed) {
+                        addXPDS(10, "Used file size calculator");
+                        activityStatesDS.calculatorUsed = true;
+                    }
+                    const bits = rate * depth * time;
+                    const bytes = bits / 8;
+                    const kb = bytes / 1000;
+                    const mb = kb / 1000;
+                    outputEl.innerHTML = `
+                        <p>Total Bits: <strong class="text-green-300">${bits.toLocaleString()}</strong></p>
+                        <p>Total Bytes: <strong class="text-green-300">${bytes.toLocaleString()}</strong></p>
+                        <p>Total Kilobytes (KB): <strong class="text-green-300">${kb.toFixed(2)}</strong></p>
+                        <p>Total Megabytes (MB): <strong class="text-green-300">${mb.toFixed(2)}</strong></p>
+                    `;
+                } else {
+                    outputEl.innerHTML = '<p class="text-red-400">Please enter valid numbers in all fields.</p>';
+                }
+            }
+            window.checkFileSizeProblem = function() {
+                const userAnswer = parseInt(document.getElementById('fileSizeProblemAnswer').value);
+                const feedbackEl = document.getElementById('fileSizeProblemFeedback');
+                const correctAnswer = (20 * 4 * 3) / 8;
+                const isCorrect = userAnswer === correctAnswer;
+                feedbackEl.innerHTML = isCorrect ? `<span class="text-green-400">Correct! 30 bytes.</span>` : `<span class="text-red-400">Not quite. Recheck your calculation. (20Hz * 4 bits * 3s) / 8 = 30 bytes.</span>`;
+                if (isCorrect && !activityStatesDS.fileSizeProblem) {
+                    addXPDS(10, "Solved file size problem");
+                    activityStatesDS.fileSizeProblem = true;
+                }
+            }
+
+            // --- Section 6: Metadata ---
+            const metadataDS = {
+                rock: { Filename: "RockAnthem.mp3", Duration: "3:45", Artist: "The Pixels", Album: "Digital Dreams", Genre: "Rock", Bitrate: "320 kbps" },
+                podcast: { Filename: "Interview.wav", Duration: "28:15", 'File Type': "WAV (Uncompressed)", 'Sample Rate': "44.1 kHz", 'Bit Depth': "16-bit", Channels: "Mono" },
+                classical: { Filename: "Symphony.flac", Duration: "12:02", Artist: "Vienna Digital Orchestra", Album: "Algorithmic Classics", 'File Type': "FLAC (Lossless)", 'Sample Rate': "96 kHz", 'Bit Depth': "24-bit" }
+            };
+            window.showMetadataDS = function(key) {
+                const panel = document.getElementById('metadataDisplayPanelDS');
+                const data = metadataDS[key];
+                let html = '<dl class="grid grid-cols-2 gap-x-4 gap-y-1">';
+                for(const prop in data){ html += `<dt class="font-bold text-blue-300">${prop}:</dt><dd>${data[prop]}</dd>`; }
+                html += '</dl>';
+                panel.innerHTML = html;
+                if(!activityStatesDS.metadataViewed) {
+                    addXPDS(10, "Viewed audio metadata");
+                    activityStatesDS.metadataViewed = true;
+                }
+            }
+            
+            // --- Section 7: Exam Prep ---
+            const dsExamPrepState = {};
+            const dsExamQuestionsData = [
+                { id: "dsexq1", text: "Explain how an analogue sound wave is converted into a digital signal. Use the terms 'sampling', 'sample rate', and 'amplitude' in your answer. [3 marks]", markScheme: "<li>The height/<strong>amplitude</strong> of the analogue wave is measured (<strong>sampled</strong>) (1 mark) at regular/set time intervals (this is the <strong>sample rate</strong>) (1 mark). The value of each sample's amplitude is stored as a binary number (1 mark).</li>" },
+                { id: "dsexq2", text: "Explain how sampling rate and bit depth affect the quality of a digital audio file. [4 marks]", markScheme: "<li>A higher <strong>sampling rate</strong> means more samples are taken per second (1 mark), making the digital representation more accurate/closer to the original wave (1 mark for effect on quality).</li><li>A higher <strong>bit depth</strong> means more bits are used per sample (1 mark), allowing the amplitude to be measured more accurately/with more precision (1 mark for effect on quality).</li>" },
+                { id: "dsexq3", text: "Calculate the file size in <strong>megabytes (MB)</strong> for a 5-minute (300-second) stereo audio file with a sample rate of 44,100Hz and a bit depth of 16 bits. Assume 1MB = 1000 KB, and 1KB = 1000 Bytes. Show your working. [3 marks]", markScheme: "<li>Total bits = 44100 * 16 * 300 * 2 (for stereo) = 423,360,000 bits (1 mark for formula including stereo).</li><li>Bytes = 423,360,000 / 8 = 52,920,000 bytes (1 mark for conversion to bytes).</li><li>MB = 52,920,000 / 1000 / 1000 = 52.92 MB (1 mark for final correct answer).</li>" }
+            ];
+            function setupDSExamPrep() {
+                const container = document.getElementById('dsExamQuestionsContainer');
+                if(!container) return; container.innerHTML = '';
+                Object.keys(dsExamPrepState).forEach(key => delete dsExamPrepState[key]);
+                dsExamQuestionsData.forEach((q, index) => {
+                    const qId = `ds_exam_q${index + 1}`;
+                    dsExamPrepState[qId] = { selfMark: null, markSchemeViewed: false };
+                    const marks = q.text.match(/\[(\d) marks\]/)?.[1] || '2';
+                    container.innerHTML += `<div class="bg-slate-700/50 p-6 rounded-lg shadow mb-6"><div class="flex justify-between items-start mb-3"><h3 class="text-lg font-bold text-slate-200">Question ${index + 1}</h3><span class="bg-orange-600 text-orange-100 px-3 py-1 rounded-full text-sm font-semibold">[${marks} marks]</span></div><p class="text-slate-300 mb-3">${q.text}</p><textarea id="${qId}Answer" class="w-full p-3 bg-slate-600 border-2 border-slate-500 rounded-lg h-24 mb-3" oninput="checkDSExamPrerequisites('${qId}')"></textarea><div class="flex items-center gap-4 mb-3"><label for="${qId}Marks" class="text-sm font-semibold text-slate-300">Self-Assessed Marks:</label><select id="${qId}Marks" class="p-2 bg-slate-600 rounded-md" onchange="checkDSExamPrerequisites('${qId}')"><option value="">Select...</option>${[...Array(parseInt(marks) + 1).keys()].map(i => `<option value="${i}">${i}</option>`).join('')}</select></div><button id="${qId}ShowSchemeBtn" onclick="toggleDSMarkScheme('${qId}')" class="bg-orange-600 text-white px-4 py-2 rounded-md text-sm disabled:opacity-50" disabled>Show/Hide Mark Scheme</button><div id="${qId}MarkScheme" class="hidden mt-3 bg-purple-800/30 p-4 rounded-lg border border-purple-700"><h4 class="font-bold text-purple-300 mb-2">Mark Scheme:</h4><ul class="text-sm space-y-1 list-disc list-inside">${q.markScheme}</ul></div></div>`;
+                });
+            }
+            window.checkDSExamPrerequisites = (questionId) => {
+                const marksEl = document.getElementById(`${questionId}Marks`);
+                const showSchemeBtn = document.getElementById(`${questionId}ShowSchemeBtn`);
+                dsExamPrepState[questionId].selfMark = marksEl.value;
+                showSchemeBtn.disabled = marksEl.value === "";
+                checkAchievementsDS();
+            };
+            window.toggleDSMarkScheme = (questionId) => {
+                const markSchemeEl = document.getElementById(questionId + 'MarkScheme');
+                if(!markSchemeEl) return; markSchemeEl.classList.toggle('hidden');
+                if (!dsExamPrepState[questionId].markSchemeViewed && !markSchemeEl.classList.contains('hidden')) {
+                    addXPDS(5, `Viewed mark scheme for ${questionId.replace('_',' ')}`);
+                    dsExamPrepState[questionId].markSchemeViewed = true;
+                }
+                checkAchievementsDS();
+            };
+            window.resetDSExamPrep = function(isInitialSetup = false) { 
+                setupDSExamPrep();
+                if (!isInitialSetup) showFlashNotificationDS("Exam Prep reset.", "info");
+            }
+            
+            // --- Section 8: Extensions ---
+            const lossyLosslessQuestions = [
+                { id: "llq1", question: "Describe the main difference between <strong>lossy</strong> and <strong>lossless</strong> audio compression." },
+                { id: "llq2", question: "List two <strong>lossy</strong> audio file types and two <strong>lossless</strong> audio file types." },
+                { id: "llq3", question: "Explain one reason why compressing audio files is important." }
+            ];
+            function setupExtensions() {
+                const container = document.getElementById('lossyLosslessContainer');
+                if(!container) return;
+                container.innerHTML = '';
+                lossyLosslessQuestions.forEach(q => {
+                    container.innerHTML += `
+                        <div>
+                            <label for="${q.id}" class="block text-sm font-semibold text-yellow-200 mb-1">${q.question}</label>
+                            <textarea id="${q.id}" class="w-full p-2 bg-slate-600 border-slate-500 rounded h-16 text-sm"></textarea>
+                        </div>`;
+                });
+            }
+            window.checkLossyLosslessAnswers = function() {
+                let allAnswered = true;
+                lossyLosslessQuestions.forEach(q => {
+                    const answer = document.getElementById(q.id).value;
+                    if(answer.trim().length < 10) allAnswered = false;
+                });
+                const feedbackEl = document.getElementById('lossyLosslessFeedback');
+                feedbackEl.innerHTML = allAnswered ? `<span class="text-green-400">Thank you for your research!</span>` : `<span class="text-yellow-400">Please provide a more detailed answer for all questions.</span>`;
+                if (allAnswered && !activityStatesDS.lossyLossless) {
+                    addXPDS(20, "Completed compression research");
+                    activityStatesDS.lossyLossless = true;
+                }
+            }
+            function drawNyquist() {
+                const canvas = document.getElementById('nyquistCanvas');
+                if(!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const w = canvas.width, h = canvas.height, yOffset = h / 2, amp = h / 3;
+                const lowFreq = 0.02, highFreq = 0.2;
+                const sampleRate = 0.021; 
+                ctx.clearRect(0,0,w,h);
+                ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2; ctx.beginPath();
+                for(let x=0; x<w; x++){
+                    let y = yOffset + amp * Math.sin(x * lowFreq);
+                    if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 2; ctx.beginPath();
+                for(let x=0; x<w; x++){
+                    let y = yOffset + amp * Math.sin(x * highFreq);
+                    if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.fillStyle = '#ef4444';
+                for(let x=0; x<w; x += (1/sampleRate)){
+                    let y = yOffset + amp * Math.sin(x * lowFreq);
+                    ctx.beginPath();
+                    ctx.arc(x, y, 5, 0, 2*Math.PI);
+                    ctx.fill();
+                }
+            }
+
+            // --- Section 9: Plenary ---
+            const learningOutcomesDS = [
+                "I can define the terms 'sampling rate', 'bit depth', and 'metadata' in the context of audio.",
+                "I can explain how sampling rate and bit depth affect sound quality and file size.",
+                "I can calculate the uncompressed file size of a sound file."
+            ];
+            function setupDSPlenary() {
+                const container = document.getElementById('learningOutcomesDSContainer');
+                if(!container) return;
+                container.innerHTML = '';
+                learningOutcomesDS.forEach((outcome, index) => {
+                    container.innerHTML += `
+                    <div class="flex items-center"><input id="outcomeDS_${index}" type="checkbox" class="h-4 w-4 text-teal-500 rounded focus:ring-teal-400"><label for="outcomeDS_${index}" class="ml-2 block text-sm">${outcome}</label></div>`;
+                });
+            }
+            window.submitLearningOutcomesDS = function() {
+                const feedbackEl = document.getElementById('learningOutcomesFeedbackDS');
+                feedbackEl.innerHTML = `<span class="text-green-400">Thanks for reflecting on your learning!</span>`;
+                if(!activityStatesDS.plenaryReviewed) {
+                    addXPDS(5, "Reviewed learning outcomes");
+                    activityStatesDS.plenaryReviewed = true;
+                }
+            }
+            
+            // --- Section 10: Achievements ---
+            function setupAchievements() {
+                const container = document.getElementById('achievementsContainerDS');
+                if(!container) return;
+                container.innerHTML = '';
+                for(const key in achievementsDS) {
+                    const ach = achievementsDS[key];
+                    container.innerHTML += `
+                    <div id="achieve-${key}" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-all duration-500">
+                        <span class="text-4xl">${ach.icon}</span>
+                        <p class="font-bold text-sm mt-2">${ach.name}</p>
+                        <p class="text-xs text-slate-400">${ach.desc}</p>
+                    </div>`;
+                }
+            }
+            
+            // --- Page Initializations ---
+            function initializePage() {
+                addXPDS(0, "", true);
+                setupDSWarmup();
+                if (document.getElementById('analogueWaveCanvas')) {
+                    animateAnalogueWave();
+                }
+                drawSampling();
+                drawBitDepth();
+                window.initializeCanvas('fileSizeWorkingCanvas', 'fileSizeWorkingCanvasClear', 'fileSizeWorkingCanvasToggle');
+                setupDSExamPrep();
+                setupExtensions();
+                drawNyquist();
+                setupDSPlenary();
+                setupAchievements();
+            }
+
+            initializePage();
+        });
+    </script>
+</body>
+</html>
+?

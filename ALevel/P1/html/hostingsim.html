@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Hosting Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .component {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .component:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .packet {
+            position: absolute;
+            width: 30px;
+            height: 20px;
+            background-color: #fbbf24;
+            border-radius: 4px;
+            border: 1px solid #f59e0b;
+            z-index: 10;
+            opacity: 0;
+            transition: transform 1.5s ease-in-out, opacity 0.2s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: #78350f;
+        }
+        .path {
+            position: absolute;
+            border: 2px dashed #9ca3af;
+            z-index: 0;
+        }
+        #explanationBox {
+            transition: opacity 0.5s ease-in-out;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            max-width: 500px;
+            width: 90%;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+        .quiz-option {
+            transition: background-color 0.2s ease;
+        }
+        .quiz-option.selected {
+            background-color: #60a5fa; /* blue-400 */
+            color: white;
+        }
+        .quiz-option.correct {
+            background-color: #34d399; /* green-400 */
+            color: white;
+        }
+        .quiz-option.incorrect {
+            background-color: #f87171; /* red-400 */
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen flex items-center justify-center p-4">
+    <div class="container mx-auto max-w-7xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
+
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-blue-600 dark:text-blue-400">Inside a Web Host</h1>
+            <p class="text-lg mt-2 text-gray-600 dark:text-gray-400">A Detailed Simulation for A-Level Computer Science (9618)</p>
+        </div>
+
+        <!-- Instructions -->
+        <div id="instructions" class="bg-blue-50 dark:bg-gray-700 p-4 rounded-lg mb-6 border border-blue-200 dark:border-gray-600">
+            <h2 class="text-xl font-bold mb-2 text-blue-700 dark:text-blue-300">How to use this simulation:</h2>
+            <ol class="list-decimal list-inside space-y-1 text-gray-700 dark:text-gray-300">
+                <li>Click <span class="font-bold text-green-600 dark:text-green-400">'Next Step'</span> to see how a web host processes a request.</li>
+                <li>Read the explanation for each step to understand the role of different server components.</li>
+                <li><span class="font-bold">Click on any component</span> inside the Web Host to learn more about it.</li>
+                <li>After the simulation, test your knowledge with the hosting-focused quiz.</li>
+            </ol>
+        </div>
+
+        <!-- Simulation Area -->
+        <div id="simulationContainer" class="mb-8">
+            <div id="simulationArea" class="relative h-[350px] md:h-[400px] bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600 flex justify-between items-center">
+                <!-- User Component -->
+                <div id="user" class="component w-28 h-32 bg-blue-500 rounded-lg flex flex-col items-center justify-center p-2 text-white shadow-lg" data-title="Your Computer & Browser" data-info="This is the client. After getting the server's IP from DNS, the browser sends an HTTP 'GET' request to the web host to fetch the website's content.">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    <p class="text-sm font-bold text-center mt-2">You</p>
+                </div>
+
+                <!-- Web Hosting Provider -->
+                <div id="hostingProvider" class="w-3/5 h-full bg-green-50 dark:bg-gray-800 rounded-xl border-2 border-green-500 p-4 relative flex flex-col justify-around">
+                    <h3 class="text-center font-bold text-green-700 dark:text-green-300 absolute top-2 left-1/2 -translate-x-1/2">Web Hosting Provider</h3>
+                    
+                    <div id="serverSoftware" class="component w-full h-1/4 bg-green-200 dark:bg-green-900/50 rounded-lg flex items-center justify-center p-2" data-title="Web Server Software" data-info="Software like Apache or Nginx runs on the server. Its main job is to listen for incoming HTTP requests, interpret them, and fetch the requested files from storage. It's the 'traffic controller' of the server.">
+                        <p class="font-bold text-sm text-center text-green-800 dark:text-green-200">Web Server Software (e.g., Apache)</p>
+                    </div>
+
+                    <div id="serverHardware" class="component w-full h-1/4 bg-green-200 dark:bg-green-900/50 rounded-lg flex items-center justify-center p-2" data-title="Server Hardware Resources" data-info="These are the physical components of the server: CPU (Central Processing Unit) for executing instructions and RAM (Random Access Memory) for temporary data storage. More powerful resources mean the server can handle more visitor traffic and process requests faster.">
+                         <p class="font-bold text-sm text-center text-green-800 dark:text-green-200">Hardware (CPU, RAM)</p>
+                    </div>
+
+                    <div id="storage" class="component w-full h-1/4 bg-green-200 dark:bg-green-900/50 rounded-lg flex items-center justify-center p-2" data-title="Server Storage (Files)" data-info="This is where all the website's files are permanently stored, usually on an SSD (Solid State Drive) or HDD (Hard Disk Drive). This includes all HTML, CSS, JavaScript files, images, videos, and databases. The amount of storage space determines how large a website can be.">
+                        <div class="flex space-x-2">
+                           <p class="font-bold text-sm text-green-800 dark:text-green-200">Storage (SSD/HDD)</p>
+                           <svg class="w-5 h-5 text-green-700 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Path -->
+                <div class="path absolute left-[20%] top-1/2" style="width: 15%; border-style: solid;"></div>
+                
+                <!-- Packets -->
+                <div id="packet_http_req" class="packet">GET</div>
+                <div id="packet_http_res" class="packet">HTML</div>
+            </div>
+             <!-- Explanation Box -->
+            <div id="explanationBox" class="opacity-0 mt-4 bg-yellow-50 dark:bg-gray-700 p-4 rounded-lg border border-yellow-200 dark:border-gray-600 min-h-[80px] flex items-center justify-center">
+                <p id="explanationText" class="text-center text-yellow-800 dark:text-yellow-200 font-medium"></p>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex justify-center space-x-4 mb-8">
+            <button id="nextStepButton" class="px-8 py-3 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 transition-all duration-200">Next Step</button>
+            <button id="resetButton" class="px-8 py-3 bg-red-600 text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition-all duration-200">Reset</button>
+        </div>
+
+        <!-- Quiz Section -->
+        <div id="quizSection" class="bg-blue-50 dark:bg-gray-700/50 p-6 rounded-lg border border-blue-200 dark:border-gray-600">
+            <h2 class="text-2xl font-bold text-center mb-6 text-blue-700 dark:text-blue-300">Test Your Hosting Knowledge</h2>
+            <div id="quizContainer" class="space-y-6"></div>
+            <div class="text-center mt-8">
+                <button id="submitQuizButton" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition-all duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>Submit Answers</button>
+            </div>
+            <div id="quizResult" class="mt-6 text-center text-xl font-bold"></div>
+        </div>
+
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal-overlay">
+        <div class="modal-content dark:bg-gray-800">
+            <h3 id="modalTitle" class="text-2xl font-bold mb-4 text-blue-600 dark:text-blue-400"></h3>
+            <p id="modalInfo" class="text-gray-700 dark:text-gray-300"></p>
+            <button id="closeModal" class="mt-6 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">Close</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Element references
+            const nextStepButton = document.getElementById('nextStepButton');
+            const resetButton = document.getElementById('resetButton');
+            const simulationArea = document.getElementById('simulationArea');
+            const components = document.querySelectorAll('.component');
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalInfo = document.getElementById('modalInfo');
+            const closeModal = document.getElementById('closeModal');
+            const explanationBox = document.getElementById('explanationBox');
+            const explanationText = document.getElementById('explanationText');
+            
+            const quizContainer = document.getElementById('quizContainer');
+            const submitQuizButton = document.getElementById('submitQuizButton');
+            const quizResult = document.getElementById('quizResult');
+
+            let currentStep = 0;
+            let selectedAnswers = {};
+            
+            let userPos, serverSoftwarePos, storagePos, hostingProviderPos;
+
+            function calculatePositions() {
+                userPos = getElementPosition(document.getElementById('user'));
+                serverSoftwarePos = getElementPosition(document.getElementById('serverSoftware'));
+                storagePos = getElementPosition(document.getElementById('storage'));
+                hostingProviderPos = getElementPosition(document.getElementById('hostingProvider'));
+                // Entry point for the hosting provider box
+                hostingProviderPos.x = hostingProviderPos.x - document.getElementById('hostingProvider').offsetWidth / 2;
+            }
+
+            const simulationSteps = [
+                {
+                    explanation: "An HTTP 'GET' request arrives from the user's browser at the hosting provider's IP address.",
+                    action: () => animatePacket('packet_http_req', userPos, hostingProviderPos, {bgColor: '#60a5fa', borderColor: '#3b82f6', color: '#1e3a8a'})
+                },
+                {
+                    explanation: "The request is received by the Web Server Software (e.g., Apache), which acts as the front door, ready to process the request.",
+                    action: () => animatePacket('packet_http_req', hostingProviderPos, serverSoftwarePos, {bgColor: '#60a5fa', borderColor: '#3b82f6', color: '#1e3a8a'})
+                },
+                {
+                    explanation: "The Web Server Software now accesses the server's Storage to locate and retrieve the required website files (like index.html).",
+                    action: () => {
+                         hidePacket('packet_http_req');
+                         // Simple visual cue for storage access
+                         const storageEl = document.getElementById('storage');
+                         storageEl.style.transform = 'scale(1.05)';
+                         storageEl.style.borderColor = '#f59e0b';
+                         setTimeout(() => { storageEl.style.transform = 'scale(1)'; storageEl.style.borderColor = ''; }, 1000);
+                    }
+                },
+                {
+                    explanation: "The server bundles the retrieved files into an HTTP response and sends them back across the internet to the user's browser.",
+                    action: () => animatePacket('packet_http_res', serverSoftwarePos, userPos, {bgColor: '#34d399', borderColor: '#10b981', color: '#047857'})
+                },
+                {
+                    explanation: "The hosting process is complete! The user's browser can now render the received files into a viewable webpage.",
+                    action: () => {
+                        hidePacket('packet_http_res');
+                        nextStepButton.disabled = true;
+                        nextStepButton.classList.add('opacity-50', 'cursor-not-allowed');
+                        submitQuizButton.disabled = false;
+                        submitQuizButton.classList.remove('disabled:bg-gray-400', 'disabled:cursor-not-allowed');
+                    }
+                }
+            ];
+
+            function getElementPosition(el) {
+                const rect = el.getBoundingClientRect();
+                const containerRect = simulationArea.getBoundingClientRect();
+                return {
+                    x: rect.left - containerRect.left + rect.width / 2,
+                    y: rect.top - containerRect.top + rect.height / 2
+                };
+            }
+
+            function animatePacket(packetId, fromPos, toPos, style) {
+                const packet = document.getElementById(packetId);
+                packet.style.transition = 'none';
+                packet.style.transform = 'translate(0, 0)';
+
+                Object.assign(packet.style, {
+                    left: `${fromPos.x}px`,
+                    top: `${fromPos.y}px`,
+                    backgroundColor: style?.bgColor || '',
+                    borderColor: style?.borderColor || '',
+                    color: style?.color || ''
+                });
+
+                packet.offsetHeight; 
+                packet.style.transition = 'transform 1.5s ease-in-out, opacity 0.2s ease-in-out';
+                packet.style.opacity = 1;
+                packet.style.transform = `translate(${toPos.x - fromPos.x}px, ${toPos.y - fromPos.y}px)`;
+            }
+
+            function hidePacket(packetId) {
+                document.getElementById(packetId).style.opacity = 0;
+            }
+            
+            function runNextStep() {
+                if (currentStep >= simulationSteps.length) return;
+                nextStepButton.disabled = true;
+                const step = simulationSteps[currentStep];
+                explanationBox.classList.remove('opacity-0');
+                explanationText.textContent = step.explanation;
+                step.action();
+                currentStep++;
+                setTimeout(() => {
+                    if (currentStep < simulationSteps.length) {
+                        nextStepButton.disabled = false;
+                    }
+                }, 1600);
+            }
+
+            function resetSimulation() {
+                currentStep = 0;
+                nextStepButton.disabled = false;
+                nextStepButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                explanationBox.classList.add('opacity-0');
+                explanationText.textContent = '';
+                document.querySelectorAll('.packet').forEach(p => {
+                    p.style.transition = 'none';
+                    p.style.opacity = 0;
+                    p.style.transform = 'translate(0, 0)';
+                });
+                selectedAnswers = {};
+                quizResult.innerHTML = '';
+                submitQuizButton.disabled = true;
+                submitQuizButton.classList.add('disabled:bg-gray-400', 'disabled:cursor-not-allowed');
+                renderQuiz();
+                calculatePositions();
+                explanationBox.classList.remove('opacity-0');
+                explanationText.textContent = "Click 'Next Step' to begin the simulation.";
+            }
+
+            // Modal logic
+            components.forEach(comp => {
+                comp.addEventListener('click', (e) => {
+                    // Stop propagation to prevent clicks on inner components from triggering the outer one's modal
+                    e.stopPropagation(); 
+                    modalTitle.textContent = comp.dataset.title;
+                    modalInfo.textContent = comp.dataset.info;
+                    modal.classList.add('active');
+                });
+            });
+
+            closeModal.addEventListener('click', () => {
+                modal.classList.remove('active');
+            });
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+
+            // Quiz logic 
+            const quizQuestions = [
+                {
+                    question: "What is the primary role of web server software like Apache or Nginx?",
+                    options: [ "To store website files.", "To provide the server with processing power.", "To listen for and handle incoming HTTP requests.", "To provide a static IP address."],
+                    answer: "To listen for and handle incoming HTTP requests.",
+                    feedback: "Correct! The web server software is the program that manages requests, finds the correct files from storage, and sends them back to the user."
+                },
+                {
+                    question: "Which of these is a key reason for needing sufficient server storage space?",
+                    options: [ "To handle more visitors at once.", "To hold all the HTML, CSS, image, and other files for the website.", "To make the DNS look-up faster.", "To improve the CPU's processing speed."],
+                    answer: "To hold all the HTML, CSS, image, and other files for the website.",
+                    feedback: "Correct! Storage space (on an SSD or HDD) directly limits the size and amount of content your website can have."
+                },
+                {
+                    question: "What do the terms 'CPU' and 'RAM' refer to in the context of web hosting?",
+                    options: [ "The website's domain name and IP address.", "The physical hardware resources that process requests.", "The security software that protects the server.", "The amount of data that can be transferred per month."],
+                    answer: "The physical hardware resources that process requests.",
+                    feedback: "Correct! CPU and RAM are the core hardware resources that determine how fast the server can think and how much it can do at once, directly impacting website performance."
+                },
+                {
+                    question: "Which of these is a direct responsibility of a web hosting provider?",
+                    options: [ "Designing the layout of your website.", "Writing your website's HTML code.", "Marketing your website to new visitors.", "Maintaining the server hardware and providing it with an IP address."],
+                    answer: "Maintaining the server hardware and providing it with an IP address.",
+                    feedback: "Correct! The hosting provider's core job is to manage the physical infrastructure (servers, network connection, IP addresses) so that your website is available on the internet."
+                }
+            ];
+            
+            function renderQuiz() {
+                quizContainer.innerHTML = '';
+                quizQuestions.forEach((q, index) => {
+                    const questionEl = document.createElement('div');
+                    questionEl.innerHTML = `
+                        <p class="font-semibold mb-3 text-lg">${index + 1}. ${q.question}</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3" data-question-index="${index}">
+                            ${q.options.map(option => `<button class="quiz-option w-full text-left p-3 border dark:border-gray-500 rounded-lg hover:bg-blue-100 dark:hover:bg-gray-600">${option}</button>`).join('')}
+                        </div>
+                        <div id="feedback-${index}" class="mt-2 text-sm p-2 rounded-lg hidden"></div>`;
+                    quizContainer.appendChild(questionEl);
+                });
+            }
+
+            quizContainer.addEventListener('click', (e) => {
+                if (e.target.classList.contains('quiz-option')) {
+                    const questionDiv = e.target.parentElement;
+                    const questionIndex = questionDiv.dataset.questionIndex;
+                    Array.from(questionDiv.children).forEach(child => child.classList.remove('selected'));
+                    e.target.classList.add('selected');
+                    selectedAnswers[questionIndex] = e.target.textContent;
+                }
+            });
+
+            function handleSubmitQuiz() {
+                let score = 0;
+                quizQuestions.forEach((q, index) => {
+                    const container = quizContainer.children[index];
+                    const options = container.querySelectorAll('.quiz-option');
+                    const feedbackEl = document.getElementById(`feedback-${index}`);
+                    options.forEach(option => {
+                        option.disabled = true;
+                        if (option.textContent === q.answer) {
+                            option.classList.remove('selected');
+                            option.classList.add('correct');
+                        }
+                        if (option.textContent === selectedAnswers[index] && selectedAnswers[index] !== q.answer) {
+                            option.classList.remove('selected');
+                            option.classList.add('incorrect');
+                        }
+                    });
+                    if (selectedAnswers[index] === q.answer) {
+                        score++;
+                        feedbackEl.textContent = q.feedback;
+                        feedbackEl.classList.remove('hidden');
+                        feedbackEl.classList.add('bg-green-100', 'dark:bg-green-900/50', 'text-green-800', 'dark:text-green-200');
+                    } else {
+                         feedbackEl.textContent = `Incorrect. The correct answer is: "${q.answer}". ${q.feedback}`;
+                         feedbackEl.classList.remove('hidden');
+                         feedbackEl.classList.add('bg-red-100', 'dark:bg-red-900/50', 'text-red-800', 'dark:text-red-200');
+                    }
+                });
+                const percentage = Math.round((score / quizQuestions.length) * 100);
+                quizResult.innerHTML = `You scored ${score} out of ${quizQuestions.length} (${percentage}%)`;
+                if(percentage > 75) quizResult.className = 'mt-6 text-center text-xl font-bold text-green-600 dark:text-green-400';
+                else if (percentage > 40) quizResult.className = 'mt-6 text-center text-xl font-bold text-yellow-500 dark:text-yellow-400';
+                else quizResult.className = 'mt-6 text-center text-xl font-bold text-red-600 dark:text-red-400';
+                submitQuizButton.disabled = true;
+            }
+
+            // Event listeners
+            nextStepButton.addEventListener('click', runNextStep);
+            resetButton.addEventListener('click', resetSimulation);
+            submitQuizButton.addEventListener('click', handleSubmitQuiz);
+            window.addEventListener('resize', resetSimulation);
+
+            // Initial setup
+            resetSimulation();
+        });
+    </script>
+</body>
+</html>

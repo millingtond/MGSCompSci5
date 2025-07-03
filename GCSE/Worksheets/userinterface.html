@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Interface Simulation (Enhanced)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #e2e8f0; }
+        .terminal, .menu-screen { font-family: 'Fira Code', monospace; background-color: #1e293b; color: #e2e8f0;}
+        .gui-desktop { background-image: url('https://placehold.co/1000x800/a5b4fc/e0e7ff?text='); background-size: cover; user-select: none; }
+        .gui-window {
+            min-width: 320px;
+            min-height: 220px;
+            position: absolute;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 1px solid #4b5563;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .gui-window.open { opacity: 1; transform: scale(1); }
+        .gui-window.minimized { display: none; }
+        .gui-title-bar { cursor: move; }
+        .gui-icon { cursor: grab; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);}
+        .gui-icon:active { cursor: grabbing; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes type-anim { from { width: 0; } to { width: 100%; } }
+        .typing { overflow: hidden; white-space: nowrap; animation: type-anim 0.5s steps(40, end); }
+        .quiz-option:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .correct { background-color: #22c55e !important; color: white; border-color: #16a34a; }
+        .incorrect { background-color: #ef4444 !important; color: white; border-color: #dc2626; }
+        .tab-button.active { background-color: #4f46e5; color: white; border-bottom-color: transparent; }
+        .dropdown-menu, #context-menu { display: none; position: absolute; background-color: white; border: 1px solid #ccc; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body class="bg-slate-200 text-slate-800">
+
+    <div class="container mx-auto p-4 max-w-5xl">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-800">Features of a User Interface</h1>
+            <p class="text-slate-600 mt-2">An interactive guide for GCSE Computer Science (OCR J277)</p>
+        </header>
+
+        <div class="bg-white rounded-xl shadow-lg">
+            <!-- Tabs -->
+            <div class="flex border-b border-slate-200">
+                <button data-tab="cli" class="tab-button flex-1 p-4 font-semibold transition-colors active">Command-Line Interface (CLI)</button>
+                <button data-tab="menu" class="tab-button flex-1 p-4 font-semibold transition-colors">Menu-Driven Interface</button>
+                <button data-tab="gui" class="tab-button flex-1 p-4 font-semibold transition-colors">Graphical User Interface (GUI)</button>
+            </div>
+
+            <!-- Simulation Panes -->
+            <div class="p-4 md:p-6 min-h-[450px] relative">
+                <!-- CLI Pane -->
+                <div id="cli" class="simulation-pane">
+                    <h3 class="font-bold text-xl mb-2">Command-Line Interface</h3>
+                    <div class="text-sm text-slate-600 mb-4 p-2 bg-slate-100 rounded-lg">
+                        <strong>Key Features:</strong> Text-based, requires specific commands, efficient for experts.
+                        <br><strong>Try these commands:</strong>
+                        <code class="bg-slate-200 px-1 rounded">help</code>, 
+                        <code class="bg-slate-200 px-1 rounded">ls</code>, 
+                        <code class="bg-slate-200 px-1 rounded">open profile.txt</code>, 
+                        <code class="bg-slate-200 px-1 rounded">sysinfo</code>, 
+                        <code class="bg-slate-200 px-1 rounded">date</code>, 
+                        <code class="bg-slate-200 px-1 rounded">clear</code>.
+                    </div>
+                    <div class="terminal w-full h-80 p-4 rounded-lg overflow-y-auto">
+                        <div id="cli-output"><span>FriendOS [Version 1.0]. All rights reserved.</span><br></div>
+                        <div class="flex items-center">
+                            <span class="mr-2 text-green-400">C:\Users\Student></span>
+                            <input type="text" id="cli-input" class="bg-transparent border-none focus:outline-none flex-grow text-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Menu Pane -->
+                <div id="menu" class="simulation-pane hidden">
+                    <h3 class="font-bold text-xl mb-2">Menu-Driven Interface</h3>
+                    <div class="text-sm text-slate-600 mb-4 p-2 bg-slate-100 rounded-lg"><strong>Key Features:</strong> Presents limited options, easy for beginners, no commands to learn, can be slow to navigate. Use your keyboard's number keys.</div>
+                    <div class="menu-screen w-full h-80 p-4 rounded-lg flex flex-col items-center justify-center">
+                         <h2 class="text-2xl font-bold text-cyan-400 border-b-2 border-cyan-400 pb-2 mb-4">ATM Secure Services</h2>
+                        <div id="menu-output" class="text-center text-xl leading-loose"></div>
+                    </div>
+                </div>
+
+                <!-- GUI Pane -->
+                <div id="gui" class="simulation-pane hidden">
+                    <h3 class="font-bold text-xl mb-2">Graphical User Interface (GUI)</h3>
+                    <div class="text-sm text-slate-600 mb-4 p-2 bg-slate-100 rounded-lg"><strong>Key Features:</strong> Visual and intuitive, uses **WIMP** (**W**indows, **I**cons, **M**enus, **P**ointers). Right-click for a context menu.</div>
+                    <div id="gui-desktop" class="gui-desktop w-full h-96 p-4 rounded-lg relative overflow-hidden">
+                        <!-- Icons -->
+                        <div id="icon-computer" draggable="true" class="gui-icon text-center text-white w-24 absolute top-4 left-4">
+                            <svg class="w-16 h-16 mx-auto pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm1 0v10h14V5H5zm2 12a1 1 0 011-1h6a1 1 0 110 2H8a1 1 0 01-1-1z" /></svg>
+                            <span class="text-xs font-semibold pointer-events-none">My Computer</span>
+                        </div>
+                        <div id="icon-docs" draggable="true" class="gui-icon text-center text-white w-24 absolute top-28 left-4">
+                             <svg class="w-16 h-16 mx-auto pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6H6zm6 7h5v2h-5V9zM8 5h2v4H8V5z" /></svg>
+                             <span class="text-xs font-semibold pointer-events-none">Documents</span>
+                        </div>
+                        <div id="icon-bin" class="gui-icon text-center text-white w-24 absolute bottom-12 right-4">
+                             <svg class="w-16 h-16 mx-auto pointer-events-none" id="bin-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 7H5v13a2 2 0 002 2h10a2 2 0 002-2V7H6zm4 12H8v-9h2v9zm6 0h-2v-9h2v9zm.618-15L15 2H9L7.382 4H3v2h18V4z" /></svg>
+                             <span class="text-xs font-semibold pointer-events-none">Recycle Bin</span>
+                        </div>
+                        <!-- Windows -->
+                        <div id="window-computer" class="gui-window bg-white rounded-lg hidden top-10 left-40">
+                             <div class="gui-title-bar bg-slate-200 text-slate-800 p-1 pl-3 rounded-t-lg font-bold text-sm flex justify-between items-center border-b"><span class="flex items-center"><svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm1 0v10h14V5H5zm2 12a1 1 0 011-1h6a1 1 0 110 2H8a1 1 0 01-1-1z" /></svg>My Computer</span><button class="close-btn text-red-500 font-bold mr-2 text-xl hover:bg-red-200 px-2 rounded-sm">×</button></div>
+                             <div class="p-4 text-sm bg-white flex-grow rounded-b-lg flex items-start space-x-4"><div class="text-center"><svg class="w-10 h-10 mx-auto" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h18v4H3V3zm0 6h18v12H3V9z" /></svg><span class="text-xs">C: Drive</span></div></div>
+                        </div>
+                        <div id="window-docs" class="gui-window bg-white rounded-lg hidden top-20 left-60">
+                            <div class="gui-title-bar bg-slate-200 text-slate-800 p-1 pl-3 rounded-t-lg font-bold text-sm border-b">
+                                <div class="flex justify-between items-center"><span class="flex items-center flex-grow"><svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6H6zm6 7h5v2h-5V9zM8 5h2v4H8V5z" /></svg>Documents</span><button class="close-btn text-red-500 font-bold mr-2 text-xl hover:bg-red-200 px-2 rounded-sm">×</button></div>
+                            </div>
+                            <div class="bg-gray-100 px-2 py-0.5"><button class="menu-btn hover:bg-gray-300 px-2 rounded-sm text-xs">File</button><button class="menu-btn hover:bg-gray-300 px-2 rounded-sm text-xs">Edit</button></div>
+                            <div id="file-dropdown" class="dropdown-menu text-slate-800 font-normal text-sm"><div class="p-1 px-2 hover:bg-slate-200">Save</div><div class="p-1 px-2 hover:bg-slate-200" id="save-as-btn">Save As...</div><div class="p-1 px-2 border-t mt-1 pt-1 hover:bg-slate-200">Exit</div></div>
+                            <div class="p-4 text-sm bg-white flex-grow rounded-b-lg">Your files and folders.</div>
+                       </div>
+                       <!-- Taskbar -->
+                       <div id="taskbar" class="absolute bottom-0 left-0 right-0 h-10 bg-black bg-opacity-40 backdrop-blur-sm flex items-center px-2">
+                           <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center text-white font-bold border-2 border-blue-300">F</div>
+                           <div id="taskbar-apps" class="flex-grow flex items-center h-full ml-2"></div>
+                           <div id="taskbar-clock" class="text-white font-semibold text-sm px-2 py-1 bg-black bg-opacity-20 rounded"></div>
+                       </div>
+                       <!-- Context Menu -->
+                       <div id="context-menu" class="text-sm bg-white rounded shadow-lg border w-40">
+                           <div class="p-2 hover:bg-slate-200 cursor-pointer" id="ctx-new-folder">New Folder</div>
+                           <div class="p-2 hover:bg-slate-200 cursor-pointer" id="ctx-change-bg">Change Wallpaper</div>
+                           <hr class="my-1">
+                           <div class="p-2 hover:bg-slate-200 cursor-pointer">Properties</div>
+                       </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <section id="quiz-container" class="bg-white p-6 rounded-xl shadow-lg mt-8 hidden"></section>
+    </div>
+    
+    <script>
+    const allDOMElements = {
+        tabs: document.querySelectorAll('.tab-button'), panes: document.querySelectorAll('.simulation-pane'),
+        cliInput: document.getElementById('cli-input'), cliOutput: document.getElementById('cli-output'),
+        menuOutput: document.getElementById('menu-output'),
+        guiDesktop: document.getElementById('gui-desktop'),
+        iconComputer: document.getElementById('icon-computer'), iconDocs: document.getElementById('icon-docs'), iconBin: document.getElementById('icon-bin'),
+        windowComputer: document.getElementById('window-computer'), windowDocs: document.getElementById('window-docs'),
+        fileMenuBtn: document.querySelector('.menu-btn'), fileDropdown: document.getElementById('file-dropdown'), saveAsBtn: document.getElementById('save-as-btn'),
+        taskbar: document.getElementById('taskbar'), taskbarApps: document.getElementById('taskbar-apps'), taskbarClock: document.getElementById('taskbar-clock'),
+        contextMenu: document.getElementById('context-menu'),
+        quizContainer: document.getElementById('quiz-container'),
+    };
+    const DOMElements = allDOMElements;
+
+    DOMElements.tabs.forEach(tab => tab.addEventListener('click', () => { 
+        DOMElements.tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        DOMElements.panes.forEach(p => p.classList.add('hidden'));
+        document.getElementById(tab.dataset.tab).classList.remove('hidden');
+    }));
+
+    // --- CLI LOGIC ---
+    function typeResponse(response) {
+        return new Promise(resolve => {
+            const responseDiv = document.createElement('div');
+            responseDiv.innerHTML = response;
+            responseDiv.classList.add('typing');
+            DOMElements.cliOutput.appendChild(responseDiv);
+            DOMElements.cliOutput.parentElement.scrollTop = DOMElements.cliOutput.parentElement.scrollHeight;
+            setTimeout(resolve, 500);
+        });
+    }
+    DOMElements.cliInput.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') {
+            const command = e.target.value.trim().toLowerCase();
+            const inputVal = e.target.value;
+            e.target.value = '';
+            e.target.disabled = true;
+            
+            const outputDiv = document.createElement('div');
+            outputDiv.innerHTML = `<span class="text-green-400">C:\\Users\\Student></span> ${inputVal}`;
+            DOMElements.cliOutput.appendChild(outputDiv);
+
+            let response = '';
+            switch (command) {
+                case 'help':
+                    response = 'Available: <span class="text-cyan-400">help, ls, open profile.txt, sysinfo, date, clear</span>';
+                    break;
+                case 'ls':
+                    response = '<span class="text-yellow-400">profile.txt &nbsp;&nbsp; settings.exe</span>';
+                    break;
+                case 'open profile.txt':
+                    response = 'Opening profile.txt...<br>Name: Alex Smith<br>Interests: Travel, Italy';
+                    break;
+                case 'sysinfo':
+                    response = `<span class="text-fuchsia-400">OS:</span> FriendOS 1.0<br><span class="text-fuchsia-400">CPU:</span> Virtual @ 3.0GHz<br><span class="text-fuchsia-400">Mem:</span> 512MB / 1024MB`;
+                    break;
+                case 'date':
+                    response = new Date().toUTCString();
+                    break;
+                case 'clear':
+                    DOMElements.cliOutput.innerHTML = '<span>FriendOS [Version 1.0]. All rights reserved.</span><br>';
+                    break;
+                default:
+                    response = `'${command}' is not recognized as an internal or external command.`;
+            }
+            if (response) await typeResponse(response);
+            e.target.disabled = false;
+            e.target.focus();
+        }
+    });
+
+    // --- MENU LOGIC ---
+    const menuSystem = {
+        'main': { text: `Welcome to BankOS<br><br>[1] Check Balance<br>[2] Withdraw Cash<br>[3] Exit`, options: { '1': 'balance', '2': 'withdraw_amount', '3': 'exit' } },
+        'balance': { text: 'Your current balance is: <span class="text-yellow-400">£450.50</span><br><br>[1] Main Menu', options: { '1': 'main' } },
+        'withdraw_amount': { text: 'Select Amount:<br><br>[1] £20<br>[2] £50<br>[3] Other Amount<br>[4] Back', options: { '1': 'confirm_withdraw', '2': 'confirm_withdraw', '3': 'other_amount', '4': 'main' } },
+        'other_amount': { text: 'This function is currently unavailable.<br><br>[1] Back', options: { '1': 'withdraw_amount' } },
+        'confirm_withdraw': { text: '<span class="text-green-400">Transaction confirmed. Please take your cash.</span><br><br>[1] Main Menu', options: { '1': 'main' } },
+        'exit': { text: 'Thank you for using BankOS. Goodbye!', options: {} }
+    };
+    let currentMenu = 'main';
+    function renderMenu() { 
+        if (menuSystem[currentMenu]) {
+             DOMElements.menuOutput.innerHTML = menuSystem[currentMenu].text; 
+        }
+    }
+    document.addEventListener('keydown', (e) => {
+        if (document.getElementById('menu').classList.contains('hidden')) return;
+        const choice = e.key;
+        if (menuSystem[currentMenu] && menuSystem[currentMenu].options && menuSystem[currentMenu].options[choice]) {
+            currentMenu = menuSystem[currentMenu].options[choice];
+            renderMenu();
+        }
+    });
+    renderMenu();
+    
+    // --- Enhanced GUI LOGIC ---
+    let zIndexCounter = 10;
+    const openWindows = {};
+
+    const openWindow = (id, title, iconSvg) => {
+        const winEl = document.getElementById(`window-${id}`);
+        if(winEl.classList.contains('open') && !winEl.classList.contains('minimized')) {
+            winEl.style.zIndex = ++zIndexCounter;
+            return;
+        }
+
+        winEl.classList.remove('hidden', 'minimized');
+        setTimeout(() => winEl.classList.add('open'), 10);
+        winEl.style.zIndex = ++zIndexCounter;
+
+        if (!openWindows[id]) {
+            const taskbarBtn = document.createElement('button');
+            taskbarBtn.id = `task-${id}`;
+            taskbarBtn.className = 'h-full px-3 bg-white bg-opacity-20 text-white text-sm font-semibold flex items-center space-x-2 border-b-2 border-blue-400';
+            taskbarBtn.innerHTML = `${iconSvg} <span>${title}</span>`;
+            taskbarBtn.onclick = () => {
+                const winEl = document.getElementById(`window-${id}`);
+                if (winEl.classList.contains('minimized')) {
+                     winEl.classList.remove('minimized');
+                     winEl.style.zIndex = ++zIndexCounter;
+                } else {
+                    if (parseInt(winEl.style.zIndex) === zIndexCounter) {
+                        winEl.classList.add('minimized');
+                    } else {
+                        winEl.style.zIndex = ++zIndexCounter;
+                    }
+                }
+            };
+            DOMElements.taskbarApps.appendChild(taskbarBtn);
+            openWindows[id] = taskbarBtn;
+        }
+    };
+    
+    const closeWindow = (winEl) => {
+        winEl.classList.remove('open');
+        setTimeout(() => winEl.classList.add('hidden'), 200);
+        const id = winEl.id.split('-')[1];
+        if (openWindows[id]) {
+            openWindows[id].remove();
+            delete openWindows[id];
+        }
+    };
+
+    function makeDraggable(el, handleClass) {
+        let pos1=0, pos2=0, pos3=0, pos4=0;
+        const handle = handleClass ? el.querySelector(handleClass) : el;
+        const bringToFront = () => { if(el.style.zIndex != zIndexCounter) el.style.zIndex = ++zIndexCounter; };
+        el.addEventListener('mousedown', bringToFront);
+        if (handle) {
+            handle.onmousedown = (e) => {
+                e.preventDefault();
+                pos3 = e.clientX; pos4 = e.clientY;
+                document.onmouseup = () => { document.onmouseup = null; document.onmousemove = null; };
+                document.onmousemove = (ev) => {
+                    ev.preventDefault();
+                    pos1 = pos3 - ev.clientX; pos2 = pos4 - ev.clientY;
+                    pos3 = ev.clientX; pos4 = ev.clientY;
+                    el.style.top = (el.offsetTop - pos2) + "px";
+                    el.style.left = (el.offsetLeft - pos1) + "px";
+                };
+            };
+        }
+    }
+    
+    makeDraggable(DOMElements.windowComputer, '.gui-title-bar'); 
+    makeDraggable(DOMElements.windowDocs, '.gui-title-bar');
+    [DOMElements.iconComputer, DOMElements.iconDocs, DOMElements.iconBin].forEach(icon => makeDraggable(icon));
+    
+    DOMElements.iconComputer.addEventListener('dblclick', () => openWindow('computer', 'My Computer', DOMElements.iconComputer.querySelector('svg').outerHTML.replace('w-16 h-16', 'w-4 h-4')));
+    DOMElements.iconDocs.addEventListener('dblclick', () => openWindow('docs', 'Documents', DOMElements.iconDocs.querySelector('svg').outerHTML.replace('w-16 h-16', 'w-4 h-4')));
+    
+    document.querySelectorAll('.close-btn').forEach(btn => btn.addEventListener('click', (e) => closeWindow(e.target.closest('.gui-window'))));
+    DOMElements.fileMenuBtn.addEventListener('click', (e) => { e.stopPropagation(); DOMElements.fileDropdown.style.display = 'block'; });
+    
+    function updateClock() { DOMElements.taskbarClock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    DOMElements.guiDesktop.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        DOMElements.contextMenu.style.top = `${e.clientY}px`;
+        DOMElements.contextMenu.style.left = `${e.clientX}px`;
+        DOMElements.contextMenu.style.display = 'block';
+    });
+
+    document.addEventListener('click', () => { DOMElements.contextMenu.style.display = 'none'; DOMElements.fileDropdown.style.display = 'none';});
+    
+    document.getElementById('ctx-new-folder').addEventListener('click', () => {
+        const folderId = `folder-${Date.now()}`;
+        const newFolder = document.createElement('div');
+        newFolder.id = folderId;
+        newFolder.draggable = true;
+        newFolder.className = 'gui-icon text-center text-white w-24 absolute new-folder';
+        newFolder.innerHTML = `<svg class="w-16 h-16 mx-auto pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3a2 2 0 00-2 2v14a2 2 0 002 2h18a2 2 0 002-2V9a2 2 0 00-2-2h-8l-2-2H3z" /></svg><span class="text-xs font-semibold pointer-events-none">New Folder</span>`;
+        newFolder.style.top = (Math.random() * 60 + 10) + '%';
+        newFolder.style.left = (Math.random() * 60 + 20) + '%';
+        makeDraggable(newFolder);
+        DOMElements.guiDesktop.appendChild(newFolder);
+    });
+    
+    document.getElementById('ctx-change-bg').addEventListener('click', () => {
+        const colors = ['a5b4fc', 'fca5a5', 'fdba74', 'a7f3d0'];
+        const currentBg = DOMElements.guiDesktop.style.backgroundImage;
+        const currentMatch = currentBg.match(/(\w{6})/);
+        const current = currentMatch ? currentMatch[0] : colors[0];
+        const nextColor = colors[(colors.indexOf(current) + 1) % colors.length] || colors[0];
+        DOMElements.guiDesktop.style.backgroundImage = `url('https://placehold.co/1000x800/${nextColor}/e0e7ff?text=')`;
+    });
+
+    DOMElements.iconBin.addEventListener('dragover', e => e.preventDefault());
+    DOMElements.iconBin.addEventListener('drop', e => {
+        e.preventDefault();
+        const draggedId = e.dataTransfer.getData("text/plain");
+        const draggedEl = document.getElementById(draggedId);
+        if (draggedEl && draggedEl.classList.contains('new-folder')) {
+             draggedEl.remove();
+             const binSvg = document.getElementById('bin-svg');
+             binSvg.innerHTML = `<svg class="w-16 h-16 mx-auto pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M9 2H8v1H7v1H6v1H5v1h14v-1h-1V5h-1V4h-1V3h-1V2H9zm-1.618 8L6 7h12l-1.382 3H7.382zM6 7H5v13a2 2 0 002 2h10a2 2 0 002-2V7H6z" /></svg>`; // Full bin
+        }
+    });
+    document.addEventListener('dragstart', e => {
+        if(e.target.classList.contains('gui-icon')) {
+            e.dataTransfer.setData("text/plain", e.target.id);
+        }
+    });
+
+    DOMElements.saveAsBtn.addEventListener('click', () => alert('Save As... dialog would appear here.'));
+
+    // --- QUIZ LOGIC ---
+    const quizQuestions = [
+        { question: "Which interface is most efficient for an expert user who has memorised the commands?", options: ["GUI", "Menu-Driven", "Command-Line (CLI)"], answer: "Command-Line (CLI)", explanation: "Correct! For those who know the commands, CLI can be much faster than navigating menus or windows." },
+        { question: "WIMP is a key concept for which type of interface?", options: ["CLI", "Menu-Driven", "GUI"], answer: "GUI", explanation: "Correct! WIMP (Windows, Icons, Menus, Pointers) defines the core elements of a modern GUI." },
+        { question: "Which interface type would be most suitable for a public-facing ticket machine?", options: ["Command-Line (CLI)", "Menu-Driven", "GUI"], answer: "Menu-Driven", explanation: "Correct! It guides novice users through a simple, limited set of choices, preventing confusion." },
+        { question: "Right-clicking on the desktop to see options like 'New Folder' is a feature of which interface?", options: ["CLI", "Menu-Driven", "GUI"], answer: "GUI", explanation: "Correct! Context menus that appear with a right-click are a staple of GUIs." },
+        { question: "Minimizing a window to a taskbar to switch between applications is a feature of a...", options: ["GUI", "Menu-Driven", "CLI"], answer: "GUI", explanation: "Correct! The taskbar is a key part of managing multiple windows in a GUI." },
+        { question: "Dragging an icon to a new position on the desktop is a common action in which interface?", options: ["Menu-Driven", "GUI", "CLI"], answer: "GUI", explanation: "Correct! Direct manipulation of icons with a pointer is a core GUI concept." },
+        { question: "A server administrator needing to quickly manage hundreds of files remotely would likely prefer a...", options: ["GUI", "Menu-Driven", "Command-Line Interface"], answer: "Command-Line Interface", explanation: "Correct! CLI is often preferred for remote administration and scripting complex tasks." },
+        { question: "The 'M' in the acronym WIMP stands for what?", options: ["Mouse", "Menus", "Machine"], answer: "Menus", explanation: "Correct! The 'File' and 'Edit' options you see in windows are examples of this." }
+    ];
+
+    function showQuiz() {
+        DOMElements.quizContainer.classList.remove('hidden'); DOMElements.quizContainer.classList.add('fade-in');
+        DOMElements.quizContainer.innerHTML = `
+            <h2 class="text-2xl font-bold mb-2 text-center">Test Your Knowledge</h2>
+            <div id="quiz"><p id="question-text" class="text-lg font-semibold text-center mb-6"></p><div id="options-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"></div></div>
+            <div id="feedback-text" class="text-center font-bold mt-4 h-16"></div>
+            <div class="flex justify-center items-center mt-4"><button id="restart-app-btn" class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition">Start Over</button></div>`;
+        let currentQuestionIndex = 0, score = 0;
+        const restartBtn = document.getElementById('restart-app-btn');
+        restartBtn.addEventListener('click', () => location.reload());
+
+        function loadQuestion() {
+            const feedbackText = document.getElementById('feedback-text'); const optionsGrid = document.getElementById('options-grid');
+            const questionText = document.getElementById('question-text');
+            feedbackText.innerHTML = ''; optionsGrid.innerHTML = '';
+            if (currentQuestionIndex >= quizQuestions.length) {
+                questionText.textContent = "Quiz Complete!";
+                optionsGrid.innerHTML = `<p class="text-center col-span-full font-bold">Final Score: ${score} / ${quizQuestions.length}</p>`; return;
+            }
+            const q = quizQuestions[currentQuestionIndex]; questionText.textContent = q.question;
+            q.options.forEach(o => {
+                const btn = document.createElement('button'); btn.textContent = o;
+                btn.className = 'quiz-option w-full p-4 border-2 rounded-lg text-left transition duration-200 h-full';
+                btn.onclick = () => selectAnswer(btn, o, q); optionsGrid.appendChild(btn);
+            });
+        }
+
+        function selectAnswer(button, selected, qData) {
+            const optionButtons = document.getElementById('options-grid').querySelectorAll('button');
+            optionButtons.forEach(btn => btn.disabled = true);
+            if (selected === qData.answer) {
+                score++; button.classList.add('correct');
+                document.getElementById('feedback-text').innerHTML = `<p class="text-green-600">${qData.explanation}</p>`;
+            } else {
+                button.classList.add('incorrect');
+                document.getElementById('feedback-text').innerHTML = `<p class="text-red-600">Not quite. ${qData.explanation}</p>`;
+                optionButtons.forEach(btn => { if (btn.textContent === qData.answer) btn.classList.add('correct'); });
+            }
+            setTimeout(() => { currentQuestionIndex++; loadQuestion(); }, 2500);
+        }
+        loadQuestion();
+    }
+    setTimeout(showQuiz, 5000);
+</script>
+</body>
+</html>

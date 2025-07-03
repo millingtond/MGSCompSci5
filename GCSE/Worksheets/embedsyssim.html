@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embedded Systems - Interactive Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --secondary-color: #38bdf8;
+            --accent-color: #facc15;
+            --bg-color: #0f172a;
+            --surface-color: rgba(30, 41, 59, 0.7);
+            --text-color: #e2e8f0;
+            --success-color: #4ade80;
+            --error-color: #f87171;
+            --border-radius: 16px;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            /* Removed moire-inducing background-image */
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .simulation-container {
+            width: 100%;
+            max-width: 1200px;
+            height: 95vh;
+            max-height: 800px;
+            background: var(--bg-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .main-header {
+            padding: 1rem 1.5rem;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), #ec4899, var(--primary-color));
+            background-size: 200% 200%;
+            animation: gradient-animation 15s ease infinite;
+            color: white;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 10;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            position: relative;
+            perspective: 1500px;
+        }
+
+        .step {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.8s cubic-bezier(0.76, 0, 0.24, 1), opacity 0.8s cubic-bezier(0.76, 0, 0.24, 1);
+            will-change: transform, opacity;
+            transform: translateZ(0); /* GPU acceleration */
+            backface-visibility: hidden;
+            overflow-y: auto;
+        }
+        
+        .step[data-step="7"] {
+            justify-content: flex-start;
+            padding-top: 1.5rem;
+            padding-bottom: 5rem; /* Ensure space for the button at the bottom */
+        }
+
+        .step.active {
+            transform: translateX(0) rotateY(0);
+            opacity: 1;
+            z-index: 5;
+        }
+
+        .step.prev {
+            transform: translateX(-100%) rotateY(90deg);
+            opacity: 0;
+        }
+
+        .step.next {
+            transform: translateX(100%) rotateY(-90deg);
+            opacity: 0;
+        }
+
+        .step h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--secondary-color);
+            font-weight: 700;
+        }
+
+        .step p, .step li {
+            font-size: 1.1rem;
+            max-width: 800px;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .card-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .card {
+            background: var(--surface-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            width: 250px;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            will-change: transform;
+            transform: translateZ(0);
+        }
+
+        .card:hover {
+            transform: translateY(-10px) scale(1.03);
+            box-shadow: 0 20px 30px -5px rgba(0, 0, 0, 0.4);
+        }
+        
+        .card::after { /* Shine effect */
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -150%;
+            width: 100%;
+            height: 100%;
+            transform: skewX(-25deg);
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+            transition: left 0.6s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+        
+        .card:hover::after {
+            left: 150%;
+        }
+
+        .card .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            line-height: 1;
+        }
+
+        .nav-buttons {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            z-index: 10;
+        }
+
+        .btn {
+            padding: 0.8rem 1.8rem;
+            border-radius: var(--border-radius);
+            border: none;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            background-size: 200% 100%;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transform: translateZ(0);
+        }
+
+        .btn:hover {
+            background-position: 100% 0;
+            transform: translateY(-3px);
+            box-shadow: 0 7px 14px rgba(0,0,0,0.3);
+        }
+
+        .btn:disabled {
+            background: #4b5563;
+            cursor: not-allowed;
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            transform: scale(0);
+            animation: ripple-animation 0.6s linear;
+        }
+
+        @keyframes ripple-animation {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* Washing Machine Simulation */
+        .washing-machine-sim { display: flex; align-items: center; justify-content: center; gap: 2rem; width: 100%; flex-wrap: wrap; }
+        .machine { width: 250px; height: 300px; background: #d1d5db; border-radius: 10px; border: 10px solid #6b7280; position: relative; padding: 10px; box-shadow: inset 0 0 15px rgba(0,0,0,0.4); }
+        .machine-door { width: 150px; height: 150px; background: #9ca3af; border-radius: 50%; border: 10px solid #4b5563; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -60%); display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        .door-glass { width: 120px; height: 120px; background: rgba(13, 148, 136, 0.2); border-radius: 50%; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .drum { width: 120px; height: 120px; position: absolute; font-size: 50px; display: flex; align-items: center; justify-content: center; will-change: transform; }
+        .machine-controls { position: absolute; top: 15px; left: 10px; right: 10px; height: 50px; background: #374151; border-radius: 5px; display: flex; align-items: center; justify-content: space-around; padding: 5px; }
+        .status-light { width: 15px; height: 15px; border-radius: 50%; background: #991b1b; transition: background-color 0.5s, box-shadow 0.5s; }
+        .status-light.on { background: var(--success-color); box-shadow: 0 0 10px var(--success-color), 0 0 20px var(--success-color); }
+        .sim-panel { background: var(--surface-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 1.5rem; border-radius: var(--border-radius); width: 350px; text-align: left; border: 1px solid rgba(255,255,255,0.1); }
+        .sim-panel h3 { margin-bottom: 1rem; color: var(--secondary-color); text-align: center; }
+        .sim-panel p { text-align: left; margin-bottom: 1.5rem; }
+        .sim-btn { display: block; width: 100%; margin-bottom: 0.5rem; }
+        .sim-output { margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 8px; min-height: 50px; font-family: 'Courier New', Courier, monospace; border: 1px solid rgba(255,255,255,0.1); }
+
+        /* Quiz Styles */
+        .quiz-container { width: 100%; max-width: 800px; }
+        .question { margin-bottom: 1.5rem; background: var(--surface-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid rgba(255,255,255,0.1); }
+        .options { display: flex; flex-direction: column; gap: 1rem; list-style: none; }
+        .option { padding: 1rem; background: #374151; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; border: 2px solid transparent; }
+        .option:hover { background: #4b5563; transform: translateX(5px); }
+        .option.selected { border-color: var(--secondary-color); background: var(--primary-color); }
+        .option.correct { background-color: #15803d; border-color: var(--success-color); color: white; }
+        .option.incorrect { background-color: #b91c1c; border-color: var(--error-color); color: white; }
+        .quiz-feedback { margin-top: 1rem; padding: 1rem; border-radius: 8px; display: none; }
+        .quiz-feedback.show { display: block; }
+        
+        #quiz-results { text-align: center; position: relative; width:100%; height: 100%; }
+        #quiz-results h2 { margin-bottom: 1.5rem; }
+        #score { font-size: 2rem; font-weight: bold; color: var(--accent-color); }
+        #particle-canvas { position: absolute; top:0; left: 0; width: 100%; height: 100%; z-index: -1; }
+        
+        /* Modal Styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
+        .modal-overlay.show { opacity: 1; visibility: visible; }
+        .modal-content { background: var(--surface-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); padding: 2rem; border-radius: var(--border-radius); box-shadow: var(--shadow); width: 90%; max-width: 600px; text-align: center; transform: scale(0.9); transition: transform 0.3s ease; }
+        .modal-overlay.show .modal-content { transform: scale(1); }
+        .modal-content h3 { margin-bottom: 1rem; color: var(--secondary-color); }
+        .modal-content p { margin-bottom: 1.5rem; text-align: center; }
+        
+        @media (max-width: 768px) {
+            .step { padding: 1.5rem; }
+            .step h2 { font-size: 2rem; }
+            .step p, .step li { font-size: 1rem; }
+            .washing-machine-sim { flex-direction: column; }
+            .nav-buttons { width: 100%; padding: 0 1rem; box-sizing: border-box; }
+            .btn { flex-grow: 1; }
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="simulation-container">
+        <header class="main-header">
+            <h1>A-Level CS 9618: Embedded Systems Simulation</h1>
+        </header>
+
+        <main class="main-content">
+            <section class="step active" data-step="1">
+                <h2>Welcome!</h2>
+                <p>This simulation will guide you through the topic of <strong>Embedded Systems</strong>.</p>
+                <p>Use the <strong>Next/Previous</strong> buttons or the <strong>Left/Right Arrow Keys</strong> on your keyboard to navigate.</p>
+                <div class="card-container">
+                    <div class="card">
+                         <div class="icon">💡</div>
+                         <h3>Learn</h3>
+                         <p>Understand the core concepts of embedded systems.</p>
+                    </div>
+                    <div class="card">
+                        <div class="icon">⚙️</div>
+                        <h3>Interact</h3>
+                        <p>See a simple embedded system in action.</p>
+                    </div>
+                     <div class="card">
+                        <div class="icon">❓</div>
+                        <h3>Test</h3>
+                        <p>Check your knowledge with a short quiz.</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="step next" data-step="2">
+                <h2>What is an Embedded System?</h2>
+                <p>An embedded system is a computer system with a <strong>dedicated or specific function</strong> within a larger electrical or mechanical system.</p>
+                <p>Think of it as a small computer brain installed inside a device to control its operations efficiently. It's not a general-purpose computer like your PC or laptop.</p>
+                 <div class="card-container">
+                    <div class="card">
+                        <div class="icon">🎯</div>
+                        <h3>Dedicated Function</h3>
+                        <p>Performs one or a few specific tasks, e.g., controlling the temperature in a fridge.</p>
+                    </div>
+                    <div class="card">
+                        <div class="icon">🧩</div>
+                        <h3>Part of a Larger System</h3>
+                        <p>Integrated into another device, like a car's engine management system.</p>
+                    </div>
+                     <div class="card">
+                        <div class="icon">🤖</div>
+                        <h3>Controls Operations</h3>
+                        <p>Uses microprocessors and sensors to react to its environment and manage the device.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="step next" data-step="3">
+                <h2>Real-World Examples</h2>
+                <p>Embedded systems are all around us. They make our devices smarter and more efficient.</p>
+                <div class="card-container">
+                    <div class="card"><div class="icon">🚗</div><h3>Cars</h3><p>Engine control, anti-lock brakes (ABS), airbags.</p></div>
+                    <div class="card"><div class="icon">🌊</div><h3>Washing Machines</h3><p>Controlling wash cycles, water temperature, and spin speed.</p></div>
+                    <div class="card"><div class="icon">🍳</div><h3>Microwaves</h3><p>Managing cooking time, power levels, and the turntable.</p></div>
+                    <div class="card"><div class="icon">❄️</div><h3>Refrigerators</h3><p>Regulating temperature and managing the defrost cycle.</p></div>
+                </div>
+            </section>
+            
+            <section class="step next" data-step="4">
+                <h2>How They Work: An Example</h2>
+                <p>Let's simulate a simple embedded system in a washing machine.</p>
+                <div class="washing-machine-sim">
+                    <div class="machine">
+                        <div class="machine-controls">
+                            <div class="status-light" id="statusLight"></div>
+                        </div>
+                        <div class="machine-door">
+                            <div class="door-glass">
+                                <div class="drum" id="drum">👕</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sim-panel">
+                        <h3>Washing Machine Control</h3>
+                        <p>The microprocessor is waiting for input. The machine is currently off.</p>
+                        <button class="btn sim-btn" id="startCycleBtn">1. Start Wash Cycle</button>
+                        <p>This sends a signal to the microprocessor to begin.</p>
+                        <button class="btn sim-btn" id="tempSensorBtn" disabled>2. Sensor: Water Full & Hot</button>
+                        <p>The sensor tells the microprocessor the conditions are right to start the main wash.</p>
+                        <div class="sim-output" id="simOutput">System Idle...</div>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="step next" data-step="5">
+                <h2>Advantages of Embedded Systems</h2>
+                <p>Why are they so widely used? Here are the key benefits.</p>
+                 <div class="card-container">
+                    <div class="card"><div class="icon">📏</div><h3>Small Size</h3><p>Easy to fit into devices.</p></div>
+                    <div class="card"><div class="icon">💰</div><h3>Low Cost</h3><p>Relatively cheap to manufacture in bulk.</p></div>
+                    <div class="card"><div class="icon">🎯</div><h3>Dedicated Task</h3><p>Simple interfaces, efficient operation.</p></div>
+                    <div class="card"><div class="icon">🔋</div><h3>Low Power</h3><p>Consume very little electricity.</p></div>
+                    <div class="card"><div class="icon">⚡</div><h3>Fast Reaction</h3><p>Respond quickly to sensor inputs.</p></div>
+                    <div class="card"><div class="icon">🏭</div><h3>Reliable</h3><p>Mass production leads to high reliability.</p></div>
+                </div>
+            </section>
+
+            <section class="step next" data-step="6">
+                <h2>Disadvantages of Embedded Systems</h2>
+                <p>However, they aren't perfect. There are some significant drawbacks.</p>
+                <div class="card-container">
+                    <div class="card"><div class="icon">⬆️</div><h3>Hard to Upgrade</h3><p>Difficult to add new technology or features.</p></div>
+                    <div class="card"><div class="icon">🔧</div><h3>Difficult to Repair</h3><p>Troubleshooting is often a specialist task.</p></div>
+                    <div class="card"><div class="icon">🔒</div><h3>Vulnerable</h3><p>Internet-connected systems can be hacked.</p></div>
+                    <div class="card"><div class="icon">🗑️</div><h3>Wasteful</h3><p>Often cheaper to replace than to repair.</p></div>
+                </div>
+            </section>
+            
+            <section class="step next" data-step="7">
+                <h2>Knowledge Check</h2>
+                <p>Let's see what you've learned. Answer the questions below. (Scroll if needed)</p>
+                <div class="quiz-container">
+                    <div class="question" data-question-id="0">
+                        <p><strong>1.</strong> Which of the following best defines an embedded system?</p>
+                        <ul class="options">
+                            <li class="option" data-answer="a">A general-purpose computer that can be embedded into a wall.</li>
+                            <li class="option" data-answer="b">A computer system with a dedicated function within a larger system.</li>
+                            <li class="option" data-answer="c">A type of powerful server used for complex calculations.</li>
+                            <li class="option" data-answer="d">Any device that uses electricity.</li>
+                        </ul>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                    <div class="question" data-question-id="1">
+                        <p><strong>2.</strong> Which of these is NOT a typical advantage of an embedded system?</p>
+                        <ul class="options">
+                            <li class="option" data-answer="a">Low power consumption.</li>
+                            <li class="option" data-answer="b">Easy to upgrade with the latest technology.</li>
+                            <li class="option" data-answer="c">Small physical size.</li>
+                            <li class="option" data-answer="d">Fast reaction to changing inputs.</li>
+                        </ul>
+                         <div class="quiz-feedback"></div>
+                    </div>
+                    <div class="question" data-question-id="2">
+                        <p><strong>3.</strong> A key disadvantage of many embedded systems is that they are often thrown away rather than repaired. Why is this?</p>
+                        <ul class="options">
+                            <li class="option" data-answer="a">They run on a special type of electricity that is hard to find.</li>
+                            <li class="option" data-answer="b">They are designed to be single-use for hygiene reasons.</li>
+                            <li class="option" data-answer="c">Troubleshooting is a specialist task and it can be cheaper to replace the whole device.</li>
+                            <li class="option" data-answer="d">They are too small to be handled by repair technicians.</li>
+                        </ul>
+                         <div class="quiz-feedback"></div>
+                    </div>
+                    <div class="question" data-question-id="3">
+                        <p><strong>4.</strong> What core component allows an embedded system to process sensor data and control a device's operations?</p>
+                        <ul class="options">
+                            <li class="option" data-answer="a">A large cooling fan</li>
+                            <li class="option" data-answer="b">A high-definition screen</li>
+                            <li class="option" data-answer="c">A full-sized keyboard</li>
+                            <li class="option" data-answer="d">A microprocessor</li>
+                        </ul>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                    <div class="question" data-question-id="4">
+                        <p><strong>5.</strong> What is a significant risk for an embedded system, such as a 'smart' refrigerator, that is connected to the internet?</p>
+                        <ul class="options">
+                            <li class="option" data-answer="a">It might use too much electricity</li>
+                            <li class="option" data-answer="b">It could become too heavy</li>
+                            <li class="option" data-answer="c">Vulnerability to being accessed by hackers</li>
+                            <li class="option" data-answer="d">The screen might be too bright</li>
+                        </ul>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                    <div class="question" data-question-id="5">
+                        <p><strong>6.</strong> The fact that embedded systems are mass-produced often leads to which key advantage?</p>
+                        <ul class="options">
+                            <li class="option" data-answer="a">They are all unique and customisable</li>
+                            <li class="option" data-answer="b">High reliability due to standardised manufacturing</li>
+                            <li class="option" data-answer="c">They receive frequent software updates</li>
+                            <li class="option" data-answer="d">They can perform many different general-purpose tasks</li>
+                        </ul>
+                        <div class="quiz-feedback"></div>
+                    </div>
+                    <button id="submitQuizBtn" class="btn">Submit Answers</button>
+                </div>
+            </section>
+            
+            <section class="step next" data-step="8">
+                <div id="quiz-results">
+                    <canvas id="particle-canvas"></canvas>
+                    <h2>Quiz Complete!</h2>
+                    <p>You scored:</p>
+                    <p id="score">0 / 6</p>
+                    <p id="feedbackMessage"></p>
+                    <button id="resetBtn" class="btn">Restart Simulation</button>
+                </div>
+            </section>
+        </main>
+        
+        <div class="nav-buttons">
+            <button class="btn" id="prevBtn" disabled>Previous</button>
+            <button class="btn" id="nextBtn">Next</button>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content">
+            <h3 id="modalTitle"></h3>
+            <p id="modalText"></p>
+            <button class="btn" id="modalCloseBtn">Got it</button>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Caching ---
+        const steps = document.querySelectorAll('.step');
+        const nextBtn = document.getElementById('nextBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const quizContainer = document.querySelector('.quiz-container');
+        const submitQuizBtn = document.getElementById('submitQuizBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const simOutput = document.getElementById('simOutput');
+        const drum = document.getElementById('drum');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalCloseBtn = document.getElementById('modalCloseBtn');
+        const particleCanvas = document.getElementById('particle-canvas');
+
+        // --- State Management ---
+        let currentStep = 1;
+        let isModalOpen = false;
+        let drumAnimationId;
+        let quizSubmitted = false;
+        let userAnswers = {};
+        
+        const quizData = [
+            { question: 0, correctAnswer: 'b', explanation: "Correct! Embedded systems are designed for a specific purpose within a larger device, unlike a general-purpose PC." },
+            { question: 1, correctAnswer: 'b', explanation: "Correct! A major disadvantage is that they are very difficult to upgrade, not easy." },
+            { question: 2, correctAnswer: 'c', explanation: "Correct! Due to their integrated nature and specialized components, repairing an embedded system is often more expensive and difficult than simply replacing the device it's in." },
+            { question: 3, correctAnswer: 'd', explanation: "Correct! The microprocessor is the 'brain' of the embedded system, executing instructions to perform its dedicated task." },
+            { question: 4, correctAnswer: 'c', explanation: "Correct! Any device connected to a network, including embedded systems, can be a potential target for hackers if not properly secured." },
+            { question: 5, correctAnswer: 'b', explanation: "Correct! Mass production allows manufacturing processes to be perfected, leading to very reliable and consistent hardware." }
+        ];
+
+        // --- Utility Functions ---
+        const debounce = (func, delay) => {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        };
+
+        // --- Navigation ---
+        const updateButtons = () => {
+            prevBtn.disabled = currentStep === 1;
+            nextBtn.disabled = currentStep >= 7; // Disable on quiz and results
+            
+            prevBtn.style.display = (currentStep === 8) ? 'none' : 'block';
+            nextBtn.style.display = (currentStep >= 7) ? 'none' : 'block';
+            submitQuizBtn.style.display = (currentStep === 7) ? 'block' : 'none';
+        };
+
+        const showStep = (stepNumber) => {
+            steps.forEach(step => {
+                const stepData = parseInt(step.dataset.step);
+                step.classList.remove('active', 'prev', 'next');
+                if (stepData === stepNumber) {
+                    step.classList.add('active');
+                } else if (stepData < stepNumber) {
+                    step.classList.add('prev');
+                } else {
+                    step.classList.add('next');
+                }
+            });
+            if (stepNumber === 8) {
+                startParticleEffect();
+            } else {
+                stopParticleEffect();
+            }
+            updateButtons();
+        };
+
+        const changeStep = (direction) => {
+            if (isModalOpen) return;
+            currentStep += direction;
+            currentStep = Math.max(1, Math.min(currentStep, steps.length));
+            showStep(currentStep);
+        };
+        
+        // --- Event Listeners ---
+        nextBtn.addEventListener('click', () => changeStep(1));
+        prevBtn.addEventListener('click', () => changeStep(-1));
+        
+        document.addEventListener('keydown', debounce((e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowRight' && !nextBtn.disabled) changeStep(1);
+            if (e.key === 'ArrowLeft' && !prevBtn.disabled) changeStep(-1);
+        }, 100));
+
+        // Ripple Effect on Buttons
+        document.addEventListener('mousedown', function(e) {
+            if (e.target.matches('.btn')) {
+                const btn = e.target;
+                const ripple = document.createElement('span');
+                const rect = btn.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                ripple.style.width = ripple.style.height = `${size}px`;
+                ripple.style.left = `${e.clientX - rect.left - size / 2}px`;
+                ripple.style.top = `${e.clientY - rect.top - size / 2}px`;
+                ripple.classList.add('ripple');
+                btn.appendChild(ripple);
+                ripple.addEventListener('animationend', () => ripple.remove());
+            }
+        });
+
+        // --- Modal ---
+        const showModal = (title, text, postAction) => {
+            isModalOpen = true;
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalText').textContent = text;
+            modalOverlay.classList.add('show');
+            modalOverlay.postModalAction = postAction;
+        }
+        
+        const hideModal = () => {
+            isModalOpen = false;
+            modalOverlay.classList.remove('show');
+            if(modalOverlay.postModalAction) {
+                modalOverlay.postModalAction();
+                modalOverlay.postModalAction = null;
+            }
+        }
+        modalCloseBtn.addEventListener('click', hideModal);
+        modalOverlay.addEventListener('click', (e) => (e.target === modalOverlay) && hideModal());
+        
+        // --- Washing Machine Simulation ---
+        const statusLight = document.getElementById('statusLight');
+        const startCycleBtn = document.getElementById('startCycleBtn');
+        const tempSensorBtn = document.getElementById('tempSensorBtn');
+        let drumRotation = 0;
+
+        const startDrumSpin = () => {
+            function spin() {
+                drumRotation = (drumRotation + 2) % 360;
+                drum.style.transform = `rotate(${drumRotation}deg)`;
+                drumAnimationId = requestAnimationFrame(spin);
+            }
+            spin();
+        };
+
+        const stopDrumSpin = () => {
+            if (drumAnimationId) {
+                cancelAnimationFrame(drumAnimationId);
+                drumAnimationId = null;
+            }
+        };
+
+        const resetSimulation = () => {
+             stopDrumSpin();
+             drum.style.transform = 'rotate(0deg)';
+             simOutput.textContent = 'System Idle...';
+             statusLight.classList.remove('on');
+             startCycleBtn.disabled = false;
+             tempSensorBtn.disabled = true;
+        };
+        
+        startCycleBtn.addEventListener('click', () => {
+            if (startCycleBtn.disabled) return;
+            showModal(
+                'Signal Sent!', 
+                'The "Start" button press sends an electrical signal to the microprocessor. This is the initial INPUT. The system is now active and waiting for the next input from its sensors.',
+                () => {
+                    simOutput.textContent = 'INPUT: Start pressed. Awaiting sensor data.';
+                    statusLight.classList.add('on');
+                    startCycleBtn.disabled = true;
+                    tempSensorBtn.disabled = false;
+                    tempSensorBtn.focus();
+                }
+            );
+        });
+
+        tempSensorBtn.addEventListener('click', () => {
+            if (tempSensorBtn.disabled) return;
+            showModal(
+                'Sensor Input Received',
+                'Sensors for water level and temperature have sent signals to the microprocessor. The conditions are correct, so the microprocessor sends an OUTPUT signal to start the motor, which spins the drum.',
+                () => {
+                    simOutput.textContent = 'SENSOR: Conditions met. Starting motor...';
+                    tempSensorBtn.disabled = true;
+                    startDrumSpin();
+                    setTimeout(() => {
+                       stopDrumSpin();
+                       statusLight.classList.remove('on');
+                       simOutput.textContent = 'Cycle complete. System returning to idle.';
+                    }, 4000);
+                }
+            );
+        });
+
+        // --- Quiz Logic ---
+        quizContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('option') && !quizSubmitted) {
+                const questionElem = e.target.closest('.question');
+                const questionId = questionElem.dataset.questionId;
+                questionElem.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+                e.target.classList.add('selected');
+                userAnswers[questionId] = e.target.dataset.answer;
+            }
+        });
+        
+        submitQuizBtn.addEventListener('click', () => {
+            if (quizSubmitted) {
+                changeStep(1); // Go to results page
+                return;
+            }
+            
+            if (Object.keys(userAnswers).length < quizData.length) {
+                showModal('Incomplete Quiz', 'Please answer all questions before submitting.');
+                return;
+            }
+
+            quizSubmitted = true;
+            let score = 0;
+            quizData.forEach(q => {
+                const questionElem = document.querySelector(`.question[data-question-id="${q.question}"]`);
+                const feedbackElem = questionElem.querySelector('.quiz-feedback');
+                
+                if (userAnswers[q.question] === q.correctAnswer) {
+                    score++;
+                    feedbackElem.textContent = q.explanation;
+                    feedbackElem.style.color = 'var(--success-color)';
+                } else {
+                    feedbackElem.textContent = `Incorrect. ${q.explanation}`;
+                    feedbackElem.style.color = 'var(--error-color)';
+                }
+                
+                questionElem.querySelectorAll('.option').forEach(opt => {
+                    if (opt.dataset.answer === q.correctAnswer) opt.classList.add('correct');
+                    else if (opt.classList.contains('selected')) opt.classList.add('incorrect');
+                });
+                feedbackElem.classList.add('show');
+            });
+            
+            document.getElementById('score').textContent = `${score} / ${quizData.length}`;
+            let feedbackMsg = score === quizData.length ? "Excellent! You've mastered all the key concepts." : (score >= quizData.length / 2 ? "Good job! You have a solid understanding." : "You might want to review the previous steps and try again.");
+            document.getElementById('feedbackMessage').textContent = feedbackMsg;
+
+            submitQuizBtn.textContent = "See Results";
+        });
+        
+        const resetQuiz = () => {
+            quizSubmitted = false;
+            userAnswers = {};
+            submitQuizBtn.textContent = "Submit Answers";
+            document.querySelectorAll('.question').forEach(q => {
+                q.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected', 'correct', 'incorrect'));
+                q.querySelector('.quiz-feedback').classList.remove('show');
+            });
+        };
+
+        resetBtn.addEventListener('click', () => {
+            currentStep = 1;
+            showStep(1);
+            resetQuiz();
+            resetSimulation();
+        });
+        
+        // --- Particle Effect for Results Screen ---
+        let particles = [];
+        let particleAnimationId;
+        const ctx = particleCanvas.getContext('2d');
+
+        function startParticleEffect() {
+            if (!particleCanvas.getContext) return;
+            particleCanvas.width = particleCanvas.offsetWidth;
+            particleCanvas.height = particleCanvas.offsetHeight;
+            particles = [];
+            for (let i = 0; i < 50; i++) {
+                particles.push({
+                    x: Math.random() * particleCanvas.width,
+                    y: Math.random() * particleCanvas.height,
+                    vx: Math.random() * 2 - 1,
+                    vy: Math.random() * 2 - 1,
+                    size: Math.random() * 3 + 1,
+                    color: `hsla(${Math.random() * 60 + 200}, 100%, 70%, ${Math.random() * 0.5 + 0.5})`
+                });
+            }
+            animateParticles();
+        }
+
+        function animateParticles() {
+            if (!particleAnimationId) return;
+            ctx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0 || p.x > particleCanvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > particleCanvas.height) p.vy *= -1;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            particleAnimationId = requestAnimationFrame(animateParticles);
+        }
+
+        function stopParticleEffect() {
+            if (particleAnimationId) {
+                cancelAnimationFrame(particleAnimationId);
+                particleAnimationId = null;
+            }
+            if (ctx) {
+               ctx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+            }
+        }
+
+        // --- Initialisation ---
+        showStep(currentStep);
+    });
+    </script>
+</body>
+</html>

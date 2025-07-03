@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Vector Drawing Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #f0f4f8;
+            --panel-bg: #ffffff;
+            --text-color: #1e293b;
+            --header-color: #334155;
+            --accent-color-1: #3b82f6;
+            --accent-color-2: #8b5cf6;
+            --accent-color-3: #ec4899;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+            --border-color: #cbd5e1;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+        }
+
+        .glassmorphism {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .animated-gradient {
+            background: linear-gradient(-45deg, var(--accent-color-1), var(--accent-color-2), var(--accent-color-3));
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+        
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .step-content, .quiz-question {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            will-change: opacity, transform;
+        }
+
+        .hidden-step {
+            opacity: 0;
+            transform: translateY(20px);
+            position: absolute;
+            pointer-events: none;
+        }
+
+        #drawing-list-container li {
+            transition: background-color 0.3s ease, transform 0.3s ease;
+        }
+        
+        #drawing-list-container li.active {
+            background-color: #dbeafe;
+            transform: translateX(5px);
+            color: var(--accent-color-1);
+        }
+
+        #canvas-svg g {
+            cursor: pointer;
+            transition: filter 0.3s ease, transform 0.3s ease;
+        }
+
+        #canvas-svg g:hover {
+            filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.7));
+        }
+        
+        #canvas-svg g.selected-shape {
+            filter: drop-shadow(0 0 15px rgba(139, 92, 246, 0.9));
+            transform: scale(1.02);
+        }
+
+        .property-input {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .property-input:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+            border-color: var(--accent-color-1);
+        }
+
+        .btn-nav {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform, box-shadow;
+        }
+
+        .btn-nav:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-nav:active {
+            transform: translateY(0);
+        }
+        
+        .modal-overlay {
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        .modal-content {
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+
+        .quiz-option {
+            transition: all 0.2s ease;
+        }
+
+        .quiz-option.selected {
+            background-color: #dbeafe;
+            border-color: var(--accent-color-1);
+            color: var(--accent-color-1);
+        }
+
+        .quiz-option.correct {
+            background-color: #dcfce7;
+            border-color: var(--success-color);
+            color: #15803d;
+        }
+
+        .quiz-option.incorrect {
+            background-color: #fee2e2;
+            border-color: var(--error-color);
+            color: #b91c1c;
+        }
+        
+        .match-item {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .match-item.selected {
+            background-color: #dbeafe;
+            border-color: var(--accent-color-1);
+            color: var(--accent-color-1);
+            transform: scale(1.05);
+        }
+        .match-item.matched {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        #match-svg-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <main id="simulation-container" class="w-full max-w-7xl mx-auto">
+        <header class="text-center p-6 mb-6 rounded-xl shadow-lg animated-gradient">
+            <h1 class="text-3xl md:text-4xl font-bold text-white">Interactive Vector Drawing Simulation</h1>
+            <p class="text-lg text-white/90 mt-2">A-Level Computer Science (Cambridge 9618)</p>
+        </header>
+
+        <!-- Main Content Area -->
+        <div id="main-content" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Left Panel: Drawing List and Properties -->
+            <div class="space-y-6">
+                <div id="drawing-list-panel" class="bg-white p-6 rounded-xl shadow-md">
+                    <h2 class="text-2xl font-semibold mb-4 text-header-color">Drawing List</h2>
+                    <p class="text-sm mb-4 text-slate-500">This list contains all the commands (Drawing Objects) needed to create the image. The simulation will execute them one by one.</p>
+                    <ul id="drawing-list-container" class="font-mono text-sm bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-2">
+                        <!-- Drawing commands will be injected here by JS -->
+                    </ul>
+                </div>
+                <div id="properties-panel" class="bg-white p-6 rounded-xl shadow-md hidden">
+                    <h2 class="text-2xl font-semibold mb-4 text-header-color">Object Properties</h2>
+                    <p class="text-sm mb-4 text-slate-500">Modify the properties of the selected object and see the changes in real-time on the canvas.</p>
+                    <div id="properties-editor" class="space-y-4">
+                        <!-- Property editors will be injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Canvas and Instructions -->
+            <div class="bg-white p-6 rounded-xl shadow-md flex flex-col">
+                <h2 class="text-2xl font-semibold mb-4 text-header-color">Drawing Canvas</h2>
+                <div class="flex-grow w-full aspect-video bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center p-4">
+                    <svg id="canvas-svg" class="w-full h-full"></svg>
+                </div>
+                 <div id="instructions-box" class="mt-6 p-4 bg-blue-50 border-l-4 border-blue-400 text-blue-800 rounded-r-lg">
+                    <!-- Instructions will be injected here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quiz Section -->
+        <div id="quiz-section" class="hidden w-full max-w-4xl mx-auto mt-8">
+             <!-- Quiz questions will be injected here -->
+        </div>
+
+        <!-- Navigation and Reset Controls -->
+        <footer class="mt-8 flex justify-between items-center w-full max-w-7xl mx-auto">
+            <button id="prev-step-btn" class="btn-nav bg-white px-6 py-3 rounded-lg font-semibold text-slate-600 shadow-md border border-slate-200">Previous Step</button>
+            <button id="reset-simulation-btn" class="btn-nav bg-rose-500 hover:bg-rose-600 px-6 py-3 rounded-lg font-semibold text-white shadow-md">Reset Simulation</button>
+            <button id="next-step-btn" class="btn-nav bg-indigo-500 hover:bg-indigo-600 px-6 py-3 rounded-lg font-semibold text-white shadow-md">Next Step</button>
+        </footer>
+    </main>
+    
+    <!-- Modal for Instructions and Feedback -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/50 z-40 hidden flex items-center justify-center">
+        <div id="modal-content" class="glassmorphism p-8 rounded-2xl shadow-2xl w-full max-w-lg mx-4 transform scale-95 opacity-0">
+            <h3 id="modal-title" class="text-2xl font-bold mb-4 text-header-color">Welcome!</h3>
+            <p id="modal-text" class="text-slate-600 mb-6"></p>
+            <button id="modal-close-btn" class="w-full btn-nav bg-indigo-500 hover:bg-indigo-600 px-6 py-3 rounded-lg font-semibold text-white">Continue</button>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element Caching ---
+            const dom = {
+                simulationContainer: document.getElementById('simulation-container'),
+                drawingListContainer: document.getElementById('drawing-list-container'),
+                propertiesPanel: document.getElementById('properties-panel'),
+                propertiesEditor: document.getElementById('properties-editor'),
+                canvas: document.getElementById('canvas-svg'),
+                instructionsBox: document.getElementById('instructions-box'),
+                quizSection: document.getElementById('quiz-section'),
+                prevBtn: document.getElementById('prev-step-btn'),
+                nextBtn: document.getElementById('next-step-btn'),
+                resetSimulationBtn: document.getElementById('reset-simulation-btn'),
+                modalOverlay: document.getElementById('modal-overlay'),
+                modalContent: document.getElementById('modal-content'),
+                modalTitle: document.getElementById('modal-title'),
+                modalText: document.getElementById('modal-text'),
+                modalCloseBtn: document.getElementById('modal-close-btn'),
+            };
+
+            // --- State Management ---
+            let currentStep = 0;
+            let isModalOpen = false;
+            let activeInput = false;
+            let quizScores = [0, 0, 0, 0];
+            let animationFrameId;
+            let matchState = {
+                selectedProp: null,
+                matches: {},
+            };
+
+            const drawingObjects = [
+                { type: 'RECTANGLE', id: 'shape-rect', x: 50, y: 50, width: 250, height: 150, fill: '#3b82f6', stroke: '#1e40af', 'stroke-width': 4, visible: false },
+                { type: 'CIRCLE', id: 'shape-circle', cx: 280, cy: 200, r: 70, fill: '#ef4444', stroke: '#991b1b', 'stroke-width': 4, visible: false },
+                { type: 'TEXT', id: 'shape-text', x: 70, y: 140, text: 'Vector Art', 'font-size': '32px', fill: '#ffffff', visible: false },
+            ];
+
+            const steps = [
+                {
+                    title: 'Welcome to the Simulation!',
+                    text: `This simulation will guide you through how vector graphics are created using a <strong>Drawing List</strong>. <br><br>A drawing list is a set of commands that define each shape in an image. Click 'Continue' to begin.`,
+                    instruction: 'Click "Next Step" or press the right arrow key to begin the simulation.'
+                },
+                {
+                    title: 'Step 1: The Drawing List',
+                    text: `On the left, you can see the <strong>Drawing List</strong>. It's a plain-text description of all the shapes, or <strong>Drawing Objects</strong>, that will make up our final image. Each line is a command with properties.`,
+                    instruction: 'The first command is for a RECTANGLE. Let\'s draw it on the canvas.'
+                },
+                {
+                    title: 'Drawing Object 1: Rectangle',
+                    text: 'The first command is executed, and the rectangle appears on the canvas. This shape is a <strong>Drawing Object</strong>. Its properties like coordinates (x, y), dimensions (width, height), and colors are all defined in the list.',
+                    instruction: 'Now, let\'s draw the next object in the list: a CIRCLE.'
+                },
+                {
+                    title: 'Drawing Object 2: Circle',
+                    text: 'The second command draws a circle. Notice how it overlaps the rectangle. The order of commands in the drawing list determines the stacking order (which object is in front).',
+                    instruction: 'Finally, let\'s add the last object: some TEXT.'
+                },
+                 {
+                    title: 'Drawing Object 3: Text',
+                    text: 'Even text is a drawing object, with properties like position (x, y), font size, and color. Our image is now complete, rendered from the drawing list.',
+                    instruction: 'Now for the interactive part! Let\'s modify an object\'s properties.'
+                },
+                {
+                    title: 'Step 2: Modifying Properties',
+                    text: 'Vector images are easily editable. Click on any shape on the canvas (the rectangle or the circle). The <strong>Object Properties</strong> panel will appear, allowing you to change its attributes.',
+                    instruction: 'Click on a shape on the canvas to select it and edit its properties.'
+                },
+                 {
+                    title: 'Step 3: The Quiz',
+                    text: `You've learned about Drawing Lists, Drawing Objects, and Properties. It's time to test your knowledge with a short quiz. Good luck!`,
+                    instruction: 'The quiz will now appear below. Complete all the questions.'
+                },
+                 {
+                    title: 'Simulation Complete!',
+                    text: `Congratulations! You've completed the simulation and the quiz. You can use the 'Reset Simulation' button to go through the entire experience again.`,
+                    instruction: 'Review your quiz results or reset the simulation.'
+                }
+            ];
+
+            const quizQuestions = [
+                {
+                    type: 'mcq',
+                    question: 'In the context of vector graphics, what is a "Drawing List"?',
+                    options: [
+                        'A list of pixel color values for a bitmap image.',
+                        'A set of commands defining the objects and their properties to create an image.',
+                        'A software tool used for digital painting.',
+                        'The history of user actions in an editing program.'
+                    ],
+                    correctAnswer: 'A set of commands defining the objects and their properties to create an image.',
+                    feedback: 'Correct! A drawing list is a sequence of commands that describes how to draw each object in a vector image.'
+                },
+                {
+                    type: 'match',
+                    question: 'Match the property to its correct description. Click a property, then click its description.',
+                    properties: [
+                        { name: 'fill', desc: 'The interior color of a shape.' },
+                        { name: 'stroke-width', desc: 'The thickness of a shape\'s outline.' },
+                        { name: 'cx / cy', desc: 'The coordinates for the center of a circle.' },
+                        { name: 'width / height', desc: 'The dimensions of a rectangle.' }
+                    ]
+                },
+                {
+                    type: 'fib',
+                    question: 'A command in a drawing list defines a single ______ ______. (Fill in the blanks)',
+                    correctAnswer: 'drawing object',
+                    feedback: 'Correct! Each command in the drawing list corresponds to one drawing object, like a line, circle, or rectangle.'
+                },
+                {
+                    type: 'task',
+                    question: 'Interactive Task: Select the <strong>rectangle</strong> and change its fill color to a shade of green (e.g., #22c55e). Then, increase its height to 180.',
+                    targetId: 'shape-rect',
+                    properties: {
+                        fill: '#22c55e',
+                        height: '180'
+                    },
+                    feedback: 'Excellent! You have successfully modified the object\'s properties by editing the drawing list data.'
+                }
+            ];
+
+            // --- Functions ---
+            const shuffleArray = (array) => {
+                let shuffled = [...array];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                return shuffled;
+            };
+
+            const showModal = (stepIndex) => {
+                if (isModalOpen) return;
+                const step = steps[stepIndex];
+                isModalOpen = true;
+                
+                if(!step.title) {
+                    isModalOpen = false;
+                    return;
+                }
+                
+                dom.modalTitle.innerHTML = step.title;
+                dom.modalText.innerHTML = step.text;
+                dom.modalOverlay.classList.remove('hidden');
+                dom.modalOverlay.classList.add('flex');
+                
+                requestAnimationFrame(() => {
+                    dom.modalContent.classList.remove('scale-95', 'opacity-0');
+                });
+            };
+
+            const hideModal = () => {
+                isModalOpen = false;
+                dom.modalContent.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    dom.modalOverlay.classList.add('hidden');
+                    dom.modalOverlay.classList.remove('flex');
+                    runStep(currentStep); 
+                }, 300);
+            };
+
+            const renderDrawingList = () => {
+                dom.drawingListContainer.innerHTML = drawingObjects.map((obj, index) => {
+                    let props = Object.entries(obj)
+                        .filter(([key]) => !['type', 'id', 'visible'].includes(key))
+                        .map(([key, value]) => `${key}:'${value}'`)
+                        .join(', ');
+                    return `<li id="list-item-${index}" class="text-slate-700">${obj.type}(${props})</li>`;
+                }).join('');
+            };
+
+            const renderCanvas = () => {
+                cancelAnimationFrame(animationFrameId);
+                const svgNS = "http://www.w3.org/2000/svg";
+                dom.canvas.innerHTML = '';
+
+                drawingObjects.forEach((obj, index) => {
+                    if (!obj.visible) return;
+
+                    let shape;
+                    let g = document.createElementNS(svgNS, 'g');
+                    g.setAttribute('id', `group-${obj.id}`);
+                    g.dataset.index = index;
+                    
+                    switch (obj.type) {
+                        case 'RECTANGLE':
+                            shape = document.createElementNS(svgNS, 'rect');
+                            shape.setAttribute('x', obj.x);
+                            shape.setAttribute('y', obj.y);
+                            shape.setAttribute('width', obj.width);
+                            shape.setAttribute('height', obj.height);
+                            shape.setAttribute('fill', obj.fill);
+                            shape.setAttribute('stroke', obj.stroke);
+                            shape.setAttribute('stroke-width', obj['stroke-width']);
+                            break;
+                        case 'CIRCLE':
+                            shape = document.createElementNS(svgNS, 'circle');
+                            shape.setAttribute('cx', obj.cx);
+                            shape.setAttribute('cy', obj.cy);
+                            shape.setAttribute('r', obj.r);
+                            shape.setAttribute('fill', obj.fill);
+                            shape.setAttribute('stroke', obj.stroke);
+                            shape.setAttribute('stroke-width', obj['stroke-width']);
+                            break;
+                        case 'TEXT':
+                            shape = document.createElementNS(svgNS, 'text');
+                            shape.setAttribute('x', obj.x);
+                            shape.setAttribute('y', obj.y);
+                            shape.setAttribute('font-size', obj['font-size']);
+                            shape.setAttribute('fill', obj.fill);
+                            shape.setAttribute('font-weight', 'bold');
+                            shape.textContent = obj.text;
+                            break;
+                    }
+                    if (shape) {
+                        shape.setAttribute('id', obj.id);
+                        shape.style.willChange = 'transform, fill, stroke';
+                        shape.style.transformOrigin = 'center';
+                        g.appendChild(shape);
+                        dom.canvas.appendChild(g);
+                    }
+                });
+            };
+            
+            const animateShapeIn = (index) => {
+                const obj = drawingObjects[index];
+                if (!obj) return;
+                obj.visible = true;
+
+                cancelAnimationFrame(animationFrameId);
+                const svgNS = "http://www.w3.org/2000/svg";
+                
+                let g = document.createElementNS(svgNS, 'g');
+                g.setAttribute('id', `group-${obj.id}`);
+                g.dataset.index = index;
+
+                let shape;
+                 switch (obj.type) {
+                    case 'RECTANGLE':
+                        shape = document.createElementNS(svgNS, 'rect');
+                        Object.entries(obj).forEach(([key, val]) => {
+                             if (!['type', 'id', 'visible'].includes(key)) shape.setAttribute(key, val);
+                        });
+                        break;
+                    case 'CIRCLE':
+                        shape = document.createElementNS(svgNS, 'circle');
+                         Object.entries(obj).forEach(([key, val]) => {
+                             if (!['type', 'id', 'visible'].includes(key)) shape.setAttribute(key, val);
+                        });
+                        break;
+                    case 'TEXT':
+                         shape = document.createElementNS(svgNS, 'text');
+                         shape.setAttribute('x', obj.x);
+                         shape.setAttribute('y', obj.y);
+                         shape.setAttribute('font-size', obj['font-size']);
+                         shape.setAttribute('fill', obj.fill);
+                         shape.setAttribute('font-weight', 'bold');
+                         shape.textContent = obj.text;
+                         break;
+                }
+                
+                if (shape) {
+                    shape.setAttribute('id', obj.id);
+                    shape.style.willChange = 'transform, opacity';
+                    g.appendChild(shape);
+                    dom.canvas.appendChild(g);
+                    
+                    let startTime = null;
+                    const duration = 500; // ms
+                    
+                    const animate = (timestamp) => {
+                        if (!startTime) startTime = timestamp;
+                        const progress = Math.min((timestamp - startTime) / duration, 1);
+                        const easedProgress = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+
+                        shape.style.opacity = easedProgress;
+                        if(obj.type !== 'TEXT'){
+                           shape.style.transform = `scale(${easedProgress})`;
+                           shape.style.transformOrigin = 'center';
+                        }
+                        
+                        if (progress < 1) {
+                            animationFrameId = requestAnimationFrame(animate);
+                        }
+                    };
+                    animationFrameId = requestAnimationFrame(animate);
+                }
+            };
+            
+            const renderPropertiesEditor = (index) => {
+                const object = drawingObjects[index];
+                dom.propertiesEditor.innerHTML = '';
+                
+                Object.entries(object).forEach(([key, value]) => {
+                    if (['type', 'id', 'visible'].includes(key)) return;
+
+                    const propContainer = document.createElement('div');
+                    const label = document.createElement('label');
+                    label.textContent = key;
+                    label.className = 'block text-sm font-medium text-slate-600 mb-1';
+                    
+                    const input = document.createElement('input');
+                    input.className = 'property-input w-full p-2 border border-slate-300 rounded-md';
+                    input.dataset.property = key;
+                    input.dataset.index = index;
+
+                    if (key.includes('color') || key === 'fill') {
+                        input.type = 'color';
+                    } else if (typeof value === 'number' || !isNaN(Number(value))) {
+                         input.type = 'range';
+                         input.min = 0;
+                         input.max = 500;
+                    } else {
+                        input.type = 'text';
+                    }
+                    input.value = value;
+                    
+                    propContainer.appendChild(label);
+                    propContainer.appendChild(input);
+                    dom.propertiesEditor.appendChild(propContainer);
+                });
+                
+                dom.propertiesPanel.classList.remove('hidden');
+            };
+            
+            const resetQuiz = () => {
+                quizScores = [0, 0, 0, 0];
+                matchState = { selectedProp: null, matches: {} };
+                renderQuiz();
+            };
+
+            const renderQuiz = () => {
+                dom.quizSection.innerHTML = '';
+                const quizContainer = document.createElement('div');
+                quizContainer.className = 'bg-white p-8 rounded-xl shadow-lg';
+                quizContainer.innerHTML = `<h2 class="text-3xl font-bold mb-6 text-header-color text-center">Knowledge Check</h2>`;
+
+                quizQuestions.forEach((q, index) => {
+                    const questionWrapper = document.createElement('div');
+                    questionWrapper.className = 'quiz-question mb-8 pb-8 border-b border-slate-200 last:border-b-0 last:mb-0 last:pb-0';
+                    questionWrapper.innerHTML = `<p class="text-lg font-semibold mb-4">${index + 1}. ${q.question}</p>`;
+
+                    switch (q.type) {
+                        case 'mcq':
+                            const optionsContainer = document.createElement('div');
+                            optionsContainer.className = 'space-y-3';
+                            optionsContainer.dataset.qIndex = index;
+                            q.options.forEach(optionText => {
+                                const option = document.createElement('div');
+                                option.className = 'quiz-option p-4 border-2 border-slate-200 rounded-lg cursor-pointer hover:border-indigo-400 hover:bg-indigo-50';
+                                option.textContent = optionText;
+                                optionsContainer.appendChild(option);
+                            });
+                            questionWrapper.appendChild(optionsContainer);
+                            break;
+                        case 'fib':
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            input.dataset.qIndex = index;
+                            input.className = 'fib-input w-full p-3 border-2 border-slate-300 rounded-lg focus:border-indigo-500 focus:ring-indigo-500';
+                            input.placeholder = 'Type your answer here';
+                            questionWrapper.appendChild(input);
+                            break;
+                        case 'task':
+                             const taskFeedback = document.createElement('div');
+                             taskFeedback.id = `task-feedback-${index}`;
+                             taskFeedback.className = 'mt-2 p-3 rounded-lg text-sm hidden';
+                             questionWrapper.appendChild(taskFeedback);
+                             break;
+                        case 'match':
+                            const matchContainer = document.createElement('div');
+                            matchContainer.className = 'relative grid grid-cols-2 gap-8 items-center';
+                            matchContainer.dataset.qIndex = index;
+                            
+                            const propsList = document.createElement('div');
+                            propsList.className = 'space-y-3';
+                            const descsList = document.createElement('div');
+                            descsList.className = 'space-y-3';
+
+                            const shuffledDescs = shuffleArray(q.properties);
+
+                            q.properties.forEach((prop, i) => {
+                                const propEl = document.createElement('div');
+                                propEl.textContent = prop.name;
+                                propEl.dataset.prop = prop.name;
+                                propEl.className = 'match-item match-prop p-3 border-2 border-slate-200 rounded-lg text-center font-semibold';
+                                propsList.appendChild(propEl);
+
+                                const descEl = document.createElement('div');
+                                descEl.textContent = shuffledDescs[i].desc;
+                                descEl.dataset.desc = shuffledDescs[i].desc;
+                                descEl.className = 'match-item match-desc p-3 border-2 border-slate-200 rounded-lg';
+                                descsList.appendChild(descEl);
+                            });
+
+                            const svgCanvas = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                            svgCanvas.id = 'match-svg-canvas';
+
+                            matchContainer.append(propsList, descsList, svgCanvas);
+                            questionWrapper.appendChild(matchContainer);
+                            break;
+                    }
+
+                    const feedbackDiv = document.createElement('div');
+                    feedbackDiv.id = `feedback-${index}`;
+                    feedbackDiv.className = 'mt-3 p-3 rounded-lg text-sm hidden';
+                    questionWrapper.appendChild(feedbackDiv);
+                    quizContainer.appendChild(questionWrapper);
+                });
+                
+                const quizFooter = document.createElement('div');
+                quizFooter.className = 'mt-8 text-center';
+                quizFooter.innerHTML = `<button id="reset-quiz-btn" class="btn-nav bg-slate-500 hover:bg-slate-600 px-6 py-3 rounded-lg font-semibold text-white shadow-md">Reset Quiz</button>`;
+                quizContainer.appendChild(quizFooter);
+                
+                dom.quizSection.appendChild(quizContainer);
+                dom.quizSection.classList.remove('hidden');
+            };
+            
+            const checkTaskAnswer = (qIndex) => {
+                const task = quizQuestions[qIndex];
+                const targetObj = drawingObjects.find(obj => obj.id === task.targetId);
+                const feedbackEl = document.getElementById(`task-feedback-${qIndex}`);
+
+                if (!targetObj || !feedbackEl) return;
+
+                let allCorrect = true;
+                for (const prop in task.properties) {
+                    if (String(targetObj[prop]).toLowerCase() !== String(task.properties[prop]).toLowerCase()) {
+                        allCorrect = false;
+                        break;
+                    }
+                }
+                
+                if(allCorrect) {
+                    quizScores[qIndex] = 1;
+                    feedbackEl.innerHTML = `<span class="font-bold">Task Complete!</span> ${task.feedback}`;
+                    feedbackEl.className = 'mt-2 p-3 rounded-lg text-sm block bg-green-100 text-green-800';
+                } else {
+                     quizScores[qIndex] = 0;
+                     feedbackEl.innerHTML = `<span class="font-bold">Not quite...</span> Keep trying to match the required properties.`;
+                     feedbackEl.className = 'mt-2 p-3 rounded-lg text-sm block bg-amber-100 text-amber-800';
+                }
+            };
+            
+            const runStep = (step) => {
+                const stepConfig = steps[step];
+                dom.instructionsBox.innerHTML = `<p class="font-semibold">Current Step:</p><p>${stepConfig.instruction}</p>`;
+
+                document.querySelectorAll('#drawing-list-container li').forEach(li => li.classList.remove('active'));
+
+                switch (step) {
+                    case 0: // Welcome
+                        drawingObjects.forEach(obj => obj.visible = false);
+                        renderCanvas();
+                        break;
+                    case 1: // Show list
+                        document.getElementById('list-item-0').classList.add('active');
+                        break;
+                    case 2: // Draw rect
+                        animateShapeIn(0);
+                        document.getElementById('list-item-0').classList.add('active');
+                        setTimeout(() => document.getElementById('list-item-1')?.classList.add('active'), 300);
+                        break;
+                    case 3: // Draw circle
+                        drawingObjects[0].visible = true; 
+                        animateShapeIn(1);
+                        document.getElementById('list-item-0').classList.add('active');
+                        document.getElementById('list-item-1').classList.add('active');
+                        setTimeout(() => document.getElementById('list-item-2')?.classList.add('active'), 300);
+                        break;
+                    case 4: // Draw text
+                        drawingObjects[0].visible = true;
+                        drawingObjects[1].visible = true;
+                        renderCanvas(); 
+                        animateShapeIn(2);
+                        document.querySelectorAll('#drawing-list-container li').forEach(li => li.classList.add('active'));
+                        break;
+                    case 5: // Modify properties
+                        dom.propertiesPanel.classList.add('hidden'); 
+                        document.querySelectorAll('#canvas-svg g').forEach(g => g.classList.remove('selected-shape'));
+                        break;
+                     case 6: // Quiz
+                        dom.propertiesPanel.classList.add('hidden');
+                        renderQuiz();
+                        break;
+                    case 7: // Finish
+                        const totalScore = quizScores.reduce((a, b) => Math.max(0, a) + Math.max(0, b), 0);
+                        const finalFeedback = document.createElement('div');
+                        finalFeedback.className = 'bg-white p-8 rounded-xl shadow-lg text-center mt-4';
+                        finalFeedback.innerHTML = `<h3 class="text-2xl font-bold text-indigo-600">Quiz Complete!</h3><p class="text-lg mt-2">You scored ${totalScore} out of ${quizQuestions.length}.</p>`;
+                        dom.quizSection.appendChild(finalFeedback);
+                        break;
+                }
+                updateNavButtons();
+            };
+
+            const updateNavButtons = () => {
+                dom.prevBtn.disabled = currentStep === 0;
+                dom.nextBtn.disabled = currentStep === steps.length - 1;
+                dom.prevBtn.style.opacity = dom.prevBtn.disabled ? '0.5' : '1';
+                dom.nextBtn.style.opacity = dom.nextBtn.disabled ? '0.5' : '1';
+                dom.nextBtn.textContent = (currentStep === steps.length - 2) ? "Finish" : "Next Step";
+            };
+
+            const changeStep = (direction) => {
+                if (isModalOpen) return;
+                const newStep = currentStep + direction;
+                if (newStep >= 0 && newStep < steps.length) {
+                    currentStep = newStep;
+                    if ([0, 1, 2, 3, 4, 5, 6, 7].includes(currentStep)) {
+                        showModal(currentStep);
+                    }
+                    if(!isModalOpen) {
+                        runStep(currentStep);
+                    }
+                }
+            };
+            
+            const resetFullSimulation = () => {
+                currentStep = 0;
+                quizScores = [0, 0, 0, 0];
+                matchState = { selectedProp: null, matches: {} };
+                drawingObjects.forEach((obj, i) => {
+                    const original = [
+                        { type: 'RECTANGLE', id: 'shape-rect', x: 50, y: 50, width: 250, height: 150, fill: '#3b82f6', stroke: '#1e40af', 'stroke-width': 4, visible: false },
+                        { type: 'CIRCLE', id: 'shape-circle', cx: 280, cy: 200, r: 70, fill: '#ef4444', stroke: '#991b1b', 'stroke-width': 4, visible: false },
+                        { type: 'TEXT', id: 'shape-text', x: 70, y: 140, text: 'Vector Art', 'font-size': '32px', fill: '#ffffff', visible: false },
+                    ][i];
+                    Object.assign(obj, original);
+                });
+                
+                dom.quizSection.classList.add('hidden');
+                dom.quizSection.innerHTML = '';
+                dom.propertiesPanel.classList.add('hidden');
+                dom.propertiesEditor.innerHTML = '';
+                document.querySelectorAll('#canvas-svg g').forEach(g => g.classList.remove('selected-shape'));
+
+                renderDrawingList();
+                showModal(0);
+                runStep(0);
+            };
+
+            // --- Event Listeners ---
+            dom.nextBtn.addEventListener('click', () => changeStep(1));
+            dom.prevBtn.addEventListener('click', () => changeStep(-1));
+            dom.resetSimulationBtn.addEventListener('click', resetFullSimulation);
+            dom.modalCloseBtn.addEventListener('click', hideModal);
+
+            document.addEventListener('keydown', (e) => {
+                if (activeInput) return;
+                if (e.key === 'ArrowRight') {
+                    dom.nextBtn.click();
+                } else if (e.key === 'ArrowLeft') {
+                    dom.prevBtn.click();
+                } else if (e.key === 'Escape' && isModalOpen) {
+                    hideModal();
+                }
+            });
+
+            dom.propertiesEditor.addEventListener('input', (e) => {
+                if (e.target.classList.contains('property-input')) {
+                    const index = e.target.dataset.index;
+                    const property = e.target.dataset.property;
+                    let value = e.target.value;
+                    
+                    if (e.target.type !== 'text' && e.target.type !== 'color') {
+                        value = Number(value);
+                    }
+
+                    drawingObjects[index][property] = value;
+                    renderDrawingList();
+                    renderCanvas();
+                    
+                    document.getElementById(`list-item-${index}`).classList.add('active');
+                    document.getElementById(`group-${drawingObjects[index].id}`).classList.add('selected-shape');
+
+                    const taskQuestionIndex = quizQuestions.findIndex(q => q.type === 'task');
+                    if(taskQuestionIndex !== -1 && currentStep === 6) { 
+                        checkTaskAnswer(taskQuestionIndex);
+                    }
+                }
+            });
+            
+            dom.canvas.addEventListener('click', (e) => {
+                if (currentStep !== 5 && currentStep !== 6) return;
+                const group = e.target.closest('g');
+                if (group) {
+                    const index = group.dataset.index;
+                    document.querySelectorAll('#canvas-svg g').forEach(g => g.classList.remove('selected-shape'));
+                    group.classList.add('selected-shape');
+                    renderPropertiesEditor(index);
+                }
+            });
+
+            dom.quizSection.addEventListener('click', (e) => {
+                const target = e.target;
+                if (target.id === 'reset-quiz-btn') {
+                    resetQuiz();
+                    return;
+                }
+
+                const qContainer = target.closest('[data-q-index]');
+                if (!qContainer) return;
+                
+                const qIndex = qContainer.dataset.qIndex;
+                const question = quizQuestions[qIndex];
+
+                if (target.classList.contains('quiz-option')) {
+                    if (quizScores[qIndex] !== 0) return; 
+
+                    const selectedAnswer = target.textContent;
+                    const feedbackEl = document.getElementById(`feedback-${qIndex}`);
+
+                    Array.from(qContainer.children).forEach(child => child.classList.remove('selected'));
+                    target.classList.add('selected');
+                    
+                    if (selectedAnswer === question.correctAnswer) {
+                        quizScores[qIndex] = 1;
+                        target.classList.add('correct');
+                        feedbackEl.textContent = question.feedback;
+                        feedbackEl.className = 'mt-3 p-3 rounded-lg text-sm block bg-green-100 text-green-800';
+                    } else {
+                        quizScores[qIndex] = -1;
+                        target.classList.add('incorrect');
+                        feedbackEl.textContent = 'Not quite, try again or review the simulation.';
+                        feedbackEl.className = 'mt-3 p-3 rounded-lg text-sm block bg-red-100 text-red-800';
+                        Array.from(qContainer.children).find(c => c.textContent === question.correctAnswer).classList.add('correct');
+                    }
+                } else if(target.classList.contains('match-prop') && !target.classList.contains('matched')) {
+                    if(matchState.selectedProp) {
+                        matchState.selectedProp.classList.remove('selected');
+                    }
+                    matchState.selectedProp = target;
+                    target.classList.add('selected');
+                } else if(target.classList.contains('match-desc') && !target.classList.contains('matched') && matchState.selectedProp) {
+                    const propEl = matchState.selectedProp;
+                    const descEl = target;
+                    const propName = propEl.dataset.prop;
+                    const descText = descEl.dataset.desc;
+                    
+                    matchState.matches[propName] = { desc: descText, propEl, descEl };
+
+                    propEl.classList.add('matched');
+                    descEl.classList.add('matched');
+                    propEl.classList.remove('selected');
+                    
+                    drawMatchingLine(propEl, descEl, "temp-line-" + propName);
+
+                    matchState.selectedProp = null;
+
+                    if(Object.keys(matchState.matches).length === question.properties.length) {
+                        evaluateMatchingQuestion(qIndex);
+                    }
+                }
+            });
+            
+            const drawMatchingLine = (el1, el2, id, color = '#60a5fa') => {
+                const svg = document.getElementById('match-svg-canvas');
+                const container = svg.parentElement;
+                const containerRect = container.getBoundingClientRect();
+                const rect1 = el1.getBoundingClientRect();
+                const rect2 = el2.getBoundingClientRect();
+
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("id", id);
+                line.setAttribute("x1", (rect1.right - containerRect.left));
+                line.setAttribute("y1", (rect1.top - containerRect.top + rect1.height / 2));
+                line.setAttribute("x2", (rect2.left - containerRect.left));
+                line.setAttribute("y2", (rect2.top - containerRect.top + rect2.height / 2));
+                line.setAttribute("stroke", color);
+                line.setAttribute("stroke-width", "3");
+                line.style.transition = 'stroke 0.3s ease';
+                svg.appendChild(line);
+            }
+
+            const evaluateMatchingQuestion = (qIndex) => {
+                const question = quizQuestions[qIndex];
+                const correctAnswers = Object.fromEntries(question.properties.map(p => [p.name, p.desc]));
+                let score = 0;
+
+                for(const propName in matchState.matches) {
+                    const userDesc = matchState.matches[propName].desc;
+                    const lineId = "temp-line-" + propName;
+                    const line = document.getElementById(lineId);
+
+                    if(correctAnswers[propName] === userDesc) {
+                        score++;
+                        line.setAttribute('stroke', 'var(--success-color)');
+                    } else {
+                        line.setAttribute('stroke', 'var(--error-color)');
+                    }
+                }
+                
+                const feedbackEl = document.getElementById(`feedback-${qIndex}`);
+                if(score === question.properties.length) {
+                    quizScores[qIndex] = 1;
+                    feedbackEl.innerHTML = "Perfect! All matches are correct.";
+                    feedbackEl.className = 'mt-3 p-3 rounded-lg text-sm block bg-green-100 text-green-800';
+                } else {
+                    quizScores[qIndex] = -1;
+                    feedbackEl.innerHTML = `You got ${score} out of ${question.properties.length} correct. Incorrect matches are shown in red.`;
+                    feedbackEl.className = 'mt-3 p-3 rounded-lg text-sm block bg-red-100 text-red-800';
+                }
+            };
+            
+            dom.quizSection.addEventListener('input', (e) => {
+                if(e.target.classList.contains('fib-input')) {
+                    const qIndex = e.target.dataset.qIndex;
+                    const question = quizQuestions[qIndex];
+                    const feedbackEl = document.getElementById(`feedback-${qIndex}`);
+                    const answer = e.target.value.trim().toLowerCase();
+                    
+                    if (answer.length < (question.correctAnswer.length - 2)) {
+                        feedbackEl.classList.add('hidden');
+                        return;
+                    }
+
+                    if (answer === question.correctAnswer) {
+                        quizScores[qIndex] = 1;
+                        e.target.disabled = true;
+                        feedbackEl.textContent = question.feedback;
+                        feedbackEl.className = 'mt-3 p-3 rounded-lg text-sm block bg-green-100 text-green-800';
+                    } else {
+                        quizScores[qIndex] = -1;
+                        feedbackEl.textContent = 'Incorrect. The correct answer is "' + question.correctAnswer + '".';
+                        feedbackEl.className = 'mt-3 p-3 rounded-lg text-sm block bg-red-100 text-red-800';
+                    }
+                }
+            });
+
+            document.addEventListener('focusin', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    activeInput = true;
+                }
+            });
+            document.addEventListener('focusout', (e) => {
+                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    activeInput = false;
+                }
+            });
+
+            const init = () => {
+                renderDrawingList();
+                showModal(0);
+                runStep(0);
+            };
+
+            init();
+        });
+    </script>
+</body>
+</html>

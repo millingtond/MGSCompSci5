@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Buffer Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --primary-color: #16213e;
+            --secondary-color: #0f3460;
+            --accent-color: #e94560;
+            --text-color: #ffffff;
+            --success-color: #4CAF50;
+            --error-color: #f44336;
+            --info-color: #2196F3;
+            --font-family: 'Inter', sans-serif;
+            --border-radius: 12px;
+            --transition-speed: 0.5s;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            perspective: 1000px;
+        }
+        
+        #app-container {
+            width: 95%;
+            max-width: 1200px;
+            height: 90vh;
+            max-height: 800px;
+            background: rgba(22, 33, 62, 0.85);
+            border-radius: var(--border-radius);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #particle-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        header {
+            padding: 20px;
+            text-align: center;
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        main {
+            flex-grow: 1;
+            position: relative;
+        }
+
+        .step {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity var(--transition-speed) ease-in-out, transform var(--transition-speed) ease-in-out;
+            transform: translateX(50px) scale(0.95);
+        }
+
+        .step.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0) scale(1);
+        }
+        
+        .step.inactive-left {
+            transform: translateX(-50px) scale(0.95);
+        }
+
+        .intro-content {
+            text-align: center;
+            max-width: 700px;
+        }
+        .intro-content h2 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: var(--accent-color);
+        }
+        .intro-content p {
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+
+        .simulation-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .simulation-area {
+            width: 100%;
+            height: 250px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            border-radius: var(--border-radius);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .controls-area {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            width: 100%;
+            padding: 0 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .control-group input[type="range"] {
+            width: 150px;
+        }
+        
+        .interactive-btn {
+             background: var(--info-color);
+             color: var(--text-color);
+             border: none;
+             padding: 8px 15px;
+             border-radius: 8px;
+             cursor: pointer;
+             font-size: 0.9rem;
+             transition: background 0.3s;
+        }
+        .interactive-btn:hover {
+            opacity: 0.9;
+        }
+        .interactive-btn.active {
+            background: var(--accent-color);
+        }
+        #keyboard-input {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid var(--accent-color);
+            background: var(--primary-color);
+            color: var(--text-color);
+            width: 200px;
+        }
+
+
+        .component {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 2;
+        }
+
+        .component-box {
+            width: 100px;
+            height: 100px;
+            background: var(--secondary-color);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            border: 2px solid var(--text-color);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .component-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(233, 69, 96, 0.4);
+        }
+
+        .component-label {
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        .component-speed {
+             margin-top: 5px;
+             font-size: 0.9rem;
+             color: #aaa;
+        }
+
+        .buffer-box {
+            width: auto;
+            min-width: 100px;
+            max-width: 300px;
+            height: 60px;
+            background: transparent;
+            border: 3px solid var(--accent-color);
+            border-radius: var(--border-radius);
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            overflow: hidden;
+            transition: width 0.3s ease;
+        }
+
+        .data-packet {
+            width: 20px;
+            height: 20px;
+            background-color: var(--accent-color);
+            border-radius: 4px;
+            position: absolute;
+            transform: scale(0);
+            transition: all 0.5s ease;
+            opacity: 0;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: monospace;
+            flex-shrink: 0;
+        }
+        .data-packet.in-buffer {
+            position: relative;
+            margin: 0 2px;
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        /* New Sim Styles */
+        .video-buffer-bar {
+            width: 250px;
+            height: 40px;
+            background-color: var(--primary-color);
+            border: 2px solid var(--info-color);
+            border-radius: 8px;
+            padding: 4px;
+            position: relative;
+        }
+        #video-buffer-progress {
+            width: 0%;
+            height: 100%;
+            background-color: var(--info-color);
+            border-radius: 4px;
+            transition: width 0.5s linear;
+        }
+        #video-playback-head {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background-color: var(--accent-color);
+            transition: left 0.5s linear;
+        }
+         #video-player.stutter {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        #keyboard-editor {
+            width: 200px;
+            height: 100px;
+            background-color: #fff;
+            color: #000;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 1.2rem;
+            overflow-wrap: break-word;
+        }
+        #disk-buffer-box {
+             width: 250px;
+             height: 50px;
+        }
+        
+        footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .nav-btn {
+            background: linear-gradient(145deg, var(--secondary-color), var(--primary-color));
+            color: var(--text-color);
+            border: 1px solid var(--accent-color);
+            padding: 12px 25px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .nav-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+        }
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7); display: flex; justify-content: center;
+            align-items: center; z-index: 100; opacity: 0; visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal.visible { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: var(--primary-color); padding: 30px; border-radius: var(--border-radius);
+            width: 90%; max-width: 500px; text-align: center; border: 1px solid var(--accent-color);
+            transform: scale(0.9); transition: transform 0.3s ease;
+        }
+        .modal.visible .modal-content { transform: scale(1); }
+        .modal-content h3 { margin-bottom: 20px; font-size: 1.5rem; }
+        .modal-content p { margin-bottom: 25px; line-height: 1.6; }
+        .modal-close-btn {
+            background: var(--accent-color); color: var(--text-color); border: none;
+            padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 1rem;
+            transition: background 0.3s;
+        }
+        .modal-close-btn:hover { background: #d43d51; }
+        
+        .explanation-text { max-width: 700px; text-align: center; font-size: 1.1rem; line-height: 1.7; margin-top: 15px; }
+        .quiz-container { width: 100%; max-width: 800px; }
+        .quiz-question { margin-bottom: 30px; }
+        .quiz-question p { font-size: 1.2rem; margin-bottom: 15px; font-weight: 600; }
+        .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .quiz-option {
+            background: var(--secondary-color); padding: 15px; border-radius: 8px;
+            border: 2px solid transparent; cursor: pointer; transition: all 0.3s ease;
+        }
+        .quiz-option:hover { border-color: var(--accent-color); transform: translateY(-2px); }
+        .quiz-option.selected { background: #0f3460; border-color: var(--accent-color); }
+        .quiz-option.correct { background: var(--success-color); border-color: var(--success-color); }
+        .quiz-option.incorrect { background: var(--error-color); border-color: var(--error-color); }
+        .text-input {
+            width: 100%; padding: 12px; background: var(--secondary-color);
+            border: 1px solid rgba(255,255,255,0.3); border-radius: 8px;
+            color: var(--text-color); font-size: 1rem; margin-bottom: 15px;
+        }
+        #quiz-results { text-align: center; }
+        #quiz-results h2 { margin-bottom: 20px; font-size: 2rem; }
+        #final-score { font-size: 1.5rem; margin-bottom: 20px; }
+        #reset-btn { background: var(--accent-color); }
+
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <canvas id="particle-canvas"></canvas>
+        <header><h1>Understanding Buffers</h1></header>
+
+        <main>
+            <!-- Step 1: Introduction -->
+            <div id="step-1" class="step active">
+                <div class="intro-content">
+                    <h2>What is a Buffer?</h2>
+                    <p>Welcome to the interactive buffer simulation! In computing, a buffer is a temporary storage area in memory.</p>
+                    <p>It's used to hold data temporarily while it's being moved from one place to another, especially when the sender and receiver have different speeds.</p>
+                    <br><p><strong>Instructions:</strong> Use the "Next" and "Previous" buttons or the left/right arrow keys to navigate. On interactive slides, use the sliders and buttons to see how buffers work in real-time!</p>
+                </div>
+            </div>
+
+            <!-- Step 2: Problem - No Buffer -->
+            <div id="step-2" class="step">
+                <div class="simulation-container">
+                    <h2 class="explanation-text">The Problem: A Bottleneck</h2>
+                    <div id="sim-no-buffer" class="simulation-area">
+                        <div class="component">
+                            <div class="component-box" id="cpu-no-buffer">🖥️</div>
+                            <span class="component-label">Fast CPU</span>
+                            <span class="component-speed">Sends 1 data/sec</span>
+                        </div>
+                        <div class="component">
+                            <div class="component-box" id="printer-no-buffer">🖨️</div>
+                            <span class="component-label">Slow Printer</span>
+                            <span class="component-speed">Prints 1 data/3 sec</span>
+                        </div>
+                    </div>
+                    <p class="explanation-text">A fast CPU sends data directly to a slow printer. This animation shows what happens to data that arrives while the printer is busy.</p>
+                </div>
+            </div>
+
+            <!-- Step 3: Solution - With Buffer -->
+            <div id="step-3" class="step">
+                 <div class="simulation-container">
+                    <h2 class="explanation-text">The Solution: An Interactive Buffer</h2>
+                    <div id="sim-with-buffer" class="simulation-area">
+                        <div class="component">
+                            <div class="component-box" id="cpu-with-buffer">🖥️</div>
+                            <span class="component-label">CPU</span>
+                        </div>
+                        <div class="component">
+                            <div id="buffer-box" class="buffer-box"></div>
+                            <span class="component-label">Buffer</span>
+                        </div>
+                        <div class="component">
+                            <div class="component-box" id="printer-with-buffer">🖨️</div>
+                            <span class="component-label">Printer</span>
+                        </div>
+                    </div>
+                    <div class="controls-area">
+                        <div class="control-group">
+                            <label for="cpu-speed-slider">CPU Send Speed: <span id="cpu-speed-val">1.0</span> pps</label>
+                            <input type="range" id="cpu-speed-slider" min="0.5" max="5" value="1" step="0.1">
+                        </div>
+                        <div class="control-group">
+                            <label for="printer-speed-slider">Printer Process Speed: <span id="printer-speed-val">0.4</span> pps</label>
+                            <input type="range" id="printer-speed-slider" min="0.1" max="5" value="0.4" step="0.1">
+                        </div>
+                        <div class="control-group">
+                            <label for="buffer-size-slider">Buffer Size: <span id="buffer-size-val">5</span> packets</label>
+                            <input type="range" id="buffer-size-slider" min="1" max="10" value="5" step="1">
+                        </div>
+                    </div>
+                    <p class="explanation-text">Control the simulation! Adjust the speeds and buffer size to see how a buffer prevents data loss when the CPU is faster than the printer.</p>
+                </div>
+            </div>
+            
+            <!-- Step 4: Video Streaming -->
+            <div id="step-4" class="step">
+                <div class="simulation-container">
+                    <h2 class="explanation-text">Example 1: Video Streaming</h2>
+                    <div id="sim-video" class="simulation-area">
+                        <div class="component">
+                            <div class="component-box">🌐</div><span class="component-label">Internet</span>
+                        </div>
+                        <div class="component">
+                            <div class="video-buffer-bar">
+                                <div id="video-playback-head"></div>
+                                <div id="video-buffer-progress"></div>
+                            </div><span class="component-label">Video Buffer</span>
+                        </div>
+                        <div class="component">
+                            <div class="component-box" id="video-player">📺</div><span class="component-label">Video Player</span>
+                        </div>
+                    </div>
+                    <div class="controls-area">
+                         <div class="control-group">
+                            <label for="bandwidth-slider">Internet Bandwidth: <span id="bandwidth-val">15</span> Mbps</label>
+                            <input type="range" id="bandwidth-slider" min="1" max="30" value="15" step="1">
+                        </div>
+                    </div>
+                    <p class="explanation-text">The blue bar is downloaded data. The red line is playback. Adjust the bandwidth to see how a slow connection causes buffering.</p>
+                </div>
+            </div>
+
+            <!-- Step 5: Keyboard Input -->
+            <div id="step-5" class="step">
+                <div class="simulation-container">
+                    <h2 class="explanation-text">Example 2: Keyboard Input</h2>
+                    <div id="sim-keyboard" class="simulation-area">
+                         <div class="component">
+                            <div class="component-box">⌨️</div><span class="component-label">Your Typing</span>
+                        </div>
+                        <div class="component">
+                            <div id="keyboard-buffer-box" class="buffer-box"></div><span class="component-label">Keyboard Buffer</span>
+                        </div>
+                        <div class="component">
+                            <div id="keyboard-editor"></div><span class="component-label">Text Editor</span>
+                        </div>
+                    </div>
+                     <div class="controls-area">
+                        <input type="text" id="keyboard-input" placeholder="Type here fast!">
+                     </div>
+                    <p class="explanation-text">Type in the box above. Your keystrokes are buffered and then processed into the editor, ensuring nothing gets lost.</p>
+                </div>
+            </div>
+
+            <!-- Step 6: Disk I/O -->
+            <div id="step-6" class="step">
+                 <div class="simulation-container">
+                    <h2 class="explanation-text">Example 3: Disk I/O</h2>
+                    <div id="sim-disk" class="simulation-area">
+                         <div class="component">
+                            <div class="component-box">⚙️</div><span class="component-label">Application</span>
+                        </div>
+                        <div class="component">
+                            <div id="disk-buffer-box" class="buffer-box"></div><span class="component-label">Disk Buffer</span>
+                        </div>
+                        <div class="component">
+                            <div class="component-box" id="disk-drive">💾</div><span class="component-label">Disk Drive</span>
+                        </div>
+                    </div>
+                    <div class="controls-area">
+                        <div class="control-group">
+                            <label for="disk-flush-slider">Buffer Flush Size: <span id="disk-flush-val">6</span> packets</label>
+                            <input type="range" id="disk-flush-slider" min="2" max="12" value="6" step="1">
+                        </div>
+                    </div>
+                    <p class="explanation-text">Small writes are buffered, then written as one block. Change the flush size to see how it affects write efficiency.</p>
+                </div>
+            </div>
+
+            <!-- Step 7: Quiz -->
+            <div id="step-7" class="step">
+                <div class="quiz-container">
+                    <div id="quiz-questions">
+                        <!-- Questions remain the same -->
+                        <div class="quiz-question" data-question-type="mc"><p>1. What is the primary purpose of a buffer in a computer system?</p><div class="quiz-options"><div class="quiz-option" data-correct="true">To temporarily store data to compensate for differences in speed between two devices or processes.</div><div class="quiz-option">To permanently store important operating system files.</div><div class="quiz-option">To increase the processing speed of the CPU.</div><div class="quiz-option">To check for viruses in data being transferred.</div></div></div>
+                        <div class="quiz-question" data-question-type="text"><p>2. In the context of data transfer, what is a "bottleneck"?</p><input type="text" class="text-input" placeholder="Type your answer here..."><div class="feedback" style="display:none; margin-top: 10px;">A component that slows down overall system performance because it cannot keep up with the rate of data it receives.</div></div>
+                        <div class="quiz-question" data-question-type="mc"><p>3. Which of these is a common real-world application of buffering?</p><div class="quiz-options"><div class="quiz-option">Calculating complex mathematical equations.</div><div class="quiz-option" data-correct="true">Streaming a video on the internet.</div><div class="quiz-option">Running an antivirus scan on your hard drive.</div><div class="quiz-option">Compiling a computer program.</div></div></div>
+                        <div class="quiz-question" data-question-type="text"><p>4. What problem does a buffer solve in communication between a fast CPU and a slow peripheral device like a printer?</p><input type="text" class="text-input" placeholder="Type your answer here..."><div class="feedback" style="display:none; margin-top: 10px;">It prevents data loss and allows the CPU to continue with other tasks without waiting for the slow device, resolving the synchronisation issue.</div></div>
+                    </div>
+                    <div id="quiz-results" style="display:none;">
+                        <h2>Quiz Complete!</h2><p id="final-score">Your score: 0 / 4</p><button id="reset-btn" class="nav-btn">Try Again</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <button id="prev-btn" class="nav-btn">← Previous Step</button>
+            <div id="step-indicator">Step 1 / 7</div>
+            <button id="next-btn" class="nav-btn">Next Step →</button>
+        </footer>
+    </div>
+    
+    <div id="info-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title">Heads Up!</h3>
+            <p id="modal-text">Some text here.</p>
+            <button id="modal-close-btn" class="modal-close-btn">Continue</button>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Caching ---
+        const appContainer = document.getElementById('app-container');
+        const steps = document.querySelectorAll('.step');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const stepIndicator = document.getElementById('step-indicator');
+        const infoModal = document.getElementById('info-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalText = document.getElementById('modal-text');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        // --- State ---
+        let currentStep = 0;
+        let simulationIntervals = [];
+        let simulationEventListeners = [];
+        let quizScore = 0;
+        let quizAnswers = [null, null, null, null];
+        const totalQuestions = 4;
+        let modalCallback = null;
+        let animationPaused = false;
+
+        // --- Particle Background ---
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        const particleCount = 50;
+        function resizeCanvas() { canvas.width = appContainer.clientWidth; canvas.height = appContainer.clientHeight; }
+        class Particle {
+            constructor() { this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height; this.size = Math.random() * 2 + 1; this.speedX = Math.random() * 1 - 0.5; this.speedY = Math.random() * 1 - 0.5; this.color = 'rgba(233, 69, 96, 0.5)'; }
+            update() { this.x += this.speedX; this.y += this.speedY; if (this.size > 0.1) this.size -= 0.01; if (this.x < 0 || this.x > canvas.width) this.speedX *= -1; if (this.y < 0 || this.y > canvas.height) this.speedY *= -1; }
+            draw() { ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); }
+        }
+        function initParticles() { particles = []; for (let i = 0; i < particleCount; i++) { particles.push(new Particle()); } }
+        function animateParticles() { ctx.clearRect(0, 0, canvas.width, canvas.height); particles.forEach(p => { p.update(); p.draw(); }); requestAnimationFrame(animateParticles); }
+        
+        // --- Navigation ---
+        function updateStep() {
+            steps.forEach((step, index) => {
+                step.classList.remove('active', 'inactive-left');
+                if (index === currentStep) { step.classList.add('active'); } 
+                else if(index < currentStep) { step.classList.add('inactive-left'); }
+            });
+            stepIndicator.textContent = `Step ${currentStep + 1} / ${steps.length}`;
+            prevBtn.disabled = currentStep === 0;
+            nextBtn.disabled = currentStep === steps.length - 1;
+
+            stopCurrentSimulation();
+            if (currentStep === 1) { showModal('Bottleneck Ahead', 'The fast CPU sends data to the slow printer at a fixed rate. Watch how data is lost because the printer can\'t keep up.', startNoBufferSim); } 
+            else if (currentStep === 2) { startWithBufferSim(); }
+            else if (currentStep === 3) { startVideoSim(); }
+            else if (currentStep === 4) { startKeyboardSim(); }
+            else if (currentStep === 5) { startDiskIOSim(); }
+            else if (currentStep === 6) { setupQuiz(); }
+        }
+        
+        function navigate(direction) {
+            const newStep = currentStep + direction;
+            if (newStep >= 0 && newStep < steps.length) { currentStep = newStep; updateStep(); }
+        }
+
+        // --- Modal ---
+        function showModal(title, text, callback = null) {
+            animationPaused = true;
+            modalTitle.textContent = title;
+            modalText.textContent = text;
+            infoModal.classList.add('visible');
+            modalCallback = callback;
+        }
+        function hideModal() {
+            infoModal.classList.remove('visible');
+            animationPaused = false;
+            if (modalCallback) { modalCallback(); modalCallback = null; }
+        }
+
+        // --- Simulation Logic ---
+        function stopCurrentSimulation() {
+            simulationIntervals.forEach(clearInterval);
+            simulationIntervals = [];
+            simulationEventListeners.forEach(e => e.element.removeEventListener(e.type, e.listener));
+            simulationEventListeners = [];
+            const leftoverPackets = document.querySelectorAll('.data-packet-sim');
+            leftoverPackets.forEach(p => p.remove());
+            document.querySelectorAll('.buffer-box').forEach(box => box.innerHTML = '');
+            if(document.getElementById('video-buffer-progress')) document.getElementById('video-buffer-progress').style.width = '0%';
+            if(document.getElementById('keyboard-editor')) document.getElementById('keyboard-editor').textContent = '';
+        }
+
+        function addSimEventListener(element, type, listener) {
+            element.addEventListener(type, listener);
+            simulationEventListeners.push({ element, type, listener });
+        }
+        
+        function startNoBufferSim() {
+            stopCurrentSimulation();
+            const simArea = document.getElementById('sim-no-buffer');
+            const cpu = document.getElementById('cpu-no-buffer');
+            const printer = document.getElementById('printer-no-buffer');
+            let isPrinterBusy = false;
+
+            const interval = setInterval(() => {
+                if (animationPaused) return;
+                const packet = document.createElement('div');
+                packet.className = 'data-packet data-packet-sim';
+                simArea.appendChild(packet);
+                
+                const startPos = cpu.getBoundingClientRect();
+                const endPos = printer.getBoundingClientRect();
+                const containerPos = simArea.getBoundingClientRect();
+                packet.style.left = `${startPos.left - containerPos.left + startPos.width / 2 - 10}px`;
+                packet.style.top = `${startPos.top - containerPos.top + startPos.height / 2 - 10}px`;
+                packet.style.opacity = '1';
+                packet.style.transform = 'scale(1)';
+
+                setTimeout(() => { packet.style.left = `${endPos.left - containerPos.left + endPos.width / 2 - 10}px`; }, 100);
+                setTimeout(() => {
+                    if (isPrinterBusy) {
+                        packet.style.background = 'var(--error-color)';
+                        packet.style.transform = 'scale(0) rotate(180deg)';
+                    } else {
+                        isPrinterBusy = true;
+                        packet.style.background = 'var(--success-color)';
+                        setTimeout(() => { isPrinterBusy = false; }, 3000); // Printer takes 3s
+                    }
+                    setTimeout(() => packet.remove(), 500);
+                }, 1100);
+            }, 1000); // CPU sends data every 1s
+            simulationIntervals.push(interval);
+        }
+
+        function startWithBufferSim() {
+            stopCurrentSimulation();
+            const bufferBox = document.getElementById('buffer-box');
+            const cpuSlider = document.getElementById('cpu-speed-slider');
+            const printerSlider = document.getElementById('printer-speed-slider');
+            const bufferSizeSlider = document.getElementById('buffer-size-slider');
+            const cpuSpeedVal = document.getElementById('cpu-speed-val');
+            const printerSpeedVal = document.getElementById('printer-speed-val');
+            const bufferSizeVal = document.getElementById('buffer-size-val');
+
+            let config = {
+                cpuPps: parseFloat(cpuSlider.value),
+                printerPps: parseFloat(printerSlider.value),
+                bufferSize: parseInt(bufferSizeSlider.value)
+            };
+
+            const updateCpu = () => { config.cpuPps = parseFloat(cpuSlider.value); cpuSpeedVal.textContent = config.cpuPps.toFixed(1); };
+            const updatePrinter = () => { config.printerPps = parseFloat(printerSlider.value); printerSpeedVal.textContent = config.printerPps.toFixed(1); };
+            const updateBufferSize = () => { config.bufferSize = parseInt(bufferSizeSlider.value); bufferSizeVal.textContent = config.bufferSize; bufferBox.style.width = `${config.bufferSize * 24 + 10}px`; };
+            
+            addSimEventListener(cpuSlider, 'input', updateCpu);
+            addSimEventListener(printerSlider, 'input', updatePrinter);
+            addSimEventListener(bufferSizeSlider, 'input', updateBufferSize);
+            updateBufferSize();
+
+            let cpuInterval, printerInterval;
+            const createIntervals = () => {
+                clearInterval(cpuInterval);
+                clearInterval(printerInterval);
+
+                cpuInterval = setInterval(() => {
+                    if (bufferBox.children.length < config.bufferSize) {
+                        const packet = document.createElement('div');
+                        packet.className = 'data-packet in-buffer';
+                        bufferBox.appendChild(packet);
+                    }
+                }, 1000 / config.cpuPps);
+
+                printerInterval = setInterval(() => {
+                    if (bufferBox.children.length > 0) {
+                        bufferBox.firstElementChild.remove();
+                    }
+                }, 1000 / config.printerPps);
+                simulationIntervals = [cpuInterval, printerInterval];
+            };
+            cpuSlider.addEventListener('change', createIntervals);
+            printerSlider.addEventListener('change', createIntervals);
+            createIntervals();
+        }
+        
+        function startVideoSim() {
+            stopCurrentSimulation();
+            const bufferProgress = document.getElementById('video-buffer-progress');
+            const playbackHead = document.getElementById('video-playback-head');
+            const player = document.getElementById('video-player');
+            const bandwidthSlider = document.getElementById('bandwidth-slider');
+            const bandwidthVal = document.getElementById('bandwidth-val');
+            
+            let bufferLevel = 0, playbackPos = 0;
+            let bandwidth = parseInt(bandwidthSlider.value);
+
+            const updateBandwidth = () => {
+                bandwidth = parseInt(bandwidthSlider.value);
+                bandwidthVal.textContent = bandwidth;
+            };
+            addSimEventListener(bandwidthSlider, 'input', updateBandwidth);
+            updateBandwidth();
+
+            const update = () => {
+                // Download rate is proportional to bandwidth.
+                // The '0.8' is a scaling factor to make the simulation look good.
+                let downloadRate = bandwidth * 0.8;
+                bufferLevel = Math.min(100, bufferLevel + downloadRate);
+                
+                // Playback consumes buffer at a constant rate
+                const playbackRate = 5; 
+                if (bufferLevel > playbackPos + playbackRate) {
+                    playbackPos = Math.min(bufferLevel, playbackPos + playbackRate);
+                } else {
+                    // Stutter if playback catches up to download
+                    player.classList.add('stutter');
+                    setTimeout(() => player.classList.remove('stutter'), 500);
+                }
+
+                bufferProgress.style.width = `${bufferLevel}%`;
+                playbackHead.style.left = `${playbackPos}%`;
+                
+                // Reset video when it finishes
+                if(playbackPos >= 100) { 
+                    bufferLevel = 0; 
+                    playbackPos = 0; 
+                }
+            };
+            simulationIntervals.push(setInterval(update, 500));
+        }
+        
+        function startKeyboardSim() {
+            stopCurrentSimulation();
+            const bufferBox = document.getElementById('keyboard-buffer-box');
+            const editor = document.getElementById('keyboard-editor');
+            const input = document.getElementById('keyboard-input');
+            input.value = '';
+
+            const onInput = (e) => {
+                const char = e.target.value.slice(-1);
+                if (bufferBox.children.length < 10) {
+                    const packet = document.createElement('div');
+                    packet.className = 'data-packet in-buffer';
+                    packet.textContent = char;
+                    bufferBox.appendChild(packet);
+                }
+                e.target.value = e.target.value.substring(0, e.target.value.length -1);
+            };
+            addSimEventListener(input, 'input', onInput);
+
+            const processingInterval = setInterval(() => {
+                if(bufferBox.children.length > 0) {
+                    const packet = bufferBox.firstElementChild;
+                    editor.textContent += packet.textContent;
+                    packet.remove();
+                    if(editor.textContent.length > 30) editor.textContent = editor.textContent.substring(10);
+                }
+            }, 150);
+            simulationIntervals.push(processingInterval);
+            input.focus();
+        }
+        
+        function startDiskIOSim() {
+            stopCurrentSimulation();
+            const bufferBox = document.getElementById('disk-buffer-box');
+            const simArea = document.getElementById('sim-disk');
+            const disk = document.getElementById('disk-drive');
+            const flushSlider = document.getElementById('disk-flush-slider');
+            const flushVal = document.getElementById('disk-flush-val');
+            let flushSize = parseInt(flushSlider.value);
+
+            const updateFlushSize = () => { flushSize = parseInt(flushSlider.value); flushVal.textContent = flushSize; };
+            addSimEventListener(flushSlider, 'input', updateFlushSize);
+            updateFlushSize();
+            
+            const appInterval = setInterval(() => {
+                if (bufferBox.children.length >= flushSize) {
+                    bufferBox.innerHTML = '';
+                    const bigPacket = document.createElement('div');
+                    bigPacket.className = 'data-packet data-packet-sim';
+                    bigPacket.textContent = 'BLOCK';
+                    simArea.appendChild(bigPacket);
+                    bigPacket.style.background = 'var(--info-color)';
+                    const startPos = bufferBox.getBoundingClientRect();
+                    const endPos = disk.getBoundingClientRect();
+                    const containerPos = simArea.getBoundingClientRect();
+                    bigPacket.style.left = `${startPos.left - containerPos.left + startPos.width / 2 - 20}px`;
+                    bigPacket.style.top = `${startPos.top - containerPos.top + startPos.height / 2 - 10}px`;
+                    bigPacket.style.opacity = '1';
+                    bigPacket.style.transform = 'scale(1.2)';
+                    setTimeout(() => { bigPacket.style.left = `${endPos.left - containerPos.left + endPos.width / 2 - 20}px`; }, 100);
+                    setTimeout(() => { bigPacket.remove() }, 1100);
+                } else {
+                    const packet = document.createElement('div');
+                    packet.className = 'data-packet in-buffer';
+                    packet.style.width = '15px';
+                    packet.style.height = '15px';
+                    packet.style.background = 'var(--success-color)';
+                    bufferBox.appendChild(packet);
+                }
+            }, 400);
+            simulationIntervals.push(appInterval);
+        }
+
+        // --- Quiz Logic ---
+        function setupQuiz() {
+            quizScore = 0;
+            quizAnswers = Array(totalQuestions).fill(null);
+            document.getElementById('quiz-questions').style.display = 'block';
+            document.getElementById('quiz-results').style.display = 'none';
+            document.querySelectorAll('.quiz-option').forEach(opt => { opt.classList.remove('selected', 'correct', 'incorrect'); opt.style.pointerEvents = 'auto'; });
+            document.querySelectorAll('.text-input').forEach(input => { input.value = ''; input.disabled = false; const feedback = input.nextElementSibling; if(feedback){ feedback.style.display = 'none'; feedback.classList.remove('correct', 'incorrect'); } });
+            nextBtn.disabled = true;
+        }
+        function checkAllAnswered() { if (quizAnswers.every(answer => answer !== null)) { showQuizResults(); } }
+        function showQuizResults() {
+            document.getElementById('quiz-questions').style.display = 'none';
+            document.getElementById('quiz-results').style.display = 'block';
+            document.getElementById('final-score').textContent = `Your score: ${quizScore} / ${totalQuestions}`;
+            nextBtn.disabled = false;
+        }
+        document.getElementById('quiz-questions').addEventListener('click', (e) => {
+            if (e.target.classList.contains('quiz-option')) {
+                const questionEl = e.target.closest('.quiz-question');
+                const questionIndex = Array.from(document.querySelectorAll('.quiz-question')).indexOf(questionEl);
+                if (quizAnswers[questionIndex] !== null) return;
+                const isCorrect = e.target.dataset.correct === 'true';
+                quizAnswers[questionIndex] = isCorrect;
+                if (isCorrect) { quizScore++; e.target.classList.add('correct'); } 
+                else { e.target.classList.add('incorrect'); const correctOption = questionEl.querySelector('[data-correct="true"]'); if (correctOption) correctOption.classList.add('correct'); }
+                questionEl.querySelectorAll('.quiz-option').forEach(opt => { opt.style.pointerEvents = 'none'; });
+                checkAllAnswered();
+            }
+        });
+        document.getElementById('quiz-questions').addEventListener('input', (e) => {
+            if (e.target.classList.contains('text-input')) {
+                const questionEl = e.target.closest('.quiz-question');
+                const questionIndex = Array.from(document.querySelectorAll('.quiz-question')).indexOf(questionEl);
+                const feedbackEl = e.target.nextElementSibling;
+                if (e.target.value.length > 15 && quizAnswers[questionIndex] === null) {
+                    feedbackEl.style.display = 'block'; e.target.disabled = true; quizAnswers[questionIndex] = true;
+                    const answer = e.target.value.toLowerCase(); const keywordsQ2 = ['slow', 'component', 'performance', 'rate']; const keywordsQ4 = ['loss', 'waits', 'synchronisation', 'cpu']; let correctKeywords = 0;
+                    if(questionIndex === 1) { keywordsQ2.forEach(k => { if(answer.includes(k)) correctKeywords++; }); if(correctKeywords >= 2) quizScore++; } 
+                    else if (questionIndex === 3) { keywordsQ4.forEach(k => { if(answer.includes(k)) correctKeywords++; }); if(correctKeywords >= 2) quizScore++; }
+                    checkAllAnswered();
+                }
+            }
+        });
+
+        // --- Event Listeners ---
+        prevBtn.addEventListener('click', () => navigate(-1));
+        nextBtn.addEventListener('click', () => navigate(1));
+        document.addEventListener('keydown', (e) => { if (e.target.tagName === 'INPUT') return; if (e.key === 'ArrowRight' && !nextBtn.disabled) nextBtn.click(); if (e.key === 'ArrowLeft' && !prevBtn.disabled) prevBtn.click(); });
+        modalCloseBtn.addEventListener('click', hideModal);
+        document.getElementById('reset-btn').addEventListener('click', setupQuiz);
+        window.addEventListener('resize', () => { resizeCanvas(); initParticles(); });
+
+        // --- Initialisation ---
+        resizeCanvas();
+        initParticles();
+        animateParticles();
+        updateStep();
+    });
+    </script>
+</body>
+</html>

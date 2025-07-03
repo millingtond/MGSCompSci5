@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Binary Addition Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #10b981;
+            --background-color: #111827;
+            --card-bg-color: rgba(31, 41, 55, 0.5);
+            --text-color: #e5e7eb;
+            --text-muted-color: #9ca3af;
+            --border-color: rgba(75, 85, 99, 0.5);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+        }
+
+        .glassmorphism {
+            background: var(--card-bg-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+        }
+
+        .animated-gradient-bg {
+            background: linear-gradient(-45deg, #4f46e5, #10b981, #ef4444, #3b82f6);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            will-change: background-position;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .binary-grid {
+            display: grid;
+            /* 1 label + 1 overflow + 8 bits = 10 columns */
+            grid-template-columns: repeat(10, 1fr);
+            gap: 0.5rem;
+            align-items: center;
+            font-family: 'monospace';
+            font-size: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .binary-grid {
+                grid-template-columns: repeat(10, minmax(0, 1fr));
+                gap: 0.25rem;
+                font-size: 1rem;
+            }
+        }
+
+        .bit-box {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border-radius: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateZ(0); /* GPU acceleration */
+        }
+        
+        .bit-label {
+            font-size: 0.8rem;
+            color: var(--text-muted-color);
+            text-align: right;
+            padding-right: 0.5rem;
+            grid-column: 1 / 2;
+        }
+
+        .highlight-col {
+            background-color: rgba(79, 70, 229, 0.3);
+            box-shadow: 0 0 15px rgba(79, 70, 229, 0.5);
+        }
+
+        .result-input {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: 2px dashed var(--border-color);
+            color: var(--text-color);
+            text-align: center;
+            font-family: 'monospace';
+            font-size: 1.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .result-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background-color: rgba(79, 70, 229, 0.1);
+        }
+        
+        @media (max-width: 768px) {
+            .result-input {
+                font-size: 1rem;
+            }
+        }
+
+        .correct-answer {
+            border-color: var(--secondary-color) !important;
+            box-shadow: 0 0 10px var(--secondary-color);
+        }
+
+        .incorrect-answer {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 10px #ef4444;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, var(--primary-color), #6366f1);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            transform: translateZ(0);
+            position: relative;
+            overflow: hidden;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(79, 70, 229, 0.4);
+        }
+        
+        .btn-secondary {
+            background-color: var(--border-color);
+            color: var(--text-color);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-secondary:hover {
+            background-color: rgba(107, 114, 128, 0.5);
+        }
+        
+        .btn-primary .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7);
+            transform: scale(0);
+            animation: ripple 600ms linear;
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0s 0.3s;
+        }
+
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-content {
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
+        
+        .section {
+            display: none;
+        }
+        
+        .section.active {
+            display: block;
+        }
+        
+        .progress-bar-container {
+            width: 100%;
+            background-color: var(--border-color);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            width: 0%;
+            background-color: var(--secondary-color);
+            border-radius: 0.5rem;
+            transition: width 0.5s ease;
+        }
+
+        .quiz-option {
+            cursor: pointer;
+            border: 2px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+        
+        .quiz-option:hover {
+            border-color: var(--primary-color);
+            background-color: rgba(79, 70, 229, 0.1);
+        }
+        
+        .quiz-option.selected {
+            border-color: var(--primary-color);
+            background-color: rgba(79, 70, 229, 0.2);
+        }
+        
+        #drawing-area {
+            position: relative;
+            width: 100%;
+            height: 250px;
+            touch-action: none;
+        }
+
+        #quiz-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-8">
+        <!-- HEADER -->
+        <header class="text-center p-6 rounded-2xl animated-gradient-bg">
+            <h1 class="text-4xl md:text-5xl font-bold text-white shadow-lg">Binary Addition Simulation</h1>
+            <p class="text-lg text-indigo-100 mt-2">A-Level Computer Science (Cambridge 9618)</p>
+        </header>
+
+        <!-- MAIN CONTENT AREA -->
+        <main id="main-content" class="glassmorphism p-6 md:p-8">
+            
+            <!-- INTRODUCTION SECTION -->
+            <section id="intro-section" class="section active">
+                <h2 class="text-2xl font-bold text-emerald-300 mb-4">Welcome!</h2>
+                <p class="text-lg mb-4">This simulation will guide you through the fundamentals of binary addition, a core concept in computer science.</p>
+                <p class="mb-6">You'll learn how to add two 8-bit binary numbers, handle carries, and understand potential issues like overflow errors. Follow the steps, interact with the simulation, and then test your knowledge with the quiz.</p>
+                <div class="text-center">
+                    <button id="start-sim-btn" class="btn-primary">Start Simulation</button>
+                </div>
+            </section>
+
+            <!-- SIMULATION SECTION -->
+            <section id="sim-section" class="section">
+                <div id="sim-container" class="space-y-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-emerald-300 mb-2">Step-by-Step Addition</h2>
+                        <p id="instruction-text" class="text-lg h-12">Let's begin! We'll add the two numbers below, starting from the rightmost column (Least Significant Bit).</p>
+                    </div>
+
+                    <!-- PROGRESS BAR -->
+                    <div class="progress-bar-container">
+                        <div id="sim-progress-bar" class="progress-bar"></div>
+                    </div>
+
+                    <!-- BINARY ADDITION GRID -->
+                    <div id="binary-adder" class="space-y-2">
+                        <!-- Carry Row -->
+                        <div class="binary-grid">
+                            <div class="bit-label">Carry</div>
+                            <div id="carry-8" class="bit-box"></div>
+                            <div id="carry-7" class="bit-box"></div>
+                            <div id="carry-6" class="bit-box"></div>
+                            <div id="carry-5" class="bit-box"></div>
+                            <div id="carry-4" class="bit-box"></div>
+                            <div id="carry-3" class="bit-box"></div>
+                            <div id="carry-2" class="bit-box"></div>
+                            <div id="carry-1" class="bit-box"></div>
+                            <div class="bit-box opacity-0 pointer-events-none"></div>
+                        </div>
+
+                        <!-- Number A -->
+                        <div class="binary-grid">
+                            <div class="bit-label">Num A</div>
+                            <div class="bit-box opacity-0 pointer-events-none"></div>
+                            <div id="numA-7" class="bit-box"></div>
+                            <div id="numA-6" class="bit-box"></div>
+                            <div id="numA-5" class="bit-box"></div>
+                            <div id="numA-4" class="bit-box"></div>
+                            <div id="numA-3" class="bit-box"></div>
+                            <div id="numA-2" class="bit-box"></div>
+                            <div id="numA-1" class="bit-box"></div>
+                            <div id="numA-0" class="bit-box"></div>
+                        </div>
+
+                        <!-- Number B -->
+                        <div class="binary-grid">
+                            <div class="bit-label">+ Num B</div>
+                            <div class="bit-box opacity-0 pointer-events-none"></div>
+                            <div id="numB-7" class="bit-box"></div>
+                            <div id="numB-6" class="bit-box"></div>
+                            <div id="numB-5" class="bit-box"></div>
+                            <div id="numB-4" class="bit-box"></div>
+                            <div id="numB-3" class="bit-box"></div>
+                            <div id="numB-2" class="bit-box"></div>
+                            <div id="numB-1" class="bit-box"></div>
+                            <div id="numB-0" class="bit-box"></div>
+                        </div>
+
+                        <!-- Separator -->
+                        <hr class="border-t-2 border-gray-600 my-2">
+
+                        <!-- Result Row -->
+                        <div class="binary-grid">
+                            <div class="bit-label">Result</div>
+                            <div class="bit-box opacity-0 pointer-events-none"></div>
+                            <div id="res-7" class="bit-box"><input type="text" maxlength="1" id="res-input-7" class="result-input" disabled></div>
+                            <div id="res-6" class="bit-box"><input type="text" maxlength="1" id="res-input-6" class="result-input" disabled></div>
+                            <div id="res-5" class="bit-box"><input type="text" maxlength="1" id="res-input-5" class="result-input" disabled></div>
+                            <div id="res-4" class="bit-box"><input type="text" maxlength="1" id="res-input-4" class="result-input" disabled></div>
+                            <div id="res-3" class="bit-box"><input type="text" maxlength="1" id="res-input-3" class="result-input" disabled></div>
+                            <div id="res-2" class="bit-box"><input type="text" maxlength="1" id="res-input-2" class="result-input" disabled></div>
+                            <div id="res-1" class="bit-box"><input type="text" maxlength="1" id="res-input-1" class="result-input" disabled></div>
+                            <div id="res-0" class="bit-box"><input type="text" maxlength="1" id="res-input-0" class="result-input" disabled></div>
+                        </div>
+                    </div>
+                    
+                    <!-- NAVIGATION -->
+                    <div class="flex justify-between items-center pt-4">
+                        <button id="prev-step-btn" class="btn-primary opacity-50" disabled>Previous Step</button>
+                        <span class="text-sm text-gray-400">Use Left/Right Arrow Keys</span>
+                        <button id="next-step-btn" class="btn-primary">Next Step</button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- QUIZ SECTION -->
+            <section id="quiz-section" class="section">
+                 <div id="quiz-container">
+                    <h2 class="text-2xl font-bold text-emerald-300 mb-4">Test Your Knowledge</h2>
+                    <div id="quiz-content" class="space-y-4">
+                        <!-- Question will be loaded here -->
+                    </div>
+                    <div class="flex justify-between items-center mt-6">
+                        <span id="quiz-progress" class="text-gray-400"></span>
+                        <button id="submit-quiz-btn" class="btn-primary">Submit Answer</button>
+                    </div>
+                 </div>
+                 <div id="quiz-results" class="hidden text-center space-y-4">
+                     <h2 class="text-3xl font-bold text-emerald-300">Quiz Complete!</h2>
+                     <p class="text-xl" id="quiz-score"></p>
+                     <div id="quiz-feedback-container" class="text-left space-y-2 max-w-2xl mx-auto"></div>
+                     <button id="restart-all-btn" class="btn-primary mt-4">Restart Simulation</button>
+                 </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL -->
+    <div id="info-modal" class="modal">
+        <div class="modal-content glassmorphism max-w-lg w-full p-6 mx-4">
+            <h3 id="modal-title" class="text-xl font-bold text-emerald-300 mb-4"></h3>
+            <p id="modal-text" class="mb-6"></p>
+            <div class="text-right">
+                <button id="modal-close-btn" class="btn-primary">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Caching ---
+            const introSection = document.getElementById('intro-section');
+            const simSection = document.getElementById('sim-section');
+            const quizSection = document.getElementById('quiz-section');
+            const sections = { intro: introSection, sim: simSection, quiz: quizSection };
+
+            const startSimBtn = document.getElementById('start-sim-btn');
+            const prevStepBtn = document.getElementById('prev-step-btn');
+            const nextStepBtn = document.getElementById('next-step-btn');
+            const restartAllBtn = document.getElementById('restart-all-btn');
+
+            const instructionText = document.getElementById('instruction-text');
+            const simProgressBar = document.getElementById('sim-progress-bar');
+            
+            const modal = document.getElementById('info-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalText = document.getElementById('modal-text');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+
+            // --- State Management ---
+            let numA, numB;
+            let currentStep = -1;
+            const totalSteps = 9; // 8 bits + finish
+            let results = Array(8).fill(null);
+            let carries = Array(9).fill(0);
+            let userAnswers = Array(8).fill('');
+            let simActive = false;
+
+            const quizContainer = document.getElementById('quiz-container');
+            const quizContent = document.getElementById('quiz-content');
+            const submitQuizBtn = document.getElementById('submit-quiz-btn');
+            const quizProgress = document.getElementById('quiz-progress');
+            const quizResults = document.getElementById('quiz-results');
+            const quizScoreEl = document.getElementById('quiz-score');
+            const quizFeedbackContainer = document.getElementById('quiz-feedback-container');
+
+            let currentQuestionIndex = 0;
+            let quizScore = 0;
+            let quizQuestions = [];
+            let quizUserAnswers = [];
+            let canvas, ctx, drawing = false, lastPos;
+
+
+            // --- Utility Functions ---
+            const setActiveSection = (sectionName) => {
+                Object.values(sections).forEach(s => s.classList.remove('active'));
+                if (sections[sectionName]) {
+                    sections[sectionName].classList.add('active');
+                }
+            };
+            
+            const createRipple = (event) => {
+                const button = event.currentTarget;
+                const circle = document.createElement("span");
+                const diameter = Math.max(button.clientWidth, button.clientHeight);
+                const radius = diameter / 2;
+
+                circle.style.width = circle.style.height = `${diameter}px`;
+                circle.style.left = `${event.clientX - (button.offsetLeft + radius)}px`;
+                circle.style.top = `${event.clientY - (button.offsetTop + radius)}px`;
+                circle.classList.add("ripple");
+
+                const ripple = button.getElementsByClassName("ripple")[0];
+                if (ripple) {
+                    ripple.remove();
+                }
+                button.appendChild(circle);
+            }
+
+            const showModal = (title, text) => {
+                modalTitle.textContent = title;
+                modalText.innerHTML = text; // Use innerHTML to allow for bolding etc.
+                modal.classList.add('active');
+                return new Promise(resolve => {
+                    modalCloseBtn.onclick = () => {
+                        modal.classList.remove('active');
+                        resolve();
+                    };
+                });
+            }
+
+            // --- Simulation Logic ---
+            const generateBinaryNumbers = () => {
+                const a = Math.floor(Math.random() * 156) + 50; // 50 to 205
+                const b = Math.floor(Math.random() * 156) + 50; // 50 to 205
+                numA = a.toString(2).padStart(8, '0');
+                numB = b.toString(2).padStart(8, '0');
+            };
+
+            const displayNumbers = () => {
+                for (let i = 0; i < 8; i++) {
+                    document.getElementById(`numA-${i}`).textContent = numA[7 - i];
+                    document.getElementById(`numB-${i}`).textContent = numB[7 - i];
+                }
+            };
+
+            const calculateCorrectAnswers = () => {
+                let carry = 0;
+                for (let i = 0; i < 8; i++) {
+                    const aBit = parseInt(numA[7 - i]);
+                    const bBit = parseInt(numB[7 - i]);
+                    const sum = aBit + bBit + carry;
+                    results[i] = sum % 2;
+                    carry = Math.floor(sum / 2);
+                    carries[i + 1] = carry;
+                }
+            };
+            
+            const updateUIForStep = (isSteppingBack = false) => {
+                simActive = false;
+                document.querySelectorAll('.highlight-col').forEach(el => el.classList.remove('highlight-col'));
+                simProgressBar.style.width = `${(currentStep / (totalSteps -1)) * 100}%`;
+
+                if (currentStep >= 0 && currentStep < 8) {
+                    const colElements = [
+                        document.getElementById(`carry-${currentStep + 1}`),
+                        document.getElementById(`carry-${currentStep}`),
+                        document.getElementById(`numA-${currentStep}`),
+                        document.getElementById(`numB-${currentStep}`),
+                        document.getElementById(`res-${currentStep}`)
+                    ];
+                    colElements.forEach(el => el?.classList.add('highlight-col'));
+                    const currentInput = document.getElementById(`res-input-${currentStep}`);
+                    currentInput.disabled = false;
+                    if(!isSteppingBack) currentInput.focus();
+                    const aBit = numA[7-currentStep];
+                    const bBit = numB[7-currentStep];
+                    const prevCarry = carries[currentStep];
+                    instructionText.innerHTML = `<strong>Column ${currentStep}:</strong> Add ${aBit} + ${bBit} + ${prevCarry} (carry from previous column). Enter the result bit.`;
+                
+                } else if (currentStep === 8) {
+                    const overflow = carries[8];
+                    const finalResult = results.slice().reverse().join('');
+                    instructionText.innerHTML = `<strong>Addition Complete!</strong> The result is ${finalResult}.`;
+                    if (overflow === 1) {
+                         document.getElementById('carry-8').classList.add('highlight-col');
+                         setTimeout(()=> {
+                            showModal('Overflow Error!', `The final carry into the 9th position is a 1. Since we only have 8 bits for the result, this value cannot be stored. This is called an <strong>overflow error</strong>. The stored result is incorrect because the actual number is too large to be represented with 8 bits.`);
+                         }, 500);
+                    } else {
+                         setTimeout(() => {
+                           showModal('Success!', `You have successfully added the two binary numbers. There was no overflow. You can now proceed to the quiz.`);
+                         }, 500);
+                    }
+                }
+                prevStepBtn.disabled = currentStep <= 0;
+                prevStepBtn.style.opacity = prevStepBtn.disabled ? '0.5' : '1';
+                nextStepBtn.textContent = (currentStep === totalSteps - 1) ? 'Go to Quiz' : 'Next Step';
+                simActive = true;
+            };
+
+            const handleNextStep = async () => {
+                if (!simActive || currentStep >= totalSteps - 1) {
+                     if (currentStep === totalSteps -1) startQuiz();
+                     return;
+                }
+
+                if (currentStep >= 0) {
+                    const userInputEl = document.getElementById(`res-input-${currentStep}`);
+                    const userInput = userInputEl.value;
+                    if (!/^[01]$/.test(userInput)) {
+                        await showModal('Invalid Input', 'Please enter either a 0 or a 1 for the result bit.');
+                        userInputEl.focus();
+                        return;
+                    }
+
+                    userAnswers[currentStep] = userInput;
+                    const isCorrect = parseInt(userInput) === results[currentStep];
+                    userInputEl.classList.remove('correct-answer', 'incorrect-answer');
+                    userInputEl.classList.add(isCorrect ? 'correct-answer' : 'incorrect-answer');
+                    userInputEl.disabled = true;
+
+                    if(!isCorrect) {
+                        const aBit = numA[7-currentStep];
+                        const bBit = numB[7-currentStep];
+                        const prevCarry = carries[currentStep];
+                        const sum = parseInt(aBit) + parseInt(bBit) + prevCarry;
+                        await showModal('Let\'s check that...', `For this column, we calculated ${aBit} + ${bBit} + ${prevCarry} = ${sum}.<br><br>In binary, this means the result bit is <strong>${results[currentStep]}</strong> and the carry-out is <strong>${carries[currentStep+1]}</strong>.`);
+                        userInputEl.value = results[currentStep];
+                        userInputEl.classList.remove('incorrect-answer');
+                        userInputEl.classList.add('correct-answer');
+                    }
+                    
+                    const carryEl = document.getElementById(`carry-${currentStep + 1}`);
+                    carryEl.textContent = carries[currentStep + 1];
+                    carryEl.style.transform = 'scale(1.2)';
+                    carryEl.style.color = 'var(--secondary-color)';
+                    setTimeout(() => {
+                        carryEl.style.transform = 'scale(1)';
+                        carryEl.style.color = 'var(--text-color)';
+                    }, 500);
+                }
+                currentStep++;
+                updateUIForStep();
+            };
+            
+            const handlePrevStep = () => {
+                 if (!simActive || currentStep <= 0) return;
+                 currentStep--;
+                 document.getElementById(`res-input-${currentStep}`).value = userAnswers[currentStep] || '';
+                 document.getElementById(`res-input-${currentStep}`).classList.remove('correct-answer', 'incorrect-answer');
+                 document.getElementById(`carry-${currentStep + 1}`).textContent = '';
+                 updateUIForStep(true);
+            };
+
+            const initSim = () => {
+                simActive = true;
+                currentStep = -1;
+                results = Array(8).fill(null);
+                carries = Array(9).fill(0);
+                userAnswers = Array(8).fill('');
+                generateBinaryNumbers();
+                displayNumbers();
+                calculateCorrectAnswers();
+                for (let i = 0; i < 9; i++) {
+                    const carryEl = document.getElementById(`carry-${i}`);
+                    if(carryEl) carryEl.textContent = '';
+                     if (i < 8) {
+                        const inputEl = document.getElementById(`res-input-${i}`);
+                        inputEl.value = '';
+                        inputEl.disabled = true;
+                        inputEl.classList.remove('correct-answer', 'incorrect-answer');
+                     }
+                }
+                document.querySelectorAll('.highlight-col').forEach(el => el.classList.remove('highlight-col'));
+                setActiveSection('sim');
+                handleNextStep();
+            };
+            
+            // --- Quiz Logic ---
+            const generateQuizQuestions = () => {
+                 quizQuestions = [
+                    {
+                        type: 'mcq',
+                        question: "In binary addition, what is the result of 1 + 1?",
+                        options: ["0, carry 0", "1, carry 0", "0, carry 1", "1, carry 1"],
+                        answer: "0, carry 1"
+                    },
+                    {
+                        type: 'mcq',
+                        question: "What is an 'overflow error' in the context of an 8-bit binary addition?",
+                        options: [
+                            "When the result is a negative number.",
+                            "When the calculation requires a carry into the 9th bit position.",
+                            "When all the result bits are 0.",
+                            "When the computer makes a mistake."
+                        ],
+                        answer: "When the calculation requires a carry into the 9th bit position."
+                    },
+                    {
+                        type: 'drawing',
+                        question: "Using the canvas below, work out the solution for the following 8-bit binary addition:",
+                        numA: "01101101", // 109
+                        numB: "00110110", // 54
+                        answer: "10100011" // 163
+                    },
+                     {
+                        type: 'mcq',
+                        question: "In an 8-bit system, what is the denary (decimal) equivalent of the binary number 10000000?",
+                        options: ["-128", "128", "127", "-127"],
+                        answer: "128",
+                        explanation: "In an unsigned 8-bit system, the leftmost bit represents 2^7, which is 128. In a two's complement signed system, it represents -128. For the 9618 syllabus, unless specified as two's complement, you should consider it unsigned."
+                    },
+                    {
+                        type: 'fill-blank',
+                        question: "Perform the following addition and identify if an overflow error occurs. What is the 8-bit result?",
+                        numA: "11001010", // 202
+                        numB: "10011011", // 155
+                        answer: "01100101", // Result: 101, but with overflow
+                        overflow: true
+                    }
+                ];
+                quizUserAnswers = Array(quizQuestions.length).fill(null);
+            };
+
+            const displayQuizQuestion = () => {
+                const q = quizQuestions[currentQuestionIndex];
+                let html = `<p class="text-lg font-semibold mb-4">Question ${currentQuestionIndex + 1}: ${q.question}</p>`;
+                
+                if (q.type === 'mcq') {
+                    html += `<div class="space-y-3" id="mcq-options">`;
+                    q.options.forEach(opt => {
+                        html += `<div class="quiz-option p-4 rounded-lg glassmorphism" data-value="${opt}">${opt}</div>`;
+                    });
+                    html += `</div>`;
+                } else if (q.type === 'fill-blank' || q.type === 'drawing') {
+                    html += `<div class="glassmorphism p-4 rounded-lg space-y-2">`;
+                    html += `<div class="binary-grid w-full max-w-lg mx-auto">
+                                <div class="bit-label">Num A</div>
+                                <div class="bit-box opacity-0"></div>
+                                ${[...q.numA].map(b => `<div class="bit-box">${b}</div>`).join('')}
+                             </div>`;
+                    html += `<div class="binary-grid w-full max-w-lg mx-auto">
+                                <div class="bit-label">+ Num B</div>
+                                <div class="bit-box opacity-0"></div>
+                                ${[...q.numB].map(b => `<div class="bit-box">${b}</div>`).join('')}
+                             </div>`;
+                    html += `<hr class="border-t-2 border-gray-600 my-3">`;
+
+                    if (q.type === 'drawing') {
+                        html += `<div id="drawing-area" class="bg-gray-800 rounded-lg border-2 border-dashed border-gray-600">
+                                    <canvas id="quiz-canvas"></canvas>
+                                 </div>
+                                 <div class="text-center mt-2">
+                                    <button id="clear-canvas-btn" class="btn-secondary">Clear</button>
+                                 </div>`;
+                    } else { // fill-blank
+                        html += `<label for="fill-blank-input" class="block text-center mb-2">Enter the 8-bit result:</label>
+                                 <input type="text" id="fill-blank-input" maxlength="8" class="w-full max-w-lg mx-auto block bg-gray-900 border-2 border-gray-600 rounded-lg p-2 text-center font-mono text-xl tracking-widest focus:border-indigo-500 focus:outline-none">`;
+                        if (q.overflow !== undefined) {
+                           html += `<div class="text-center mt-4">
+                                      <label class="font-semibold">Did an overflow error occur?</label>
+                                      <div class="flex justify-center gap-4 mt-2" id="overflow-choice">
+                                          <div class="quiz-option p-3 rounded-lg w-24 text-center" data-value="true">Yes</div>
+                                          <div class="quiz-option p-3 rounded-lg w-24 text-center" data-value="false">No</div>
+                                      </div>
+                                   </div>`;
+                        }
+                    }
+                     html += `</div>`;
+                }
+
+                quizContent.innerHTML = html;
+                if (q.type === 'drawing') {
+                    initializeCanvas();
+                }
+                quizProgress.textContent = `Question ${currentQuestionIndex + 1} of ${quizQuestions.length}`;
+            };
+            
+            const handleQuizSubmission = () => {
+                const q = quizQuestions[currentQuestionIndex];
+                let userAnswer = null;
+                
+                if (q.type === 'mcq') {
+                    const selected = quizContent.querySelector('.quiz-option.selected');
+                    if (!selected) {
+                        showModal('No Answer Selected', 'Please select an option before submitting.');
+                        return;
+                    }
+                    userAnswer = selected.dataset.value;
+                    if (userAnswer === q.answer) quizScore++;
+                    quizUserAnswers[currentQuestionIndex] = { answer: userAnswer, correct: userAnswer === q.answer };
+                } else if (q.type === 'fill-blank') {
+                    const input = document.getElementById('fill-blank-input');
+                    if (input.value.length < 8 || !/^[01]{8}$/.test(input.value)) {
+                         showModal('Invalid Answer', 'Please enter a valid 8-bit binary number.');
+                         return;
+                    }
+                    let isCorrect = true;
+                    userAnswer = { result: input.value };
+                    if(input.value !== q.answer) isCorrect = false;
+
+                    if (q.overflow !== undefined) {
+                         const overflowSelected = quizContent.querySelector('#overflow-choice .quiz-option.selected');
+                         if(!overflowSelected) {
+                             showModal('Incomplete Answer', 'Please select whether an overflow occurred.');
+                             return;
+                         }
+                         const overflowAnswer = overflowSelected.dataset.value === 'true';
+                         userAnswer.overflow = overflowAnswer;
+                         if (overflowAnswer !== q.overflow) isCorrect = false;
+                    }
+                    if(isCorrect) quizScore++;
+                    quizUserAnswers[currentQuestionIndex] = { answer: userAnswer, correct: isCorrect };
+                } else if (q.type === 'drawing') {
+                    // This question is for practice, not auto-graded. We record it as attempted.
+                    quizUserAnswers[currentQuestionIndex] = { answer: "Drawing task (self-assessed)", correct: null };
+                }
+
+                currentQuestionIndex++;
+                if (currentQuestionIndex < quizQuestions.length) {
+                    displayQuizQuestion();
+                } else {
+                    showQuizResults();
+                }
+            };
+            
+            const showQuizResults = () => {
+                quizContainer.classList.add('hidden');
+                quizResults.classList.remove('hidden');
+                let gradedQuestions = quizQuestions.filter(q => q.type !== 'drawing').length;
+                quizScoreEl.textContent = `Your Score: ${quizScore} / ${gradedQuestions}`;
+
+                let feedbackHtml = '';
+                quizQuestions.forEach((q, i) => {
+                    const userAnswerRecord = quizUserAnswers[i];
+                    const isCorrect = userAnswerRecord.correct;
+                    let userAnswerText = userAnswerRecord.answer;
+                    
+                    if (q.type === 'fill-blank') {
+                        userAnswerText = `Result: ${userAnswerRecord.answer.result}`;
+                        if (userAnswerRecord.answer.overflow !== undefined) {
+                            userAnswerText += `, Overflow: ${userAnswerRecord.answer.overflow}`;
+                        }
+                    }
+                    
+                    let borderColor = isCorrect ? 'border-emerald-500' : 'border-red-500';
+                    if(isCorrect === null) borderColor = 'border-blue-500'; // For drawing question
+
+                    feedbackHtml += `<div class="glassmorphism p-4 rounded-lg border-l-4 ${borderColor}">
+                            <p class="font-bold">${i + 1}. ${q.question}</p>`;
+
+                    if (q.type === 'drawing') {
+                         feedbackHtml += `<p class="text-sm mt-1">This was a drawing task for you to work out the solution.</p>
+                                          <p class="text-sm mt-1">The correct final answer is: <span class="text-emerald-400 font-mono">${q.answer}</span></p>`;
+                    } else {
+                        let correctAnswerText;
+                        if (q.type === 'fill-blank') {
+                           correctAnswerText = `Result: ${q.answer}`;
+                           if (q.overflow !== undefined) {
+                              correctAnswerText += `, Overflow: ${q.overflow}`;
+                           }
+                        } else {
+                           correctAnswerText = q.answer;
+                        }
+                        feedbackHtml += `<p class="text-sm mt-1">Your answer: <span class="${isCorrect ? 'text-emerald-400' : 'text-red-400'}">${userAnswerText}</span></p>`;
+                        if(!isCorrect) {
+                            feedbackHtml += `<p class="text-sm mt-1">Correct answer: <span class="text-emerald-400">${correctAnswerText}</span></p>`;
+                        }
+                        if(q.explanation && !isCorrect) {
+                            feedbackHtml += `<p class="text-xs text-gray-400 mt-2"><em>${q.explanation}</em></p>`;
+                        }
+                    }
+                    feedbackHtml += `</div>`;
+                });
+                quizFeedbackContainer.innerHTML = feedbackHtml;
+            };
+
+            const startQuiz = () => {
+                currentQuestionIndex = 0;
+                quizScore = 0;
+                generateQuizQuestions();
+                setActiveSection('quiz');
+                quizContainer.classList.remove('hidden');
+                quizResults.classList.add('hidden');
+                displayQuizQuestion();
+            };
+            
+            // --- Canvas Functions ---
+            const initializeCanvas = () => {
+                canvas = document.getElementById('quiz-canvas');
+                const container = document.getElementById('drawing-area');
+                ctx = canvas.getContext('2d');
+                
+                const resizeCanvas = () => {
+                    canvas.width = container.offsetWidth;
+                    canvas.height = container.offsetHeight;
+                    ctx.strokeStyle = '#e5e7eb';
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+                };
+
+                const getPos = (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const clientX = e.clientX || e.touches[0].clientX;
+                    const clientY = e.clientY || e.touches[0].clientY;
+                    return { x: clientX - rect.left, y: clientY - rect.top };
+                };
+
+                const startDrawing = (e) => {
+                    e.preventDefault();
+                    drawing = true;
+                    lastPos = getPos(e);
+                };
+
+                const draw = (e) => {
+                    if (!drawing) return;
+                    e.preventDefault();
+                    const currentPos = getPos(e);
+                    ctx.beginPath();
+                    ctx.moveTo(lastPos.x, lastPos.y);
+                    ctx.lineTo(currentPos.x, currentPos.y);
+                    ctx.stroke();
+                    lastPos = currentPos;
+                };
+
+                const stopDrawing = () => {
+                    drawing = false;
+                };
+
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+
+                canvas.addEventListener('mousedown', startDrawing);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseup', stopDrawing);
+                canvas.addEventListener('mouseout', stopDrawing);
+                
+                canvas.addEventListener('touchstart', startDrawing);
+                canvas.addEventListener('touchmove', draw);
+                canvas.addEventListener('touchend', stopDrawing);
+
+                document.getElementById('clear-canvas-btn').addEventListener('click', () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                });
+            };
+            
+            const resetAll = () => {
+                setActiveSection('intro');
+                nextStepBtn.textContent = 'Next Step';
+            };
+
+            // --- Event Listeners ---
+            startSimBtn.addEventListener('click', initSim);
+            nextStepBtn.addEventListener('click', handleNextStep);
+            prevStepBtn.addEventListener('click', handlePrevStep);
+            submitQuizBtn.addEventListener('click', handleQuizSubmission);
+            restartAllBtn.addEventListener('click', resetAll);
+
+            quizContent.addEventListener('click', (e) => {
+                const target = e.target.closest('.quiz-option');
+                if (!target) return;
+                const parentId = target.parentElement.id;
+                if(parentId === 'mcq-options' || parentId === 'overflow-choice') {
+                     target.parentElement.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+                     target.classList.add('selected');
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if(modal.classList.contains('active')) return;
+                if (simSection.classList.contains('active')) {
+                    if (e.key === 'ArrowRight') { e.preventDefault(); nextStepBtn.click(); } 
+                    else if (e.key === 'ArrowLeft') { e.preventDefault(); prevStepBtn.click(); }
+                }
+            });
+
+            document.querySelectorAll('.btn-primary').forEach(button => {
+                button.addEventListener('click', createRipple);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A-Level Computer Science Sensor Simulation (9618)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --accent-color: #f39c12;
+            --background-color: #f0f2f5;
+            --text-color: #34495e;
+            --light-text-color: #ecf0f1;
+            --card-background: rgba(255, 255, 255, 0.65);
+            --glass-effect: saturate(180%) blur(20px);
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --success-color: #2ecc71;
+            --error-color: #e74c3c;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background: var(--background-color);
+            color: var(--text-color);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        .simulation-container {
+            width: 100%;
+            height: 100vh;
+            position: relative; 
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        .simulation-header {
+            padding: 1rem 1.5rem;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            color: var(--light-text-color);
+            text-align: center;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            z-index: 10;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+        }
+        
+        .simulation-header h1 {
+            font-size: clamp(1.2rem, 3vw, 1.8rem);
+            font-weight: 700;
+        }
+
+        .simulation-header p {
+            font-size: clamp(0.8rem, 2vw, 1rem);
+            opacity: 0.9;
+        }
+        
+        .simulation-body {
+            position: absolute;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .sensor-section {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            visibility: hidden;
+            will-change: opacity, transform;
+        }
+
+        .sensor-section.active {
+            opacity: 1;
+            transform: scale(1);
+            visibility: visible;
+            z-index: 5;
+        }
+
+        .sensor-content {
+            background: var(--card-background);
+            backdrop-filter: var(--glass-effect);
+            -webkit-backdrop-filter: var(--glass-effect);
+            border-radius: 20px;
+            padding: clamp(1rem, 4vw, 2rem);
+            width: 95%;
+            max-width: 1100px;
+            height: 95%;
+            max-height: 700px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            overflow-y: auto;
+        }
+        
+        .sensor-explanation {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sensor-explanation h2 {
+            font-size: clamp(1.5rem, 4vw, 2rem);
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--secondary-color);
+            padding-bottom: 0.5rem;
+        }
+        
+        .sensor-explanation p {
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .sensor-simulation {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.05);
+            border-radius: 15px;
+            padding: 1rem;
+            min-height: 300px;
+        }
+        
+        .sensor-simulation canvas {
+            max-width: 100%;
+            border-radius: 10px;
+            background: #fff;
+        }
+        
+        .slider {
+             -webkit-appearance: none;
+             width: 80%;
+             height: 10px;
+             border-radius: 5px;
+             background: #d3d3d3;
+             outline: none;
+             opacity: 0.7;
+             -webkit-transition: .2s;
+             transition: opacity .2s;
+             margin-top: 15px;
+        }
+
+        .slider:hover {
+             opacity: 1;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+        }
+
+
+        .navigation {
+            padding: 0.75rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            gap: 1rem;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(240, 242, 245, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .nav-btn, .quiz-btn, .popup-btn {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            font-weight: 600;
+            box-shadow: 0 2px 5px var(--shadow-color);
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0);
+        }
+
+        .nav-btn:hover:not(:disabled), .quiz-btn:hover, .popup-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px var(--shadow-color);
+        }
+        
+        .nav-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        #step-indicator {
+            font-weight: 600;
+            background: var(--card-background);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+        }
+
+        .popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+
+        .popup.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .popup-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 90%;
+            width: 500px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+        
+        .popup.active .popup-content {
+            transform: scale(1);
+        }
+        
+        .popup-content h2 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        
+        .popup-content p {
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .quiz-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .question-container {
+            margin-bottom: 1.5rem;
+            width: 100%;
+        }
+        .options-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            width: 100%;
+        }
+        .option {
+            background: white;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        .option:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        .option.selected {
+             background: var(--secondary-color);
+             border-color: var(--secondary-color);
+             color: white;
+        }
+        .option.correct {
+            background-color: var(--success-color);
+            color: white;
+            border-color: var(--success-color);
+        }
+        .option.incorrect {
+            background-color: var(--error-color);
+            color: white;
+            border-color: var(--error-color);
+        }
+        #feedback-area {
+            margin-top: 1rem;
+            font-weight: 600;
+            min-height: 24px;
+        }
+        .quiz-results {
+            text-align: center;
+        }
+        
+        .reset-btn {
+             position: absolute;
+             top: 1rem; 
+             right: 1.5rem;
+             z-index: 20;
+             background: var(--accent-color);
+        }
+        
+        @media (max-width: 768px) {
+            .sensor-content {
+                grid-template-columns: 1fr;
+                height: auto;
+                max-height: calc(100% - 2rem);
+            }
+            .navigation {
+                padding: 0.5rem;
+            }
+            .nav-btn {
+                padding: 0.5rem 1rem;
+            }
+            .reset-btn {
+                top: auto;
+                bottom: 1rem;
+            }
+            .options-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="simulation-container">
+        <header class="simulation-header" id="simulation-header">
+            <h1>A-Level Sensor Simulation (9618)</h1>
+            <p>Use the arrow keys or on-screen buttons to navigate through the sensors.</p>
+        </header>
+
+        <main class="simulation-body" id="simulation-body">
+            <!-- Sensor Sections will be injected here by JavaScript -->
+        </main>
+
+        <nav class="navigation" id="navigation">
+            <button class="nav-btn" id="prev-btn">Previous Step</button>
+            <span id="step-indicator"></span>
+            <button class="nav-btn" id="next-btn">Next Step</button>
+        </nav>
+        
+        <button class="nav-btn reset-btn" id="reset-btn">Reset</button>
+
+    </div>
+
+    <div class="popup active" id="welcome-popup">
+        <div class="popup-content">
+            <h2>Welcome to the Sensor Simulation!</h2>
+            <p>This interactive tool will guide you through the various sensors required for the Cambridge 9618 A-level specification. Each section has an explanation, an interactive simulation, and a button to see real-world applications. The simulation concludes with a quiz to test your knowledge.</p>
+            <button class="popup-btn" id="start-btn">Let's Begin!</button>
+        </div>
+    </div>
+    
+    <div class="popup" id="context-popup">
+        <div class="popup-content" id="context-popup-content">
+            <!-- Contextual information will be injected here -->
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DATA ---
+            const sensorData = [
+                { name: 'Temperature', description: 'A temperature sensor, like a thermistor, measures ambient heat. Its electrical resistance changes predictably with temperature. This change is read by a microcontroller after being converted by an Analog-to-Digital Converter (ADC) to monitor and control temperature in various systems.', applications: 'Used in central heating systems to maintain a set temperature, in car engines to prevent overheating, and in greenhouses to ensure optimal growing conditions for plants.', initSim: initTemperatureSim },
+                { name: 'Humidity', description: 'A humidity sensor measures the amount of water vapor in the air (relative humidity). It typically uses a moisture-holding substrate between two electrodes. As humidity changes, the substrate\'s conductivity changes, which is measured to determine the humidity level.', applications: 'Essential in weather stations, humidors for preserving cigars, and in HVAC systems to control the moisture level in a building for comfort and health.', initSim: initHumiditySim },
+                { name: 'Moisture', description: 'A moisture sensor measures the water content in a substance, most commonly soil. It works by measuring the electrical resistance between two probes. More water means lower resistance. This is used to automate watering systems.', applications: 'Key for automated irrigation systems in agriculture and gardening, preventing both over-watering and under-watering. Also used in flood detection systems.', initSim: initMoistureSim },
+                { name: 'Light', description: 'A light sensor, often a Light-Dependent Resistor (LDR), detects the intensity of ambient light. The LDR\'s resistance decreases as light intensity increases. This property allows it to function as a light-activated switch.', applications: 'Used to automatically turn on streetlights at dusk, adjust smartphone screen brightness, and in security systems to detect when a room is lit.', initSim: initLightSim },
+                { name: 'Pressure', description: 'A pressure sensor measures the force of a gas or liquid. In a Tire Pressure Monitoring System (TPMS), the sensor is located in the wheel. If the pressure drops below or rises above a preset safe level, it sends a signal to the car\'s computer, which then activates a warning light on the dashboard.', applications: 'Vital in automotive safety systems (TPMS), in aircraft to measure altitude (altimeters), and in weather stations to predict weather changes (barometers).', initSim: initPressureSim },
+                { name: 'pH', description: 'A pH sensor measures the acidity or alkalinity of a liquid. It works by generating a small voltage based on the concentration of hydrogen ions. In an aquarium, this is used to monitor water quality, as fish can only survive within a narrow pH range. The sensor data helps automate systems that dose the water with chemicals to maintain the correct pH.', applications: 'Crucial in aquariums to ensure a safe habitat for fish, in chemical processing plants for quality control, and in agriculture for soil testing to ensure optimal crop growth.', initSim: initPhSim },
+                { name: 'Infrared (Motion)', description: 'A Passive Infrared (PIR) sensor detects motion by measuring the infrared (heat) radiation emitted by objects in its field of view. It triggers when it detects a rapid change in infrared levels, such as when a person walks by.', applications: 'Widely used in burglar alarms, automatic doors, and energy-saving automatic lighting systems that turn on when a person enters a room.', initSim: initPirSim },
+                { name: 'Magnetic Field', description: 'A magnetic field sensor, like a Hall effect sensor, detects the presence and strength of a magnetic field. When a magnetic field is applied, it produces a voltage difference across an electrical conductor, which can be measured.', applications: 'Used in anti-lock braking systems (ABS) in cars to measure wheel speed, in mobile phones as a digital compass, and in security systems for detecting if a door or window is open.', initSim: initMagneticSim },
+                { name: 'Sound', description: 'A sound sensor, essentially a microphone, converts sound waves (acoustic energy) into an electrical signal. The variations in air pressure from sound waves cause a diaphragm inside the microphone to vibrate, generating a corresponding electrical signal.', applications: 'Used in voice-activated systems (e.g., smart speakers), for monitoring noise levels in industrial environments, and in security systems to detect sounds like breaking glass.', initSim: initSoundSim },
+                { name: 'Gas', description: 'A gas sensor detects the presence of specific gases in the surrounding air. They often work by having a chemical reaction on a heated sensing material, which changes its electrical resistance. Different materials react to different gases.', applications: 'Critical for safety in homes and industries as carbon monoxide (CO) detectors and natural gas leak detectors. Also used for air quality monitoring.', initSim: initGasSim }
+            ];
+            
+            const quizData = [
+                 { question: "Which sensor would be best for an automated greenhouse that needs to control both watering and air moisture?", options: ["Temperature & Light", "Moisture & Humidity", "Pressure & Gas", "Sound & pH"], answer: "Moisture & Humidity" },
+                 { question: "A smartphone screen automatically adjusts its brightness. Which sensor is primarily responsible for this?", options: ["Pressure Sensor", "Humidity Sensor", "Light Sensor", "Magnetic Field Sensor"], answer: "Light Sensor" },
+                 { question: "An intruder alarm is triggered when a person walks into a room. Which sensor is most likely being used?", options: ["Gas Sensor", "Passive Infrared (PIR) Sensor", "pH Sensor", "Sound Sensor"], answer: "Passive Infrared (PIR) Sensor" },
+                 { question: "A central heating system maintains a constant room temperature. It turns the boiler on when cold and off when hot. This is an example of a system using a:", options: ["Pressure Sensor", "Humidity Sensor", "Moisture Sensor", "Temperature Sensor"], answer: "Temperature Sensor" },
+                 { question: "What device is required to convert the analog signal from most sensors into a format a microprocessor can understand?", options: ["Digital-to-Analog Converter (DAC)", "Central Processing Unit (CPU)", "Analog-to-Digital Converter (ADC)", "Random Access Memory (RAM)"], answer: "Analog-to-Digital Converter (ADC)" }
+            ];
+
+            const DOM = {
+                header: document.getElementById('simulation-header'),
+                simulationBody: document.getElementById('simulation-body'),
+                navigation: document.getElementById('navigation'),
+                welcomePopup: document.getElementById('welcome-popup'),
+                startBtn: document.getElementById('start-btn'),
+                prevBtn: document.getElementById('prev-btn'),
+                nextBtn: document.getElementById('next-btn'),
+                resetBtn: document.getElementById('reset-btn'),
+                stepIndicator: document.getElementById('step-indicator'),
+                contextPopup: document.getElementById('context-popup'),
+                contextPopupContent: document.getElementById('context-popup-content')
+            };
+            
+            let state = {
+                currentStep: 0,
+                totalSteps: sensorData.length + 1,
+                quizScore: 0,
+                currentQuestionIndex: 0,
+                activeSim: { cleanup: () => {} },
+                popupOpen: true
+            };
+            
+            function updateLayout() {
+                const headerHeight = DOM.header.offsetHeight;
+                const navHeight = DOM.navigation.offsetHeight;
+                DOM.simulationBody.style.top = `${headerHeight}px`;
+                DOM.simulationBody.style.bottom = `${navHeight}px`;
+                DOM.resetBtn.style.top = `${headerHeight + 16}px`;
+            }
+
+            function init() {
+                sensorData.forEach((sensor, index) => {
+                    const section = document.createElement('div');
+                    section.className = 'sensor-section';
+                    section.id = `section-${index}`;
+                    section.innerHTML = `
+                        <div class="sensor-content">
+                            <div class="sensor-explanation">
+                                <h2>${sensor.name} Sensor</h2>
+                                <p>${sensor.description}</p>
+                                <button class="popup-btn context-btn" data-index="${index}">Real-World Applications</button>
+                            </div>
+                            <div class="sensor-simulation">
+                                <canvas id="canvas-${index}" width="400" height="350"></canvas>
+                                <label for="slider-${index}" style="margin-top:10px; font-weight:600;">Input: Adjust Sensor Reading</label>
+                                <input type="range" min="0" max="100" value="50" class="slider" id="slider-${index}">
+                            </div>
+                        </div>`;
+                    DOM.simulationBody.appendChild(section);
+                });
+
+                const quizSection = document.createElement('div');
+                quizSection.className = 'sensor-section';
+                quizSection.id = `section-${sensorData.length}`;
+                quizSection.innerHTML = `<div class="sensor-content"><div class="quiz-container" id="quiz-container"></div></div>`;
+                DOM.simulationBody.appendChild(quizSection);
+                
+                updateLayout();
+                window.addEventListener('resize', updateLayout);
+
+                DOM.startBtn.addEventListener('click', handleStart);
+                DOM.prevBtn.addEventListener('click', () => navigate(-1));
+                DOM.nextBtn.addEventListener('click', () => navigate(1));
+                DOM.resetBtn.addEventListener('click', handleReset);
+                document.addEventListener('keydown', handleKeyPress);
+                DOM.simulationBody.addEventListener('click', handleBodyClick);
+            }
+            
+            function drawProcessor(ctx, x, y, signalActive) {
+                ctx.save();
+                ctx.font = '10px Inter';
+                ctx.fillStyle = '#7f8c8d';
+                ctx.textAlign = 'center';
+                
+                ctx.strokeStyle = signalActive ? 'var(--accent-color)' : '#7f8c8d';
+                ctx.lineWidth = signalActive ? 2 : 1;
+                ctx.beginPath(); ctx.rect(x, y, 40, 30); ctx.stroke();
+                ctx.fillText('ADC', x + 20, y + 18);
+                
+                ctx.beginPath();
+                ctx.moveTo(x + 40, y + 15); ctx.lineTo(x + 55, y + 15);
+                ctx.lineTo(x + 52, y + 12); ctx.moveTo(x + 55, y + 15); ctx.lineTo(x + 52, y + 18);
+                ctx.stroke();
+                
+                ctx.beginPath(); ctx.rect(x + 55, y, 60, 30); ctx.stroke();
+                ctx.fillText('Microproc.', x + 85, y + 18);
+                
+                ctx.fillText('Processing', x + 47.5, y - 5);
+                ctx.restore();
+            }
+            
+            function initTemperatureSim(canvas, slider) {
+                const ctx = canvas.getContext('2d');
+                let value = slider.value; let animationFrameId;
+                function draw() {
+                    const temp = (value / 100) * 120 - 20;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#000'; ctx.font = 'bold 14px Inter'; ctx.textAlign = 'center';
+                    ctx.fillText('Output: Heating System Status', canvas.width/2, 20);
+                    ctx.save();
+                    ctx.translate(canvas.width/2 - 20, 50);
+                    ctx.fillStyle = '#E0E0E0'; ctx.fillRect(0, 0, 40, 200);
+                    ctx.beginPath(); ctx.arc(20, 220, 30, 0, 2 * Math.PI); ctx.fill();
+                    const height = (value / 100) * 180;
+                    ctx.fillStyle = `hsl(${100 - value}, 100%, 50%)`;
+                    ctx.fillRect(5, 200 - height, 30, height);
+                    ctx.beginPath(); ctx.arc(20, 220, 25, 0, 2 * Math.PI); ctx.fill();
+                    ctx.fillStyle = '#000'; ctx.font = 'bold 20px Inter';
+                    ctx.fillText(`${temp.toFixed(0)}°C`, 20, -10);
+                    ctx.restore();
+                    const heatingOn = temp < 22;
+                    ctx.fillStyle = heatingOn ? '#3498db' : '#e74c3c'; ctx.font = 'bold 18px Inter';
+                    ctx.fillText(heatingOn ? 'HEATING ON' : 'HEATING OFF', canvas.width/2, canvas.height - 20);
+                    drawProcessor(ctx, canvas.width - 130, canvas.height - 40, true);
+                }
+                slider.oninput = (e) => value = e.target.value;
+                function animate() { draw(); animationFrameId = requestAnimationFrame(animate); }
+                animate();
+                return { cleanup: () => cancelAnimationFrame(animationFrameId) };
+            }
+            
+            function initHumiditySim(canvas, slider) {
+                 const ctx = canvas.getContext('2d');
+                 let value = slider.value; let animationFrameId;
+                function draw() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    const humidity = value;
+                    ctx.save(); ctx.translate(200, 160);
+                    ctx.strokeStyle = '#E0E0E0'; ctx.lineWidth = 20;
+                    ctx.beginPath(); ctx.arc(0, 0, 100, 0.75 * Math.PI, 0.25 * Math.PI); ctx.stroke();
+                    const endAngle = 0.75 * Math.PI + (humidity / 100) * 1.5 * Math.PI;
+                    ctx.strokeStyle = `hsl(${200 - humidity*1.5}, 100%, 50%)`;
+                    ctx.beginPath(); ctx.arc(0, 0, 100, 0.75 * Math.PI, endAngle); ctx.stroke();
+                    ctx.restore();
+                    const needsDehumidifier = humidity > 70;
+                    ctx.fillStyle = '#000'; ctx.font = 'bold 14px Inter'; ctx.textAlign = 'center';
+                    ctx.fillText('Output: HVAC System', canvas.width/2, 20);
+                    ctx.font = 'bold 48px Inter'; ctx.fillText(`${Math.round(humidity)}%`, 200, 170);
+                    ctx.font = 'bold 18px Inter';
+                    ctx.fillStyle = needsDehumidifier ? '#e74c3c' : '#27ae60';
+                    ctx.fillText(needsDehumidifier ? 'DEHUMIDIFIER ON' : 'SYSTEM NORMAL', 200, 300);
+                    drawProcessor(ctx, canvas.width - 130, canvas.height - 40, true);
+                }
+                slider.oninput = (e) => value = e.target.value;
+                function animate() { draw(); animationFrameId = requestAnimationFrame(animate); }
+                animate();
+                return { cleanup: () => cancelAnimationFrame(animationFrameId) };
+            }
+
+            function initMoistureSim(canvas, slider) {
+                const ctx = canvas.getContext('2d');
+                let value = slider.value; let animationFrameId;
+                function draw() {
+                    ctx.clearRect(0,0,canvas.width, canvas.height);
+                    const moisture = value / 100;
+                    ctx.fillStyle = '#8B4513'; ctx.fillRect(100, 200, 200, 100);
+                    ctx.fillStyle = `rgba(52, 152, 219, ${moisture})`; ctx.fillRect(100, 200, 200, 100);
+                    const dryness = 1 - moisture;
+                    const stemColor = `rgb(${dryness * 139}, ${139 - dryness*60}, ${dryness * 19})`;
+                    const leafColor = `rgb(${dryness * 100}, ${128 - dryness*100}, ${dryness * 42})`;
+                    ctx.strokeStyle = stemColor; ctx.lineWidth = 8;
+                    ctx.beginPath(); ctx.moveTo(200, 200); ctx.bezierCurveTo(200, 150, 200 + dryness*20, 120, 200, 100 - dryness*20); ctx.stroke();
+                    ctx.fillStyle = leafColor; ctx.beginPath();
+                    ctx.ellipse(180, 140, 30, 15 + 15*moisture, -0.5, 0, 2*Math.PI);
+                    ctx.ellipse(220, 120, 30, 15 + 15*moisture, 0.5, 0, 2*Math.PI); ctx.fill();
+                    const needsWater = moisture < 0.3;
+                    ctx.fillStyle = '#000'; ctx.font = 'bold 14px Inter'; ctx.textAlign = 'center';
+                    ctx.fillText('Output: Irrigation System', canvas.width/2, 20);
+                    ctx.font = 'bold 18px Inter'; ctx.fillStyle = needsWater ? '#3498db' : '#e74c3c';
+                    ctx.fillText(needsWater ? 'SPRINKLER ON' : 'SPRINKLER OFF', canvas.width/2, canvas.height - 20);
+                    drawProcessor(ctx, canvas.width - 130, canvas.height - 40, true);
+                }
+                slider.oninput = (e) => value = e.target.value;
+                function animate() { draw(); animationFrameId = requestAnimationFrame(animate); }
+                animate();
+                return { cleanup: () => cancelAnimationFrame(animationFrameId) };
+            }
+            
+            function initLightSim(canvas, slider) {
+                const ctx = canvas.getContext('2d');
+                let value = slider.value; let animationFrameId;
+                function draw() {
+                    const lightLevel = value / 100;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = `rgb(${lightLevel * 135}, ${lightLevel * 206}, ${lightLevel * 235})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = lightLevel > 0.5 ? '#f1c40f' : '#ecf0f1';
+                    ctx.beginPath(); ctx.arc(80, 80, 40, 0, 2 * Math.PI); ctx.fill();
+                    ctx.fillStyle = '#7f8c8d';
+                    ctx.fillRect(300, 100, 15, 200); ctx.fillRect(250, 100, 65, 15);
+                    const lightOn = lightLevel < 0.4;
+                    if (lightOn) {
+                        ctx.fillStyle = '#f1c40f';
+                        ctx.beginPath(); ctx.arc(250, 125, 20, 0, 2 * Math.PI); ctx.fill();
+                        ctx.globalAlpha = 0.3;
+                        ctx.beginPath(); ctx.moveTo(230, 145); ctx.lineTo(270, 145); ctx.lineTo(300, 250); ctx.lineTo(200, 250); ctx.closePath(); ctx.fill();
+                        ctx.globalAlpha = 1.0;
+                    }
+                    ctx.fillStyle = '#000'; ctx.font = 'bold 18px Inter'; ctx.textAlign = 'center';
+                    ctx.fillText(lightOn ? 'OUTPUT: STREETLIGHT ON' : 'OUTPUT: STREETLIGHT OFF', canvas.width / 2, 30);
+                    drawProcessor(ctx, canvas.width - 130, canvas.height - 40, true);
+                }
+                slider.oninput = (e) => value = e.target.value;
+                function animate() { draw(); animationFrameId = requestAnimationFrame(animate); }
+                animate();
+                return { cleanup: () => cancelAnimationFrame(animationFrameId) };
+            }
+            
+            function initPressureSim(canvas, slider) {
+                const ctx = canvas.getContext('2d');
+                let value = slider.value; let animationFrameId;
+                function draw() {
+                    const pressure = 15 + (value / 100) * 40; // Range 15-55 PSI
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    const isUnsafe = pressure < 30 || pressure > 45;
+
+                    // Dashboard
+                    ctx.fillStyle = '#34495e';
+                    ctx.fillRect(50, 50, 300, 100);
+                    
+                    // Tire pressure warning light
+                    ctx.save();
+                    ctx.translate(280, 100);
+                    ctx.fillStyle = isUnsafe ? '#f1c40f' : '#4a6278';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 15, 0.2*Math.PI, 1.8*Math.PI);
+                    ctx.lineTo(-5, 5); ctx.lineTo(5, 5);
+                    ctx.closePath(); ctx.fill();
+                    ctx.fillStyle = '#34495e'; ctx.font = 'bold 12px Inter'; ctx.fillText('!', 0, 3);
+                    ctx.restore();
+
+                    // Tire
+                    const tireHeight = 40 + (35 - pressure) * 0.5;
+                    ctx.fillStyle = '#34495e';
+                    ctx.beginPath();
+                    ctx.ellipse(150, 250, 50, tireHeight, 0, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.fillStyle = '#bdc3c7';
+                    ctx.beginPath();
+                    ctx.arc(150, 250, 20, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                    // Output text
+                    ctx.fillStyle = '#000'; ctx.font = 'bold 18px Inter'; ctx.textAlign = 'center';
+                    ctx.fillText('Output: TPMS Warning', canvas.width/2, 30);
+                    ctx.font = 'bold 24px Inter';
+                    ctx.fillText(`${pressure.toFixed(1)} PSI`, 150, 100);
+                    ctx.fillStyle = isUnsafe ? '#e74c3c' : '#2ecc71';
+                    ctx.font = 'bold 18px Inter';
+                    ctx.fillText(isUnsafe ? 'PRESSURE WARNING' : 'PRESSURE OK', canvas.width/2, 320);
+
+                    drawProcessor(ctx, 30, 290, isUnsafe);
+                }
+                slider.oninput = (e) => value = e.target.value;
+                function animate() { draw(); animationFrameId = requestAnimationFrame(animate); }
+                animate();
+                return { cleanup: () => cancelAnimationFrame(animationFrameId) };
+            }
+
+            function initPhSim(canvas, slider) {
+                const ctx = canvas.getContext('2d');
+                let value = slider.value; let animationFrameId; let fishX = 150, fishDir = 1;
+                function draw() {
+                    const pH = (value / 100) * 14;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Aquarium background
+                    ctx.fillStyle = '#e0f7fa'; ctx.fillRect(0,0,canvas.width, canvas.height);
+
+                    // Liquid with pH color
+                    let hue;
+                    if (pH < 7) hue = (pH/7) * 60; else hue = 60 + ((pH-7)/7) * 180;
+                    ctx.fillStyle = `hsla(${hue}, 70%, 60%, 0.3)`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    const isSafe = pH > 6.5 && pH < 8.0;
+
+                    // Fish
+                    fishX += fishDir * (isSafe ? 1 : 0.2);
+                    if (fishX > 300 || fishX < 100) fishDir *= -1;
+
+                    ctx.save();
+                    ctx.translate(fishX, 180);
+                    if (fishDir < 0) ctx.scale(-1, 1);
+                    if (!isSafe) ctx.rotate(Math.PI); // Flips fish upside down
+                    ctx.fillStyle = isSafe ? '#f39c12' : '#95a5a6';
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0); // body
+                    ctx.quadraticCurveTo(25, -25, 50, 0);
+                    ctx.quadraticCurveTo(25, 25, 0, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.beginPath(); // tail
+                    ctx.moveTo(0,0); ctx.lineTo(-15, -15); ctx.lineTo(-15, 15);
+                    ctx.closePath(); ctx.fill();
+                    ctx.fillStyle = '#000'; // eye
+                    ctx.beginPath(); ctx.arc(38, -5, 2, 0, 2*Math.PI); ctx.fill();
+                    ctx.restore();
+
+                    // Output text
+                    ctx.fillStyle = '#000'; ctx.font = 'bold 18px Inter'; ctx.textAlign = 'center';
+                    ctx.fillText('Output: Aquarium Status', canvas.width/2, 30);
+                    ctx.font = 'bold 36px Inter';
+                    ctx.fillText(`pH ${pH.toFixed(1)}`, canvas.width/2, 80);
+                    ctx.font = 'bold 24px Inter';
+                    ctx.fillStyle = isSafe ? '#2ecc71' : '#e74c3c';
+                    ctx.fillText(isSafe ? 'Water Optimal' : 'DANGEROUS FOR FISH', canvas.width/2, 120);
+
+                    drawProcessor(ctx, canvas.width - 130, canvas.height - 40, !isSafe);
+                }
+                slider.oninput = (e) => value = e.target.value;
+                function animate() { draw(); animationFrameId = requestAnimationFrame(animate); }
+                animate();
+                return { cleanup: () => cancelAnimationFrame(animationFrameId) };
+            }
+            
+            function initPirSim(canvas, slider) {
+                const ctx = canvas.getContext('2d');
+                let value = slider.value; let animationFrameId;
+                function draw() {
+                    let personX = (value / 100) * (canvas.width + 50) - 50;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = 'rgba(231, 76, 60, 0.2)';
+                    ctx.fillRect(100, 100, 200, 200);
+                    ctx.fillStyle = '#95a5a6'; ctx.beginPath(); ctx.arc(200, 80, 20, 0, 2*Math.PI); ctx.fill();
+                    ctx.fillStyle = '#3498db';
+                    ctx.beginPath(); ctx.arc(personX, 200, 15, 0, 2*Math.PI); ctx.fill();
+                    ctx.fillRect(personX - 10, 215, 20, 40);
+                    let detected = personX > 100 && personX < 300;
+                    ctx.fillStyle = '#000'; ctx.font = 'bold 18px Inter'; ctx.textAlign = 'center';
+                    ctx.fillText('Output: Alarm System', canvas.width/2, 30);
+                    ctx.fillStyle = detected ? '#e74c3c' : '#2ecc71';
+                    ctx.fillText(detected ? 'MOTION DETECTED' : 'SYSTEM SECURE', canvas.width/2, canvas.height - 20);
+                    drawProcessor(ctx, canvas.width - 130, canvas.height - 40, detected);
+                }
+                slider.oninput = (e) => value = e.target.value;
+                function animate() { draw(); animationFrameId = requestAnimationFrame(animate); }
+                animate();
+                return { cleanup: () => cancelAnimationFrame(animationFrameId) };
+            }
+            
+            function initMagneticSim(canvas, slider) {
+                const ctx = canvas.getContext('2d');
+                let value = slider.value; let animationFrameId;
+                function draw() {
+                    const doorGap = (value / 100) * 50;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.strokeStyle = '#7f8c8d'; ctx.lineWidth = 10;
+                    ctx.strokeRect(50, 50, 300, 250);
+                    ctx.fillStyle = '#a0522d';
+                    ctx.fillRect(55 + doorGap, 55, 140 - doorGap, 240);
+                    const closed = doorGap < 10;
+                    ctx.fillStyle = '#bdc3c7';
+                    ctx.fillRect(195, 150, 10, 30);
+                    ctx.fillRect(55 + doorGap + 140 - doorGap - 10, 150, 10, 30);
+                    ctx.fillStyle = '#000'; ctx.font = 'bold 18px Inter'; ctx.textAlign = 'center';
+                    ctx.fillText('Output: Security System', canvas.width/2, 30);
+                    ctx.fillStyle = closed ? '#2ecc71' : '#e74c3c';
+                    ctx.fillText(closed ? 'DOOR CLOSED' : 'DOOR OPEN', canvas.width/2, canvas.height - 20);
+                    drawProcessor(ctx, canvas.width - 130, canvas.height - 40, true);
+                }
+                slider.oninput = (e) => value = e.target.value;
+                function animate() { draw(); animationFrameId = requestAnimationFrame(animate); }
+                animate();
+                return { cleanup: () => cancelAnimationFrame(animationFrameId) };
+            }
+
+            function initSoundSim(canvas, slider) {
+                const ctx = canvas.getContext('2d');
+                let value = slider.value; let animationFrameId; let time = 0;
+                function draw() {
+                    const amplitude = value;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.strokeStyle = '#3498db'; ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    for (let x = 0; x < canvas.width; x++) {
+                        const y = canvas.height/2 + Math.sin(x * 0.1 + time) * amplitude * 0.8;
+                        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                    }
+                    ctx.stroke(); time += 0.1;
+                    const loud = amplitude > 70;
+                    ctx.fillStyle = '#000'; ctx.font = 'bold 18px Inter'; ctx.textAlign = 'center';
+                    ctx.fillText('Output: Voice Assistant', canvas.width/2, 30);
+                    ctx.fillStyle = loud ? '#2ecc71' : '#bdc3c7';
+                    ctx.fillText(loud ? 'LISTENING...' : 'IDLE', canvas.width/2, canvas.height - 20);
+                    drawProcessor(ctx, canvas.width - 130, canvas.height - 40, loud);
+                }
+                slider.oninput = (e) => value = e.target.value;
+                function animate() { draw(); animationFrameId = requestAnimationFrame(animate); }
+                animate();
+                return { cleanup: () => cancelAnimationFrame(animationFrameId) };
+            }
+
+            function initGasSim(canvas, slider) {
+                const ctx = canvas.getContext('2d');
+                let value = slider.value; let animationFrameId;
+                function draw() {
+                    const gasLevel = value / 100;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.globalAlpha = gasLevel;
+                    ctx.fillStyle = '#7f8c8d';
+                    for(let i=0; i<value/2; i++) {
+                        ctx.beginPath(); ctx.arc(Math.random()*canvas.width, Math.random()*canvas.height, Math.random()*10, 0, 2*Math.PI); ctx.fill();
+                    }
+                    ctx.globalAlpha = 1.0;
+                    const danger = gasLevel > 0.6;
+                    ctx.fillStyle = '#000'; ctx.font = 'bold 18px Inter'; ctx.textAlign = 'center';
+                    ctx.fillText('Output: Gas Leak Alarm', canvas.width/2, 30);
+                    ctx.fillStyle = danger ? '#e74c3c' : '#2ecc71';
+                    ctx.font = 'bold 24px Inter';
+                    ctx.fillText(danger ? 'DANGER: ALARM ON' : 'AIR QUALITY: SAFE', canvas.width/2, canvas.height/2);
+                    drawProcessor(ctx, canvas.width - 130, canvas.height - 40, danger);
+                }
+                slider.oninput = (e) => value = e.target.value;
+                function animate() { draw(); animationFrameId = requestAnimationFrame(animate); }
+                animate();
+                return { cleanup: () => cancelAnimationFrame(animationFrameId) };
+            }
+
+            function handleStart() {
+                state.popupOpen = false;
+                DOM.welcomePopup.classList.remove('active');
+                updateView();
+            }
+
+            function handleReset() {
+                if (state.activeSim.cleanup) state.activeSim.cleanup();
+                state.currentStep = 0;
+                state.quizScore = 0;
+                state.currentQuestionIndex = 0;
+                state.popupOpen = true;
+                DOM.welcomePopup.classList.add('active');
+                updateLayout();
+            }
+
+            function handleKeyPress(e) {
+                if (state.popupOpen) return;
+                if (e.key === 'ArrowRight') navigate(1);
+                else if (e.key === 'ArrowLeft') navigate(-1);
+            }
+            
+            function handleBodyClick(e) {
+                 if (e.target.classList.contains('context-btn')) {
+                    const index = e.target.dataset.index;
+                    showContextPopup(sensorData[index].applications, sensorData[index].name);
+                } else if (e.target.classList.contains('option')) {
+                    handleOptionSelect(e.target);
+                } else if (e.target.id === 'next-question-btn') {
+                    state.currentQuestionIndex++;
+                    loadQuizQuestion();
+                } else if (e.target.id === 'restart-quiz-btn') {
+                    state.quizScore = 0;
+                    state.currentQuestionIndex = 0;
+                    loadQuizQuestion();
+                }
+            }
+            
+            function showContextPopup(info, title) {
+                state.popupOpen = true;
+                DOM.contextPopupContent.innerHTML = `
+                    <h2>Applications of ${title}</h2>
+                    <p>${info}</p>
+                    <button class="popup-btn" id="close-context-btn">Close</button>`;
+                DOM.contextPopup.classList.add('active');
+                
+                document.getElementById('close-context-btn').addEventListener('click', () => {
+                   DOM.contextPopup.classList.remove('active');
+                   state.popupOpen = false;
+                }, { once: true });
+            }
+
+            function navigate(direction) {
+                if (state.popupOpen) return;
+                const newStep = state.currentStep + direction;
+                if (newStep >= 0 && newStep < state.totalSteps) {
+                    state.currentStep = newStep;
+                    updateView();
+                }
+            }
+
+            function updateView() {
+                if (state.activeSim.cleanup) state.activeSim.cleanup();
+                
+                document.querySelectorAll('.sensor-section').forEach((section, index) => {
+                    section.classList.toggle('active', index === state.currentStep);
+                });
+                
+                if (state.currentStep < sensorData.length) {
+                    const sensor = sensorData[state.currentStep];
+                    if (typeof sensor.initSim === 'function') {
+                        const canvas = document.getElementById(`canvas-${state.currentStep}`);
+                        const slider = document.getElementById(`slider-${state.currentStep}`);
+                        state.activeSim = sensor.initSim(canvas, slider);
+                    }
+                } else {
+                    loadQuizQuestion();
+                }
+
+                DOM.stepIndicator.textContent = `${state.currentStep + 1} / ${state.totalSteps}`;
+                DOM.prevBtn.disabled = state.currentStep === 0;
+                DOM.nextBtn.disabled = state.currentStep === state.totalSteps - 1;
+                DOM.nextBtn.textContent = state.currentStep === state.totalSteps - 2 ? "Start Quiz" : "Next Step";
+            }
+
+            function loadQuizQuestion() {
+                const quizContainer = document.getElementById('quiz-container');
+                if (state.currentQuestionIndex < quizData.length) {
+                    const q = quizData[state.currentQuestionIndex];
+                    quizContainer.innerHTML = `
+                        <h2>Quiz - Question ${state.currentQuestionIndex + 1}/${quizData.length}</h2>
+                        <div class="question-container"><p>${q.question}</p></div>
+                        <div class="options-container">
+                            ${q.options.map(o => `<div class="option" data-answer="${o}">${o}</div>`).join('')}
+                        </div>
+                        <div id="feedback-area"></div>`;
+                } else {
+                    showQuizResults(quizContainer);
+                }
+            }
+
+            function handleOptionSelect(selectedOption) {
+                if (selectedOption.parentElement.classList.contains('answered')) return;
+                
+                const q = quizData[state.currentQuestionIndex];
+                const selectedAnswer = selectedOption.dataset.answer;
+                const isCorrect = selectedAnswer === q.answer;
+
+                if (isCorrect) {
+                    state.quizScore++;
+                    selectedOption.classList.add('correct');
+                    document.getElementById('feedback-area').innerHTML = "Correct! Well done.";
+                    document.getElementById('feedback-area').style.color = "var(--success-color)";
+                } else {
+                    selectedOption.classList.add('incorrect');
+                    document.getElementById('feedback-area').innerHTML = `Not quite. The correct answer was: ${q.answer}`;
+                    document.getElementById('feedback-area').style.color = "var(--error-color)";
+                    document.querySelector(`.option[data-answer="${q.answer}"]`).classList.add('correct');
+                }
+                
+                selectedOption.parentElement.classList.add('answered');
+                
+                const nextBtn = document.createElement('button');
+                nextBtn.id = 'next-question-btn';
+                nextBtn.className = 'popup-btn';
+                nextBtn.style.marginTop = '1rem';
+                nextBtn.textContent = state.currentQuestionIndex < quizData.length - 1 ? 'Next Question' : 'Show Results';
+                document.getElementById('feedback-area').appendChild(nextBtn);
+            }
+
+            function showQuizResults(container) {
+                 const percentage = (state.quizScore / quizData.length) * 100;
+                 let message = "Keep revising! Review the simulation sections to improve your score.";
+                 if (percentage === 100) message = "Perfect score! You're a sensor expert!";
+                 else if (percentage >= 80) message = "Excellent work! You have a strong understanding of sensors.";
+                 else if (percentage >= 50) message = "Good effort! A little more revision should solidify your knowledge.";
+
+                 container.innerHTML = `
+                    <div class="quiz-results">
+                        <h2>Quiz Complete!</h2>
+                        <p>You scored ${state.quizScore} out of ${quizData.length}.</p>
+                        <p>${message}</p>
+                        <button class="popup-btn" id="restart-quiz-btn">Try Again</button>
+                    </div>`;
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>

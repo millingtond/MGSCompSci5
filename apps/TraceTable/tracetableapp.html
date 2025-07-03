@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trace Table Practice (OCR J277 Style)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Base styles remain the same */
+        .correct { background-color: #a7f3d0; border-color: #059669 !important; color: #065f46; }
+        .incorrect { background-color: #fecaca; border-color: #dc2626 !important; color: #991b1b; }
+        td input[type="text"] { width: 100%; padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 0.25rem; box-sizing: border-box; min-height: 30px; font-size: 0.875rem; text-align: center; }
+        td input[type="text"]:focus { outline: none; box-shadow: 0 0 0 2px #3b82f6; border-color: #3b82f6; }
+        pre { background-color: #f3f4f6; padding: 1rem; border-radius: 0.375rem; overflow-x: auto; font-family: monospace; font-size: 0.875rem; line-height: 1.5; border: 1px solid #e5e7eb; white-space: pre; }
+        code { display: block; }
+        code .line-number { display: inline-block; width: 2.5em; text-align: right; padding-right: 1em; color: #6b7280; user-select: none; border-right: 1px solid #e5e7eb; margin-right: 0.5em; vertical-align: top; }
+        .action-button { padding: 0.75rem 1.5rem; border-radius: 0.375rem; font-weight: 600; color: white; background-color: #2563eb; transition: background-color 0.2s ease-in-out, opacity 0.2s ease-in-out; cursor: pointer; border: none; text-align: center; }
+        .action-button:hover:not(:disabled) { background-color: #1d4ed8; }
+        .action-button:focus { outline: 2px solid transparent; outline-offset: 2px; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); }
+        .action-button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #message-box { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 1rem 1.5rem; border-radius: 0.375rem; color: white; font-weight: 500; z-index: 50; display: none; min-width: 250px; text-align: center; opacity: 1; transition: opacity 0.5s ease-in-out; }
+        #message-box.success { background-color: #10b981; }
+        #message-box.error { background-color: #ef4444; }
+        table { table-layout: fixed; width: 100%; }
+        th, td { word-wrap: break-word; }
+
+        /* Fireworks Animation Styles */
+        #fireworks-container {
+            position: fixed; /* Cover the whole viewport */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allow clicks through */
+            overflow: hidden;
+            z-index: 100; /* Ensure it's on top */
+            display: none; /* Hidden by default */
+        }
+        .particle {
+            position: absolute; /* Positioned relative to the container */
+            width: 6px;  /* Slightly larger particles */
+            height: 6px;
+            border-radius: 50%;
+            background-color: hsl(var(--hue), 100%, 65%); /* Adjusted brightness */
+            opacity: 1;
+            /* Animation properties */
+            animation-name: fireworks-explode;
+            animation-duration: 0.8s;
+            animation-timing-function: ease-out;
+            animation-fill-mode: forwards; /* Keep final state */
+        }
+
+        @keyframes fireworks-explode {
+            0% {
+                transform: translate(0, 0) scale(1); /* Start at center, full size */
+                opacity: 1;
+            }
+            100% {
+                /* Move outwards based on custom properties */
+                transform: translate(var(--tx, 0px), var(--ty, 0px)) scale(0);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-lg shadow-md relative">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+             <h1 class="text-2xl md:text-3xl font-bold text-gray-800 order-1">Trace Table Practice</h1>
+             <div class="flex flex-col sm:flex-row items-center gap-4 order-2 sm:order-last">
+                 <div id="question-counter" class="text-lg font-semibold text-gray-600">Question 1 / 16</div>
+                 <div id="total-score-display" class="text-lg font-bold text-blue-600">Total Score: 0</div>
+             </div>
+        </div>
+
+        <p class="text-gray-600 mb-6">Complete the trace table for the algorithm below, entering rows only for lines where a variable changes or output occurs.</p>
+
+        <div id="scenario-block" class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
+             <h2 class="text-lg font-semibold text-blue-800 mb-2">Scenario</h2>
+             <p id="scenario-text" class="text-sm text-blue-700"></p>
+        </div>
+        <div class="mb-6">
+             <h2 class="text-lg font-semibold text-gray-700 mb-2">Algorithm</h2>
+             <pre><code id="code-block"></code></pre>
+        </div>
+        <div id="task-block" class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+             <h2 class="text-lg font-semibold text-yellow-800 mb-2">Task</h2>
+             <p id="task-text" class="text-sm text-yellow-700"></p>
+             <p class="text-sm text-yellow-700 mt-2">
+                 <strong>Important Rules:</strong>
+                 <ul class="list-disc list-inside ml-4 mt-1">
+                     <li>Only enter rows for lines where a variable is assigned/changed or output occurs.</li>
+                     <li>Line numbers can be '1' or '01'.</li>
+                     <li>If a variable hasn't changed since the previous significant row, you can leave its cell blank (or repeat the value).</li>
+                     <li>Leave cells blank if the variable is not yet defined or not applicable for that line.</li>
+                 </ul>
+             </p>
+        </div>
+
+        <div class="mb-6 overflow-x-auto">
+            <h2 class="text-lg font-semibold text-gray-700 mb-2">Trace Table</h2>
+            <table id="trace-table" class="w-full border-collapse border border-gray-300 text-sm text-center">
+                <thead id="trace-table-head"></thead>
+                <tbody id="trace-table-body"></tbody>
+            </table>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4">
+            <button id="prev-button" class="action-button w-full sm:w-auto order-1">Previous Question</button>
+            <button id="check-button" class="action-button w-full sm:w-auto order-2">Check Answers</button>
+            <div id="score-display" class="text-lg font-semibold text-gray-700 order-3 whitespace-nowrap">Score: 0 / 0</div>
+            <button id="next-button" class="action-button w-full sm:w-auto order-4">Next Question</button>
+        </div>
+
+        <div id="message-box"></div>
+        <div id="fireworks-container"></div>
+
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const numRowsInTable = 15;
+
+        // --- Questions Data ---
+        // ** Restored full data for all 16 questions with correct syntax **
+        const questions = [
+             // Question 1 (Original - Javelin)
+             {
+                 id: 1,
+                 scenario: "Students take part in a sports day. Students gain points depending on their result and the year group they are in. The points are added to the team score. This algorithm calculates the number of points a student gets for the distance they throw in the javelin.",
+                 code: [
+                     '01 javelinThrow = input("Enter distance")',
+                     '02 yearGroup = input("Enter year group")',
+                     '03 if javelinThrow > 20.0 then',
+                     '04    score = 3',
+                     '05 elseif javelinThrow > 10.0 then',
+                     '06    score = 2',
+                     '07 else',
+                     '08    score = 1',
+                     '09 endif',
+                     '10 if yearGroup == 10 or yearGroup == 11 then',
+                     '11    score = score * 2',
+                     '12 endif',
+                     '13 print("The score is ", score)'
+                 ],
+                 task: "Complete the trace table for the algorithm when a student in <strong class='font-semibold'>year 10</strong> throws a distance of <strong class='font-semibold'>14.3</strong>.",
+                 variables: ['lineNumber', 'javelinThrow', 'yearGroup', 'score', 'Output'],
+                 trace: [
+                     ['01', '14.3', null, null, null],
+                     ['02', '14.3', '10', null, null],
+                     ['06', '14.3', '10', '2', null],
+                     ['11', '14.3', '10', '4', null],
+                     ['13', '14.3', '10', '4', 'The score is 4']
+                 ]
+             }, // Comma after Q1 object
+             // Question 2 (Original - For Loop Sum)
+             {
+                 id: 2,
+                 scenario: "This algorithm calculates the sum of whole numbers from 1 up to a given number N.",
+                 code: [
+                     '01 n = input("Enter N")',
+                     '02 total = 0',
+                     '03 for count = 1 to n',
+                     '04    total = total + count',
+                     '05 next count',
+                     '06 print("Sum is ", total)'
+                 ],
+                 task: "Complete the trace table when the input for N is <strong class='font-semibold'>3</strong>.",
+                 variables: ['lineNumber', 'n', 'total', 'count', 'Output'],
+                 trace: [
+                     ['01', '3', null, null, null],
+                     ['02', '3', '0', null, null],
+                     ['03', '3', '0', '1', null],
+                     ['04', '3', '1', '1', null],
+                     ['03', '3', '1', '2', null],
+                     ['04', '3', '3', '2', null],
+                     ['03', '3', '3', '3', null],
+                     ['04', '3', '6', '3', null],
+                     ['06', '3', '6', '3', 'Sum is 6']
+                 ]
+             }, // Comma after Q2 object
+             // Question 3 (Original - While Loop Countdown)
+             {
+                 id: 3,
+                 scenario: "This algorithm counts down from a given number and prints each number.",
+                 code: [
+                     '01 num = input("Enter starting number")',
+                     '02 while num > 0',
+                     '03    print(num)',
+                     '04    num = num - 1',
+                     '05 endwhile',
+                     '06 print("Blast off!")'
+                 ],
+                 task: "Complete the trace table when the input number is <strong class='font-semibold'>3</strong>.",
+                 variables: ['lineNumber', 'num', 'Output'],
+                 trace: [
+                     ['01', '3', null],
+                     ['03', '3', '3'],
+                     ['04', '2', null],
+                     ['03', '2', '2'],
+                     ['04', '1', null],
+                     ['03', '1', '1'],
+                     ['04', '0', null],
+                     ['06', '0', 'Blast off!']
+                 ]
+             }, // Comma after Q3 object
+             // Question 4 (Original - If/Else If/Else Grading)
+             {
+                 id: 4,
+                 scenario: "This algorithm assigns a grade based on a test score.",
+                 code: [
+                     '01 score = input("Enter score")',
+                     '02 if score >= 70 then',
+                     '03    grade = "Merit"',
+                     '04 elseif score >= 50 then',
+                     '05    grade = "Pass"',
+                     '06 else',
+                     '07    grade = "Fail"',
+                     '08 endif',
+                     '09 print("Grade:", grade)'
+                 ],
+                 task: "Complete the trace table when the input score is <strong class='font-semibold'>55</strong>.",
+                 variables: ['lineNumber', 'score', 'grade', 'Output'],
+                 trace: [
+                     ['01', '55', null, null],
+                     ['05', '55', 'Pass', null],
+                     ['09', '55', 'Pass', 'Grade: Pass']
+                 ]
+             }, // Comma after Q4 object
+             // Question 5 (Original - While Loop Sentinel Value)
+             {
+                 id: 5,
+                 scenario: "This algorithm calculates the sum of positive numbers entered by the user. The user enters -1 to stop.",
+                 code: [
+                     '01 total = 0',
+                     '02 number = input("Enter a positive number (-1 to stop)")',
+                     '03 while number != -1',
+                     '04    total = total + number',
+                     '05    number = input("Enter a positive number (-1 to stop)")',
+                     '06 endwhile',
+                     '07 print("Total is", total)'
+                 ],
+                 task: "Complete the trace table for the inputs: <strong class='font-semibold'>10</strong>, then <strong class='font-semibold'>5</strong>, then <strong class='font-semibold'>-1</strong>.",
+                 variables: ['lineNumber', 'total', 'number', 'Output'],
+                 trace: [
+                     ['01', '0', null, null],
+                     ['02', '0', '10', null],
+                     ['04', '10', '10', null],
+                     ['05', '10', '5', null],
+                     ['04', '15', '5', null],
+                     ['05', '15', '-1', null],
+                     ['07', '15', '-1', 'Total is 15']
+                 ]
+             }, // Comma after Q5 object
+             // Question 6 (Original - Powers of 2 - Corrected Trace)
+             {
+                 id: 6,
+                 scenario: "This algorithm calculates and prints the first N powers of 2 (starting from 2^1).",
+                  code: [
+                     '01 n = input("Enter N")',
+                     '02 powerOf2 = 1',
+                     '03 for count = 1 to n',
+                     '04    powerOf2 = powerOf2 * 2',
+                     '05    print(powerOf2)',
+                     '06 next count'
+                  ],
+                  task: "Complete the trace table when the input for N is <strong class='font-semibold'>3</strong>.",
+                  variables: ['lineNumber', 'n', 'powerOf2', 'count', 'Output'],
+                  trace: [
+                     ['01', '3', null, null, null],
+                     ['02', '3', '1', null, null],
+                     ['03', '3', '1', '1', null],
+                     ['04', '3', '2', '1', null],
+                     ['05', '3', '2', '1', '2'],
+                     ['03', '3', '2', '2', null],
+                     ['04', '3', '4', '2', null],
+                     ['05', '3', '4', '2', '4'],
+                     ['03', '3', '4', '3', null],
+                     ['04', '3', '8', '3', null],
+                     ['05', '3', '8', '3', '8']
+                  ]
+             }, // Comma after Q6 object
+             // Question 7 (Nested If)
+             {
+                 id: 7,
+                 scenario: "This algorithm determines a discount based on customer type and purchase amount.",
+                 code: [
+                     '01 type = input("Enter type (R/T)")',
+                     '02 amount = input("Enter amount")',
+                     '03 discount = 0',
+                     '04 if type == "R" then',
+                     '05    if amount > 100 then',
+                     '06       discount = 10',
+                     '07    else',
+                     '08       discount = 5',
+                     '09    endif',
+                     '10 else', // type is "T"
+                     '11    discount = 15',
+                     '12 endif',
+                     '13 print("Discount:", discount)'
+                 ],
+                 task: "Complete the trace table when the type is <strong class='font-semibold'>R</strong> and the amount is <strong class='font-semibold'>150</strong>.",
+                 variables: ['lineNumber', 'type', 'amount', 'discount', 'Output'],
+                 trace: [
+                     ['01', 'R', null, null, null],
+                     ['02', 'R', '150', null, null],
+                     ['03', 'R', '150', '0', null],
+                     ['06', 'R', '150', '10', null],
+                     ['13', 'R', '150', '10', 'Discount: 10']
+                 ]
+             }, // Comma after Q7 object
+             // Question 8 (While loop with boolean flag)
+             {
+                 id: 8,
+                 scenario: "This algorithm searches for the number 5 in a series of inputs until it's found or -1 is entered.",
+                 code: [
+                     '01 found = false',
+                     '02 num = 0',
+                     '03 while num != -1 and found == false',
+                     '04    num = input("Enter number (-1 to stop)")',
+                     '05    if num == 5 then',
+                     '06       found = true',
+                     '07    endif',
+                     '08 endwhile',
+                     '09 if found == true then',
+                     '10    print("Found 5!")',
+                     '11 else',
+                     '12    print("Did not find 5")',
+                     '13 endif'
+                 ],
+                 task: "Complete the trace table for the inputs: <strong class='font-semibold'>3</strong>, then <strong class='font-semibold'>5</strong>.",
+                 variables: ['lineNumber', 'found', 'num', 'Output'],
+                 trace: [
+                     ['01', 'false', null, null],
+                     ['02', 'false', '0', null],
+                     ['04', 'false', '3', null],
+                     ['04', 'false', '5', null],
+                     ['06', 'true', '5', null],
+                     ['10', 'true', '5', 'Found 5!']
+                 ]
+             }, // Comma after Q8 object
+             // Question 9 (For loop with STEP)
+             {
+                 id: 9,
+                 scenario: "This algorithm prints odd numbers from 1 up to a limit.",
+                 code: [
+                     '01 limit = 7',
+                     '02 for i = 1 to limit step 2',
+                     '03    print(i)',
+                     '04 next i'
+                 ],
+                 task: "Complete the trace table for the given code.",
+                 variables: ['lineNumber', 'limit', 'i', 'Output'],
+                 trace: [
+                     ['01', '7', null, null],
+                     ['02', '7', '1', null],
+                     ['03', '7', '1', '1'],
+                     ['02', '7', '3', null],
+                     ['03', '7', '3', '3'],
+                     ['02', '7', '5', null],
+                     ['03', '7', '5', '5'],
+                     ['02', '7', '7', null],
+                     ['03', '7', '7', '7']
+                 ]
+             }, // Comma after Q9 object
+             // Question 10 (Integer Division and Modulo)
+             {
+                 id: 10,
+                 scenario: "This algorithm calculates the number of full boxes and remaining items.",
+                 code: [
+                     '01 totalItems = input("Enter total items")',
+                     '02 boxSize = 10',
+                     '03 fullBoxes = totalItems DIV boxSize',
+                     '04 remaining = totalItems MOD boxSize',
+                     '05 print("Boxes:", fullBoxes)',
+                     '06 print("Left:", remaining)'
+                 ],
+                 task: "Complete the trace table when the input is <strong class='font-semibold'>37</strong>.",
+                 variables: ['lineNumber', 'totalItems', 'boxSize', 'fullBoxes', 'remaining', 'Output'],
+                 trace: [
+                     ['01', '37', null, null, null, null],
+                     ['02', '37', '10', null, null, null],
+                     ['03', '37', '10', '3', null, null],
+                     ['04', '37', '10', '3', '7', null],
+                     ['05', '37', '10', '3', '7', 'Boxes: 3'],
+                     ['06', '37', '10', '3', '7', 'Left: 7']
+                 ]
+             }, // Comma after Q10 object
+              // Question 11 (While loop condition check at start)
+             {
+                 id: 11,
+                 scenario: "This algorithm attempts to double a number while it is less than 20.",
+                 code: [
+                     '01 number = input("Enter number")',
+                     '02 while number < 20',
+                     '03    number = number * 2',
+                     '04 endwhile',
+                     '05 print(number)'
+                 ],
+                 task: "Complete the trace table when the input number is <strong class='font-semibold'>25</strong>.",
+                 variables: ['lineNumber', 'number', 'Output'],
+                 trace: [
+                     ['01', '25', null],
+                     ['05', '25', '25']
+                 ]
+             }, // Comma after Q11 object
+             // Question 12 (Counting with a loop - Corrected Trace)
+             {
+                 id: 12,
+                 scenario: "This algorithm counts how many times the number 0 is entered out of 5 inputs.",
+                 code: [
+                     '01 zeroCount = 0',
+                     '02 for i = 1 to 5',
+                     '03    num = input("Enter number")',
+                     '04    if num == 0 then',
+                     '05       zeroCount = zeroCount + 1',
+                     '06    endif',
+                     '07 next i',
+                     '08 print("Zeros entered:", zeroCount)'
+                 ],
+                 task: "Complete the trace table for the inputs: <strong class='font-semibold'>3, 0, 5, 0, -2</strong>.",
+                 variables: ['lineNumber', 'zeroCount', 'i', 'num', 'Output'],
+                 trace: [
+                     ['01', '0', null, null, null],
+                     ['02', '0', '1', null, null],
+                     ['03', '0', '1', '3', null],
+                     ['02', '0', '2', '3', null],
+                     ['03', '0', '2', '0', null],
+                     ['05', '1', '2', '0', null],
+                     ['02', '1', '3', '0', null],
+                     ['03', '1', '3', '5', null],
+                     ['02', '1', '4', '5', null],
+                     ['03', '1', '4', '0', null],
+                     ['05', '2', '4', '0', null],
+                     ['02', '2', '5', '0', null],
+                     ['03', '2', '5', '-2', null],
+                     ['08', '2', '5', '-2', 'Zeros entered: 2']
+                 ]
+             }, // Comma after Q12 object
+             // Question 13 (Simple Array/List lookup - J277 style)
+             {
+                 id: 13,
+                 scenario: "This algorithm looks up a name from a list based on an index.",
+                 code: [
+                     '01 names = ["Ali", "Ben", "Chloe"]', // Assume 0-indexed for simplicity
+                     '02 index = input("Enter index (0-2)")',
+                     '03 if index >= 0 and index <= 2 then',
+                     '04    selectedName = names[index]',
+                     '05    print(selectedName)',
+                     '06 else',
+                     '07    print("Invalid index")',
+                     '08 endif'
+                 ],
+                 task: "Complete the trace table when the input index is <strong class='font-semibold'>1</strong>.",
+                 variables: ['lineNumber', 'names', 'index', 'selectedName', 'Output'],
+                 trace: [
+                     ['01', '["Ali", "Ben", "Chloe"]', null, null, null],
+                     ['02', '["Ali", "Ben", "Chloe"]', '1', null, null],
+                     ['04', '["Ali", "Ben", "Chloe"]', '1', 'Ben', null],
+                     ['05', '["Ali", "Ben", "Chloe"]', '1', 'Ben', 'Ben']
+                 ]
+             }, // Comma after Q13 object
+             // Question 14 (Boolean Logic OR)
+             {
+                 id: 14,
+                 scenario: "This algorithm checks if a user is eligible for a priority pass (age under 12 or over 65).",
+                 code: [
+                     '01 age = input("Enter age")',
+                     '02 priority = false',
+                     '03 if age < 12 or age > 65 then',
+                     '04    priority = true',
+                     '05 endif',
+                     '06 print("Priority:", priority)'
+                 ],
+                 task: "Complete the trace table when the input age is <strong class='font-semibold'>6</strong>.",
+                 variables: ['lineNumber', 'age', 'priority', 'Output'],
+                 trace: [
+                     ['01', '6', null, null],
+                     ['02', '6', 'false', null],
+                     ['04', '6', 'true', null],
+                     ['06', '6', 'true', 'Priority: true']
+                 ]
+             }, // Comma after Q14 object
+              // Question 15 (Boolean Logic AND)
+             {
+                 id: 15,
+                 scenario: "This algorithm checks if a number is within the range 10 to 20 (inclusive).",
+                 code: [
+                     '01 num = input("Enter number")',
+                     '02 inRange = false',
+                     '03 if num >= 10 and num <= 20 then',
+                     '04    inRange = true',
+                     '05 endif',
+                     '06 print("In range:", inRange)'
+                 ],
+                 task: "Complete the trace table when the input number is <strong class='font-semibold'>15</strong>.",
+                 variables: ['lineNumber', 'num', 'inRange', 'Output'],
+                 trace: [
+                     ['01', '15', null, null],
+                     ['02', '15', 'false', null],
+                     ['04', '15', 'true', null],
+                     ['06', '15', 'true', 'In range: true']
+                 ]
+             }, // Comma after Q15 object
+              // Question 16 (Loop calculating running total - Corrected Trace)
+             {
+                 id: 16,
+                 scenario: "This algorithm calculates the running total of 3 entered numbers.",
+                 code: [
+                     '01 total = 0',
+                     '02 for i = 1 to 3',
+                     '03    num = input("Enter number")',
+                     '04    total = total + num',
+                     '05    print("Running total:", total)',
+                     '06 next i'
+                 ],
+                 task: "Complete the trace table for the inputs: <strong class='font-semibold'>5, 10, -2</strong>.",
+                 variables: ['lineNumber', 'total', 'i', 'num', 'Output'],
+                 trace: [
+                     ['01', '0', null, null, null],
+                     ['02', '0', '1', null, null],
+                     ['03', '0', '1', '5', null],
+                     ['04', '5', '1', '5', null],
+                     ['05', '5', '1', '5', 'Running total: 5'],
+                     ['02', '5', '2', '5', null],
+                     ['03', '5', '2', '10', null],
+                     ['04', '15', '2', '10', null],
+                     ['05', '15', '2', '10', 'Running total: 15'],
+                     ['02', '15', '3', '10', null],
+                     ['03', '15', '3', '-2', null],
+                     ['04', '13', '3', '-2', null],
+                     ['05', '13', '3', '-2', 'Running total: 13']
+                 ]
+             } // NO comma after the last object (Q16)
+        ]; // End of the questions array
+
+        // --- State Variables ---
+        let currentQuestionIndex = 0;
+        let totalScore = 0;
+        let questionScores = {};
+
+        // --- DOM Elements ---
+        let scenarioTextElement, codeBlockElement, taskTextElement, tableHeadElement, tableBodyElement,
+            checkButton, nextButton, prevButton,
+            scoreDisplayElement, questionCounterElement, messageBoxElement,
+            totalScoreDisplayElement, fireworksContainer;
+
+        // --- Functions --- (Rest of the functions remain the same)
+
+        /** Displays a temporary message box. */
+        function showMessage(text, type = 'success') {
+             if (!messageBoxElement) return;
+            messageBoxElement.textContent = text;
+            messageBoxElement.className = '';
+            messageBoxElement.classList.add(type);
+            messageBoxElement.style.display = 'block';
+            messageBoxElement.style.opacity = '1';
+            setTimeout(() => {
+                messageBoxElement.style.opacity = '0';
+                 messageBoxElement.addEventListener('transitionend', () => {
+                    if (messageBoxElement.style.opacity === '0') { messageBoxElement.style.display = 'none'; }
+                 }, { once: true });
+            }, 3000);
+        }
+
+        /** Formats code with line numbers. */
+        function formatCodeWithLineNumbers(codeArray) {
+            return codeArray.map(line => {
+                const match = line.match(/^(\s*)(\d+)?(\s*)(.*)/);
+                let numberPart = '';
+                let codePart = line;
+                if (match) {
+                    const number = match[2] || '';
+                    codePart = (match[3] || '') + (match[4] || '');
+                     if (number) {
+                        const formattedNumber = number.padStart(2, '0');
+                        numberPart = `<span class="line-number">${formattedNumber}</span>`;
+                     } else { numberPart = `<span class="line-number"></span>`; }
+                } else { numberPart = `<span class="line-number"></span>`; }
+                return numberPart + codePart;
+            }).join('\n');
+        }
+
+        /** Generates the trace table structure. */
+        function generateTable(variables, expectedTrace) {
+            if (!tableHeadElement || !tableBodyElement) return;
+            tableHeadElement.innerHTML = '';
+            tableBodyElement.innerHTML = '';
+            const headerRow = document.createElement('tr');
+            headerRow.className = 'bg-gray-200';
+            variables.forEach(variable => {
+                const th = document.createElement('th');
+                th.className = 'border border-gray-300 px-2 py-2 font-semibold';
+                th.textContent = variable;
+                headerRow.appendChild(th);
+            });
+            tableHeadElement.appendChild(headerRow);
+            const bufferRows = 3;
+            const requiredRows = expectedTrace ? expectedTrace.length : 0;
+            const rowsToGenerate = Math.max(requiredRows + bufferRows, numRowsInTable);
+            for (let i = 0; i < rowsToGenerate; i++) {
+                const bodyRow = document.createElement('tr');
+                bodyRow.className = i % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                variables.forEach((variable, colIndex) => {
+                    const td = document.createElement('td');
+                    td.className = 'border border-gray-300 p-0';
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.dataset.row = i;
+                    input.dataset.col = colIndex;
+                    input.setAttribute('aria-label', `${variables[colIndex]} row ${i + 1}`);
+                    td.appendChild(input);
+                    bodyRow.appendChild(td);
+                });
+                tableBodyElement.appendChild(bodyRow);
+            }
+        }
+
+        /** Updates the total score display. */
+        function updateTotalScoreDisplay() {
+             if (!totalScoreDisplayElement) return;
+             totalScoreDisplayElement.textContent = `Total Score: ${totalScore}`;
+        }
+
+        /** Triggers a simple fireworks animation centered on the viewport. */
+        function triggerFireworks() {
+            if (!fireworksContainer) { console.error("Fireworks container not found!"); return; }
+            fireworksContainer.innerHTML = '';
+            fireworksContainer.style.display = 'block';
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 3;
+            const numParticles = 60;
+            const explosionRadiusMax = 200;
+            for (let i = 0; i < numParticles; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.sqrt(Math.random()) * explosionRadiusMax;
+                const hue = Math.random() * 360;
+                const translateX = Math.cos(angle) * distance;
+                const translateY = Math.sin(angle) * distance;
+                particle.style.setProperty('--tx', `${translateX}px`);
+                particle.style.setProperty('--ty', `${translateY}px`);
+                particle.style.setProperty('--hue', `${hue}`);
+                particle.style.left = `${centerX}px`;
+                particle.style.top = `${centerY}px`;
+                fireworksContainer.appendChild(particle);
+            }
+            setTimeout(() => {
+                if (fireworksContainer) { fireworksContainer.style.display = 'none'; fireworksContainer.innerHTML = ''; }
+            }, 900);
+        }
+
+        /** Checks answers, updates scores, provides feedback, and triggers animation. */
+        function checkAnswers() {
+            if (!checkButton || !tableBodyElement || !scoreDisplayElement || !totalScoreDisplayElement) return;
+            const question = questions[currentQuestionIndex];
+            const questionId = question.id;
+            const expectedTrace = question.trace;
+            const totalRowsInQuestion = expectedTrace.length;
+            let correctRowCount = 0;
+            checkButton.disabled = true;
+             const allInputs = tableBodyElement.querySelectorAll('input[type="text"]');
+             allInputs.forEach(input => {
+                 input.classList.remove('correct', 'incorrect');
+                 input.disabled = true;
+             });
+            for (let rowIndex = 0; rowIndex < expectedTrace.length; rowIndex++) {
+                const expectedRow = expectedTrace[rowIndex];
+                let isRowCorrect = true;
+                for (let colIndex = 0; colIndex < expectedRow.length; colIndex++) {
+                    const input = tableBodyElement.querySelector(`input[data-row='${rowIndex}'][data-col='${colIndex}']`);
+                    if (!input) { isRowCorrect = false; continue; }
+                    const userValue = input.value.trim();
+                    const expectedValue = expectedRow[colIndex];
+                    let isCellCorrect = false;
+                    if (expectedValue !== null && expectedValue !== undefined) {
+                        const expectedStringValue = String(expectedValue).trim();
+                        if (userValue.toLowerCase() === expectedStringValue.toLowerCase()) { isCellCorrect = true; }
+                        if (!isCellCorrect && colIndex === 0 && question.variables[colIndex] === 'lineNumber') { if (String(parseInt(userValue, 10)) === String(parseInt(expectedStringValue, 10))) { isCellCorrect = true; } }
+                        if (!isCellCorrect && userValue === '' && rowIndex > 0) { const prevVal = expectedTrace[rowIndex - 1][colIndex]; if (prevVal !== null && prevVal !== undefined && expectedStringValue.toLowerCase() === String(prevVal).trim().toLowerCase()) { isCellCorrect = true; } }
+                        if (isCellCorrect) { input.classList.add('correct'); }
+                        else if (userValue !== '') { input.classList.add('incorrect'); isRowCorrect = false; }
+                        else { input.classList.add('incorrect'); isRowCorrect = false; }
+                    } else {
+                        if (userValue === '') { isCellCorrect = true; }
+                        else { input.classList.add('incorrect'); isRowCorrect = false; }
+                    }
+                }
+                if (isRowCorrect) { correctRowCount++; }
+            }
+            allInputs.forEach(input => {
+                 const rowIndex = parseInt(input.dataset.row, 10);
+                 if (rowIndex >= expectedTrace.length && input.value.trim() !== '') { input.classList.add('incorrect'); }
+            });
+            scoreDisplayElement.textContent = `Score: ${correctRowCount} / ${totalRowsInQuestion}`;
+            const isFullyCorrect = correctRowCount === totalRowsInQuestion;
+            if (isFullyCorrect && (!questionScores[questionId] || questionScores[questionId] < totalRowsInQuestion)) {
+                 let scoreToAdd = totalRowsInQuestion;
+                 if(questionScores[questionId] === 0) {} else if (questionScores[questionId] > 0) { scoreToAdd = 0; }
+                 totalScore += scoreToAdd;
+                 questionScores[questionId] = totalRowsInQuestion;
+                 updateTotalScoreDisplay();
+                 showMessage('Correct! Well done!', 'success');
+                 triggerFireworks();
+            } else if (!isFullyCorrect && questionScores[questionId] === undefined) {
+                 questionScores[questionId] = 0;
+                 showMessage(`Check the highlighted cells. Score: ${correctRowCount}/${totalRowsInQuestion} rows correct.`, 'error');
+            } else if (!isFullyCorrect) {
+                 showMessage(`Check the highlighted cells. Score: ${correctRowCount}/${totalRowsInQuestion} rows correct.`, 'error');
+            } else {
+                 showMessage('You already answered this question correctly!', 'success');
+            }
+        }
+
+        /** Updates the navigation button states (disabled/enabled). */
+        function updateNavButtons() {
+            if (!prevButton || !nextButton) return;
+            prevButton.disabled = currentQuestionIndex === 0;
+            nextButton.disabled = currentQuestionIndex === questions.length - 1;
+        }
+
+        /** Updates the question counter text. */
+        function updateQuestionCounter() {
+            if (!questionCounterElement) return;
+            questionCounterElement.textContent = `Question ${currentQuestionIndex + 1} / ${questions.length}`;
+        }
+
+        /** Loads and displays a specific question. */
+        function loadQuestion(index) {
+             if (!scenarioTextElement || !codeBlockElement || !taskTextElement || !tableBodyElement ||
+                 !scoreDisplayElement || !checkButton || !prevButton || !nextButton || !questionCounterElement) {
+                 console.error("DOM element missing during loadQuestion"); return;
+             }
+            if (index < 0 || index >= questions.length) { console.error("Invalid index:", index); return; }
+            currentQuestionIndex = index;
+            const question = questions[index];
+            const questionId = question.id;
+            const totalRowsInQuestion = question.trace.length;
+            scenarioTextElement.innerHTML = question.scenario;
+            codeBlockElement.innerHTML = formatCodeWithLineNumbers(question.code);
+            taskTextElement.innerHTML = question.task;
+            generateTable(question.variables, question.trace);
+            updateQuestionCounter();
+            updateNavButtons();
+            scoreDisplayElement.textContent = `Score: 0 / ${totalRowsInQuestion}`;
+            if(messageBoxElement) { messageBoxElement.style.display = 'none'; messageBoxElement.style.opacity = '1'; }
+            checkButton.disabled = false;
+            const inputs = tableBodyElement.querySelectorAll('input[type="text"]');
+            inputs.forEach(input => {
+                 input.classList.remove('correct', 'incorrect');
+                 input.disabled = false;
+                 input.value = '';
+            });
+        }
+
+        // --- Initial Load and Event Listener Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            scenarioTextElement = document.getElementById('scenario-text');
+            codeBlockElement = document.getElementById('code-block');
+            taskTextElement = document.getElementById('task-text');
+            tableHeadElement = document.getElementById('trace-table-head');
+            tableBodyElement = document.getElementById('trace-table-body');
+            checkButton = document.getElementById('check-button');
+            nextButton = document.getElementById('next-button');
+            prevButton = document.getElementById('prev-button');
+            scoreDisplayElement = document.getElementById('score-display');
+            questionCounterElement = document.getElementById('question-counter');
+            messageBoxElement = document.getElementById('message-box');
+            totalScoreDisplayElement = document.getElementById('total-score-display');
+            fireworksContainer = document.getElementById('fireworks-container');
+            updateTotalScoreDisplay();
+            if (checkButton) { checkButton.addEventListener('click', checkAnswers); }
+            else { console.error("Check button not found!"); }
+            if (nextButton) { nextButton.addEventListener('click', () => { if (currentQuestionIndex < questions.length - 1) { loadQuestion(currentQuestionIndex + 1); } }); }
+            else { console.error("Next button not found!"); }
+             if (prevButton) { prevButton.addEventListener('click', () => { if (currentQuestionIndex > 0) { loadQuestion(currentQuestionIndex - 1); } }); }
+            else { console.error("Previous button not found!"); }
+            loadQuestion(0);
+        });
+
+    </script>
+</body>
+</html>

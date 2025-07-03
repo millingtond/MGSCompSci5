@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS Resolution Simulation - A Level Computer Science</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles to complement Tailwind CSS */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            overflow-x: hidden;
+        }
+
+        .component, .dns-server {
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        /* Active state for components with a glow effect */
+        .component.active, .dns-server.active {
+            transform: scale(1.03);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+            border-color: #60a5fa; /* A slightly lighter blue */
+        }
+        
+        .highlight-glow {
+            animation: glow 1.2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 10px rgba(59, 130, 246, 0.5), 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+            }
+            to {
+                box-shadow: 0 0 25px rgba(59, 130, 246, 0.9), 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+            }
+        }
+
+        /* Packet animation styles */
+        .packet {
+            transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 50;
+        }
+
+        /* Explanation Popup animation */
+        .explanation-popup.show {
+            animation: popup-fade-in 0.3s ease-out forwards;
+        }
+
+        @keyframes popup-fade-in {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        /* Custom scrollbar for cache/db views */
+        .dns-cache, .dns-database {
+            scrollbar-width: thin;
+            scrollbar-color: #60a5fa #e5e7eb;
+        }
+        .dns-cache::-webkit-scrollbar, .dns-database::-webkit-scrollbar {
+            width: 8px;
+        }
+        .dns-cache::-webkit-scrollbar-track, .dns-database::-webkit-scrollbar-track {
+            background: #e5e7eb;
+        }
+        .dns-cache::-webkit-scrollbar-thumb, .dns-database::-webkit-scrollbar-thumb {
+            background-color: #60a5fa;
+            border-radius: 10px;
+            border: 2px solid #e5e7eb;
+        }
+
+    </style>
+</head>
+<body class="text-gray-800">
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <!-- Header -->
+        <header class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 md:p-8 text-center mb-8 shadow-2xl shadow-blue-900/20">
+            <h1 class="text-3xl md:text-4xl font-bold text-blue-800 flex items-center justify-center gap-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9.09 9.91 5.83 5.83"></path><path d="m14.91 9.91-5.83 5.83"></path></svg>
+                <span>DNS Resolution Simulation</span>
+            </h1>
+            <p class="text-gray-600 mt-2 text-lg">Understanding How Domain Names Become IP Addresses</p>
+        </header>
+        
+        <!-- Instructions -->
+        <div class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8 shadow-xl shadow-blue-900/20">
+            <h2 class="text-2xl font-bold text-blue-700 mb-4 flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                How to Use This Simulation
+            </h2>
+            <ol class="list-decimal list-inside space-y-2 text-gray-700">
+                <li>Enter a domain name (e.g., `www.example.com`) in the address bar.</li>
+                <li>Click <strong class="text-blue-600">"Resolve DNS"</strong> to begin.</li>
+                <li>Use the <strong class="text-blue-600">"Next Step"</strong> button to progress through each stage. The explanation will appear first.</li>
+                <li><strong class="text-red-600">Close the pop-up</strong> to watch the animation for that step.</li>
+                <li>Notice how the simulation flow changes if an IP address is already <strong class="text-purple-600">cached</strong>!</li>
+                <li>Complete the interactive quiz below to test your understanding.</li>
+            </ol>
+        </div>
+
+        <!-- Simulation Container -->
+        <div class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 md:p-8 mb-8 shadow-2xl shadow-blue-900/20 relative">
+            <!-- Browser Section -->
+            <div class="bg-gray-100 rounded-xl p-5 mb-8 shadow-inner">
+                <h3 class="text-xl font-bold text-gray-700 mb-3">🖥️ Web Browser</h3>
+                <div class="flex flex-col sm:flex-row items-center gap-4">
+                    <input type="text" id="urlInput" class="flex-grow w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g., www.example.com" value="www.google.com">
+                    <div class="flex gap-2">
+                        <button id="startBtn" class="w-full sm:w-auto px-5 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-transform transform hover:scale-105 flex items-center justify-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            Resolve DNS
+                        </button>
+                        <button id="resetBtn" class="w-full sm:w-auto px-5 py-3 bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-transform transform hover:scale-105 flex items-center justify-center gap-2">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DNS Visualization -->
+            <div class="relative grid grid-cols-1 lg:grid-cols-3 gap-8 items-center min-h-[450px]">
+                <!-- Browser Component -->
+                <div id="browserComponent" class="component bg-blue-100 rounded-xl p-5 shadow-lg border-2 border-transparent h-full">
+                    <h4 class="component-header text-lg font-bold text-blue-800 flex items-center gap-2"><span class="text-2xl">💻</span> Your Computer</h4>
+                    <div id="browserInfo" class="mt-4 text-sm bg-blue-50/50 rounded-md p-3">Ready to resolve.</div>
+                </div>
+                
+                <!-- DNS Servers (Middle Column) -->
+                <div class="relative flex flex-col gap-8">
+                    <!-- Local DNS Server -->
+                    <div id="localDNS" class="dns-server bg-purple-100 rounded-xl p-5 shadow-lg border-2 border-transparent">
+                        <h4 class="text-lg font-bold text-purple-800 flex items-center gap-2"><span class="text-2xl">🗄️</span> Local DNS Server</h4>
+                        <div class="mt-3">
+                            <strong class="text-purple-700 text-sm">Cache:</strong>
+                            <div id="localCache" class="dns-cache mt-1 text-xs font-mono bg-purple-50/50 rounded-md p-3 h-24 overflow-y-auto">
+                                <div class="text-gray-500">Cache is empty</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Root DNS Server -->
+                    <div id="rootDNS" class="dns-server bg-green-100 rounded-xl p-5 shadow-lg border-2 border-transparent">
+                        <h4 class="text-lg font-bold text-green-800 flex items-center gap-2"><span class="text-2xl">🌍</span> Root / TLD DNS Servers</h4>
+                        <div class="mt-3">
+                             <strong class="text-green-700 text-sm">Global Database:</strong>
+                            <div id="rootDatabase" class="dns-database mt-1 text-xs font-mono bg-green-50/50 rounded-md p-3 h-24 overflow-y-auto">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Web Server Component -->
+                <div id="webserverComponent" class="component bg-red-100 rounded-xl p-5 shadow-lg border-2 border-transparent h-full">
+                    <h4 class="component-header text-lg font-bold text-red-800 flex items-center gap-2"><span class="text-2xl">🌐</span> Web Server</h4>
+                    <div id="serverInfo" class="mt-4 text-sm bg-red-50/50 rounded-md p-3">
+                        <div><strong>IP:</strong> <span id="serverIP">-</span></div>
+                        <div><strong>Status:</strong> <span id="serverStatus">Waiting</span></div>
+                    </div>
+                </div>
+
+                <!-- Packet for animation -->
+                <div id="packet" class="packet absolute top-1/2 left-1/4 -translate-y-1/2 w-16 h-12 bg-yellow-400 rounded-lg shadow-xl flex items-center justify-center text-2xl opacity-0">
+                    ✉️
+                </div>
+            </div>
+             <!-- Step Controls -->
+            <div id="stepControl" class="hidden mt-8">
+                <div class="bg-gray-100 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-inner">
+                    <button id="prevStepBtn" class="px-5 py-3 bg-gray-500 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-gray-500 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        Prev
+                    </button>
+                    <div id="stepIndicator" class="text-center font-semibold text-gray-700">
+                        <!-- Content updated by JS -->
+                    </div>
+                    <button id="nextStepBtn" class="px-5 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 flex items-center gap-2">
+                        Next
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quiz Section -->
+        <div class="bg-white/95 backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-2xl shadow-blue-900/20">
+             <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-blue-800">🎯 Test Your Knowledge</h2>
+                <p class="text-gray-600 mt-2">Complete these questions to check your understanding.</p>
+            </div>
+            <div id="quizContainer" class="space-y-6"></div>
+            <div class="mt-8 flex justify-center gap-4 flex-wrap">
+                 <button onclick="DNS_SIM.checkQuizAnswers()" class="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition-transform transform hover:scale-105 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    Check Answers
+                </button>
+                 <button onclick="DNS_SIM.resetQuiz()" class="px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-700 transition-transform transform hover:scale-105 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                    Reset Quiz
+                </button>
+            </div>
+            <div id="scoreDisplay" class="mt-8 text-center text-xl font-bold p-5 rounded-lg" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Popup Overlay -->
+    <div id="popupOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
+    
+    <!-- Explanation Popup -->
+    <div id="explanationPopup" class="explanation-popup fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-md bg-white rounded-2xl shadow-2xl p-6 z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+        <button onclick="DNS_SIM.closeExplanation()" class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full p-1 transition">
+             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+        <div class="flex items-center gap-4 mb-4">
+             <div id="explanationIcon" class="text-3xl"></div>
+             <h3 id="explanationTitle" class="text-xl font-bold text-blue-800"></h3>
+        </div>
+        <div id="explanationContent" class="text-gray-700 space-y-3"></div>
+    </div>
+
+    <script>
+        const DNS_SIM = (() => {
+            // This variable will hold the 'resolve' function of a Promise,
+            // allowing us to pause execution until the user closes the popup.
+            let resolvePopupClose = null;
+
+            // --- STATE MANAGEMENT ---
+            const state = {
+                isAnimating: false,
+                currentStep: 0,
+                totalSteps: 0,
+                currentURL: '',
+                isCacheHit: false,
+                simulationSteps: [], // This will be an array of step keys e.g., ['start', 'checkCache']
+            };
+
+            const dom = {
+                // Main Components
+                browserComponent: document.getElementById('browserComponent'),
+                localDNS: document.getElementById('localDNS'),
+                rootDNS: document.getElementById('rootDNS'),
+                webserverComponent: document.getElementById('webserverComponent'),
+                packet: document.getElementById('packet'),
+                // Controls & Inputs
+                urlInput: document.getElementById('urlInput'),
+                startBtn: document.getElementById('startBtn'),
+                resetBtn: document.getElementById('resetBtn'),
+                stepControl: document.getElementById('stepControl'),
+                prevStepBtn: document.getElementById('prevStepBtn'),
+                nextStepBtn: document.getElementById('nextStepBtn'),
+                stepIndicator: document.getElementById('stepIndicator'),
+                // Info Displays
+                browserInfo: document.getElementById('browserInfo'),
+                localCache: document.getElementById('localCache'),
+                rootDatabase: document.getElementById('rootDatabase'),
+                serverInfo: document.getElementById('serverInfo'),
+                serverIP: document.getElementById('serverIP'),
+                serverStatus: document.getElementById('serverStatus'),
+                // Popups & Quiz
+                popupOverlay: document.getElementById('popupOverlay'),
+                explanationPopup: document.getElementById('explanationPopup'),
+                explanationIcon: document.getElementById('explanationIcon'),
+                explanationTitle: document.getElementById('explanationTitle'),
+                explanationContent: document.getElementById('explanationContent'),
+                quizContainer: document.getElementById('quizContainer'),
+                scoreDisplay: document.getElementById('scoreDisplay'),
+            };
+
+            // --- DATA ---
+            const dnsDatabase = {
+                'www.example.com': '93.184.216.34', 'www.google.com': '216.58.194.78',
+                'www.github.com': '140.82.114.4', 'www.stackoverflow.com': '151.101.1.69',
+                'www.wikipedia.org': '91.198.174.192', 'www.youtube.com': '172.217.16.142',
+                'www.facebook.com': '157.240.12.35', 'www.amazon.com': '205.251.242.103',
+                'www.bbc.co.uk': '151.101.0.81', 'www.cambridge.org': '23.185.0.4'
+            };
+            let localDNSCache = {};
+            
+            const quizQuestions = [
+                { q: "What does DNS stand for?", o: ["Domain Name System", "Dynamic Network Service", "Digital Name Server"], a: 0, exp: "DNS stands for Domain Name System, the Internet's equivalent of a phone book." },
+                { q: "What is the primary purpose of DNS caching?", o: ["To improve security", "To speed up future lookups", "To save storage space"], a: 1, exp: "Caching stores recent lookups, so the full process can be skipped for frequently visited sites, making it much faster." },
+                { q: "If a local DNS server doesn't know an IP, it...", o: ["returns an error.", "asks a higher-level DNS server.", "makes up an IP address."], a: 1, exp: "This is called a recursive query, where the local server does the work of finding the IP by asking other servers." },
+                { q: "What is the final piece of information the browser receives from the DNS process?", o: ["A MAC Address", "A URL", "An IP Address"], a: 2, exp: "The entire goal of DNS is to resolve a human-friendly domain name into a computer-friendly IP address." },
+            ];
+
+            // A single object holds both the explanation and the execution logic for each step.
+            const steps = {
+                start: {
+                    explanation: {
+                        title: "Initiating DNS Lookup",
+                        icon: "🚀",
+                        content: () => `<p>You've entered <em class="text-blue-600 font-semibold">${state.currentURL}</em>. The browser must now find its IP address to connect.</p><p><strong>Analogy:</strong> This is like looking up a person's address in a directory before sending them a letter.</p>`
+                    },
+                    execute: async () => {
+                        setComponentState(dom.browserComponent, `Requesting: ${state.currentURL}`);
+                        await animatePacket(dom.browserComponent, dom.localDNS);
+                    }
+                },
+                checkCache: {
+                    explanation: {
+                        title: "Check Local DNS Cache",
+                        icon: "📋",
+                        content: () => `<p>The request first goes to the nearest DNS server (your ISP's or local network's).</p><p>It checks its <strong>cache</strong> (temporary memory) to see if it already knows the IP for <em class="text-blue-600 font-semibold">${state.currentURL}</em>.</p><p><strong>Analogy:</strong> Checking your phone's 'recents' list before searching your full contacts.</p>`
+                    },
+                    execute: async () => {
+                        setComponentState(dom.localDNS);
+                        await highlightEntry('localCache', state.currentURL, !!localDNSCache[state.currentURL]);
+                    }
+                },
+                cacheHit: {
+                    explanation: {
+                        title: "Cache Hit!",
+                        icon: "✅",
+                        content: () => `<p>Success! The IP address for <em class="text-blue-600 font-semibold">${state.currentURL}</em> was found in the cache.</p><p>This is much faster because we can skip asking other DNS servers. The process jumps ahead significantly!</p>`
+                    },
+                    execute: async () => {
+                        setComponentState(dom.localDNS);
+                        await sleep(500); // Pause briefly to acknowledge the hit
+                    }
+                },
+                cacheMiss: {
+                    explanation: {
+                        title: "Cache Miss",
+                        icon: "❌",
+                        content: () => `<p>The IP address for <em class="text-blue-600 font-semibold">${state.currentURL}</em> was not found in the cache. The server needs to find it by querying other servers.</p>`
+                    },
+                    execute: async () => {
+                        setComponentState(dom.localDNS);
+                        await sleep(500); // Pause briefly to acknowledge the miss
+                    }
+                },
+                forwardToRoot: {
+                    explanation: {
+                        title: "Forward to Root/TLD Servers",
+                        icon: "📡",
+                        content: () => `<p>Since the local server doesn't know the IP, it forwards the request up the DNS hierarchy to the <strong>Root and Top-Level Domain (TLD) servers</strong>.</p><p>These servers know which authoritative servers are responsible for each domain type (like .com, .org, etc.).</p><p><strong>Analogy:</strong> Asking a national directory service which regional office to contact.</p>`
+                    },
+                    execute: async () => {
+                        setComponentState(dom.localDNS);
+                        await animatePacket(dom.localDNS, dom.rootDNS);
+                    }
+                },
+                rootFindsIP: {
+                    explanation: {
+                        title: "Authoritative Server Responds",
+                        icon: "🌍",
+                        content: () => `<p>The Root/TLD servers direct the query to the <strong>authoritative DNS server</strong> for the domain.</p><p>This server holds the definitive record for <em class="text-blue-600 font-semibold">${state.currentURL}</em> and returns its IP address.</p>`
+                    },
+                    execute: async () => {
+                        setComponentState(dom.rootDNS);
+                        const ipFound = !!dnsDatabase[state.currentURL];
+                        await highlightEntry('rootDatabase', state.currentURL, ipFound);
+                        if (!ipFound) { 
+                            dnsDatabase[state.currentURL] = `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`;
+                            renderRootDB(); 
+                        }
+                    }
+                },
+                cacheResult: {
+                    explanation: {
+                        title: "Cache the Result",
+                        icon: "💾",
+                        content: () => `<p>The local DNS server receives the IP address from the authoritative server.</p><p>Crucially, it now <strong>saves (caches)</strong> this record so that future requests for the same domain can be answered instantly.</p><p><strong>Analogy:</strong> Saving a new contact to your phone so you don't have to look it up again.</p>`
+                    },
+                    execute: async () => {
+                        await animatePacket(dom.rootDNS, dom.localDNS);
+                        setComponentState(dom.localDNS);
+                        localDNSCache[state.currentURL] = dnsDatabase[state.currentURL];
+                        renderCache();
+                        await highlightEntry('localCache', state.currentURL, true);
+                    }
+                },
+                returnToBrowser: {
+                    explanation: {
+                        title: "Return IP to Browser",
+                        icon: "📥",
+                        content: () => `<p>The local DNS server sends the resolved IP address back to your computer's browser.</p><p>The browser now finally knows the numerical address of the server it needs to contact.</p>`
+                    },
+                    execute: async () => {
+                        await animatePacket(dom.localDNS, dom.browserComponent);
+                        const ip = localDNSCache[state.currentURL] || dnsDatabase[state.currentURL];
+                        setComponentState(dom.browserComponent, `<strong>IP Found:</strong> ${ip}`);
+                    }
+                },
+                connectToServer: {
+                    explanation: {
+                        title: "Connect to Web Server",
+                        icon: "🔗",
+                        content: () => `<p>With the IP address in hand, the browser establishes a direct connection to the web server.</p><p>It can now request the actual website content (HTML, CSS, etc.). DNS resolution is complete!</p><p><strong>Analogy:</strong> Using the address you found to go directly to the house.</p>`
+                    },
+                    execute: async () => {
+                        await animatePacket(dom.browserComponent, dom.webserverComponent);
+                        setComponentState(dom.webserverComponent);
+                        const ip = localDNSCache[state.currentURL] || dnsDatabase[state.currentURL];
+                        dom.serverIP.textContent = ip;
+                        dom.serverStatus.textContent = 'Connected!';
+                    }
+                }
+            };
+
+
+            // --- CORE LOGIC ---
+            const startDNSResolution = () => {
+                if (state.isAnimating) return;
+                const url = dom.urlInput.value.trim().toLowerCase();
+                if (!url) return;
+
+                resetSimulation(true); // Soft reset
+                state.currentURL = url;
+                
+                state.isCacheHit = !!localDNSCache[url];
+
+                // Build the sequence of step keys for this specific resolution
+                state.simulationSteps = [
+                    'start',
+                    'checkCache',
+                ];
+
+                if (state.isCacheHit) {
+                    state.simulationSteps.push('cacheHit', 'returnToBrowser', 'connectToServer');
+                } else {
+                     state.simulationSteps.push('cacheMiss', 'forwardToRoot', 'rootFindsIP', 'cacheResult', 'returnToBrowser', 'connectToServer');
+                }
+
+                state.totalSteps = state.simulationSteps.length;
+                dom.stepControl.classList.remove('hidden');
+                
+                executeCurrentStep();
+            };
+
+            const executeCurrentStep = async () => {
+                if (state.isAnimating) return;
+
+                const stepKey = state.simulationSteps[state.currentStep];
+                if (!stepKey) return;
+                
+                const step = steps[stepKey];
+
+                updateUIState();
+                showExplanation(step.explanation);
+
+                // This Promise pauses the function. It will only be resolved when
+                // the user calls closeExplanation(), which calls resolvePopupClose().
+                await new Promise(resolve => {
+                    resolvePopupClose = resolve;
+                });
+
+                // Now that the popup is closed, start the animation
+                state.isAnimating = true;
+                updateUIState(); // Disable buttons for the animation duration
+
+                await step.execute();
+
+                state.isAnimating = false;
+                updateUIState(); // Re-enable buttons
+            };
+            
+            const nextStep = () => {
+                if (state.isAnimating) return;
+                if (state.currentStep < state.totalSteps - 1) {
+                    state.currentStep++;
+                    executeCurrentStep();
+                }
+            };
+
+            const prevStep = () => {
+                if (state.isAnimating) return;
+                if (state.currentStep > 0) {
+                    state.currentStep--;
+                    executeCurrentStep();
+                }
+            };
+
+            const resetSimulation = (isSoft = false) => {
+                state.isAnimating = false;
+                state.currentStep = 0;
+                state.totalSteps = 0;
+                state.currentURL = '';
+                state.simulationSteps = [];
+
+                if (!isSoft) {
+                    localDNSCache = {};
+                    dom.urlInput.value = 'www.google.com';
+                }
+
+                dom.stepControl.classList.add('hidden');
+                document.querySelectorAll('.active, .highlight-glow').forEach(el => el.classList.remove('active', 'highlight-glow'));
+                dom.browserInfo.innerHTML = "Ready to resolve.";
+                dom.serverIP.textContent = '-';
+                dom.serverStatus.textContent = 'Waiting';
+                dom.packet.style.opacity = '0';
+                renderCache();
+                closeExplanation(true); // Force close without resolving
+                updateUIState();
+            };
+
+            // --- UI & ANIMATION ---
+            const updateUIState = () => {
+                const stepKey = state.simulationSteps[state.currentStep];
+                const stepInfo = stepKey ? steps[stepKey].explanation : null;
+                dom.stepIndicator.innerHTML = `<span class="font-normal">Step ${state.currentStep + 1}/${state.totalSteps}:</span> ${stepInfo ? stepInfo.title : 'Finished'}`;
+
+                // Update Buttons
+                dom.prevStepBtn.disabled = state.currentStep === 0 || state.isAnimating;
+                dom.nextStepBtn.disabled = state.currentStep >= state.totalSteps - 1 || state.isAnimating;
+                dom.startBtn.disabled = state.isAnimating;
+                dom.resetBtn.disabled = state.isAnimating;
+
+                if (state.currentStep >= state.totalSteps - 1) {
+                    dom.nextStepBtn.innerHTML = 'Complete ✅';
+                } else {
+                    dom.nextStepBtn.innerHTML = 'Next <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>';
+                }
+                
+                // Dim non-active components
+                const activeEl = document.querySelector('.active');
+                document.querySelectorAll('.component, .dns-server').forEach(el => {
+                    if(activeEl && el !== activeEl) {
+                        el.style.opacity = '0.6';
+                        el.classList.remove('highlight-glow');
+                    }
+                    else {
+                        el.style.opacity = '1';
+                    }
+                });
+            };
+
+            const setComponentState = (element, infoText = null) => {
+                document.querySelectorAll('.active').forEach(el => el.classList.remove('active', 'highlight-glow'));
+                element.classList.add('active', 'highlight-glow');
+                if (infoText) {
+                    const infoEl = element.querySelector('[id$="Info"]');
+                    if (infoEl) infoEl.innerHTML = infoText;
+                }
+                updateUIState();
+            };
+            
+            const animatePacket = async (fromEl, toEl) => {
+                const fromRect = fromEl.getBoundingClientRect();
+                const toRect = toEl.getBoundingClientRect();
+                const containerRect = fromEl.parentElement.closest('[class*="grid"]').getBoundingClientRect();
+
+                dom.packet.style.transition = 'none';
+                dom.packet.style.left = `${fromRect.left - containerRect.left + fromRect.width / 2 - dom.packet.offsetWidth / 2}px`;
+                dom.packet.style.top = `${fromRect.top - containerRect.top + fromRect.height / 2 - dom.packet.offsetHeight / 2}px`;
+                dom.packet.style.opacity = '1';
+                
+                await sleep(50); // Allow browser to apply initial position
+
+                dom.packet.style.transition = 'all 1.2s cubic-bezier(0.4, 0, 0.2, 1)';
+                dom.packet.style.left = `${toRect.left - containerRect.left + toRect.width / 2 - dom.packet.offsetWidth / 2}px`;
+                dom.packet.style.top = `${toRect.top - containerRect.top + toRect.height / 2 - dom.packet.offsetHeight / 2}px`;
+                
+                await sleep(1200);
+                dom.packet.style.opacity = '0';
+                await sleep(300);
+            };
+
+            const renderCache = () => {
+                if (Object.keys(localDNSCache).length === 0) {
+                    dom.localCache.innerHTML = `<div class="text-gray-500">Cache is empty</div>`;
+                } else {
+                    dom.localCache.innerHTML = Object.entries(localDNSCache).map(([domain, ip]) => 
+                        `<div data-domain="${domain}" class="p-1 rounded transition-colors duration-300">${domain} → ${ip}</div>`
+                    ).join('');
+                }
+            };
+
+            const renderRootDB = () => {
+                dom.rootDatabase.innerHTML = Object.entries(dnsDatabase).map(([domain, ip]) => 
+                    `<div data-domain="${domain}" class="p-1 rounded transition-colors duration-300">${domain} → ${ip}</div>`
+                ).join('');
+            };
+
+            const highlightEntry = async (containerId, domain, isSuccess) => {
+                const container = document.getElementById(containerId);
+                const entry = container.querySelector(`[data-domain="${domain}"]`);
+                if (entry) {
+                    entry.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    await sleep(300);
+                    entry.classList.add(isSuccess ? 'bg-green-200' : 'bg-yellow-200', 'text-black');
+                    await sleep(1200);
+                    entry.classList.remove('bg-green-200', 'bg-yellow-200', 'text-black');
+                } else {
+                    await sleep(1000);
+                }
+            };
+            
+            const showExplanation = (exp) => {
+                dom.explanationTitle.textContent = exp.title;
+                dom.explanationIcon.textContent = exp.icon;
+                dom.explanationContent.innerHTML = exp.content(); // Call the function to get dynamic content
+                dom.popupOverlay.classList.remove('pointer-events-none', 'opacity-0');
+                dom.explanationPopup.classList.remove('pointer-events-none', 'opacity-0');
+                dom.explanationPopup.classList.add('show');
+            };
+
+            const closeExplanation = (force = false) => {
+                dom.popupOverlay.classList.add('pointer-events-none', 'opacity-0');
+                dom.explanationPopup.classList.add('pointer-events-none', 'opacity-0');
+                dom.explanationPopup.classList.remove('show');
+                
+                if (resolvePopupClose && !force) {
+                    resolvePopupClose();
+                    resolvePopupClose = null; 
+                }
+            };
+            
+            const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+            
+            // --- QUIZ LOGIC ---
+            const renderQuiz = () => {
+                dom.quizContainer.innerHTML = quizQuestions.map((item, qIndex) => `
+                    <div class="bg-gray-100 rounded-xl p-6 shadow-inner">
+                        <h4 class="font-bold text-gray-800 mb-4">Question ${qIndex + 1}: ${item.q}</h4>
+                        <div class="space-y-3" id="q${qIndex}options">
+                            ${item.o.map((option, oIndex) => `
+                                <label for="q${qIndex}o${oIndex}" class="flex items-center gap-3 p-3 bg-white rounded-lg border-2 border-gray-200 cursor-pointer hover:border-blue-400 transition has-[:checked]:bg-blue-100 has-[:checked]:border-blue-500">
+                                    <input type="radio" name="q${qIndex}" id="q${qIndex}o${oIndex}" value="${oIndex}" class="accent-blue-600">
+                                    <span>${option}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                        <div id="feedback${qIndex}" class="mt-4 p-3 rounded-lg text-sm" style="display: none;"></div>
+                    </div>
+                `).join('');
+            };
+
+            const checkQuizAnswers = () => {
+                let score = 0;
+                quizQuestions.forEach((q, qIndex) => {
+                    const selected = document.querySelector(`input[name="q${qIndex}"]:checked`);
+                    const feedbackEl = document.getElementById(`feedback${qIndex}`);
+                    feedbackEl.style.display = 'block';
+
+                    if (selected) {
+                        if (parseInt(selected.value) === q.a) {
+                            score++;
+                            feedbackEl.className = 'mt-4 p-3 rounded-lg text-sm bg-green-100 text-green-800';
+                            feedbackEl.innerHTML = `✅ <strong>Correct!</strong> ${q.exp}`;
+                        } else {
+                            feedbackEl.className = 'mt-4 p-3 rounded-lg text-sm bg-red-100 text-red-800';
+                            feedbackEl.innerHTML = `❌ <strong>Incorrect.</strong> The correct answer is "${q.o[q.a]}". ${q.exp}`;
+                        }
+                    } else {
+                         feedbackEl.className = 'mt-4 p-3 rounded-lg text-sm bg-yellow-100 text-yellow-800';
+                         feedbackEl.innerHTML = `🤔 Please select an answer.`;
+                    }
+                });
+                
+                dom.scoreDisplay.style.display = 'block';
+                const percentage = Math.round((score / quizQuestions.length) * 100);
+                dom.scoreDisplay.innerHTML = `You scored ${score} out of ${quizQuestions.length} (${percentage}%)`;
+                if (percentage === 100) {
+                    dom.scoreDisplay.className = 'mt-8 text-center text-xl font-bold p-5 rounded-lg bg-green-100 text-green-800';
+                } else if (percentage >= 60) {
+                     dom.scoreDisplay.className = 'mt-8 text-center text-xl font-bold p-5 rounded-lg bg-blue-100 text-blue-800';
+                } else {
+                     dom.scoreDisplay.className = 'mt-8 text-center text-xl font-bold p-5 rounded-lg bg-red-100 text-red-800';
+                }
+            };
+            
+            const resetQuiz = () => {
+                renderQuiz();
+                dom.scoreDisplay.style.display = 'none';
+            };
+
+
+            // --- INITIALIZATION ---
+            const init = () => {
+                renderRootDB();
+                renderQuiz();
+                renderCache();
+                dom.startBtn.addEventListener('click', startDNSResolution);
+                dom.resetBtn.addEventListener('click', () => resetSimulation(false));
+                dom.nextStepBtn.addEventListener('click', nextStep);
+                dom.prevStepBtn.addEventListener('click', prevStep);
+                dom.urlInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') startDNSResolution();
+                });
+                dom.popupOverlay.addEventListener('click', () => closeExplanation(false));
+            };
+
+            // Publicly expose only the necessary functions
+            return { init, closeExplanation: (force = false) => closeExplanation(force), checkQuizAnswers, resetQuiz };
+        })();
+
+        window.addEventListener('DOMContentLoaded', DNS_SIM.init);
+    </script>
+</body>
+</html>

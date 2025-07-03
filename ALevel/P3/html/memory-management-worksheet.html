@@ -1,0 +1,4112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Management: Multitasking, Paging & Segmentation | Interactive Lesson</title>
+    <style>
+        :root {
+            --primary-color: #5b7cfd;
+            --primary-dark: #4865f4;
+            --primary-light: #7b96ff;
+            --secondary-color: #00d4aa;
+            --secondary-dark: #00b894;
+            --success-color: #00d4aa;
+            --success-dark: #00b894;
+            --error-color: #ff6b6b;
+            --error-dark: #ee5a6f;
+            --warning-color: #ffd93d;
+            --warning-dark: #fbbb00;
+            --bg-color: #ffffff;
+            --bg-secondary: #f8f9ff;
+            --text-color: #2d3436;
+            --text-secondary: #636e72;
+            --card-bg: #ffffff;
+            --border-color: #e4e6fc;
+            --highlight-color: #fff5d4;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.04);
+            --shadow-md: 0 5px 10px rgba(0,0,0,0.08);
+            --shadow-lg: 0 15px 25px rgba(0,0,0,0.1);
+            --shadow-xl: 0 20px 40px rgba(0,0,0,0.15);
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-success: linear-gradient(135deg, #68d391 0%, #4ade80 100%);
+            --gradient-memory: linear-gradient(135deg, #ff6ec4 0%, #7873f5 100%);
+            --gradient-cpu: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            --gradient-segment: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            --animation-duration: 0.3s;
+            --animation-timing: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #f5f7ff 0%, #ffffff 100%);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Background Pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(91, 124, 253, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 110, 196, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(0, 212, 170, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Performance optimizations */
+        .will-animate {
+            will-change: transform, opacity;
+        }
+
+        /* High Contrast Mode */
+        body.high-contrast {
+            --bg-color: #000000;
+            --bg-secondary: #1a1a1a;
+            --text-color: #ffffff;
+            --text-secondary: #e0e0e0;
+            --card-bg: #2a2a2a;
+            --border-color: #ffffff;
+            --primary-color: #00ffff;
+            --secondary-color: #00ff00;
+            background: #000000;
+        }
+
+        body.high-contrast::before {
+            display: none;
+        }
+
+        /* Dyslexia Font */
+        body.dyslexia-font {
+            font-family: 'Comic Sans MS', 'OpenDyslexic', sans-serif;
+            letter-spacing: 0.05em;
+            word-spacing: 0.1em;
+            line-height: 1.8;
+        }
+
+        /* Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            transition: all var(--animation-duration) var(--animation-timing);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* XP Container */
+        .xp-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(91, 124, 253, 0.1);
+            padding: 0.75rem 1.25rem;
+            border-radius: 2rem;
+            border: 1px solid rgba(91, 124, 253, 0.2);
+            transition: transform var(--animation-duration) var(--animation-timing);
+        }
+
+        .xp-container:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(91, 124, 253, 0.2);
+        }
+
+        .xp-bar {
+            width: 200px;
+            height: 24px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffd93d 0%, #ff6b6b 50%, #5b7cfd 100%);
+            background-size: 200% 100%;
+            animation: gradientShift 3s ease infinite;
+            transition: width 0.6s var(--animation-timing);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(255, 217, 61, 0.4);
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .xp-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .level-badge {
+            font-weight: 700;
+            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Navigation */
+        .nav-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem 1rem;
+            position: sticky;
+            top: 85px;
+            z-index: 999;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .nav-pills {
+            display: flex;
+            gap: 0.75rem;
+            overflow-x: auto;
+            padding: 0.25rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            scrollbar-width: none;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .nav-pills::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-pill {
+            padding: 0.625rem 1.25rem;
+            background: var(--bg-secondary);
+            border: 2px solid transparent;
+            border-radius: 2rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all var(--animation-duration) var(--animation-timing);
+            font-size: 0.875rem;
+            font-weight: 600;
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0);
+        }
+
+        .nav-pill::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: var(--primary-color);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            opacity: 0.1;
+        }
+
+        .nav-pill:hover::before {
+            width: 100px;
+            height: 100px;
+        }
+
+        .nav-pill:hover {
+            background: var(--primary-light);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(91, 124, 253, 0.3);
+        }
+
+        .nav-pill.active {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 5px 20px rgba(91, 124, 253, 0.4);
+        }
+
+        .nav-pill.completed {
+            border-color: var(--success-color);
+            position: relative;
+        }
+
+        .nav-pill.completed::after {
+            content: '✓';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--gradient-success);
+            color: white;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0, 212, 170, 0.4);
+            animation: bounceIn 0.5s var(--animation-timing);
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(180deg); }
+            100% { transform: scale(1) rotate(360deg); }
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem 4rem;
+            min-height: calc(100vh - 200px);
+        }
+
+        .section {
+            display: none;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.5s var(--animation-timing);
+        }
+
+        .section.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Cards */
+        .card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            transition: all var(--animation-duration) var(--animation-timing);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient-primary);
+            transition: left 0.6s var(--animation-timing);
+        }
+
+        .card:hover::before {
+            left: 0;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+        }
+
+        .card-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-title span {
+            font-size: 2rem;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        /* Interactive Areas */
+        .interactive-area {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(91, 124, 253, 0.05) 100%);
+            border: 2px dashed var(--primary-light);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            transition: all var(--animation-duration) var(--animation-timing);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .interactive-area::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(91, 124, 253, 0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .interactive-area:hover::before {
+            opacity: 1;
+        }
+
+        .interactive-area:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(91, 124, 253, 0.1);
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, var(--highlight-color) 0%, rgba(255, 217, 61, 0.1) 100%);
+            border-left: 4px solid var(--warning-color);
+            padding: 1.25rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            font-weight: 500;
+            box-shadow: 0 4px 20px rgba(255, 217, 61, 0.2);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--animation-duration) var(--animation-timing);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            text-transform: none;
+            letter-spacing: 0.025em;
+            transform: translateZ(0);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 20px rgba(91, 124, 253, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(91, 124, 253, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(91, 124, 253, 0.1);
+            color: var(--primary-color);
+            border: 2px solid var(--primary-light);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary-light);
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(91, 124, 253, 0.2);
+        }
+
+        .btn-success {
+            background: var(--gradient-success);
+            color: white;
+            box-shadow: 0 4px 20px rgba(0, 212, 170, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            box-shadow: 0 4px 20px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        /* Quiz Options */
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 1.25rem;
+            margin: 0.75rem 0;
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            text-align: left;
+            cursor: pointer;
+            transition: all var(--animation-duration) var(--animation-timing);
+            position: relative;
+            overflow: hidden;
+            font-weight: 500;
+        }
+
+        .quiz-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(91, 124, 253, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .quiz-option:hover::before {
+            left: 100%;
+        }
+
+        .quiz-option:hover {
+            background: var(--bg-secondary);
+            border-color: var(--primary-color);
+            transform: translateX(8px);
+            box-shadow: 0 5px 20px rgba(91, 124, 253, 0.1);
+        }
+
+        .quiz-option.selected {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--primary-dark);
+            box-shadow: 0 5px 20px rgba(91, 124, 253, 0.3);
+        }
+
+        .quiz-option.correct {
+            background: var(--gradient-success);
+            color: white;
+            border-color: var(--success-dark);
+            animation: correctPulse 0.6s ease;
+        }
+
+        .quiz-option.incorrect {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            border-color: var(--error-dark);
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes correctPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        /* Input Fields */
+        .input-field {
+            width: 100%;
+            padding: 0.875rem 1.25rem;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all var(--animation-duration) var(--animation-timing);
+            background: rgba(255, 255, 255, 0.8);
+            font-family: inherit;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(91, 124, 253, 0.1);
+            background: white;
+        }
+
+        .input-field::placeholder {
+            color: var(--text-secondary);
+        }
+
+        /* Memory Blocks Visual */
+        .memory-visual {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 0.75rem;
+            margin: 1rem 0;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .memory-block {
+            padding: 1.25rem;
+            background: var(--gradient-memory);
+            color: white;
+            text-align: center;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all var(--animation-duration) var(--animation-timing);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(120, 115, 245, 0.3);
+        }
+
+        .memory-block::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+            transform: rotate(45deg);
+            transition: all 0.6s ease;
+            opacity: 0;
+        }
+
+        .memory-block:hover::before {
+            opacity: 1;
+            transform: rotate(45deg) translate(30%, 30%);
+        }
+
+        .memory-block:hover {
+            transform: scale(1.1) rotate(2deg);
+            box-shadow: 0 8px 30px rgba(120, 115, 245, 0.4);
+        }
+
+        .memory-block.active {
+            animation: pulse 1.5s ease infinite;
+            box-shadow: 0 0 30px rgba(255, 110, 196, 0.6);
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 0 30px rgba(255, 110, 196, 0.6);
+            }
+            50% { 
+                transform: scale(1.05);
+                box-shadow: 0 0 50px rgba(255, 110, 196, 0.8);
+            }
+        }
+
+        /* Page Table */
+        .page-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .page-table th {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 1.25rem;
+            text-align: left;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .page-table td {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            transition: all var(--animation-duration) ease;
+        }
+
+        .page-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .page-table tr:hover td {
+            background: var(--bg-secondary);
+            transform: translateX(5px);
+        }
+
+        /* Segment Visual */
+        .segment-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 1.5rem 0;
+        }
+
+        .segment-box {
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            position: relative;
+            transition: all var(--animation-duration) var(--animation-timing);
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .segment-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary-light);
+        }
+
+        .segment-box h4 {
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            font-size: 1.25rem;
+        }
+
+        .segment-item {
+            background: var(--gradient-segment);
+            padding: 1rem 1.5rem;
+            margin: 0.75rem 0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all var(--animation-duration) var(--animation-timing);
+            font-weight: 600;
+            color: var(--text-color);
+            box-shadow: 0 3px 15px rgba(168, 237, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .segment-item small {
+            display: block;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .segment-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .segment-item:hover::before {
+            left: 100%;
+        }
+
+        .segment-item:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 25px rgba(168, 237, 234, 0.4);
+        }
+
+        .segment-item.selected {
+            background: var(--gradient-primary);
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 8px 30px rgba(91, 124, 253, 0.4);
+        }
+
+        .segment-item.selected small {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* Draggable/Clickable Items */
+        .draggable-item {
+            padding: 1rem 1.5rem;
+            margin: 0.75rem;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all var(--animation-duration) var(--animation-timing);
+            display: inline-block;
+            font-weight: 500;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .draggable-item:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(91, 124, 253, 0.2);
+        }
+
+        .draggable-item.selected {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--primary-dark);
+            transform: scale(1.05);
+            box-shadow: 0 5px 25px rgba(91, 124, 253, 0.3);
+        }
+
+        .drop-zone {
+            min-height: 80px;
+            border: 3px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin: 0.75rem 0;
+            transition: all var(--animation-duration) var(--animation-timing);
+            text-align: center;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .drop-zone.highlight::before {
+            opacity: 0.05;
+        }
+
+        .drop-zone.highlight {
+            background: rgba(91, 124, 253, 0.1);
+            border-color: var(--primary-color);
+            transform: scale(1.02);
+        }
+
+        .drop-zone.correct {
+            background: rgba(0, 212, 170, 0.1);
+            border-color: var(--success-color);
+            animation: correctPulse 0.6s ease;
+        }
+
+        /* CPU Simulation */
+        .cpu-simulation {
+            background: linear-gradient(135deg, rgba(250, 112, 154, 0.1) 0%, rgba(254, 225, 64, 0.1) 100%);
+            padding: 2.5rem;
+            border-radius: 16px;
+            margin: 1.5rem 0;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+        }
+
+        .process-queue {
+            display: flex;
+            gap: 1.25rem;
+            margin: 2rem 0;
+            overflow-x: auto;
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            scroll-behavior: smooth;
+        }
+
+        .process-block {
+            min-width: 120px;
+            padding: 1.25rem;
+            background: var(--gradient-cpu);
+            color: white;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 600;
+            transition: all var(--animation-duration) var(--animation-timing);
+            box-shadow: 0 4px 20px rgba(250, 112, 154, 0.3);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .process-block small {
+            display: block;
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+            opacity: 0.9;
+        }
+
+        .process-block::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+            opacity: 0;
+            transition: all 0.6s ease;
+        }
+
+        .process-block:hover::before {
+            opacity: 1;
+            transform: rotate(180deg);
+        }
+
+        .process-block.running {
+            background: var(--gradient-success);
+            transform: scale(1.15);
+            box-shadow: 0 8px 35px rgba(104, 211, 145, 0.4);
+            animation: running 2s ease infinite;
+        }
+
+        @keyframes running {
+            0%, 100% { transform: scale(1.15) rotate(0deg); }
+            25% { transform: scale(1.2) rotate(1deg); }
+            75% { transform: scale(1.1) rotate(-1deg); }
+        }
+
+        .cpu-core {
+            width: 140px;
+            height: 140px;
+            background: var(--gradient-memory);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 3rem auto;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+            box-shadow: 0 10px 40px rgba(120, 115, 245, 0.3);
+            position: relative;
+            transition: all var(--animation-duration) var(--animation-timing);
+        }
+
+        .cpu-core::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            top: -3px;
+            left: -3px;
+            animation: orbit 3s linear infinite;
+        }
+
+        .cpu-core.active {
+            animation: rotate 2s linear infinite;
+            box-shadow: 0 0 60px rgba(120, 115, 245, 0.6);
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes orbit {
+            from { transform: rotate(0deg) scale(1.1); }
+            to { transform: rotate(360deg) scale(1.1); }
+        }
+
+        /* Achievement Popup */
+        .achievement-popup {
+            position: fixed;
+            top: 100px;
+            right: 30px;
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            transform: translateX(400px);
+            transition: transform 0.5s var(--animation-timing);
+            z-index: 2000;
+            max-width: 350px;
+            border: 2px solid var(--success-color);
+            overflow: hidden;
+        }
+
+        .achievement-popup::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: var(--gradient-success);
+        }
+
+        .achievement-popup.show {
+            transform: translateX(0);
+        }
+
+        .achievement-icon {
+            font-size: 4rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            animation: bounceIcon 0.6s ease;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+        }
+
+        @keyframes bounceIcon {
+            0% { transform: scale(0) rotate(0deg); }
+            50% { transform: scale(1.3) rotate(180deg); }
+            100% { transform: scale(1) rotate(360deg); }
+        }
+
+        /* Simulation Controls */
+        .simulation-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            justify-content: center;
+        }
+
+        .step-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--border-color);
+            transition: all var(--animation-duration) var(--animation-timing);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .step-dot::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid var(--primary-color);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            transition: transform 0.3s ease;
+        }
+
+        .step-dot.active {
+            background: var(--primary-color);
+            transform: scale(1.5);
+        }
+
+        .step-dot.active::before {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* Drawing Canvas */
+        .drawing-canvas {
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            background: white;
+            touch-action: none;
+            cursor: crosshair;
+            margin: 1.5rem 0;
+            display: block;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.05);
+            transition: all var(--animation-duration) var(--animation-timing);
+        }
+
+        .drawing-canvas:hover {
+            border-color: var(--primary-light);
+            box-shadow: 0 8px 40px rgba(91, 124, 253, 0.1);
+        }
+
+        /* Mark Scheme */
+        .mark-scheme {
+            background: var(--gradient-success);
+            color: white;
+            padding: 2rem;
+            border-radius: 16px;
+            margin-top: 1.5rem;
+            display: none;
+            box-shadow: 0 10px 40px rgba(104, 211, 145, 0.3);
+        }
+
+        .mark-scheme.show {
+            display: block;
+            animation: slideDown 0.5s var(--animation-timing);
+        }
+
+        @keyframes slideDown {
+            from { 
+                opacity: 0; 
+                transform: translateY(-20px);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0);
+            }
+        }
+
+        .mark-scheme h5 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .mark-scheme ul {
+            padding-left: 1.5rem;
+        }
+
+        .mark-scheme li {
+            margin: 0.5rem 0;
+        }
+
+        /* Feedback Button */
+        .feedback-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 8px 30px rgba(91, 124, 253, 0.4);
+            transition: all var(--animation-duration) var(--animation-timing);
+            font-size: 1.5rem;
+            z-index: 1000;
+        }
+
+        .feedback-btn:hover {
+            transform: scale(1.1) rotate(15deg);
+            box-shadow: 0 12px 40px rgba(91, 124, 253, 0.5);
+        }
+
+        .feedback-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Feedback Modal */
+        .feedback-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .feedback-content {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            animation: slideUp 0.3s var(--animation-timing);
+        }
+
+        @keyframes slideUp {
+            from { 
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to { 
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .feedback-content h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        /* Accessibility Controls */
+        .accessibility-controls {
+            position: fixed;
+            top: 150px;
+            right: 30px;
+            background: white;
+            border-radius: 16px;
+            padding: 1.25rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            border: 1px solid var(--border-color);
+            transition: all var(--animation-duration) var(--animation-timing);
+        }
+
+        .accessibility-controls:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+        }
+
+        .accessibility-controls h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .accessibility-controls button {
+            display: block;
+            width: 100%;
+            margin: 0.5rem 0;
+            padding: 0.625rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all var(--animation-duration) var(--animation-timing);
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .accessibility-controls button:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateX(-2px);
+            box-shadow: 0 4px 15px rgba(91, 124, 253, 0.2);
+        }
+
+        /* Shame Message */
+        .shame-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            padding: 2rem 3rem;
+            border-radius: 20px;
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-align: center;
+            z-index: 3000;
+            box-shadow: 0 20px 60px rgba(255, 107, 107, 0.4);
+            animation: shameAnimation 3s ease forwards;
+        }
+
+        @keyframes shameAnimation {
+            0% { 
+                transform: translate(-50%, -50%) scale(0) rotate(0deg);
+            }
+            20% { 
+                transform: translate(-50%, -50%) scale(1.2) rotate(-5deg);
+            }
+            40% { 
+                transform: translate(-50%, -50%) scale(0.9) rotate(5deg);
+            }
+            60% { 
+                transform: translate(-50%, -50%) scale(1.05) rotate(-3deg);
+            }
+            80% { 
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            }
+            100% { 
+                transform: translate(-50%, -50%) scale(0) rotate(0deg);
+            }
+        }
+
+        /* Font Size Variations */
+        body.font-small { font-size: 14px; }
+        body.font-large { font-size: 18px; }
+        body.font-xlarge { font-size: 20px; }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Particle Container */
+        #particle-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2999;
+        }
+
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFall 4s linear forwards;
+        }
+
+        @keyframes particleFall {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* Hint Container */
+        .hint-container {
+            margin-top: 1rem;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, rgba(255, 217, 61, 0.1) 0%, rgba(255, 217, 61, 0.05) 100%);
+            border-left: 4px solid var(--warning-color);
+            border-radius: 8px;
+            display: none;
+            animation: slideIn 0.3s var(--animation-timing);
+        }
+
+        .hint-container.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Progress Dots */
+        .progress-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--border-color);
+            transition: all var(--animation-duration) var(--animation-timing);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-dot:hover {
+            transform: scale(1.2);
+        }
+
+        .progress-dot.active {
+            background: var(--primary-color);
+            transform: scale(1.5);
+            box-shadow: 0 0 15px rgba(91, 124, 253, 0.5);
+        }
+
+        .progress-dot.completed {
+            background: var(--success-color);
+            position: relative;
+        }
+
+        .progress-dot.completed::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 0.6rem;
+            font-weight: bold;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            .header-content {
+                flex-direction: column;
+                padding: 1rem;
+            }
+
+            .xp-container {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .xp-bar {
+                width: 150px;
+            }
+
+            .nav-container {
+                top: 120px;
+            }
+
+            .main-content {
+                padding: 0 1rem 3rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .segment-container {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .memory-visual {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .cpu-core {
+                width: 100px;
+                height: 100px;
+                font-size: 0.9rem;
+            }
+
+            .accessibility-controls {
+                top: auto;
+                bottom: 100px;
+                right: 20px;
+                padding: 1rem;
+            }
+
+            .achievement-popup {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+
+            .feedback-btn {
+                bottom: 20px;
+                right: 20px;
+                width: 50px;
+                height: 50px;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            .header, .nav-container, .feedback-btn, .accessibility-controls, .btn {
+                display: none !important;
+            }
+
+            body::before {
+                display: none;
+            }
+
+            .section {
+                display: block !important;
+                opacity: 1 !important;
+                transform: none !important;
+                page-break-after: always;
+            }
+
+            .card {
+                box-shadow: none;
+                border: 1px solid #000;
+                break-inside: avoid;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 6px;
+            border: 2px solid var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-color);
+        }
+
+        /* Iframe compatibility */
+        iframe {
+            width: 100%;
+            height: 80vh;
+            border: none;
+            display: block;
+        }
+
+        /* Matching Container */
+        .matching-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .matching-column {
+            background: rgba(255, 255, 255, 0.6);
+            padding: 1.5rem;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .matching-column h4 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        /* Tables for comparison */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .comparison-table th {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 1.25rem;
+            text-align: left;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .comparison-table td {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            transition: all var(--animation-duration) ease;
+        }
+
+        .comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .comparison-table tr:hover td {
+            background: var(--bg-secondary);
+        }
+
+        /* Code Display */
+        .code-display {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1.5rem;
+            border-radius: 12px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            overflow-x: auto;
+            margin: 1rem 0;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .code-display .keyword {
+            color: #569cd6;
+            font-weight: 600;
+        }
+
+        .code-display .comment {
+            color: #608b4e;
+            font-style: italic;
+        }
+
+        .code-display .string {
+            color: #ce9178;
+        }
+
+        /* Success Animation */
+        @keyframes successPulse {
+            0% { 
+                box-shadow: 0 0 0 0 rgba(0, 212, 170, 0.4);
+            }
+            70% { 
+                box-shadow: 0 0 0 20px rgba(0, 212, 170, 0);
+            }
+            100% { 
+                box-shadow: 0 0 0 0 rgba(0, 212, 170, 0);
+            }
+        }
+
+        .success-animation {
+            animation: successPulse 1s ease;
+        }
+
+        /* Floating XP */
+        .xp-float {
+            position: fixed;
+            color: var(--warning-color);
+            font-weight: bold;
+            font-size: 1.5rem;
+            pointer-events: none;
+            z-index: 3000;
+            animation: floatUp 2s ease-out forwards;
+            text-shadow: 0 2px 10px rgba(255, 217, 61, 0.5);
+        }
+
+        @keyframes floatUp {
+            0% { 
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% { 
+                transform: translateY(-80px) scale(0.8);
+                opacity: 0;
+            }
+        }
+
+        /* Section Transitions */
+        .section-transition-enter {
+            animation: sectionEnter 0.5s var(--animation-timing);
+        }
+
+        @keyframes sectionEnter {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Error States */
+        .error-shake {
+            animation: errorShake 0.5s ease;
+        }
+
+        @keyframes errorShake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        /* Quiz Question Container */
+        .quiz-question {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .quiz-question p {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        /* Breadcrumb */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .breadcrumb span {
+            color: var(--primary-color);
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            background: var(--text-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            opacity: 0;
+            transition: all 0.3s ease;
+            pointer-events: none;
+            margin-bottom: 0.5rem;
+        }
+
+        .tooltip:hover::after {
+            transform: translateX(-50%) scale(1);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1>📚 Memory Management: Multitasking, Paging & Segmentation</h1>
+            <div class="xp-container">
+                <span class="level-badge">Level <span id="current-level">1</span></span>
+                <div class="xp-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
+                </div>
+                <span id="xp-text">0 / 100 XP</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-container">
+        <div class="nav-pills" id="nav-pills">
+            <button class="nav-pill active" data-section="intro" aria-current="page">Introduction</button>
+            <button class="nav-pill" data-section="starter">Starter Activity</button>
+            <button class="nav-pill" data-section="multitasking">Multitasking</button>
+            <button class="nav-pill" data-section="paging">Paging</button>
+            <button class="nav-pill" data-section="segmentation">Segmentation</button>
+            <button class="nav-pill" data-section="comparison">Paging vs Segmentation</button>
+            <button class="nav-pill" data-section="practice">Practice Problems</button>
+            <button class="nav-pill" data-section="summary">Summary & Quiz</button>
+            <button class="nav-pill" data-section="exam">Exam Practice</button>
+            <button class="nav-pill" data-section="extension">Extension</button>
+            <button class="nav-pill" data-section="videos">Videos</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Introduction Section -->
+        <section id="intro" class="section active">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎯</span> Welcome to Memory Management!
+                </h2>
+                <div class="progress-indicator">
+                    <span class="progress-dot active"></span>
+                    <span class="progress-dot"></span>
+                    <span class="progress-dot"></span>
+                    <span class="progress-dot"></span>
+                </div>
+
+                <h3>Learning Outcomes</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li>Understand how multitasking works in modern operating systems</li>
+                    <li>Explain the concept and implementation of paging</li>
+                    <li>Describe segmentation and how it differs from paging</li>
+                    <li>Compare and contrast paging vs segmentation</li>
+                    <li>Apply memory management concepts to solve problems</li>
+                </ul>
+
+                <div class="interactive-area">
+                    <h4>Pre-Assessment: Test Your Knowledge</h4>
+                    <p>What do you already know about memory management?</p>
+                    
+                    <div id="pre-quiz">
+                        <p><strong>Question:</strong> Which of the following best describes the main purpose of memory management?</p>
+                        <button class="quiz-option" data-answer="a">To increase processor speed</button>
+                        <button class="quiz-option" data-answer="b">To efficiently allocate and manage computer memory resources</button>
+                        <button class="quiz-option" data-answer="c">To store files permanently</button>
+                        <button class="quiz-option" data-answer="d">To connect peripheral devices</button>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkPreQuiz()" style="margin-top: 1rem;">Check Answer</button>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Start Learning →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Starter Activity -->
+        <section id="starter" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🚀</span> Starter Activity: OS Concepts Review
+                </h2>
+                
+                <p>Let's review some key operating system concepts. Match each term with its correct description!</p>
+                
+                <div class="matching-container" id="starter-matching">
+                    <div class="matching-column">
+                        <h4>Terms</h4>
+                        <div class="draggable-item" data-id="1">Process</div>
+                        <div class="draggable-item" data-id="2">Virtual Memory</div>
+                        <div class="draggable-item" data-id="3">CPU Scheduling</div>
+                        <div class="draggable-item" data-id="4">Address Space</div>
+                        <div class="draggable-item" data-id="5">Context Switch</div>
+                    </div>
+                    <div class="matching-column">
+                        <h4>Descriptions</h4>
+                        <div class="drop-zone" data-match="1">A program in execution</div>
+                        <div class="drop-zone" data-match="2">Uses disk space as an extension of RAM</div>
+                        <div class="drop-zone" data-match="3">Determines which process runs next</div>
+                        <div class="drop-zone" data-match="4">Range of addresses a process can use</div>
+                        <div class="drop-zone" data-match="5">Saving and restoring process state</div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetStarterActivity()">Reset Activity</button>
+                <button class="btn btn-primary" onclick="checkStarterActivity()">Check Answers</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Multitasking Section -->
+        <section id="multitasking" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🔄</span> Multitasking
+                </h2>
+                
+                <div class="highlight-box">
+                    <p><strong>Definition:</strong> Multitasking is managing the execution of many programs that appear to run at the same time.</p>
+                </div>
+
+                <h3>How Multitasking Works</h3>
+                <p>Modern operating systems create the illusion of simultaneous program execution through rapid switching between processes.</p>
+
+                <div class="interactive-area">
+                    <h4>Interactive CPU Scheduling Simulation</h4>
+                    <div class="cpu-simulation">
+                        <div class="step-indicator">
+                            <span class="step-dot active" data-step="1"></span>
+                            <span class="step-dot" data-step="2"></span>
+                            <span class="step-dot" data-step="3"></span>
+                            <span class="step-dot" data-step="4"></span>
+                        </div>
+                        
+                        <div id="simulation-description" style="text-align: center; margin: 1rem 0;">
+                            <p><strong>Step 1:</strong> Processes waiting in the ready queue</p>
+                        </div>
+                        
+                        <div class="process-queue" id="process-queue">
+                            <div class="process-block" data-process="1">Process A<small>Word Processor</small></div>
+                            <div class="process-block" data-process="2">Process B<small>Web Browser</small></div>
+                            <div class="process-block" data-process="3">Process C<small>Music Player</small></div>
+                            <div class="process-block" data-process="4">Process D<small>File Manager</small></div>
+                        </div>
+                        
+                        <div class="cpu-core" id="cpu-core">
+                            <span>CPU</span>
+                        </div>
+                        
+                        <div class="simulation-controls">
+                            <button class="btn btn-secondary" onclick="prevSimulationStep()">← Previous</button>
+                            <button class="btn btn-primary" onclick="nextSimulationStep()">Next →</button>
+                            <button class="btn btn-secondary" onclick="resetSimulation()">Reset</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Quick Check: Multitasking Concepts</h4>
+                    <p>Fill in the blanks with the correct terms:</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>1. The OS uses 
+                            <select class="input-field" style="width: 150px; display: inline;" id="mt-blank1">
+                                <option value="">Choose...</option>
+                                <option value="timeslice">time slices</option>
+                                <option value="memory">memory blocks</option>
+                                <option value="disk">disk sectors</option>
+                                <option value="network">network packets</option>
+                            </select>
+                            to allocate CPU time to each process.
+                        </p>
+                        
+                        <p>2. When switching between processes, the OS performs a 
+                            <select class="input-field" style="width: 150px; display: inline;" id="mt-blank2">
+                                <option value="">Choose...</option>
+                                <option value="context">context switch</option>
+                                <option value="memory">memory swap</option>
+                                <option value="disk">disk write</option>
+                                <option value="reset">system reset</option>
+                            </select>.
+                        </p>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkMultitaskingBlanks()">Check Answers</button>
+                </div>
+
+                <button class="btn btn-secondary" onclick="showHint('multitasking')">Need a Hint?</button>
+                <div class="hint-container" id="multitasking-hint">
+                    <p>💡 Think about how the CPU divides its time between processes and what needs to be saved when switching.</p>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Paging Section -->
+        <section id="paging" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📄</span> Paging
+                </h2>
+                
+                <div class="highlight-box">
+                    <p><strong>Definition:</strong> Paging is reading/writing same-size blocks of data from/to secondary storage when required.</p>
+                </div>
+
+                <h3>How Paging Works</h3>
+                <p>Memory is divided into fixed-size blocks called pages. The operating system manages these pages using a page table.</p>
+
+                <div class="interactive-area">
+                    <h4>Interactive Page Table Demo</h4>
+                    <p>Click on a logical page to see how it maps to physical memory!</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <h5>Logical Memory (Pages)</h5>
+                            <div class="memory-visual" id="logical-memory">
+                                <div class="memory-block" data-page="0" onclick="showPageMapping(0)">Page 0</div>
+                                <div class="memory-block" data-page="1" onclick="showPageMapping(1)">Page 1</div>
+                                <div class="memory-block" data-page="2" onclick="showPageMapping(2)">Page 2</div>
+                                <div class="memory-block" data-page="3" onclick="showPageMapping(3)">Page 3</div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h5>Physical Memory (Frames)</h5>
+                            <div class="memory-visual" id="physical-memory">
+                                <div class="memory-block" data-frame="0">Frame 0</div>
+                                <div class="memory-block" data-frame="1">Frame 1</div>
+                                <div class="memory-block" data-frame="2">Frame 2</div>
+                                <div class="memory-block" data-frame="3">Frame 3</div>
+                                <div class="memory-block" data-frame="4">Frame 4</div>
+                                <div class="memory-block" data-frame="5">Frame 5</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <table class="page-table" style="margin-top: 2rem;">
+                        <thead>
+                            <tr>
+                                <th>Page Number</th>
+                                <th>Frame Number</th>
+                                <th>Valid Bit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="page-table-body">
+                            <tr><td>0</td><td>3</td><td>1</td></tr>
+                            <tr><td>1</td><td>1</td><td>1</td></tr>
+                            <tr><td>2</td><td>5</td><td>1</td></tr>
+                            <tr><td>3</td><td>2</td><td>1</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Paging Calculation Practice</h4>
+                    <p>Given a page size of 4KB and a logical address of 8200, calculate:</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>Page number: <input type="number" class="input-field" style="width: 100px; display: inline;" id="page-num" placeholder="?"></p>
+                        <p>Offset within page: <input type="number" class="input-field" style="width: 100px; display: inline;" id="page-offset" placeholder="?"></p>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkPagingCalculation()">Check Answer</button>
+                    <button class="btn btn-secondary" onclick="showPagingFormula()">Show Formula</button>
+                    
+                    <div id="paging-formula" style="display: none; margin-top: 1rem;" class="highlight-box">
+                        <p>Page Number = Logical Address ÷ Page Size</p>
+                        <p>Offset = Logical Address % Page Size</p>
+                        <p>Example: 8200 ÷ 4096 = 2 (page), 8200 % 4096 = 8 (offset)</p>
+                    </div>
+                </div>
+
+                <button class="btn btn-secondary" onclick="resetPagingSection()">Reset Section</button>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Segmentation Section -->
+        <section id="segmentation" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🧩</span> Segmentation
+                </h2>
+                
+                <div class="highlight-box">
+                    <p><strong>Definition:</strong> Logical address space is broken up into variable-size memory blocks/partitions called segments.</p>
+                </div>
+
+                <h3>Key Concepts</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li>Each segment has a name and size</li>
+                    <li>Segments from logical memory are loaded into physical memory for execution</li>
+                    <li>Address contains segment name/number and offset value</li>
+                    <li>Segment map table maps logical/virtual addresses to physical addresses</li>
+                </ul>
+
+                <div class="interactive-area">
+                    <h4>Build a Segment Table</h4>
+                    <p>Click segments to select them, then add to the table!</p>
+                    
+                    <div class="segment-container">
+                        <div class="segment-box">
+                            <h4>Program Segments</h4>
+                            <div class="segment-item" data-segment="code">Code Segment<small>Size: 2KB</small></div>
+                            <div class="segment-item" data-segment="data">Data Segment<small>Size: 3KB</small></div>
+                            <div class="segment-item" data-segment="stack">Stack Segment<small>Size: 1KB</small></div>
+                            <div class="segment-item" data-segment="heap">Heap Segment<small>Size: 4KB</small></div>
+                        </div>
+                        
+                        <div class="segment-box">
+                            <h4>Segment Table</h4>
+                            <table class="page-table" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th>Segment</th>
+                                        <th>Base Address</th>
+                                        <th>Limit/Length</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="segment-table-body">
+                                    <!-- Dynamically populated -->
+                                </tbody>
+                            </table>
+                            <button class="btn btn-primary" onclick="addSegmentToTable()" style="margin-top: 1rem;">Add Selected Segment</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Segmentation Address Translation</h4>
+                    <p>Given a segment number 2 with base address 4000 and an offset of 500, what is the physical address?</p>
+                    
+                    <input type="number" class="input-field" style="width: 150px;" id="seg-physical-addr" placeholder="Enter physical address">
+                    
+                    <button class="btn btn-primary" onclick="checkSegmentAddress()">Check Answer</button>
+                    
+                    <div class="code-display" style="margin-top: 1rem;">
+                        <span class="comment">// Physical Address Calculation</span><br>
+                        <span class="keyword">Physical_Address</span> = Base_Address + Offset<br>
+                        <span class="comment">// Example: 4000 + 500 = 4500</span>
+                    </div>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>True or False: Segmentation Concepts</h4>
+                    <div style="margin: 1rem 0;">
+                        <p>1. Segments must all be the same size 
+                            <select class="input-field" style="width: 100px; display: inline;" id="seg-tf1">
+                                <option value="">Select...</option>
+                                <option value="true">True</option>
+                                <option value="false">False</option>
+                            </select>
+                        </p>
+                        
+                        <p>2. The offset determines the size of the segment 
+                            <select class="input-field" style="width: 100px; display: inline;" id="seg-tf2">
+                                <option value="">Select...</option>
+                                <option value="true">True</option>
+                                <option value="false">False</option>
+                            </select>
+                        </p>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkSegmentationTF()">Check Answers</button>
+                </div>
+
+                <button class="btn btn-secondary" onclick="resetSegmentationSection()">Reset Section</button>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Comparison Section -->
+        <section id="comparison" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>⚖️</span> Paging vs Segmentation
+                </h2>
+                
+                <p>Let's compare these two memory management techniques:</p>
+
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Aspect</th>
+                            <th>Paging</th>
+                            <th>Segmentation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Block Size</td>
+                            <td>Fixed (pages)</td>
+                            <td>Variable (segments)</td>
+                        </tr>
+                        <tr>
+                            <td>User View</td>
+                            <td>Transparent to user</td>
+                            <td>User-aware of segments</td>
+                        </tr>
+                        <tr>
+                            <td>Fragmentation</td>
+                            <td>Internal fragmentation</td>
+                            <td>External fragmentation</td>
+                        </tr>
+                        <tr>
+                            <td>Address Structure</td>
+                            <td>Page number + offset</td>
+                            <td>Segment number + offset</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Categorize the Features</h4>
+                    <p>Click each feature to select it, then click the appropriate category:</p>
+                    
+                    <div id="feature-items" style="margin: 1rem 0;">
+                        <div class="draggable-item" data-id="f1" data-answer="paging">No external fragmentation</div>
+                        <div class="draggable-item" data-id="f2" data-answer="segmentation">Logical division of programs</div>
+                        <div class="draggable-item" data-id="f3" data-answer="paging">Simple memory management</div>
+                        <div class="draggable-item" data-id="f4" data-answer="segmentation">Variable-sized blocks</div>
+                        <div class="draggable-item" data-id="f5" data-answer="paging">Fixed-size blocks</div>
+                        <div class="draggable-item" data-id="f6" data-answer="segmentation">Protection at segment level</div>
+                    </div>
+                    
+                    <div class="matching-container">
+                        <div class="matching-column">
+                            <h5>Paging Features</h5>
+                            <div class="drop-zone" id="paging-features" data-type="paging"></div>
+                        </div>
+                        <div class="matching-column">
+                            <h5>Segmentation Features</h5>
+                            <div class="drop-zone" id="segmentation-features" data-type="segmentation"></div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkFeatureSort()">Check Answers</button>
+                    <button class="btn btn-secondary" onclick="resetComparisonActivity()">Reset</button>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Practice Problems Section -->
+        <section id="practice" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>✏️</span> Practice Problems
+                </h2>
+
+                <div class="interactive-area">
+                    <h4>Problem 1: Memory Address Calculation</h4>
+                    <p>A system uses paging with 1KB pages. If a program references address 5632:</p>
+                    <ul>
+                        <li>What is the page number?</li>
+                        <li>What is the offset within the page?</li>
+                    </ul>
+                    
+                    <p>Use the drawing canvas below for your calculations:</p>
+                    <canvas id="drawing-canvas" class="drawing-canvas" width="600" height="300"></canvas>
+                    <button class="btn btn-secondary" onclick="clearCanvas()">Clear Canvas</button>
+                    
+                    <div style="margin-top: 1rem;">
+                        <p>Page number: <input type="number" class="input-field" style="width: 100px; display: inline;" id="practice-page"></p>
+                        <p>Offset: <input type="number" class="input-field" style="width: 100px; display: inline;" id="practice-offset"></p>
+                        <button class="btn btn-primary" onclick="checkPracticeProblem1()">Check Answer</button>
+                    </div>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Problem 2: Segment Table Lookup</h4>
+                    <p>Given the following segment table:</p>
+                    
+                    <table class="page-table" style="max-width: 400px;">
+                        <thead>
+                            <tr>
+                                <th>Segment</th>
+                                <th>Base</th>
+                                <th>Limit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>0</td><td>1000</td><td>400</td></tr>
+                            <tr><td>1</td><td>2000</td><td>600</td></tr>
+                            <tr><td>2</td><td>3000</td><td>300</td></tr>
+                        </tbody>
+                    </table>
+                    
+                    <p>What is the physical address for segment 1, offset 250?</p>
+                    <input type="number" class="input-field" style="width: 150px;" id="practice-seg-addr" placeholder="Enter address">
+                    <button class="btn btn-primary" onclick="checkPracticeProblem2()">Check Answer</button>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Problem 3: Scenario Analysis</h4>
+                    <p>A multimedia application needs to manage large video files, audio tracks, and user interface elements. Which memory management scheme would be more suitable and why?</p>
+                    
+                    <textarea class="input-field" id="scenario-answer" rows="4" placeholder="Explain your choice..."></textarea>
+                    <button class="btn btn-primary" onclick="checkScenarioAnswer()">Submit Answer</button>
+                </div>
+
+                <button class="btn btn-secondary" onclick="resetPracticeSection()">Reset Section</button>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary & Quiz Section -->
+        <section id="summary" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📝</span> Summary & Final Quiz
+                </h2>
+                
+                <h3>Key Takeaways</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li><strong>Multitasking:</strong> Managing execution of multiple programs through time-sharing</li>
+                    <li><strong>Paging:</strong> Fixed-size memory blocks with simple management</li>
+                    <li><strong>Segmentation:</strong> Variable-size blocks matching logical program structure</li>
+                    <li><strong>Trade-offs:</strong> Paging avoids external fragmentation, segmentation provides logical separation</li>
+                </ul>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Final Assessment</h4>
+                    
+                    <!-- Question 1 -->
+                    <div class="quiz-question">
+                        <p><strong>1. What is the main advantage of paging over segmentation?</strong></p>
+                        <button class="quiz-option" data-q="1" data-a="a">Better protection mechanisms</button>
+                        <button class="quiz-option" data-q="1" data-a="b">No external fragmentation</button>
+                        <button class="quiz-option" data-q="1" data-a="c">User control over memory</button>
+                        <button class="quiz-option" data-q="1" data-a="d">Variable block sizes</button>
+                    </div>
+
+                    <!-- Question 2 -->
+                    <div class="quiz-question">
+                        <p><strong>2. In segmentation, what does the offset value represent?</strong></p>
+                        <button class="quiz-option" data-q="2" data-a="a">The size of the segment</button>
+                        <button class="quiz-option" data-q="2" data-a="b">The segment number</button>
+                        <button class="quiz-option" data-q="2" data-a="c">The location within the segment</button>
+                        <button class="quiz-option" data-q="2" data-a="d">The base address</button>
+                    </div>
+
+                    <!-- Question 3 -->
+                    <div class="quiz-question">
+                        <p><strong>3. Which statement about multitasking is correct?</strong></p>
+                        <button class="quiz-option" data-q="3" data-a="a">Programs actually run simultaneously on a single CPU</button>
+                        <button class="quiz-option" data-q="3" data-a="b">The OS rapidly switches between processes</button>
+                        <button class="quiz-option" data-q="3" data-a="c">Each program gets the entire CPU permanently</button>
+                        <button class="quiz-option" data-q="3" data-a="d">Memory is not involved in multitasking</button>
+                    </div>
+
+                    <!-- Question 4 -->
+                    <div class="quiz-question">
+                        <p><strong>4. What information is stored in a page table?</strong></p>
+                        <button class="quiz-option" data-q="4" data-a="a">Process names and IDs</button>
+                        <button class="quiz-option" data-q="4" data-a="b">Segment sizes and limits</button>
+                        <button class="quiz-option" data-q="4" data-a="c">Page to frame mappings</button>
+                        <button class="quiz-option" data-q="4" data-a="d">CPU scheduling priorities</button>
+                    </div>
+
+                    <!-- Question 5 -->
+                    <div class="quiz-question">
+                        <p><strong>5. External fragmentation is a problem in:</strong></p>
+                        <button class="quiz-option" data-q="5" data-a="a">Paging only</button>
+                        <button class="quiz-option" data-q="5" data-a="b">Segmentation only</button>
+                        <button class="quiz-option" data-q="5" data-a="c">Both paging and segmentation</button>
+                        <button class="quiz-option" data-q="5" data-a="d">Neither paging nor segmentation</button>
+                    </div>
+
+                    <!-- Question 6 -->
+                    <div class="quiz-question">
+                        <p><strong>6. In a segment table, the base address represents:</strong></p>
+                        <button class="quiz-option" data-q="6" data-a="a">The size of the segment</button>
+                        <button class="quiz-option" data-q="6" data-a="b">The ending address of the segment</button>
+                        <button class="quiz-option" data-q="6" data-a="c">The starting physical address of the segment</button>
+                        <button class="quiz-option" data-q="6" data-a="d">The logical address of the segment</button>
+                    </div>
+
+                    <!-- Question 7 -->
+                    <div class="quiz-question">
+                        <p><strong>7. True or False: Pages can be of different sizes in a paging system</strong></p>
+                        <button class="quiz-option" data-q="7" data-a="a">True</button>
+                        <button class="quiz-option" data-q="7" data-a="b">False</button>
+                    </div>
+
+                    <!-- Question 8 -->
+                    <div class="quiz-question">
+                        <p><strong>8. Which memory management technique is transparent to the programmer?</strong></p>
+                        <button class="quiz-option" data-q="8" data-a="a">Segmentation</button>
+                        <button class="quiz-option" data-q="8" data-a="b">Paging</button>
+                        <button class="quiz-option" data-q="8" data-a="c">Both equally transparent</button>
+                        <button class="quiz-option" data-q="8" data-a="d">Neither is transparent</button>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="submitFinalQuiz()">Submit Quiz</button>
+                    
+                    <div id="quiz-results" style="margin-top: 2rem; display: none;">
+                        <h4>Your Results:</h4>
+                        <p id="quiz-score"></p>
+                        <div id="quiz-feedback"></div>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exam Practice Section -->
+        <section id="exam" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📋</span> Exam Practice Questions
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Question 1 (6 marks)</h4>
+                    <p>Explain the difference between paging and segmentation, including:</p>
+                    <ul>
+                        <li>How memory is divided (2 marks)</li>
+                        <li>Address translation process (2 marks)</li>
+                        <li>One advantage of each method (2 marks)</li>
+                    </ul>
+                    
+                    <textarea class="input-field" id="exam-q1" rows="8" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q1" min="0" max="6" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q1')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="mark-scheme" id="mark-scheme-q1">
+                        <h5>Mark Scheme:</h5>
+                        <p><strong>Memory Division (2 marks):</strong></p>
+                        <ul>
+                            <li>Paging: Fixed-size blocks called pages (1 mark)</li>
+                            <li>Segmentation: Variable-size blocks called segments (1 mark)</li>
+                        </ul>
+                        <p><strong>Address Translation (2 marks):</strong></p>
+                        <ul>
+                            <li>Paging: Page number + offset, uses page table (1 mark)</li>
+                            <li>Segmentation: Segment number + offset, uses segment table (1 mark)</li>
+                        </ul>
+                        <p><strong>Advantages (2 marks):</strong></p>
+                        <ul>
+                            <li>Paging: No external fragmentation (1 mark)</li>
+                            <li>Segmentation: Logical program structure / protection (1 mark)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Question 2 (4 marks)</h4>
+                    <p>A computer system uses paging with a page size of 2KB. Calculate the page number and offset for the logical address 6500. Show your working.</p>
+                    
+                    <canvas id="exam-canvas" class="drawing-canvas" width="600" height="200"></canvas>
+                    <button class="btn btn-secondary" onclick="clearExamCanvas()">Clear Canvas</button>
+                    
+                    <textarea class="input-field" id="exam-q2" rows="4" placeholder="Write your final answer here..." style="margin-top: 1rem;"></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q2" min="0" max="4" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q2')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="mark-scheme" id="mark-scheme-q2">
+                        <h5>Mark Scheme:</h5>
+                        <ul>
+                            <li>Convert page size to bytes: 2KB = 2048 bytes (1 mark)</li>
+                            <li>Calculate page number: 6500 ÷ 2048 = 3 (1 mark)</li>
+                            <li>Calculate offset: 6500 % 2048 = 356 (1 mark)</li>
+                            <li>Clear final answer: Page 3, Offset 356 (1 mark)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Extension Section -->
+        <section id="extension" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🌟</span> Extension Activities
+                </h2>
+                
+                <h3>Beyond the Specification</h3>
+                
+                <div class="interactive-area">
+                    <h4>Research Task 1: Modern Memory Management</h4>
+                    <p>Research how modern operating systems like Windows 11 or macOS combine paging and segmentation. What is "paged segmentation"?</p>
+                    
+                    <textarea class="input-field" rows="6" id="extension1" placeholder="Write your findings here..."></textarea>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Research Task 2: Virtual Memory Performance</h4>
+                    <p>Investigate the concept of "page faults" and "thrashing". How do they impact system performance?</p>
+                    
+                    <textarea class="input-field" rows="6" id="extension2" placeholder="Explain these concepts and their impact..."></textarea>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Programming Challenge</h4>
+                    <p>Design a simple page replacement algorithm (e.g., FIFO or LRU). Explain your algorithm below:</p>
+                    
+                    <textarea class="input-field" rows="8" id="extension3" placeholder="Describe your algorithm..."></textarea>
+                </div>
+
+                <button class="btn btn-primary" onclick="submitExtension()">Submit Extension Work</button>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Videos Section -->
+        <section id="videos" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎥</span> Video Resources
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Supplementary Videos</h4>
+                    <p>Your teacher will add video links here to support your learning:</p>
+                    
+                    <div style="background: var(--bg-secondary); padding: 3rem; border-radius: 12px; text-align: center; margin: 2rem 0;">
+                        <p style="color: var(--text-secondary); font-size: 3rem;">📹</p>
+                        <p style="color: var(--text-secondary);">Video content will be added here</p>
+                    </div>
+                </div>
+
+                <h4>Additional Resources</h4>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li>Cambridge 9618 Specification - Memory Management</li>
+                    <li>Operating Systems Concepts textbook</li>
+                    <li>Memory management simulators online</li>
+                </ul>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('intro')">Start Over</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Achievement Popup -->
+    <div class="achievement-popup" id="achievement-popup">
+        <div class="achievement-icon" id="achievement-icon">🏆</div>
+        <h4 id="achievement-title">Achievement Unlocked!</h4>
+        <p id="achievement-desc">You've earned a new achievement</p>
+    </div>
+
+    <!-- Shame Message -->
+    <div class="shame-message" id="shame-message">
+        🚫 No pasting allowed! Type it yourself! 🚫
+    </div>
+
+    <!-- Particle Container -->
+    <div id="particle-container"></div>
+
+    <!-- Feedback Button & Modal -->
+    <button class="feedback-btn" onclick="openFeedback()" aria-label="Send feedback">💬</button>
+
+    <div class="feedback-modal" id="feedback-modal">
+        <div class="feedback-content">
+            <h3>Send Feedback</h3>
+            <p>Current page: <span id="feedback-page"></span></p>
+            <textarea class="input-field" id="feedback-text" rows="5" placeholder="Describe the issue or suggestion..."></textarea>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeFeedback()">Cancel</button>
+                <button class="btn btn-primary" onclick="sendFeedback()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accessibility Controls -->
+    <div class="accessibility-controls">
+        <h4>Accessibility</h4>
+        <button onclick="toggleHighContrast()">High Contrast</button>
+        <button onclick="toggleDyslexiaFont()">Dyslexia Font</button>
+        <button onclick="changeFontSize('small')">A-</button>
+        <button onclick="changeFontSize('normal')">A</button>
+        <button onclick="changeFontSize('large')">A+</button>
+    </div>
+
+    <script>
+        // Performance optimization: Use requestAnimationFrame for animations
+        const raf = window.requestAnimationFrame || function(callback) {
+            return window.setTimeout(callback, 1000 / 60);
+        };
+
+        // DOM Cache
+        const DOM = {
+            xpFill: null,
+            xpText: null,
+            currentLevel: null,
+            navPills: null,
+            sections: null,
+            achievementPopup: null,
+            shameMessage: null,
+            feedbackModal: null,
+            feedbackPage: null,
+            feedbackText: null,
+            particleContainer: null
+        };
+
+        // Initialize DOM
+        function initializeDOM() {
+            DOM.xpFill = document.getElementById('xp-fill');
+            DOM.xpText = document.getElementById('xp-text');
+            DOM.currentLevel = document.getElementById('current-level');
+            DOM.navPills = document.querySelectorAll('.nav-pill');
+            DOM.sections = document.querySelectorAll('.section');
+            DOM.achievementPopup = document.getElementById('achievement-popup');
+            DOM.shameMessage = document.getElementById('shame-message');
+            DOM.feedbackModal = document.getElementById('feedback-modal');
+            DOM.feedbackPage = document.getElementById('feedback-page');
+            DOM.feedbackText = document.getElementById('feedback-text');
+            DOM.particleContainer = document.getElementById('particle-container');
+        }
+
+        // Game State
+        let gameState = {
+            xp: 0,
+            level: 1,
+            completedSections: new Set(),
+            achievements: new Set(),
+            actionsPerformed: new Set(),
+            currentSection: 'intro',
+            sectionScores: {},
+            selectedItems: {},
+            hintUsage: {},
+            simulationStep: 1,
+            selectedSegment: null,
+            segmentTableData: []
+        };
+
+        // XP Requirements
+        const XP_PER_LEVEL = [0, 100, 250, 450, 700, 1000];
+
+        // Page mapping for demo
+        const pageMapping = {
+            0: 3,
+            1: 1,
+            2: 5,
+            3: 2
+        };
+
+        // Performance: Debounce function
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Performance: Throttle function
+        function throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDOM();
+            setupEventListeners();
+            loadProgress();
+            updateXPDisplay();
+            setupMatchingActivities();
+            setupSegmentSelection();
+            setupFeatureSelection();
+            
+            // Delayed initialization for better performance
+            raf(() => {
+                initializeCanvas();
+                preloadAssets();
+            });
+        });
+
+        // Preload assets for better performance
+        function preloadAssets() {
+            // Preload sounds if we add them later
+            // Preload any images
+        }
+
+        // Event Listeners with optimization
+        function setupEventListeners() {
+            // Navigation with event delegation
+            const navContainer = document.querySelector('.nav-pills');
+            if (navContainer) {
+                navContainer.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('nav-pill')) {
+                        navigateToSection(e.target.dataset.section);
+                    }
+                });
+            }
+
+            // Quiz options with event delegation
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('quiz-option')) {
+                    selectQuizOption(e.target);
+                }
+            });
+
+            // Prevent paste with better performance
+            document.addEventListener('paste', function(e) {
+                if (e.target.matches('input[type="text"], input[type="number"], textarea')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showShameMessage();
+                    return false;
+                }
+            });
+
+            // Keyboard navigation with throttling
+            document.addEventListener('keydown', throttle(function(e) {
+                if (e.key === 'ArrowLeft') navigateSection('prev');
+                if (e.key === 'ArrowRight') navigateSection('next');
+                if (e.key === 'Escape' && DOM.feedbackModal.style.display === 'flex') closeFeedback();
+            }, 100));
+
+            // Touch support with improved performance
+            let touchStartX = 0;
+            let touchStartY = 0;
+            
+            document.addEventListener('touchstart', function(e) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            document.addEventListener('touchend', function(e) {
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const diffX = touchStartX - touchEndX;
+                const diffY = Math.abs(touchStartY - touchEndY);
+                
+                // Only swipe if horizontal movement is greater than vertical
+                if (Math.abs(diffX) > 50 && diffY < 100) {
+                    if (diffX > 0) navigateSection('next');
+                    else navigateSection('prev');
+                }
+            }, { passive: true });
+
+            // Optimized scroll handler
+            let ticking = false;
+            function handleScroll() {
+                if (!ticking) {
+                    raf(() => {
+                        updateScrollProgress();
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            }
+            
+            window.addEventListener('scroll', handleScroll, { passive: true });
+
+            // Visibility change - pause animations when tab is hidden
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden) {
+                    // Pause animations
+                    document.querySelectorAll('.particle').forEach(p => p.style.animationPlayState = 'paused');
+                } else {
+                    // Resume animations
+                    document.querySelectorAll('.particle').forEach(p => p.style.animationPlayState = 'running');
+                }
+            });
+        }
+
+        // Update scroll progress (for future scroll indicators)
+        function updateScrollProgress() {
+            // Can add scroll progress indicator here
+        }
+
+        // Navigation with performance optimization
+        function navigateToSection(sectionId) {
+            if (!DOM.sections || !DOM.navPills) return;
+            
+            // Hide all sections
+            DOM.sections.forEach(s => {
+                s.classList.remove('active');
+                s.classList.add('will-animate');
+            });
+            DOM.navPills.forEach(p => p.classList.remove('active'));
+            
+            // Show target section
+            const targetSection = document.getElementById(sectionId);
+            const targetPill = document.querySelector(`[data-section="${sectionId}"]`);
+            
+            if (targetSection) {
+                raf(() => {
+                    targetSection.classList.add('active');
+                    targetSection.classList.add('section-transition-enter');
+                    
+                    // Remove animation class after animation completes
+                    setTimeout(() => {
+                        targetSection.classList.remove('section-transition-enter');
+                        targetSection.classList.remove('will-animate');
+                    }, 500);
+                });
+            }
+            
+            if (targetPill) {
+                targetPill.classList.add('active');
+                // Scroll nav pill into view if needed
+                targetPill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+            
+            gameState.currentSection = sectionId;
+            updateFeedbackPage();
+            
+            if (!gameState.completedSections.has(sectionId)) {
+                awardXP(5, 'Section Visit', `section_${sectionId}`);
+            }
+            
+            // Smooth scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function navigateSection(direction) {
+            if (!DOM.navPills) return;
+            
+            const sections = Array.from(DOM.navPills).map(p => p.dataset.section);
+            const currentIndex = sections.indexOf(gameState.currentSection);
+            
+            if (direction === 'next' && currentIndex < sections.length - 1) {
+                navigateToSection(sections[currentIndex + 1]);
+            } else if (direction === 'prev' && currentIndex > 0) {
+                navigateToSection(sections[currentIndex - 1]);
+            }
+        }
+
+        // XP System with animations
+        function awardXP(amount, action, actionId = null) {
+            if (actionId && gameState.actionsPerformed.has(actionId)) return;
+            if (actionId) gameState.actionsPerformed.add(actionId);
+            
+            gameState.xp += amount;
+            
+            raf(() => {
+                updateXPDisplay();
+                checkLevelUp();
+                checkAchievements();
+                createFloatingXP(amount);
+            });
+            
+            saveProgress();
+        }
+
+        function createFloatingXP(amount) {
+            const xpFloat = document.createElement('div');
+            xpFloat.className = 'xp-float';
+            xpFloat.textContent = `+${amount} XP`;
+            xpFloat.style.left = '50%';
+            xpFloat.style.top = '120px';
+            document.body.appendChild(xpFloat);
+            
+            // Remove after animation
+            xpFloat.addEventListener('animationend', () => xpFloat.remove());
+        }
+
+        function updateXPDisplay() {
+            if (!DOM.xpFill || !DOM.xpText || !DOM.currentLevel) return;
+            
+            const xpForNextLevel = XP_PER_LEVEL[gameState.level] || XP_PER_LEVEL[XP_PER_LEVEL.length - 1];
+            const xpProgress = Math.min((gameState.xp / xpForNextLevel) * 100, 100);
+            
+            DOM.xpFill.style.width = xpProgress + '%';
+            DOM.xpText.textContent = `${gameState.xp} / ${xpForNextLevel} XP`;
+            DOM.currentLevel.textContent = gameState.level;
+        }
+
+        function checkLevelUp() {
+            if (gameState.level < 5 && gameState.xp >= XP_PER_LEVEL[gameState.level]) {
+                gameState.level++;
+                showAchievement('Level Up!', `You reached Level ${gameState.level}!`, '⬆️');
+                createParticleEffect();
+                
+                // Haptic feedback for mobile
+                if ('vibrate' in navigator) {
+                    navigator.vibrate([100, 50, 100]);
+                }
+            }
+        }
+
+        // Pre-quiz
+        function checkPreQuiz() {
+            const selected = document.querySelector('#pre-quiz .quiz-option.selected');
+            if (!selected) {
+                alert('Please select an answer first!');
+                return;
+            }
+            
+            const correct = selected.dataset.answer === 'b';
+            if (correct) {
+                selected.classList.add('correct');
+                awardXP(10, 'Correct Answer', 'pre_quiz');
+            } else {
+                selected.classList.add('incorrect');
+                document.querySelector('#pre-quiz .quiz-option[data-answer="b"]').classList.add('correct');
+            }
+            
+            // Disable further selection
+            document.querySelectorAll('#pre-quiz .quiz-option').forEach(opt => {
+                opt.style.pointerEvents = 'none';
+            });
+        }
+
+        // Starter Activity with improved logic
+        function setupMatchingActivities() {
+            const container = document.getElementById('starter-matching');
+            if (!container) return;
+            
+            const items = container.querySelectorAll('.draggable-item');
+            const zones = container.querySelectorAll('.drop-zone');
+            
+            // Set up item selection
+            items.forEach(item => {
+                item.addEventListener('click', function() {
+                    if (this.parentElement.classList.contains('drop-zone')) return;
+                    
+                    items.forEach(i => i.classList.remove('selected'));
+                    this.classList.add('selected');
+                    gameState.selectedItems.starter = this;
+                });
+            });
+            
+            // Set up drop zones
+            zones.forEach(zone => {
+                zone.addEventListener('click', function() {
+                    const selected = gameState.selectedItems.starter;
+                    if (!selected || selected.parentElement === this) return;
+                    
+                    const itemId = selected.dataset.id;
+                    const zoneMatch = this.dataset.match;
+                    
+                    if (itemId === zoneMatch) {
+                        this.appendChild(selected.cloneNode(true));
+                        selected.style.display = 'none';
+                        selected.classList.remove('selected');
+                        this.classList.add('correct');
+                        gameState.selectedItems.starter = null;
+                        awardXP(5, 'Correct Match', `match_${itemId}`);
+                        
+                        // Check if all matched
+                        checkStarterCompletion();
+                    } else {
+                        this.classList.add('error-shake');
+                        setTimeout(() => this.classList.remove('error-shake'), 500);
+                    }
+                });
+            });
+        }
+
+        function checkStarterCompletion() {
+            const correct = document.querySelectorAll('#starter-matching .drop-zone.correct').length;
+            if (correct === 5) {
+                setTimeout(() => {
+                    awardXP(20, 'Starter Complete', 'starter_complete');
+                    markSectionComplete('starter');
+                }, 500);
+            }
+        }
+
+        function resetStarterActivity() {
+            const container = document.getElementById('starter-matching');
+            if (!container) return;
+            
+            // Reset items
+            container.querySelectorAll('.draggable-item').forEach(item => {
+                item.style.display = '';
+                item.classList.remove('selected');
+                if (item.parentElement.classList.contains('drop-zone')) {
+                    // This is a clone, remove it
+                    item.remove();
+                }
+            });
+            
+            // Reset zones
+            container.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.classList.remove('correct', 'error-shake');
+            });
+            
+            gameState.selectedItems.starter = null;
+        }
+
+        function checkStarterActivity() {
+            const correct = document.querySelectorAll('#starter-matching .drop-zone.correct').length;
+            if (correct === 5) {
+                awardXP(20, 'Starter Complete', 'starter_complete');
+                markSectionComplete('starter');
+                alert('Perfect! All matches are correct!');
+            } else {
+                alert(`You have ${correct}/5 correct matches. Keep trying!`);
+            }
+        }
+
+        // Multitasking Simulation with improved animations
+        function nextSimulationStep() {
+            gameState.simulationStep++;
+            if (gameState.simulationStep > 4) gameState.simulationStep = 1;
+            updateSimulation();
+        }
+
+        function prevSimulationStep() {
+            gameState.simulationStep--;
+            if (gameState.simulationStep < 1) gameState.simulationStep = 4;
+            updateSimulation();
+        }
+
+        function updateSimulation() {
+            const descriptions = [
+                'Step 1: Processes waiting in the ready queue',
+                'Step 2: Process A gets CPU time slice',
+                'Step 3: Context switch - Process A state saved, Process B loaded',
+                'Step 4: Process B executes on CPU'
+            ];
+            
+            const descEl = document.getElementById('simulation-description');
+            if (descEl) {
+                descEl.innerHTML = `<p><strong>${descriptions[gameState.simulationStep - 1]}</strong></p>`;
+            }
+            
+            // Update visual with better animations
+            const processes = document.querySelectorAll('.process-block');
+            const cpu = document.getElementById('cpu-core');
+            
+            raf(() => {
+                processes.forEach(p => p.classList.remove('running'));
+                cpu.classList.remove('active');
+                
+                // Update step indicators
+                document.querySelectorAll('.step-dot').forEach(dot => {
+                    dot.classList.remove('active');
+                    if (parseInt(dot.dataset.step) === gameState.simulationStep) {
+                        dot.classList.add('active');
+                    }
+                });
+                
+                if (gameState.simulationStep === 2) {
+                    processes[0].classList.add('running');
+                    cpu.classList.add('active');
+                    cpu.innerHTML = '<span>Process A</span>';
+                } else if (gameState.simulationStep === 4) {
+                    processes[1].classList.add('running');
+                    cpu.classList.add('active');
+                    cpu.innerHTML = '<span>Process B</span>';
+                } else {
+                    cpu.innerHTML = '<span>CPU</span>';
+                }
+            });
+            
+            awardXP(3, 'Simulation Step', `sim_step_${gameState.simulationStep}`);
+        }
+
+        function resetSimulation() {
+            gameState.simulationStep = 1;
+            updateSimulation();
+        }
+
+        function checkMultitaskingBlanks() {
+            const blank1 = document.getElementById('mt-blank1');
+            const blank2 = document.getElementById('mt-blank2');
+            
+            if (!blank1 || !blank2) return;
+            
+            let correct = 0;
+            if (blank1.value === 'timeslice') {
+                blank1.style.borderColor = 'var(--success-color)';
+                correct++;
+            } else {
+                blank1.style.borderColor = 'var(--error-color)';
+            }
+            
+            if (blank2.value === 'context') {
+                blank2.style.borderColor = 'var(--success-color)';
+                correct++;
+            } else {
+                blank2.style.borderColor = 'var(--error-color)';
+            }
+            
+            if (correct === 2) {
+                awardXP(15, 'Multitasking Blanks', 'mt_blanks');
+                markSectionComplete('multitasking');
+                showSuccessMessage('Perfect! You understand multitasking concepts!');
+            } else {
+                showHint('Try again! Remember: CPU time is divided into slices.');
+            }
+        }
+
+        // Paging Functions with visual feedback
+        function showPageMapping(pageNum) {
+            const logicalBlocks = document.querySelectorAll('#logical-memory .memory-block');
+            const physicalBlocks = document.querySelectorAll('#physical-memory .memory-block');
+            
+            // Reset all with animation
+            raf(() => {
+                logicalBlocks.forEach(b => b.classList.remove('active'));
+                physicalBlocks.forEach(b => b.classList.remove('active'));
+                
+                // Highlight selected page and corresponding frame
+                logicalBlocks[pageNum].classList.add('active');
+                const frameNum = pageMapping[pageNum];
+                physicalBlocks[frameNum].classList.add('active');
+                
+                // Add visual connection line (could be enhanced with SVG)
+                createConnectionLine(pageNum, frameNum);
+            });
+            
+            awardXP(5, 'Page Mapping', `page_map_${pageNum}`);
+        }
+
+        function createConnectionLine(pageNum, frameNum) {
+            // Visual feedback for connection
+            const logical = document.querySelectorAll('#logical-memory .memory-block')[pageNum];
+            const physical = document.querySelectorAll('#physical-memory .memory-block')[frameNum];
+            
+            if (logical && physical) {
+                logical.style.boxShadow = '0 0 30px rgba(91, 124, 253, 0.6)';
+                physical.style.boxShadow = '0 0 30px rgba(91, 124, 253, 0.6)';
+                
+                setTimeout(() => {
+                    logical.style.boxShadow = '';
+                    physical.style.boxShadow = '';
+                }, 2000);
+            }
+        }
+
+        function checkPagingCalculation() {
+            const pageNum = document.getElementById('page-num');
+            const offset = document.getElementById('page-offset');
+            
+            if (!pageNum || !offset) return;
+            
+            const pageNumValue = parseInt(pageNum.value);
+            const offsetValue = parseInt(offset.value);
+            
+            if (pageNumValue === 2 && offsetValue === 8) {
+                pageNum.style.borderColor = 'var(--success-color)';
+                offset.style.borderColor = 'var(--success-color)';
+                awardXP(20, 'Paging Calculation', 'paging_calc');
+                showSuccessMessage('Correct! Page 2, Offset 8');
+                markSectionComplete('paging');
+            } else {
+                pageNum.style.borderColor = 'var(--error-color)';
+                offset.style.borderColor = 'var(--error-color)';
+                showHint('Try again. Remember: 8200 ÷ 4096 and 8200 % 4096');
+            }
+        }
+
+        function showPagingFormula() {
+            const formula = document.getElementById('paging-formula');
+            if (formula) {
+                formula.style.display = 'block';
+                formula.classList.add('success-animation');
+            }
+        }
+
+        function resetPagingSection() {
+            document.getElementById('page-num').value = '';
+            document.getElementById('page-offset').value = '';
+            document.getElementById('page-num').style.borderColor = '';
+            document.getElementById('page-offset').style.borderColor = '';
+            document.getElementById('paging-formula').style.display = 'none';
+            
+            // Reset memory block highlights
+            document.querySelectorAll('.memory-block').forEach(b => {
+                b.classList.remove('active');
+            });
+        }
+
+        // Segmentation Functions with improved interaction
+        function setupSegmentSelection() {
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('segment-item')) {
+                    document.querySelectorAll('.segment-item').forEach(s => {
+                        s.classList.remove('selected');
+                    });
+                    e.target.classList.add('selected');
+                    gameState.selectedSegment = e.target.dataset.segment;
+                }
+            });
+        }
+
+        function addSegmentToTable() {
+            if (!gameState.selectedSegment) {
+                showHint('Please select a segment first');
+                return;
+            }
+            
+            const baseAddresses = [1000, 3000, 5000, 7000];
+            const sizes = { code: 2048, data: 3072, stack: 1024, heap: 4096 };
+            
+            const segment = gameState.selectedSegment;
+            const base = baseAddresses[gameState.segmentTableData.length];
+            const limit = sizes[segment] || 1024;
+            
+            // Check if segment already added
+            if (gameState.segmentTableData.some(s => s.segment === segment)) {
+                showHint('This segment is already in the table');
+                return;
+            }
+            
+            gameState.segmentTableData.push({ segment, base, limit });
+            updateSegmentTable();
+            
+            // Hide the added segment
+            document.querySelector(`.segment-item[data-segment="${segment}"]`).style.opacity = '0.5';
+            document.querySelector(`.segment-item[data-segment="${segment}"]`).style.pointerEvents = 'none';
+            
+            awardXP(10, 'Segment Added', `seg_add_${segment}`);
+            gameState.selectedSegment = null;
+            
+            // Reset selection
+            document.querySelectorAll('.segment-item').forEach(s => {
+                s.classList.remove('selected');
+            });
+            
+            if (gameState.segmentTableData.length === 4) {
+                setTimeout(() => {
+                    showSuccessMessage('Great! You\'ve built a complete segment table!');
+                    markSectionComplete('segmentation');
+                }, 500);
+            }
+        }
+
+        function updateSegmentTable() {
+            const tbody = document.getElementById('segment-table-body');
+            if (!tbody) return;
+            
+            tbody.innerHTML = gameState.segmentTableData.map((row, idx) => `
+                <tr>
+                    <td>${row.segment.charAt(0).toUpperCase() + row.segment.slice(1)}</td>
+                    <td>${row.base}</td>
+                    <td>${row.limit}</td>
+                </tr>
+            `).join('');
+        }
+
+        function checkSegmentAddress() {
+            const input = document.getElementById('seg-physical-addr');
+            if (!input) return;
+            
+            const answer = parseInt(input.value);
+            if (answer === 4500) {
+                input.style.borderColor = 'var(--success-color)';
+                awardXP(15, 'Segment Address', 'seg_addr');
+                showSuccessMessage('Correct! 4000 + 500 = 4500');
+            } else {
+                input.style.borderColor = 'var(--error-color)';
+                showHint('Try again. Add the base address to the offset.');
+            }
+        }
+
+        function checkSegmentationTF() {
+            const tf1 = document.getElementById('seg-tf1');
+            const tf2 = document.getElementById('seg-tf2');
+            
+            if (!tf1 || !tf2) return;
+            
+            let correct = 0;
+            if (tf1.value === 'false') {
+                tf1.style.borderColor = 'var(--success-color)';
+                correct++;
+            } else {
+                tf1.style.borderColor = 'var(--error-color)';
+            }
+            
+            if (tf2.value === 'true') {
+                tf2.style.borderColor = 'var(--success-color)';
+                correct++;
+            } else {
+                tf2.style.borderColor = 'var(--error-color)';
+            }
+            
+            if (correct === 2) {
+                awardXP(10, 'Segmentation TF', 'seg_tf');
+                showSuccessMessage('Excellent understanding of segmentation!');
+            }
+        }
+
+        function resetSegmentationSection() {
+            gameState.segmentTableData = [];
+            gameState.selectedSegment = null;
+            updateSegmentTable();
+            
+            // Reset inputs
+            document.getElementById('seg-physical-addr').value = '';
+            document.getElementById('seg-physical-addr').style.borderColor = '';
+            document.getElementById('seg-tf1').value = '';
+            document.getElementById('seg-tf1').style.borderColor = '';
+            document.getElementById('seg-tf2').value = '';
+            document.getElementById('seg-tf2').style.borderColor = '';
+            
+            // Reset segment items
+            document.querySelectorAll('.segment-item').forEach(s => {
+                s.classList.remove('selected');
+                s.style.opacity = '1';
+                s.style.pointerEvents = 'auto';
+            });
+        }
+
+        // Comparison Section with drag-drop simulation
+        function setupFeatureSelection() {
+            document.addEventListener('click', function(e) {
+                if (e.target.parentElement && e.target.parentElement.id === 'feature-items') {
+                    const item = e.target;
+                    if (item.classList.contains('draggable-item')) {
+                        document.querySelectorAll('#feature-items .draggable-item').forEach(i => {
+                            i.classList.remove('selected');
+                        });
+                        item.classList.add('selected');
+                        gameState.selectedItems.feature = item;
+                    }
+                }
+            });
+            
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('drop-zone') && 
+                    (e.target.id === 'paging-features' || e.target.id === 'segmentation-features')) {
+                    const selected = gameState.selectedItems.feature;
+                    if (!selected) return;
+                    
+                    const correctType = selected.dataset.answer;
+                    const targetType = e.target.dataset.type;
+                    
+                    if (correctType === targetType) {
+                        e.target.appendChild(selected.cloneNode(true));
+                        selected.style.display = 'none';
+                        selected.classList.remove('selected');
+                        e.target.classList.add('correct');
+                        gameState.selectedItems.feature = null;
+                        awardXP(5, 'Feature Sort', `feature_${selected.dataset.id}`);
+                        
+                        checkFeatureSortCompletion();
+                    } else {
+                        e.target.classList.add('error-shake');
+                        setTimeout(() => e.target.classList.remove('error-shake'), 500);
+                    }
+                }
+            });
+        }
+
+        function checkFeatureSortCompletion() {
+            const pagingCorrect = document.querySelectorAll('#paging-features .draggable-item[data-answer="paging"]').length;
+            const segCorrect = document.querySelectorAll('#segmentation-features .draggable-item[data-answer="segmentation"]').length;
+            
+            if (pagingCorrect === 3 && segCorrect === 3) {
+                setTimeout(() => {
+                    awardXP(20, 'Comparison Complete', 'comparison');
+                    markSectionComplete('comparison');
+                    showSuccessMessage('Perfect! You understand the differences!');
+                }, 500);
+            }
+        }
+
+        function checkFeatureSort() {
+            checkFeatureSortCompletion();
+        }
+
+        function resetComparisonActivity() {
+            // Reset feature items
+            document.querySelectorAll('#feature-items .draggable-item').forEach(item => {
+                item.style.display = '';
+                item.classList.remove('selected');
+            });
+            
+            // Clear drop zones
+            document.querySelectorAll('#paging-features, #segmentation-features').forEach(zone => {
+                zone.innerHTML = '';
+                zone.classList.remove('correct', 'error-shake');
+            });
+            
+            gameState.selectedItems.feature = null;
+        }
+
+        // Practice Problems
+        function checkPracticeProblem1() {
+            const page = document.getElementById('practice-page');
+            const offset = document.getElementById('practice-offset');
+            
+            if (!page || !offset) return;
+            
+            // 5632 ÷ 1024 = 5, 5632 % 1024 = 512
+            if (parseInt(page.value) === 5 && parseInt(offset.value) === 512) {
+                page.style.borderColor = 'var(--success-color)';
+                offset.style.borderColor = 'var(--success-color)';
+                awardXP(20, 'Practice Problem 1', 'practice1');
+                showSuccessMessage('Correct! Page 5, Offset 512');
+            } else {
+                page.style.borderColor = 'var(--error-color)';
+                offset.style.borderColor = 'var(--error-color)';
+                showHint('Try again. Remember: 1KB = 1024 bytes');
+            }
+        }
+
+        function checkPracticeProblem2() {
+            const input = document.getElementById('practice-seg-addr');
+            if (!input) return;
+            
+            const answer = parseInt(input.value);
+            if (answer === 2250) {
+                input.style.borderColor = 'var(--success-color)';
+                awardXP(15, 'Practice Problem 2', 'practice2');
+                showSuccessMessage('Correct! 2000 + 250 = 2250');
+            } else {
+                input.style.borderColor = 'var(--error-color)';
+                showHint('Try again. Add base address to offset.');
+            }
+        }
+
+        function checkScenarioAnswer() {
+            const answer = document.getElementById('scenario-answer');
+            if (!answer) return;
+            
+            const text = answer.value.toLowerCase();
+            if (text.length > 50) {
+                const keywords = ['segmentation', 'logical', 'variable', 'video', 'audio', 'separate', 'different'];
+                let matches = 0;
+                keywords.forEach(word => {
+                    if (text.includes(word)) matches++;
+                });
+                
+                if (matches >= 2) {
+                    answer.style.borderColor = 'var(--success-color)';
+                    awardXP(25, 'Scenario Analysis', 'scenario');
+                    markSectionComplete('practice');
+                    showSuccessMessage('Good analysis! Segmentation would indeed be suitable for logical separation of multimedia components.');
+                } else {
+                    answer.style.borderColor = 'var(--warning-color)';
+                    showHint('Consider how the different media types could benefit from logical separation.');
+                }
+            } else {
+                answer.style.borderColor = 'var(--error-color)';
+                showHint('Please provide more detail in your answer (at least 50 characters).');
+            }
+        }
+
+        function resetPracticeSection() {
+            ['practice-page', 'practice-offset', 'practice-seg-addr'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.value = '';
+                    el.style.borderColor = '';
+                }
+            });
+            
+            const scenario = document.getElementById('scenario-answer');
+            if (scenario) {
+                scenario.value = '';
+                scenario.style.borderColor = '';
+            }
+            
+            clearCanvas();
+        }
+
+        // Canvas Functions with touch support
+        function initializeCanvas() {
+            const canvases = ['drawing-canvas', 'exam-canvas'];
+            
+            canvases.forEach(canvasId => {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                let isDrawing = false;
+                let lastX = 0;
+                let lastY = 0;
+                
+                // Set canvas resolution for high DPI displays
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+                ctx.scale(dpr, dpr);
+                canvas.style.width = rect.width + 'px';
+                canvas.style.height = rect.height + 'px';
+                
+                function getCoordinates(e) {
+                    const rect = canvas.getBoundingClientRect();
+                    const scaleX = canvas.width / (rect.width * dpr);
+                    const scaleY = canvas.height / (rect.height * dpr);
+                    
+                    if (e.touches) {
+                        return {
+                            x: (e.touches[0].clientX - rect.left) * scaleX,
+                            y: (e.touches[0].clientY - rect.top) * scaleY
+                        };
+                    } else {
+                        return {
+                            x: (e.clientX - rect.left) * scaleX,
+                            y: (e.clientY - rect.top) * scaleY
+                        };
+                    }
+                }
+                
+                function startDrawing(e) {
+                    isDrawing = true;
+                    const coords = getCoordinates(e);
+                    lastX = coords.x;
+                    lastY = coords.y;
+                    
+                    // Draw a dot for single clicks
+                    ctx.beginPath();
+                    ctx.arc(lastX, lastY, 1, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#000';
+                    ctx.fill();
+                }
+                
+                function draw(e) {
+                    if (!isDrawing) return;
+                    
+                    e.preventDefault();
+                    const coords = getCoordinates(e);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(lastX, lastY);
+                    ctx.lineTo(coords.x, coords.y);
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.stroke();
+                    
+                    lastX = coords.x;
+                    lastY = coords.y;
+                }
+                
+                function stopDrawing() {
+                    isDrawing = false;
+                }
+                
+                // Mouse events
+                canvas.addEventListener('mousedown', startDrawing);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseup', stopDrawing);
+                canvas.addEventListener('mouseout', stopDrawing);
+                
+                // Touch events
+                canvas.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    startDrawing(e);
+                }, { passive: false });
+                
+                canvas.addEventListener('touchmove', function(e) {
+                    e.preventDefault();
+                    draw(e);
+                }, { passive: false });
+                
+                canvas.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    stopDrawing();
+                }, { passive: false });
+            });
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        function clearExamCanvas() {
+            const canvas = document.getElementById('exam-canvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        // Final Quiz with improved feedback
+        function selectQuizOption(option) {
+            const question = option.dataset.q;
+            const siblings = document.querySelectorAll(`.quiz-option[data-q="${question}"]`);
+            siblings.forEach(s => s.classList.remove('selected'));
+            option.classList.add('selected');
+        }
+
+        function submitFinalQuiz() {
+            const answers = {
+                '1': 'b', '2': 'c', '3': 'b', '4': 'c',
+                '5': 'b', '6': 'c', '7': 'b', '8': 'b'
+            };
+            
+            let score = 0;
+            const feedback = [];
+            
+            Object.keys(answers).forEach(q => {
+                const selected = document.querySelector(`.quiz-option[data-q="${q}"].selected`);
+                if (selected && selected.dataset.a === answers[q]) {
+                    selected.classList.add('correct');
+                    score++;
+                } else {
+                    if (selected) selected.classList.add('incorrect');
+                    const correctOption = document.querySelector(`.quiz-option[data-q="${q}"][data-a="${answers[q]}"]`);
+                    if (correctOption) correctOption.classList.add('correct');
+                    
+                    // Add specific feedback
+                    const topics = {
+                        '1': 'Paging eliminates external fragmentation by using fixed-size blocks',
+                        '2': 'The offset represents the location within a segment',
+                        '3': 'The OS rapidly switches between processes to create multitasking',
+                        '4': 'Page tables store mappings from logical pages to physical frames',
+                        '5': 'External fragmentation only occurs with variable-sized allocation (segmentation)',
+                        '6': 'Base address is the starting physical address of a segment',
+                        '7': 'Pages must be fixed-size - this is the key characteristic of paging',
+                        '8': 'Paging is transparent to programmers, segmentation is not'
+                    };
+                    feedback.push(`Q${q}: ${topics[q]}`);
+                }
+            });
+            
+            gameState.sectionScores.finalQuiz = score;
+            
+            const scoreEl = document.getElementById('quiz-score');
+            if (scoreEl) {
+                scoreEl.textContent = `You scored ${score}/8 (${Math.round(score/8*100)}%)`;
+            }
+            
+            const feedbackEl = document.getElementById('quiz-feedback');
+            if (feedbackEl) {
+                if (feedback.length > 0) {
+                    feedbackEl.innerHTML = '<h5>Review these topics:</h5><ul style="padding-left: 1.5rem;">' + 
+                        feedback.map(f => `<li>${f}</li>`).join('') + '</ul>';
+                } else {
+                    feedbackEl.innerHTML = '<p style="color: var(--success-color); font-weight: 600;">Perfect score! Excellent work!</p>';
+                }
+            }
+            
+            document.getElementById('quiz-results').style.display = 'block';
+            
+            awardXP(score * 10, 'Final Quiz', 'final_quiz');
+            markSectionComplete('summary');
+            
+            if (score === 8) {
+                showAchievement('Perfect Quiz!', 'You aced the final assessment!', '💯');
+            } else if (score >= 6) {
+                showSuccessMessage(`Good work! ${score}/8 correct.`);
+            }
+            
+            // Disable further changes
+            document.querySelectorAll('.quiz-option').forEach(opt => {
+                opt.style.pointerEvents = 'none';
+            });
+        }
+
+        // Exam Practice with validation
+        function showMarkScheme(question) {
+            const textarea = document.getElementById(`exam-${question}`);
+            const marks = document.getElementById(`marks-${question}`);
+            const scheme = document.getElementById(`mark-scheme-${question}`);
+            
+            if (!textarea || !marks || !scheme) return;
+            
+            const minLength = question === 'q1' ? 100 : 50;
+            
+            if (textarea.value.length < minLength) {
+                showHint(`Please write a more detailed answer (minimum ${minLength} characters)`);
+                textarea.style.borderColor = 'var(--error-color)';
+                return;
+            }
+            
+            if (!marks.value || marks.value < 0 || marks.value > (question === 'q1' ? 6 : 4)) {
+                showHint('Please enter a valid predicted mark');
+                marks.style.borderColor = 'var(--error-color)';
+                return;
+            }
+            
+            textarea.style.borderColor = 'var(--success-color)';
+            marks.style.borderColor = 'var(--success-color)';
+            scheme.classList.add('show');
+            awardXP(10, 'Exam Practice', `exam_${question}`);
+            
+            if (parseInt(marks.value) === (question === 'q1' ? 6 : 4)) {
+                showSuccessMessage('Confident in a full mark answer? Great!');
+            }
+        }
+
+        // Extension with word count
+        function submitExtension() {
+            const textareas = ['extension1', 'extension2', 'extension3'];
+            let totalWords = 0;
+            let filledCount = 0;
+            
+            textareas.forEach(id => {
+                const ta = document.getElementById(id);
+                if (ta && ta.value) {
+                    const words = ta.value.trim().split(/\s+/).filter(word => word.length > 0);
+                    totalWords += words.length;
+                    if (words.length > 20) filledCount++;
+                    ta.style.borderColor = 'var(--success-color)';
+                }
+            });
+            
+            if (totalWords > 100 && filledCount >= 2) {
+                awardXP(30, 'Extension Work', 'extension_complete');
+                markSectionComplete('extension');
+                showSuccessMessage(`Excellent extension work! ${totalWords} words across ${filledCount} tasks.`);
+            } else {
+                showHint(`Please provide more detailed responses. Current: ${totalWords} words.`);
+            }
+        }
+
+        // Hints system
+        function showHint(text) {
+            if (typeof text === 'string') {
+                // Custom hint text
+                const hintEl = document.createElement('div');
+                hintEl.className = 'hint-container show';
+                hintEl.innerHTML = `<p>💡 ${text}</p>`;
+                hintEl.style.position = 'fixed';
+                hintEl.style.bottom = '100px';
+                hintEl.style.left = '50%';
+                hintEl.style.transform = 'translateX(-50%)';
+                hintEl.style.zIndex = '2000';
+                hintEl.style.maxWidth = '400px';
+                document.body.appendChild(hintEl);
+                
+                setTimeout(() => hintEl.remove(), 3000);
+            } else {
+                // Section hint
+                const section = text;
+                const hint = document.getElementById(section + '-hint');
+                if (hint) {
+                    hint.classList.add('show');
+                    
+                    const xpReduction = gameState.hintUsage[section] ? 0 : -5;
+                    gameState.hintUsage[section] = true;
+                    if (xpReduction < 0) {
+                        gameState.xp = Math.max(0, gameState.xp + xpReduction);
+                        updateXPDisplay();
+                    }
+                }
+            }
+        }
+
+        // Success messages
+        function showSuccessMessage(message) {
+            const successEl = document.createElement('div');
+            successEl.style.cssText = `
+                position: fixed;
+                top: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--gradient-success);
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: 2rem;
+                font-weight: 600;
+                box-shadow: 0 10px 40px rgba(0, 212, 170, 0.3);
+                z-index: 2000;
+                animation: slideDown 0.5s ease;
+            `;
+            successEl.textContent = message;
+            document.body.appendChild(successEl);
+            
+            setTimeout(() => successEl.remove(), 3000);
+        }
+
+        // Achievements system
+        function checkAchievements() {
+            // First correct
+            if (!gameState.achievements.has('first_correct') && gameState.actionsPerformed.size > 0) {
+                gameState.achievements.add('first_correct');
+                showAchievement('First Steps', 'Got your first correct answer!', '✅');
+            }
+            
+            // Memory Master
+            if (!gameState.achievements.has('memory_master') && gameState.completedSections.size >= 8) {
+                gameState.achievements.add('memory_master');
+                showAchievement('Memory Master', 'Completed all main sections!', '🧠');
+            }
+            
+            // Perfect Quiz
+            if (!gameState.achievements.has('perfect_quiz') && gameState.sectionScores.finalQuiz === 8) {
+                gameState.achievements.add('perfect_quiz');
+                showAchievement('Perfect Score', 'Aced the final quiz!', '💯');
+            }
+            
+            // Speed Learner
+            if (!gameState.achievements.has('speed_learner') && 
+                gameState.completedSections.size >= 5 && 
+                Date.now() - startTime < 600000) {
+                gameState.achievements.add('speed_learner');
+                showAchievement('Speed Learner', 'Completed 5 sections in under 10 minutes!', '⚡');
+            }
+            
+            // All Achievements
+            if (!gameState.achievements.has('completionist') && 
+                gameState.completedSections.size >= 10) {
+                gameState.achievements.add('completionist');
+                showAchievement('Completionist', 'Completed every section!', '🌟');
+            }
+        }
+
+        function showAchievement(title, desc, icon) {
+            if (!DOM.achievementPopup) return;
+            
+            const titleEl = document.getElementById('achievement-title');
+            const descEl = document.getElementById('achievement-desc');
+            const iconEl = document.getElementById('achievement-icon');
+            
+            if (titleEl) titleEl.textContent = title;
+            if (descEl) descEl.textContent = desc;
+            if (iconEl) iconEl.textContent = icon;
+            
+            DOM.achievementPopup.classList.add('show');
+            
+            setTimeout(() => {
+                if (DOM.achievementPopup) {
+                    DOM.achievementPopup.classList.remove('show');
+                }
+            }, 4000);
+            
+            awardXP(50, 'Achievement');
+        }
+
+        // Particle effects
+        function createParticleEffect() {
+            if (!DOM.particleContainer) return;
+            
+            const colors = ['#5b7cfd', '#00d4aa', '#ffd93d', '#ff6b6b', '#ff6ec4'];
+            const particleCount = 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.cssText = `
+                        left: ${Math.random() * window.innerWidth}px;
+                        top: -10px;
+                        background: ${colors[Math.floor(Math.random() * colors.length)]};
+                        width: ${6 + Math.random() * 4}px;
+                        height: ${6 + Math.random() * 4}px;
+                        animation-duration: ${3 + Math.random() * 2}s;
+                        animation-delay: ${Math.random() * 0.5}s;
+                    `;
+                    DOM.particleContainer.appendChild(particle);
+                    
+                    particle.addEventListener('animationend', () => particle.remove());
+                }, i * 50);
+            }
+        }
+
+        // Utilities
+        function markSectionComplete(section) {
+            gameState.completedSections.add(section);
+            const pill = document.querySelector(`[data-section="${section}"]`);
+            if (pill) {
+                pill.classList.add('completed');
+            }
+            updateProgressDots(section);
+            saveProgress();
+        }
+
+        function updateProgressDots(section) {
+            const dots = document.querySelectorAll(`#${section} .progress-dot`);
+            dots.forEach(dot => dot.classList.add('completed'));
+        }
+
+        function showShameMessage() {
+            if (!DOM.shameMessage) return;
+            
+            DOM.shameMessage.style.display = 'block';
+            DOM.shameMessage.style.animation = 'shameAnimation 3s ease forwards';
+            
+            // Remove XP for trying to paste
+            gameState.xp = Math.max(0, gameState.xp - 10);
+            updateXPDisplay();
+            
+            setTimeout(() => {
+                if (DOM.shameMessage) {
+                    DOM.shameMessage.style.display = 'none';
+                }
+            }, 3000);
+        }
+
+        // Feedback system
+        function openFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'flex';
+                updateFeedbackPage();
+            }
+        }
+
+        function closeFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'none';
+            }
+            if (DOM.feedbackText) {
+                DOM.feedbackText.value = '';
+            }
+        }
+
+        // Close modal on outside click
+        if (DOM.feedbackModal) {
+            DOM.feedbackModal.addEventListener('click', function(e) {
+                if (e.target === DOM.feedbackModal) {
+                    closeFeedback();
+                }
+            });
+        }
+
+        function updateFeedbackPage() {
+            const titles = {
+                'intro': 'Introduction',
+                'starter': 'Starter Activity',
+                'multitasking': 'Multitasking',
+                'paging': 'Paging',
+                'segmentation': 'Segmentation',
+                'comparison': 'Paging vs Segmentation',
+                'practice': 'Practice Problems',
+                'summary': 'Summary & Quiz',
+                'exam': 'Exam Practice',
+                'extension': 'Extension',
+                'videos': 'Videos'
+            };
+            
+            if (DOM.feedbackPage) {
+                DOM.feedbackPage.textContent = titles[gameState.currentSection] || 'Unknown';
+            }
+        }
+
+        function sendFeedback() {
+            if (!DOM.feedbackText) return;
+            
+            const text = DOM.feedbackText.value.trim();
+            if (!text) {
+                showHint('Please enter your feedback');
+                return;
+            }
+            
+            const subject = encodeURIComponent('Memory Management Lesson Feedback');
+            const body = encodeURIComponent(
+                `Page: ${DOM.feedbackPage ? DOM.feedbackPage.textContent : 'Unknown'}\n\n` +
+                `Feedback: ${text}\n\n` +
+                `Section: ${gameState.currentSection}\n` +
+                `Progress: Level ${gameState.level}, ${gameState.xp} XP\n` +
+                `Completed: ${Array.from(gameState.completedSections).join(', ')}`
+            );
+            
+            window.location.href = `mailto:millingtond@mgs.org?subject=${subject}&body=${body}`;
+            closeFeedback();
+            awardXP(5, 'Feedback Sent', 'feedback');
+        }
+
+        // Accessibility
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+            saveProgress();
+        }
+
+        function toggleDyslexiaFont() {
+            document.body.classList.toggle('dyslexia-font');
+            saveProgress();
+        }
+
+        function changeFontSize(size) {
+            document.body.classList.remove('font-small', 'font-large', 'font-xlarge');
+            if (size !== 'normal') {
+                document.body.classList.add('font-' + size);
+            }
+            saveProgress();
+        }
+
+        // Save/Load Progress
+        function saveProgress() {
+            const data = {
+                gameState: {
+                    xp: gameState.xp,
+                    level: gameState.level,
+                    completedSections: Array.from(gameState.completedSections),
+                    achievements: Array.from(gameState.achievements),
+                    actionsPerformed: Array.from(gameState.actionsPerformed),
+                    currentSection: gameState.currentSection,
+                    sectionScores: gameState.sectionScores,
+                    hintUsage: gameState.hintUsage,
+                    segmentTableData: gameState.segmentTableData
+                },
+                accessibility: {
+                    highContrast: document.body.classList.contains('high-contrast'),
+                    dyslexiaFont: document.body.classList.contains('dyslexia-font'),
+                    fontSize: Array.from(document.body.classList).find(c => c.startsWith('font-')) || 'normal'
+                }
+            };
+            
+            try {
+                sessionStorage.setItem('memoryManagementProgress', JSON.stringify(data));
+            } catch (e) {
+                console.warn('Could not save progress:', e);
+            }
+        }
+
+        function loadProgress() {
+            try {
+                const saved = sessionStorage.getItem('memoryManagementProgress');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    
+                    // Restore game state
+                    gameState.xp = data.gameState.xp || 0;
+                    gameState.level = data.gameState.level || 1;
+                    gameState.completedSections = new Set(data.gameState.completedSections || []);
+                    gameState.achievements = new Set(data.gameState.achievements || []);
+                    gameState.actionsPerformed = new Set(data.gameState.actionsPerformed || []);
+                    gameState.currentSection = data.gameState.currentSection || 'intro';
+                    gameState.sectionScores = data.gameState.sectionScores || {};
+                    gameState.hintUsage = data.gameState.hintUsage || {};
+                    gameState.segmentTableData = data.gameState.segmentTableData || [];
+                    
+                    // Restore accessibility
+                    if (data.accessibility) {
+                        if (data.accessibility.highContrast) {
+                            document.body.classList.add('high-contrast');
+                        }
+                        if (data.accessibility.dyslexiaFont) {
+                            document.body.classList.add('dyslexia-font');
+                        }
+                        if (data.accessibility.fontSize && data.accessibility.fontSize !== 'normal') {
+                            document.body.classList.add(data.accessibility.fontSize);
+                        }
+                    }
+                    
+                    // Restore completed sections visual state
+                    gameState.completedSections.forEach(section => {
+                        const pill = document.querySelector(`[data-section="${section}"]`);
+                        if (pill) pill.classList.add('completed');
+                    });
+                    
+                    // Restore segment table if on that section
+                    if (gameState.segmentTableData.length > 0) {
+                        updateSegmentTable();
+                    }
+                }
+            } catch (e) {
+                console.error('Error loading progress:', e);
+            }
+        }
+
+        // Auto-save with debouncing
+        const autoSave = debounce(saveProgress, 5000);
+        setInterval(autoSave, 30000);
+
+        // Track start time for speed achievement
+        const startTime = Date.now();
+
+        // Easter eggs
+        let konamiIndex = 0;
+        const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === konamiCode[konamiIndex]) {
+                konamiIndex++;
+                if (konamiIndex === konamiCode.length) {
+                    showAchievement('Secret Found!', 'You discovered the Konami code!', '🎮');
+                    awardXP(100, 'Easter Egg', 'konami_code');
+                    konamiIndex = 0;
+                    createParticleEffect();
+                }
+            } else {
+                konamiIndex = 0;
+            }
+        });
+
+        // Performance monitoring
+        if ('performance' in window) {
+            window.addEventListener('load', function() {
+                const perfData = performance.getEntriesByType('navigation')[0];
+                console.log('Page load time:', perfData.loadEventEnd - perfData.fetchStart, 'ms');
+            });
+        }
+
+        // Service worker registration for offline support (optional)
+        if ('serviceWorker' in navigator) {
+            // navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
+
+        // Prevent text selection on interactive elements
+        document.querySelectorAll('.draggable-item, .quiz-option, .btn').forEach(el => {
+            el.style.userSelect = 'none';
+            el.style.webkitUserSelect = 'none';
+        });
+
+        // Add keyboard support for quiz options
+        document.addEventListener('keydown', function(e) {
+            if (e.target.classList.contains('quiz-option')) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.target.click();
+                }
+            }
+        });
+
+        console.log('Memory Management Worksheet initialized successfully!');

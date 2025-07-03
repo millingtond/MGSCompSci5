@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Audio Quality Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom styles for sliders */
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 8px; border-radius: 5px;
+            background: #d3d3d3; outline: none; opacity: 0.7;
+            transition: opacity .2s;
+        }
+        input[type="range"]:hover { opacity: 1; }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 24px; height: 24px; border-radius: 50%;
+            background: #4f46e5; cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 24px; height: 24px; border-radius: 50%;
+            background: #4f46e5; cursor: pointer; border: 0;
+        }
+        canvas {
+            background-color: #f3f4f6; /* bg-gray-100 */
+            border-radius: 0.5rem;
+        }
+        .explanation-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex items-center justify-center min-h-screen p-4">
+    <div class="w-full max-w-lg mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-6">
+        
+        <div class="text-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Audio Quality Simulator</h1>
+            <p class="text-gray-600 mt-2">Hear the effects of Sample Rate, Bit Depth, and Compression.</p>
+        </div>
+
+        <div>
+            <canvas id="waveform-canvas" width="600" height="150" class="w-full"></canvas>
+        </div>
+
+        <audio id="audio-source" src="./my_music.mp3" preload="auto" loop class="hidden"></audio>
+
+        <div class="grid grid-cols-2 gap-4">
+            <button id="toggle-audio-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                Loading...
+            </button>
+            <button id="bypass-btn" class="w-full bg-gray-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-all duration-200 shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+                Hold to Bypass
+            </button>
+        </div>
+
+        <!-- Preset Buttons -->
+        <div>
+            <label class="text-lg font-medium text-gray-700 mb-2 block text-center">Quality Presets</label>
+            <div class="grid grid-cols-3 gap-2">
+                <button class="preset-btn bg-green-100 text-green-800 p-2 rounded-lg hover:bg-green-200" data-preset="cd">CD</button>
+                <button class="preset-btn bg-yellow-100 text-yellow-800 p-2 rounded-lg hover:bg-yellow-200" data-preset="fm">FM Radio</button>
+                <button class="preset-btn bg-red-100 text-red-800 p-2 rounded-lg hover:bg-red-200" data-preset="tel">Telephone</button>
+            </div>
+        </div>
+
+        <div class="space-y-6 pt-4 border-t">
+            <div>
+                 <div class="flex justify-between items-center bg-indigo-50 p-3 rounded-lg">
+                    <span class="text-lg font-medium text-gray-700">Uncompressed Bit Rate:</span>
+                    <span id="bit-rate-value" class="text-xl font-bold font-mono text-indigo-700">706 kbps</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-2 text-center">Formula: Sample Rate × Bit Depth × Channels (Mono)</p>
+            </div>
+
+            <!-- Controls -->
+            <div>
+                <div class="flex justify-between items-baseline"><label for="sample-rate-slider" class="text-lg font-medium text-gray-700">Sample Rate</label><span id="sample-rate-value" class="text-lg font-mono bg-gray-100 text-indigo-700 px-2 py-1 rounded">44100 Hz</span></div>
+                <input type="range" id="sample-rate-slider" min="1000" max="44100" value="44100" class="w-full">
+            </div>
+            <div>
+                <div class="flex justify-between items-baseline"><label for="bit-depth-slider" class="text-lg font-medium text-gray-700">Bit Depth</label><span id="bit-depth-value" class="text-lg font-mono bg-gray-100 text-indigo-700 px-2 py-1 rounded">16 bit</span></div>
+                <input type="range" id="bit-depth-slider" min="1" max="16" value="16" class="w-full">
+            </div>
+            <div>
+                <div class="flex justify-between items-baseline"><label for="compression-slider" class="text-lg font-medium text-gray-700">Compression (Low-Pass)</label><span id="compression-value" class="text-lg font-mono bg-gray-100 text-indigo-700 px-2 py-1 rounded">22050 Hz</span></div>
+                <p class="text-sm text-gray-500 mb-3">Simulates lossy compression by removing high frequencies. Lower Hz = more aggressive.</p>
+                <input type="range" id="compression-slider" min="1000" max="22050" value="22050" class="w-full">
+            </div>
+        </div>
+        
+        <div id="message-box" class="hidden text-center text-sm text-red-600 bg-red-100 p-3 rounded-lg"></div>
+
+        <!-- How it Works Section -->
+        <div class="pt-4 border-t">
+            <div id="explanation-toggle" class="cursor-pointer flex justify-between items-center">
+                <h2 class="text-xl font-bold text-gray-800">How It Works</h2>
+                <svg id="explanation-arrow" class="w-6 h-6 text-gray-600 transition-transform transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+            <div id="explanation-container" class="explanation-content mt-4 space-y-4 text-gray-700">
+                <div class="prose prose-indigo max-w-none">
+                    <p>This simulator uses the <strong>Web Audio API</strong> built into your browser to process sound in real-time. It creates an 'audio graph', which is like a flowchart for the sound signal.</p>
+                    
+                    <h4 class="font-bold">1. The Audio Graph</h4>
+                    <p>The sound from the MP3 file is split into two paths:</p>
+                    <ul>
+                        <li><strong>Processed Path:</strong> The audio goes through all the effects you control with the sliders (Sample Rate, Bit Depth, Compression) before reaching the speakers.</li>
+                        <li><strong>Clean Path:</strong> The audio goes directly to the waveform visualizer and is ready for the 'Bypass' button. It doesn't have any effects applied.</li>
+                    </ul>
+
+                    <h4 class="font-bold">2. The Controls</h4>
+                    <ul>
+                        <li><strong>Sample Rate:</strong> This is simulated with a 'sample-and-hold' technique. The processor only 'listens' to the original audio at intervals determined by the slider. For all the moments in between, it just repeats the last value it heard. This loss of detail makes the audio sound muffled.</li>
+                        <li><strong>Bit Depth:</strong> This is simulated through 'quantization'. The smooth audio signal (which can have millions of possible values) is forced to 'snap' to a much smaller number of allowed values (e.g., 8-bit only has 256). This rounding process introduces audible noise and distortion.</li>
+                        <li><strong>Compression (Low-Pass Filter):</strong> This slider controls a filter that cuts off high frequencies. This is a common side-effect of lossy compression algorithms like MP3, which discard less-audible high-frequency data to save space.</li>
+                        <li><strong>Bypass Button:</strong> This is a simple volume switch. When you hold it, it mutes the 'Processed Path' and turns up the volume on the 'Clean Path', allowing you to instantly compare the altered sound with the original.</li>
+                    </ul>
+
+                     <h4 class="font-bold">3. The Visuals</h4>
+                     <ul>
+                        <li><strong>Waveform Visualizer:</strong> An 'Analyser Node' on the clean audio path constantly reads the shape of the sound wave and a script draws that shape onto the canvas element, updating many times per second to create a live animation.</li>
+                        <li><strong>Bit Rate Calculator:</strong> This simply takes the current Sample Rate and Bit Depth values from the sliders and multiplies them: <code>Bit Rate = Sample Rate × Bit Depth</code>. (It assumes one channel, or mono audio).</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DOM Element References ---
+        const toggleBtn = document.getElementById('toggle-audio-btn');
+        const bypassBtn = document.getElementById('bypass-btn');
+        const sampleRateSlider = document.getElementById('sample-rate-slider');
+        const bitDepthSlider = document.getElementById('bit-depth-slider');
+        const compressionSlider = document.getElementById('compression-slider');
+        const sampleRateValue = document.getElementById('sample-rate-value');
+        const bitDepthValue = document.getElementById('bit-depth-value');
+        const compressionValue = document.getElementById('compression-value');
+        const bitRateValue = document.getElementById('bit-rate-value');
+        const messageBox = document.getElementById('message-box');
+        const audioElement = document.getElementById('audio-source');
+        const waveformCanvas = document.getElementById('waveform-canvas');
+        const canvasCtx = waveformCanvas.getContext('2d');
+        const presetBtns = document.querySelectorAll('.preset-btn');
+        const explanationToggle = document.getElementById('explanation-toggle');
+        const explanationContainer = document.getElementById('explanation-container');
+        const explanationArrow = document.getElementById('explanation-arrow');
+
+        // --- Audio State Variables ---
+        let audioContext, qualityNode, sourceNode, analyserNode, filterNode, processedGain, cleanGain;
+        let isPlaying = false, isInitialized = false, nativeSampleRate = 44100, animationFrameId;
+        let currentBitDepth = 16, currentSampleRateFactor = 1.0, phase = 0, lastSample = 0;
+
+        // --- Main Audio Setup Function ---
+        function initializeAudio() {
+            if (isInitialized) return;
+
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) {
+                messageBox.textContent = 'Error: Your browser does not support the Web Audio API.';
+                messageBox.classList.remove('hidden');
+                [toggleBtn, bypassBtn].forEach(b => b.disabled = true);
+                return;
+            }
+
+            audioContext = new AudioContext();
+            nativeSampleRate = audioContext.sampleRate;
+            
+            sampleRateSlider.max = nativeSampleRate;
+            compressionSlider.max = nativeSampleRate / 2;
+            compressionSlider.value = nativeSampleRate / 2;
+            if (parseFloat(sampleRateSlider.value) > nativeSampleRate) {
+                sampleRateSlider.value = nativeSampleRate;
+            }
+            updateDisplays();
+
+            // --- Create all audio nodes ---
+            analyserNode = audioContext.createAnalyser();
+            analyserNode.fftSize = 2048;
+            
+            qualityNode = audioContext.createScriptProcessor(4096, 1, 1);
+            
+            filterNode = audioContext.createBiquadFilter();
+            filterNode.type = 'lowpass';
+            
+            processedGain = audioContext.createGain();
+            cleanGain = audioContext.createGain();
+            cleanGain.gain.value = 0; // Start with bypass muted
+
+            // --- Set up processing logic ---
+            qualityNode.onaudioprocess = function(e) {
+                const inputData = e.inputBuffer.getChannelData(0);
+                const outputData = e.outputBuffer.getChannelData(0);
+                for (let i = 0; i < outputData.length; i++) {
+                    phase += currentSampleRateFactor;
+                    if (phase >= 1.0) {
+                        phase %= 1.0;
+                        lastSample = inputData[i];
+                    }
+                    let sample = lastSample || 0;
+                    const steps = Math.pow(2, currentBitDepth);
+                    sample = Math.round(sample * (steps - 1)) / (steps - 1);
+                    outputData[i] = sample;
+                }
+            };
+
+            // --- Create audio source and connect the graph ---
+            sourceNode = audioContext.createMediaElementSource(audioElement);
+            // Path 1: Processed audio
+            sourceNode.connect(qualityNode).connect(filterNode).connect(processedGain).connect(audioContext.destination);
+            // Path 2: Clean audio for bypass and analysis
+            sourceNode.connect(analyserNode);
+            analyserNode.connect(cleanGain).connect(audioContext.destination);
+            
+            isInitialized = true;
+            drawWaveform();
+        }
+
+        function drawWaveform() {
+            animationFrameId = requestAnimationFrame(drawWaveform);
+            const dataArray = new Uint8Array(analyserNode.frequencyBinCount);
+            analyserNode.getByteTimeDomainData(dataArray);
+
+            canvasCtx.fillStyle = '#f3f4f6';
+            canvasCtx.fillRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+            canvasCtx.lineWidth = 2;
+            canvasCtx.strokeStyle = '#4f46e5';
+            canvasCtx.beginPath();
+            const sliceWidth = waveformCanvas.width * 1.0 / dataArray.length;
+            let x = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * waveformCanvas.height / 2;
+                if (i === 0) canvasCtx.moveTo(x, y);
+                else canvasCtx.lineTo(x, y);
+                x += sliceWidth;
+            }
+            canvasCtx.lineTo(waveformCanvas.width, waveformCanvas.height / 2);
+            canvasCtx.stroke();
+        }
+
+        // --- Event Listeners ---
+        audioElement.addEventListener('canplaythrough', () => {
+            toggleBtn.disabled = false;
+            bypassBtn.disabled = false;
+            toggleBtn.textContent = 'Start Audio';
+        });
+        audioElement.addEventListener('error', () => {
+             messageBox.textContent = "Error: Could not load 'my_music.mp3'. Please ensure the file is in the same directory as this HTML file.";
+             messageBox.classList.remove('hidden');
+             toggleBtn.textContent = 'Audio Failed to Load';
+        });
+
+        toggleBtn.addEventListener('click', () => {
+            if (!isInitialized) initializeAudio();
+            if (audioContext && audioContext.state === 'suspended') audioContext.resume();
+
+            if (isPlaying) {
+                audioElement.pause();
+                isPlaying = false;
+                toggleBtn.textContent = 'Start Audio';
+                toggleBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                toggleBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            } else {
+                audioElement.play();
+                isPlaying = true;
+                toggleBtn.textContent = 'Stop Audio';
+                toggleBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                toggleBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+            }
+        });
+        
+        // Bypass Button Listeners
+        bypassBtn.addEventListener('mousedown', () => {
+            if (!isInitialized) return;
+            processedGain.gain.setTargetAtTime(0, audioContext.currentTime, 0.01);
+            cleanGain.gain.setTargetAtTime(1, audioContext.currentTime, 0.01);
+        });
+        bypassBtn.addEventListener('mouseup', () => {
+            if (!isInitialized) return;
+            processedGain.gain.setTargetAtTime(1, audioContext.currentTime, 0.01);
+            cleanGain.gain.setTargetAtTime(0, audioContext.currentTime, 0.01);
+        });
+        bypassBtn.addEventListener('mouseleave', () => { // In case mouse slides off while held
+            if (!isInitialized || cleanGain.gain.value < 0.5) return;
+            processedGain.gain.setTargetAtTime(1, audioContext.currentTime, 0.01);
+            cleanGain.gain.setTargetAtTime(0, audioContext.currentTime, 0.01);
+        });
+
+
+        // Slider Listeners
+        [sampleRateSlider, bitDepthSlider, compressionSlider].forEach(slider => {
+            slider.addEventListener('input', updateDisplays);
+        });
+
+        // Preset Button Listeners
+        presetBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const preset = e.target.dataset.preset;
+                switch(preset) {
+                    case 'cd':
+                        sampleRateSlider.value = 44100;
+                        bitDepthSlider.value = 16;
+                        compressionSlider.value = 22050;
+                        break;
+                    case 'fm':
+                        sampleRateSlider.value = 32000;
+                        bitDepthSlider.value = 12;
+                        compressionSlider.value = 15000;
+                        break;
+                    case 'tel':
+                        sampleRateSlider.value = 8000;
+                        bitDepthSlider.value = 8;
+                        compressionSlider.value = 3400;
+                        break;
+                }
+                updateDisplays();
+            });
+        });
+
+        // Explanation toggle
+        explanationToggle.addEventListener('click', () => {
+            const content = explanationContainer;
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+                explanationArrow.classList.remove('rotate-180');
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+                explanationArrow.classList.add('rotate-180');
+            }
+        });
+
+        // --- UI Update Functions ---
+        function updateDisplays() {
+            const sr = parseFloat(sampleRateSlider.value);
+            const bd = parseFloat(bitDepthSlider.value);
+            const comp = parseFloat(compressionSlider.value);
+
+            // Update Sample Rate
+            sampleRateValue.textContent = `${Math.floor(sr)} Hz`;
+            if (isInitialized) currentSampleRateFactor = sr / nativeSampleRate;
+
+            // Update Bit Depth
+            currentBitDepth = bd;
+            bitDepthValue.textContent = `${Math.round(bd)} bit`;
+
+            // Update Compression Filter
+            compressionValue.textContent = `${Math.round(comp)} Hz`;
+            if (isInitialized) filterNode.frequency.setTargetAtTime(comp, audioContext.currentTime, 0.01);
+
+            // Update Bit Rate (assuming 1 channel - mono)
+            const bitRate = (sr * bd) / 1000;
+            bitRateValue.textContent = `${Math.round(bitRate)} kbps`;
+        }
+
+        // Initialize display values on page load
+        updateDisplays();
+    </script>
+</body>
+</html>

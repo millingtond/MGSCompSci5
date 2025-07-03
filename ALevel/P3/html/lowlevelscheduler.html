@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Low-Level Scheduler Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #121828;
+            --primary-color: #1B2135;
+            --secondary-color: #242C48;
+            --accent-color: #e94560;
+            --text-color: #E0E0E0;
+            --highlight-color: #3d8bff;
+            --gradient: linear-gradient(135deg, var(--highlight-color) 0%, #e94560 100%);
+            --success-color: #4CAF50;
+            --error-color: #F44336;
+            --font-family: 'Inter', sans-serif;
+            --border-radius: 16px;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1200px;
+            background: var(--primary-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .main-content {
+            display: flex;
+            width: 100%;
+        }
+
+        .step {
+            min-width: 100%;
+            padding: 2rem 2.5rem;
+            box-sizing: border-box;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: absolute;
+            width: 100%;
+            visibility: hidden;
+        }
+
+        .step.active {
+            opacity: 1;
+            transform: translateY(0);
+            position: relative;
+            visibility: visible;
+        }
+
+        h1, h2, h3 {
+            color: white;
+            font-weight: 700;
+        }
+        
+        h1 {
+            text-align: center;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+        }
+
+        h2 {
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        p, li {
+            line-height: 1.8;
+            font-size: 1.05rem;
+            max-width: 80ch;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 2.5rem;
+            background-color: rgba(0,0,0,0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn {
+            background: var(--gradient);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0); /* Promotes to own layer */
+        }
+        
+        .btn:before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 300%;
+            height: 300%;
+            background: rgba(255,255,255,0.15);
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            transition: transform 0.5s ease;
+        }
+
+        .btn:hover:before {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px) translateZ(0);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(-1px) translateZ(0);
+        }
+        
+        .btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .reset-btn {
+            background: var(--accent-color);
+        }
+
+        /* Simulation Styles */
+        .simulation-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 2rem;
+            align-items: start;
+            margin-top: 2rem;
+            min-height: 420px;
+        }
+        
+        .cpu-area, .queue-area {
+            background: rgba(36, 44, 72, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            min-height: 280px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .cpu-area {
+            grid-column: 2 / 3;
+            grid-row: 1 / 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .queue-area {
+            grid-column: 1 / 2;
+            grid-row: 1 / 2;
+        }
+        
+        .info-area {
+            grid-column: 1 / 3;
+            grid-row: 2 / 3;
+            background: rgba(36, 44, 72, 0.4);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            min-height: 100px;
+        }
+
+        .cpu-box {
+            width: 140px;
+            height: 140px;
+            border: 3px dashed var(--highlight-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--highlight-color);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .cpu-box.active {
+            border-style: solid;
+            box-shadow: 0 0 25px var(--highlight-color);
+        }
+        
+        .cpu-box .cpu-label {
+            position: absolute;
+            top: -35px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .process-block {
+            padding: 12px 18px;
+            margin: 10px 0;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: default;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55), box-shadow 0.3s ease;
+            will-change: transform, opacity;
+            transform: translateZ(0);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        #cpu-container .process-block {
+            position: absolute;
+            width: 110px;
+            height: 65px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .process-info {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .sim-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+        }
+
+        .sim-controls select {
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: var(--secondary-color);
+            color: var(--text-color);
+            border: 1px solid var(--highlight-color);
+            font-size: 1rem;
+        }
+        
+        #sim-log {
+            transition: opacity 0.3s ease;
+            font-style: italic;
+            color: #b0b8d3;
+        }
+
+        /* Quiz Styles */
+        .quiz-container { margin-top: 1.5rem; }
+        .question {
+            background: rgba(36, 44, 72, 0.4);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .options {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .option {
+            background: var(--secondary-color);
+            padding: 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease, border-color 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .option:hover {
+            background-color: var(--highlight-color);
+            transform: translateX(5px);
+        }
+        .option.selected {
+            border-color: var(--accent-color);
+            background-color: #e9456055;
+        }
+        .option.correct {
+            border-color: var(--success-color);
+            background-color: #4caf4f55;
+        }
+        .option.incorrect {
+            border-color: var(--error-color);
+            background-color: #f4433655;
+        }
+        
+        .feedback {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            display: none;
+        }
+        .feedback.correct {
+            background: rgba(76, 175, 80, 0.2);
+            color: #a5d6a7;
+        }
+        .feedback.incorrect {
+            background: rgba(244, 67, 54, 0.2);
+            color: #ef9a9a;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            background: var(--secondary-color);
+            border: 1px solid var(--highlight-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: box-shadow 0.3s ease;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            box-shadow: 0 0 10px var(--highlight-color);
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+        .modal.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: var(--primary-color);
+            padding: 2.5rem;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+            transform: scale(0.9) translateY(20px);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .modal.visible .modal-content {
+            transform: scale(1) translateY(0);
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            color: var(--accent-color);
+        }
+        .modal-close {
+            display: block;
+            margin: 1.5rem auto 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .step {
+                padding: 1.5rem;
+            }
+            .simulation-area {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+            }
+            .cpu-area { grid-column: 1 / 2; grid-row: 1 / 2; }
+            .queue-area { grid-column: 1 / 2; grid-row: 2 / 3; }
+            .info-area { grid-column: 1 / 2; grid-row: 3 / 4; }
+            .navigation {
+                padding: 1rem 1.5rem;
+            }
+            .btn {
+                padding: 10px 18px;
+                font-size: 0.9rem;
+            }
+            h1 { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <main class="main-content">
+            <!-- Step 1: Introduction -->
+            <section class="step active" id="step-1">
+                <h1>The Low-Level Scheduler</h1>
+                <h2>What is it?</h2>
+                <p>Welcome to the Low-Level Scheduler simulation! In an operating system, the <strong>Low-Level Scheduler (LLS)</strong>, also known as the CPU scheduler or dispatcher, is a crucial component that decides which of the ready processes should be allocated to the CPU for execution.</p>
+                <p>Its main goals are to:</p>
+                <ul>
+                    <li>Maximize CPU utilization.</li>
+                    <li>Ensure fairness among processes.</li>
+                    <li>Minimize turnaround time, waiting time, and response time.</li>
+                    <li>Keep the system responsive to user interactions.</li>
+                </ul>
+                <p>The LLS selects a process from the <strong>Ready Queue</strong> and loads it onto the CPU. This happens very frequently. In the next steps, we'll explore exactly how it works.</p>
+            </section>
+
+            <!-- Step 2: The Ready Queue and CPU -->
+            <section class="step" id="step-2">
+                <h2>The Ready Queue & The CPU</h2>
+                <p>The <strong>Ready Queue</strong> holds all the processes that are loaded into main memory and are ready to execute. The Low-Level Scheduler's job is to pick one and dispatch it to the CPU.</p>
+                <p>Below you can see a simplified model. On the left is the Ready Queue with several processes waiting. On the right is the CPU, currently idle. Click "Next Step" to see the scheduler in action.</p>
+                <div class="simulation-area">
+                    <div class="queue-area">
+                        <h3>Ready Queue</h3>
+                        <div class="ready-queue" id="ready-queue-static">
+                            <!-- Processes will be injected here by JS -->
+                        </div>
+                    </div>
+                    <div class="cpu-area">
+                        <div class="cpu-box" id="cpu-box-static">
+                            <span class="cpu-label">CPU</span>
+                            IDLE
+                        </div>
+                    </div>
+                    <div class="info-area">
+                         <h3>Information</h3>
+                         <p>The processes are waiting to be selected. Each has a Process ID (PID), a Burst Time (how long it needs the CPU), and a Priority.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 3: Priority Scheduling Simulation -->
+            <section class="step" id="step-3">
+                <h2>Simulation: Priority & Round Robin</h2>
+                <p>Let's see how the scheduler works. You can select an algorithm and run the simulation.
+                <br>• <strong>Priority Scheduling:</strong> The process with the highest priority (lowest number) runs first.
+                <br>• <strong>Round Robin:</strong> Each process gets a fixed time slice (time quantum) of CPU time.
+                </p>
+                <div class="sim-controls">
+                    <label for="algorithm-select">Algorithm:</label>
+                    <select id="algorithm-select">
+                        <option value="priority">Priority</option>
+                        <option value="round-robin">Round Robin</option>
+                    </select>
+                    <button class="btn" id="start-sim-btn">Start Simulation</button>
+                    <button class="btn reset-btn" id="reset-sim-btn">Reset</button>
+                </div>
+                <div class="simulation-area" id="sim-container">
+                    <div class="queue-area">
+                        <h3>Ready Queue</h3>
+                        <div class="ready-queue" id="ready-queue-sim"></div>
+                    </div>
+                    <div class="cpu-area">
+                         <div class="cpu-box" id="cpu-box-sim">
+                             <span class="cpu-label">CPU</span>
+                             <div id="cpu-container"></div>
+                         </div>
+                    </div>
+                    <div class="info-area" id="sim-info">
+                         <h3>Simulation Log</h3>
+                         <p id="sim-log">Select an algorithm and start the simulation.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 4: Context Switching -->
+            <section class="step" id="step-4">
+                <h2>Context Switching</h2>
+                <p>What happens when one process stops and another starts? This is handled by a <strong>Context Switch</strong>.</p>
+                <p>A context switch is the process of saving the state of the currently running process (its "context") into its <strong>Process Control Block (PCB)</strong> and loading the state of the next process. The context includes:</p>
+                <ul>
+                    <li>CPU register values</li>
+                    <li>The Program Counter (instruction pointer)</li>
+                    <li>Process state (e.g., running, waiting)</li>
+                    <li>Memory-management information</li>
+                </ul>
+                <p>This allows a process to be paused and resumed later without losing its progress. However, it introduces overhead as no useful work is done during the switch. The simulation on the previous step visualized this for you.</p>
+            </section>
+            
+            <!-- Step 5: Round Robin Explained -->
+            <section class="step" id="step-5">
+                <h2>Round Robin Explained</h2>
+                <p>The <strong>Round Robin (RR)</strong> scheduling algorithm is a pre-emptive algorithm designed for time-sharing systems. It's one of the simplest and fairest scheduling algorithms.</p>
+                <p>Each process is assigned a small, fixed unit of CPU time called a <strong>time quantum</strong> (or time slice), typically between 10 and 100 milliseconds.
+                <br>If a process's CPU burst is less than the time quantum, it releases the CPU voluntarily.
+                <br>If it's longer, the timer goes off, and the OS pre-empts the process, moving it to the tail of the Ready Queue.</p>
+                <p>This ensures that all processes get a fair share of the CPU, preventing any single process from dominating. If you haven't already, go back to Step 3, select "Round Robin", and run the simulation to see this in action.</p>
+            </section>
+
+            <!-- Step 6: Quiz Part 1 -->
+            <section class="step" id="step-6">
+                <h2>Quiz Time! Part 1</h2>
+                <p>Let's test your understanding. Answer the questions below.</p>
+                <div class="quiz-container">
+                    <div class="question" id="q1">
+                        <p><strong>1. What is the primary role of the Low-Level Scheduler?</strong></p>
+                        <div class="options" data-question="1">
+                            <div class="option" data-answer="a">a) To move processes from secondary storage to main memory.</div>
+                            <div class="option" data-answer="b">b) To decide which ready process should be allocated to the CPU.</div>
+                            <div class="option" data-answer="c">c) To create new processes when a program is executed.</div>
+                            <div class="option" data-answer="d">d) To swap processes out of memory to free up space.</div>
+                        </div>
+                        <div class="feedback"></div>
+                    </div>
+                    <div class="question" id="q2">
+                        <p><strong>2. The collection of all processes in main memory that are ready and waiting to execute is called the...</strong></p>
+                        <input type="text" id="q2-input" placeholder="Your answer here..." autocomplete="off">
+                        <button class="btn" id="q2-submit" style="margin-top: 1rem;">Submit</button>
+                        <div class="feedback"></div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Step 7: Quiz Part 2 -->
+             <section class="step" id="step-7">
+                <h2>Quiz Time! Part 2</h2>
+                <p>A couple more questions to go.</p>
+                <div class="quiz-container">
+                    <div class="question" id="q3">
+                        <p><strong>3. Which scheduling algorithm is pre-emptive and specifically designed for time-sharing systems, giving each process a fixed time slice?</strong></p>
+                         <div class="options" data-question="3">
+                            <div class="option" data-answer="a">a) First-Come, First-Served</div>
+                            <div class="option" data-answer="b">b) Shortest Job First</div>
+                            <div class="option" data-answer="c">c) Priority Scheduling</div>
+                            <div class="option" data-answer="d">d) Round Robin</div>
+                        </div>
+                        <div class="feedback"></div>
+                    </div>
+                    <div class="question" id="q4">
+                        <p><strong>4. What is saved in the Process Control Block (PCB) during a context switch? (Select all that apply)</strong></p>
+                        <div class="options" data-question="4">
+                            <div class="option multi-choice" data-answer="a">a) The source code of the program.</div>
+                            <div class="option multi-choice" data-answer="b">b) The value of the Program Counter.</div>
+                            <div class="option multi-choice" data-answer="c">c) Contents of the CPU registers.</div>
+                            <div class="option multi-choice" data-answer="d">d) The user's password.</div>
+                        </div>
+                        <button class="btn" id="q4-submit" style="margin-top: 1rem;">Submit</button>
+                        <div class="feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 8: Conclusion -->
+            <section class="step" id="step-8">
+                <h2>Simulation Complete!</h2>
+                <p>Congratulations! You've completed the simulation on the Low-Level Scheduler.</p>
+                <p><strong>Key Takeaways:</strong></p>
+                <ul>
+                    <li>The <strong>Low-Level Scheduler</strong> selects processes from the Ready Queue to run on the CPU.</li>
+                    <li>It uses algorithms like <strong>Priority Scheduling</strong> (highest priority first) and <strong>Round Robin</strong> (fair time slices).</li>
+                    <li><strong>Context Switching</strong>, managed by the dispatcher, allows the OS to pause and resume processes by saving/loading their state from the <strong>PCB</strong>.</li>
+                </ul>
+                <p>Your quiz score is: <strong id="final-score">0/4</strong>. Use the "Restart" button to go through the simulation and quiz again.</p>
+                 <button class="btn reset-btn" id="restart-btn">Restart Simulation</button>
+            </section>
+
+        </main>
+
+        <nav class="navigation">
+            <button class="btn" id="prev-btn" disabled>Previous Step</button>
+            <span id="step-indicator">Step 1 / 8</span>
+            <button class="btn" id="next-btn">Next Step</button>
+        </nav>
+    </div>
+    
+    <!-- Modal for instructions and popups -->
+    <div class="modal" id="info-modal">
+        <div class="modal-content">
+            <h3 id="modal-title">Context Switch</h3>
+            <p id="modal-text">The scheduler is performing a context switch.</p>
+            <button class="btn modal-close" id="modal-close-btn">Continue</button>
+        </div>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Constants ---
+        const TOTAL_STEPS = 8;
+        const ROUND_ROBIN_QUANTUM = 2; // Time quantum in "seconds"
+        const PROCESS_COLORS = ['#2E86C1', '#28B463', '#F39C12', '#C0392B', '#8E44AD'];
+        const SIM_STEP_DELAY = 1500; // ms delay to simulate burst time
+
+        // --- DOM Element Caching ---
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const stepIndicator = document.getElementById('step-indicator');
+        const steps = document.querySelectorAll('.step');
+        const startSimBtn = document.getElementById('start-sim-btn');
+        const resetSimBtn = document.getElementById('reset-sim-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const algorithmSelect = document.getElementById('algorithm-select');
+        const readyQueueSim = document.getElementById('ready-queue-sim');
+        const cpuContainer = document.getElementById('cpu-container');
+        const cpuBoxSim = document.getElementById('cpu-box-sim');
+        const simLog = document.getElementById('sim-log');
+        const infoModal = document.getElementById('info-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalText = document.getElementById('modal-text');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const finalScoreEl = document.getElementById('final-score');
+
+        // --- State Management ---
+        let currentStep = 1;
+        let processes = [];
+        let simRunning = false;
+        let quizScores = { q1: false, q2: false, q3: false, q4: false };
+        let animationQueue = [];
+        let isAnimationPlaying = false;
+        
+        // --- Process Management ---
+        const createProcesses = () => [
+            { id: 'P1', burst: 5, priority: 2, color: PROCESS_COLORS[0], remaining: 5 },
+            { id: 'P2', burst: 3, priority: 1, color: PROCESS_COLORS[1], remaining: 3 },
+            { id: 'P3', burst: 8, priority: 4, color: PROCESS_COLORS[2], remaining: 8 },
+            { id: 'P4', burst: 4, priority: 3, color: PROCESS_COLORS[3], remaining: 4 },
+        ];
+
+        const renderProcess = (p) => {
+            const el = document.createElement('div');
+            el.className = 'process-block';
+            el.id = `process-${p.id}`;
+            el.style.background = p.color;
+            el.innerHTML = `
+                <span>${p.id}</span>
+                <span class="process-info">P: ${p.priority} | BT: ${p.burst}</span>
+            `;
+            return el;
+        };
+
+        const initStaticQueue = () => {
+            const queue = document.getElementById('ready-queue-static');
+            if (queue.children.length > 0) return; // Avoid re-rendering
+            queue.innerHTML = '';
+            createProcesses().forEach(p => queue.appendChild(renderProcess(p)));
+        };
+        
+        const resetSimulationState = () => {
+            simRunning = false;
+            animationQueue = []; // Clear any pending animations
+            isAnimationPlaying = false;
+            processes = createProcesses();
+            readyQueueSim.innerHTML = '';
+            processes.forEach(p => readyQueueSim.appendChild(renderProcess(p)));
+            cpuContainer.innerHTML = '';
+            cpuBoxSim.classList.remove('active');
+            updateSimLog('Select an algorithm and start the simulation.');
+            startSimBtn.disabled = false;
+            algorithmSelect.disabled = false;
+        };
+
+        // --- Navigation ---
+        const updateNav = () => {
+            stepIndicator.textContent = `Step ${currentStep} / ${TOTAL_STEPS}`;
+            prevBtn.disabled = currentStep === 1;
+            nextBtn.disabled = currentStep === TOTAL_STEPS;
+
+            steps.forEach((step, index) => {
+                step.classList.toggle('active', index + 1 === currentStep);
+            });
+            
+            if (currentStep === 2) initStaticQueue();
+            if (currentStep === 3) resetSimulationState();
+        };
+
+        const changeStep = (delta) => {
+            if (isAnimationPlaying) return;
+            const newStep = currentStep + delta;
+            if (newStep > 0 && newStep <= TOTAL_STEPS) {
+                currentStep = newStep;
+                updateNav();
+            }
+        };
+
+        // --- UI & Animation ---
+        const updateSimLog = (text) => {
+            simLog.style.opacity = '0';
+            setTimeout(() => {
+                simLog.textContent = text;
+                simLog.style.opacity = '1';
+            }, 300);
+        };
+
+        const showModal = (title, text) => {
+            return new Promise(resolve => {
+                modalTitle.textContent = title;
+                modalText.innerHTML = text;
+                infoModal.classList.add('visible');
+
+                const continueHandler = () => {
+                    infoModal.classList.remove('visible');
+                    modalCloseBtn.removeEventListener('click', continueHandler);
+                    resolve();
+                };
+                modalCloseBtn.addEventListener('click', continueHandler, { once: true });
+            });
+        };
+        
+        const playNextAnimation = async () => {
+            if (isAnimationPlaying || animationQueue.length === 0) {
+                if (animationQueue.length === 0 && simRunning) {
+                    simRunning = false;
+                    startSimBtn.disabled = false;
+                    algorithmSelect.disabled = false;
+                    updateSimLog("Simulation finished. You can reset or try another algorithm.");
+                }
+                return;
+            }
+            isAnimationPlaying = true;
+            const animationTask = animationQueue.shift();
+            try {
+                await animationTask();
+            } catch (error) {
+                console.error("Error during animation:", error);
+                // Reset to a safe state
+                resetSimulationState();
+            } finally {
+                isAnimationPlaying = false;
+                playNextAnimation();
+            }
+        };
+
+        const queueAnimation = (task) => {
+            animationQueue.push(task);
+            if (!isAnimationPlaying) {
+                playNextAnimation();
+            }
+        };
+
+        const animateMove = (processEl, toContainer) => {
+            return new Promise(resolve => {
+                const toRect = toContainer.getBoundingClientRect();
+                const clone = processEl.cloneNode(true);
+                
+                clone.style.position = 'absolute';
+                const startRect = processEl.getBoundingClientRect();
+                clone.style.left = `${startRect.left}px`;
+                clone.style.top = `${startRect.top}px`;
+                clone.style.zIndex = '100';
+                clone.style.margin = '0';
+                document.body.appendChild(clone);
+                
+                processEl.style.opacity = '0';
+
+                clone.style.transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+                
+                requestAnimationFrame(() => {
+                    const targetX = toRect.left + (toRect.width / 2) - (clone.offsetWidth / 2);
+                    const targetY = toRect.top + (toRect.height / 2) - (clone.offsetHeight / 2);
+                    clone.style.transform = `translate(${targetX - startRect.left}px, ${targetY - startRect.top}px)`;
+                });
+
+                clone.addEventListener('transitionend', () => {
+                    document.body.removeChild(clone);
+                    toContainer.appendChild(processEl);
+                    processEl.style.opacity = '1';
+                    resolve();
+                }, { once: true });
+            });
+        };
+        
+        // --- Simulation Algorithms ---
+        const runPrioritySimulation = () => {
+            let localProcesses = JSON.parse(JSON.stringify(processes));
+            localProcesses.sort((a, b) => a.priority - b.priority);
+
+            queueAnimation(async () => {
+                 updateSimLog(`Scheduler selects process with highest priority (lowest number).`);
+                 await new Promise(r => setTimeout(r, SIM_STEP_DELAY));
+            });
+
+            while(localProcesses.length > 0) {
+                const processToRun = localProcesses.shift();
+                
+                queueAnimation(async () => {
+                    await showModal('Context Switch: Loading', `Loading <strong>${processToRun.id}</strong>. It has the highest priority (${processToRun.priority}).`);
+                    const processEl = document.getElementById(`process-${processToRun.id}`);
+                    updateSimLog(`Process ${processToRun.id} is moving to the CPU.`);
+                    await animateMove(processEl, cpuContainer);
+                    cpuBoxSim.classList.add('active');
+                    updateSimLog(`Process ${processToRun.id} is running...`);
+                    await new Promise(r => setTimeout(r, SIM_STEP_DELAY));
+                    updateSimLog(`Process ${processToRun.id} has finished execution.`);
+                    processEl.style.transition = 'opacity 0.5s ease';
+                    processEl.style.opacity = '0';
+                    cpuBoxSim.classList.remove('active');
+                    await new Promise(r => setTimeout(r, 500));
+                    cpuContainer.innerHTML = '';
+                    await showModal('Context Switch: Saving', `Process <strong>${processToRun.id}</strong> finished. Its state is updated in the PCB and it terminates.`);
+                });
+            }
+        };
+
+        const runRoundRobinSimulation = () => {
+            let queue = [...processes];
+
+            queueAnimation(async () => {
+                updateSimLog(`Scheduler will run each process for a time quantum of ${ROUND_ROBIN_QUANTUM}s.`);
+                await new Promise(r => setTimeout(r, SIM_STEP_DELAY));
+            });
+
+            const runNextInQueue = () => {
+                if (queue.length === 0) return;
+
+                const processToRun = queue.shift();
+                
+                queueAnimation(async () => {
+                    await showModal('Context Switch: Loading', `Loading <strong>${processToRun.id}</strong> from the front of the queue.`);
+                    const processEl = document.getElementById(`process-${processToRun.id}`);
+                    updateSimLog(`Process ${processToRun.id} is moving to the CPU.`);
+                    await animateMove(processEl, cpuContainer);
+                    cpuBoxSim.classList.add('active');
+                    
+                    const timeToRun = Math.min(ROUND_ROBIN_QUANTUM, processToRun.remaining);
+                    updateSimLog(`Process ${processToRun.id} is running for ${timeToRun}s...`);
+                    await new Promise(r => setTimeout(r, timeToRun * 1000));
+                    processToRun.remaining -= timeToRun;
+                    cpuBoxSim.classList.remove('active');
+
+                    if (processToRun.remaining > 0) {
+                        updateSimLog(`Time quantum expired for ${processToRun.id}. Moving to back of queue.`);
+                        queue.push(processToRun); // Add back to queue
+                        await showModal('Context Switch: Pre-emption', `<strong>${processToRun.id}</strong> did not finish. It is pre-empted and moved to the back of the Ready Queue.`);
+                        await animateMove(processEl, readyQueueSim);
+                    } else {
+                        updateSimLog(`Process ${processToRun.id} has finished execution.`);
+                        processEl.style.transition = 'opacity 0.5s ease';
+                        processEl.style.opacity = '0';
+                        await new Promise(r => setTimeout(r, 500));
+                        cpuContainer.innerHTML = '';
+                        await showModal('Context Switch: Termination', `<strong>${processToRun.id}</strong> finished within its time slice.`);
+                    }
+                    runNextInQueue();
+                });
+            };
+            runNextInQueue();
+        };
+
+        const startSimulation = () => {
+            if (simRunning) return;
+            simRunning = true;
+            animationQueue = [];
+            startSimBtn.disabled = true;
+            algorithmSelect.disabled = true;
+            resetSimulationState();
+            
+            // Wait a moment for the reset to render before starting
+            setTimeout(() => {
+                const algorithm = algorithmSelect.value;
+                if (algorithm === 'priority') {
+                    runPrioritySimulation();
+                } else if (algorithm === 'round-robin') {
+                    runRoundRobinSimulation();
+                }
+                playNextAnimation();
+            }, 100);
+        };
+
+
+        // --- Quiz Logic ---
+        const updateScore = () => {
+            const score = Object.values(quizScores).filter(Boolean).length;
+            finalScoreEl.textContent = `${score}/4`;
+        };
+        
+        const handleOptionClick = (e, questionId, correctAnswer, correctFeedback, incorrectFeedback) => {
+            if (!e.target.classList.contains('option')) return;
+            
+            const selected = e.target;
+            const optionsContainer = selected.parentElement;
+            const feedbackEl = optionsContainer.nextElementSibling;
+            
+            if (optionsContainer.dataset.answered) return;
+            optionsContainer.dataset.answered = 'true';
+
+            if (selected.dataset.answer === correctAnswer) {
+                selected.classList.add('correct');
+                feedbackEl.textContent = correctFeedback;
+                feedbackEl.className = 'feedback correct';
+                quizScores[questionId] = true;
+            } else {
+                selected.classList.add('incorrect');
+                feedbackEl.textContent = incorrectFeedback;
+                feedbackEl.className = 'feedback incorrect';
+                quizScores[questionId] = false;
+                // Highlight correct answer
+                const correctOption = optionsContainer.querySelector(`[data-answer="${correctAnswer}"]`);
+                if (correctOption) correctOption.classList.add('correct');
+            }
+            feedbackEl.style.display = 'block';
+            updateScore();
+        };
+
+        document.querySelector('[data-question="1"]').addEventListener('click', (e) => handleOptionClick(e, 'q1', 'b',
+            "Correct! The LLS selects from processes already in memory (the Ready Queue).",
+            "Incorrect. That describes the Long-Term or Medium-Term Scheduler. The LLS works with processes already in the Ready Queue."
+        ));
+
+        document.querySelector('[data-question="3"]').addEventListener('click', (e) => handleOptionClick(e, 'q3', 'd',
+            "Correct! Round Robin uses a time quantum for pre-emptive scheduling.",
+            "Incorrect. Round Robin is the algorithm that uses fixed time slices for fairness."
+        ));
+
+        document.getElementById('q2-submit').addEventListener('click', () => {
+            const input = document.getElementById('q2-input');
+            const answer = input.value.trim().toLowerCase();
+            const feedbackEl = input.nextElementSibling.nextElementSibling;
+
+            if(answer.length < 8) {
+                 feedbackEl.textContent = "Please provide a more complete answer.";
+                 feedbackEl.className = 'feedback incorrect';
+            } else if (answer.includes("ready queue")) {
+                feedbackEl.textContent = "Excellent! That's exactly right.";
+                feedbackEl.className = 'feedback correct';
+                quizScores.q2 = true;
+            } else {
+                feedbackEl.textContent = "Not quite. The correct term is the 'Ready Queue'.";
+                feedbackEl.className = 'feedback incorrect';
+                quizScores.q2 = false;
+            }
+            feedbackEl.style.display = 'block';
+            updateScore();
+        });
+        
+        document.querySelector('[data-question="4"]').addEventListener('click', (e) => {
+            if (e.target.classList.contains('multi-choice')) {
+                e.target.classList.toggle('selected');
+            }
+        });
+
+        document.getElementById('q4-submit').addEventListener('click', (e) => {
+            const btn = e.target;
+            if (btn.disabled) return;
+            
+            const selectedOptions = document.querySelectorAll('[data-question="4"] .option.selected');
+            const feedbackEl = document.querySelector('#q4 .feedback');
+            const correctAnswers = ['b', 'c'];
+            let selectedAnswers = Array.from(selectedOptions).map(opt => opt.dataset.answer);
+
+            const isCorrect = correctAnswers.length === selectedAnswers.length &&
+                              correctAnswers.every(val => selectedAnswers.includes(val));
+
+            if (isCorrect) {
+                feedbackEl.textContent = "Perfect! The Program Counter and CPU registers are essential parts of a process's context.";
+                feedbackEl.className = 'feedback correct';
+                quizScores.q4 = true;
+            } else {
+                feedbackEl.textContent = "Almost. The correct answers are the Program Counter and CPU registers. Source code and passwords are not part of the execution context.";
+                feedbackEl.className = 'feedback incorrect';
+                quizScores.q4 = false;
+            }
+            feedbackEl.style.display = 'block';
+            btn.disabled = true; // Prevent re-submission
+            updateScore();
+        });
+
+
+        // --- Event Listeners & Reset ---
+        prevBtn.addEventListener('click', () => changeStep(-1));
+        nextBtn.addEventListener('click', () => changeStep(1));
+        startSimBtn.addEventListener('click', startSimulation);
+        resetSimBtn.addEventListener('click', resetSimulationState);
+        
+        const fullReset = () => {
+            // Reset quiz
+            document.querySelectorAll('.option').forEach(o => o.classList.remove('selected', 'correct', 'incorrect'));
+            document.querySelectorAll('.feedback').forEach(f => { f.style.display = 'none'; f.textContent = ''; });
+            document.querySelectorAll('[data-answered]').forEach(el => el.removeAttribute('data-answered'));
+            document.getElementById('q2-input').value = '';
+            document.getElementById('q4-submit').disabled = false;
+            quizScores = { q1: false, q2: false, q3: false, q4: false };
+            updateScore();
+            
+            resetSimulationState();
+            currentStep = 1;
+            updateNav();
+        };
+        
+        restartBtn.addEventListener('click', fullReset);
+
+        document.addEventListener('keydown', (e) => {
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT') return;
+            
+            if (e.key === 'ArrowRight') nextBtn.click();
+            else if (e.key === 'ArrowLeft') prevBtn.click();
+        });
+
+        // --- Initial Setup ---
+        updateNav();
+    });
+    </script>
+</body>
+</html>

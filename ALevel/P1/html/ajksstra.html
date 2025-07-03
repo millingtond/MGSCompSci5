@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dijkstra's Algorithm Interactive Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* --- Custom Properties & Base Styles --- */
+        :root {
+            --primary: #4f46e5;
+            --secondary: #10b981;
+            --destination: #db2777; /* Fuchsia */
+            --background-start: #eef2ff;
+            --background-end: #f3f4f6;
+            --surface: #ffffff;
+            --text-primary: #1f2937;
+            --text-secondary: #4b5563;
+            --border-color: #d1d5db;
+            --glass-bg: rgba(255, 255, 255, 0.6);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--background-start), var(--background-end));
+            color: var(--text-primary);
+            overscroll-behavior: none;
+        }
+
+        /* --- Components & Visual Polish --- */
+        .glassmorphism {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        .btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform, box-shadow;
+            transform: translateZ(0); /* Promote to own layer */
+        }
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px -5px rgba(79, 70, 229, 0.4);
+        }
+        .btn:active {
+            transform: translateY(-1px);
+        }
+        .btn .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple 600ms linear;
+            background-color: rgba(255, 255, 255, 0.7);
+        }
+
+        .main-title {
+            background: -webkit-linear-gradient(45deg, var(--primary), #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        @keyframes pulse-bg {
+            0%, 100% { background-color: #eef2ff; }
+            50% { background-color: #e0e7ff; }
+        }
+
+        /* --- Section Transitions & Animations --- */
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        @keyframes ripple { to { transform: scale(4); opacity: 0; } }
+
+        /* --- Graph Styles --- */
+        .graph-node {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            will-change: transform;
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.15));
+        }
+        .graph-node:hover circle { transform: scale(1.15); stroke-width: 4px; }
+        .graph-node.start-selection circle {
+            stroke: var(--primary);
+            animation: pulse-selection 1.5s infinite;
+        }
+        .graph-node.dest-selection circle {
+            stroke: var(--destination);
+            animation: pulse-selection 1.5s infinite;
+        }
+        .graph-node.current circle {
+            fill: #f59e0b; /* Amber */
+            stroke: #d97706;
+            stroke-width: 4px;
+            animation: pulse-current 1.5s infinite;
+        }
+        .graph-node.visited circle { fill: var(--secondary); stroke: #059669; }
+        .graph-node.start circle { fill: var(--primary); stroke: #3730a3; }
+        .graph-node.destination circle { fill: var(--destination); stroke: #a11155; }
+        .graph-node.path-node circle { fill: var(--destination); stroke: #a11155; }
+        .graph-edge { transition: all 0.3s ease; will-change: stroke, stroke-width; }
+        .graph-edge.highlighted { stroke: #f59e0b; stroke-width: 5; }
+        .graph-edge.path-edge { stroke: var(--destination); stroke-width: 5; }
+        .edge-weight {
+            font-size: 14px; font-weight: 600; fill: var(--text-primary);
+            pointer-events: none; paint-order: stroke; stroke: var(--surface);
+            stroke-width: 3px; stroke-linecap: butt; stroke-linejoin: miter;
+        }
+        @keyframes pulse-current { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        @keyframes pulse-selection { 0%, 100% { stroke-width: 4px; } 50% { stroke-width: 6px; } }
+
+        /* --- Modal & Notification Styles --- */
+        .modal-backdrop {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;
+            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .modal-backdrop.visible { opacity: 1; pointer-events: auto; }
+        .modal-content { transform: scale(0.95); transition: transform 0.3s ease; }
+        .modal-backdrop.visible .modal-content { transform: scale(1); }
+        #toast-notification {
+            position: fixed; top: 20px; left: 50%; transform: translate(-50%, -150%);
+            padding: 1rem 2rem; border-radius: 0.5rem; color: white; z-index: 2000;
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); will-change: transform;
+        }
+        #toast-notification.show { transform: translate(-50%, 0); }
+
+        /* --- Quiz Styles --- */
+        .quiz-option { border: 2px solid var(--border-color); transition: all 0.2s ease; }
+        .quiz-option:hover { border-color: var(--primary); background-color: #eef2ff; }
+        .quiz-option.selected { border-color: var(--primary); background-color: #e0e7ff; box-shadow: 0 0 0 2px var(--primary); }
+        .quiz-option.correct { border-color: var(--secondary); background-color: #d1fae5; }
+        .quiz-option.incorrect { border-color: #ef4444; background-color: #fee2e2; }
+        .feedback-icon { display: inline-block; margin-right: 0.5rem; vertical-align: middle; }
+
+        /* --- Reduced Motion Support --- */
+        @media (prefers-reduced-motion: reduce) {
+          .btn, .step-card, .quiz-card, .graph-node, .graph-edge, .modal-content, .progress-bar-fill, #toast-notification {
+            transition-duration: 0.01ms !important; animation: none !important;
+          }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div id="main-container" class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl sm:text-5xl font-bold main-title tracking-tight">Dijkstra's Algorithm</h1>
+            <p class="mt-2 text-lg text-gray-600">An Interactive Guide to Finding the Shortest Path</p>
+        </header>
+
+        <main id="content-container" class="bg-white p-8 rounded-2xl shadow-lg"></main>
+    </div>
+
+    <div id="explanation-modal" class="modal-backdrop">
+        <div class="modal-content glassmorphism w-11/12 max-w-lg p-6 rounded-2xl shadow-2xl">
+            <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-4"></h3>
+            <div id="modal-body" class="text-gray-700 space-y-3"></div>
+            <div class="text-right mt-6">
+                <button id="modal-close-btn" class="btn bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg">Got it!</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast-notification"></div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const contentContainer = document.getElementById('content-container');
+        const modal = document.getElementById('explanation-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const toast = document.getElementById('toast-notification');
+
+        let simState = {};
+        let quizState = {};
+        let finalPaths = {};
+
+        const graphData = {
+            nodes: [
+                { id: 'A', x: 100, y: 200 }, { id: 'B', x: 250, y: 100 },
+                { id: 'C', x: 250, y: 300 }, { id: 'D', x: 400, y: 100 },
+                { id: 'E', x: 400, y: 300 }, { id: 'F', x: 550, y: 200 }
+            ],
+            edges: [
+                { source: 'A', target: 'B', weight: 7 }, { source: 'A', target: 'C', weight: 9 },
+                { source: 'A', target: 'E', weight: 14 }, { source: 'B', target: 'D', weight: 15 },
+                { source: 'B', target: 'C', weight: 10 }, { source: 'C', target: 'E', weight: 2 },
+                { source: 'C', target: 'D', weight: 11 }, { source: 'D', target: 'F', weight: 6 },
+                { source: 'E', target: 'F', weight: 9 }
+            ]
+        };
+
+        const quizData = [
+            {
+                type: 'mcq',
+                question: "What is the primary purpose of Dijkstra's algorithm?",
+                options: [
+                    "To find the longest path in a graph.",
+                    "To find a path that visits every node once.",
+                    "To find the shortest path from a source node to all other nodes.",
+                    "To find the minimum spanning tree of a graph."
+                ],
+                answer: "To find the shortest path from a source node to all other nodes."
+            },
+            {
+                type: 'fill-in-the-blank',
+                question: "Dijkstra's algorithm is a 'greedy' algorithm. It will not work correctly if the graph contains edges with ______ weights.",
+                answer: "negative"
+            },
+            {
+                type: 'task',
+                question: "In the graph from the simulation, what is the shortest path distance from node A to node F?",
+                answer: "20"
+            },
+            {
+                type: 'mcq',
+                question: "In Dijkstra's algorithm, which data structure is typically used to efficiently store and retrieve the unvisited node with the smallest distance?",
+                options: [
+                    "A Stack",
+                    "A Queue",
+                    "A Hash Table",
+                    "A Priority Queue"
+                ],
+                answer: "A Priority Queue"
+            }
+        ];
+
+        const templates = {
+            simulation: `
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg">
+                        <div id="graph-container" class="w-full h-96 border border-gray-200 rounded-lg bg-gray-50 mb-4 flex items-center justify-center">
+                            <svg id="graph-svg" width="100%" height="100%" viewBox="0 0 650 400"></svg>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <p id="sim-instruction" class="text-gray-600 font-medium text-center flex-grow">Select a starting node.</p>
+                            <button id="reset-sim-btn" class="btn bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Reset</button>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-lg">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Information Panel</h3>
+                        <div id="info-panel">
+                            <h4 class="font-semibold text-gray-700 mb-2">Distances from Source:</h4>
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="p-2 rounded-tl-lg">Node</th>
+                                        <th class="p-2">Distance</th>
+                                        <th class="p-2 rounded-tr-lg">Previous</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="distance-table" class="divide-y divide-gray-200"></tbody>
+                            </table>
+                            <h4 class="font-semibold text-gray-700 mt-6 mb-2">Algorithm Sets:</h4>
+                            <div class="space-y-3">
+                                <div><label class="block text-sm font-medium text-gray-600">Visited Nodes:</label><div id="visited-set" class="p-2 bg-gray-100 rounded-md min-h-[36px] text-gray-800 font-mono"></div></div>
+                                <div><label class="block text-sm font-medium text-gray-600">Unvisited (Priority Queue):</label><div id="unvisited-set" class="p-2 bg-gray-100 rounded-md min-h-[36px] text-gray-800 font-mono"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-center space-x-4">
+                    <button id="prev-step-btn" class="btn bg-white text-gray-700 font-bold py-2 px-6 rounded-full shadow-sm border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>← Previous</button>
+                    <button id="next-step-btn" class="btn bg-indigo-600 text-white font-bold py-2 px-6 rounded-full shadow-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Next Step →</button>
+                </div>`,
+            quiz: `
+                <div class="bg-white p-8 rounded-2xl shadow-lg max-w-4xl mx-auto">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Knowledge Check</h2>
+                        <div id="quiz-progress" class="text-sm font-semibold text-gray-600"></div>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 mb-6">
+                        <div id="quiz-progress-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500 ease-out"></div>
+                    </div>
+                    <div id="quiz-content"></div>
+                    <div class="mt-6 flex justify-end items-center">
+                        <button id="submit-answer-btn" class="btn bg-indigo-600 text-white font-bold py-3 px-8 rounded-full shadow-md hover:bg-indigo-700">Submit Answer</button>
+                    </div>
+                    <div id="feedback-area" class="mt-4 p-4 rounded-lg hidden"></div>
+                </div>`,
+            results: (score, total) => `
+                <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-2xl mx-auto">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-4">Quiz Complete!</h2>
+                    <p class="text-lg text-gray-600 mb-2">Your score:</p>
+                    <p id="final-score" class="text-5xl font-bold text-indigo-600 mb-6">${score} / ${total}</p>
+                    <div id="results-feedback" class="text-lg text-gray-700 mb-8">${
+                        score === total ? "Excellent! You've mastered Dijkstra's algorithm." :
+                        score >= total / 2 ? "Good job! You have a solid grasp of the basics." :
+                        "You're on the right track, but a little more review could help. Try the simulation again!"
+                    }</div>
+                    <button id="restart-quiz-btn" class="btn bg-indigo-600 text-white font-bold py-3 px-8 rounded-full shadow-md hover:bg-indigo-700">Restart Simulation</button>
+                </div>`
+        };
+
+        function initialize() {
+            resetSimState();
+            resetQuizState();
+            startSimulation();
+        }
+
+        function showToast(message, type = 'info') {
+            toast.textContent = message;
+            toast.className = `bg-${type === 'error' ? 'red' : 'indigo'}-500`;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function startSimulation() {
+            contentContainer.innerHTML = templates.simulation;
+            resetSimState();
+            drawGraph();
+            setupInitialInfoPanel();
+            addSimulationEventListeners();
+        }
+
+        function resetSimState() {
+            simState = {
+                initialized: false,
+                startNode: null,
+                destNode: null,
+                selectionPhase: 'start', // 'start', 'destination', 'running'
+                steps: [],
+                currentStep: -1,
+                isModalOpen: false,
+            };
+            finalPaths = {};
+        }
+
+        function resetQuizState() {
+            quizState = {
+                currentQuestionIndex: 0,
+                score: 0,
+                answered: false,
+            };
+        }
+
+        function drawGraph() {
+            const svg = document.getElementById('graph-svg');
+            if (!svg) return;
+            svg.innerHTML = ''; // Clear previous graph
+            
+            // Draw edges first so they are behind nodes
+            graphData.edges.forEach(edge => {
+                const sourceNode = graphData.nodes.find(n => n.id === edge.source);
+                const targetNode = graphData.nodes.find(n => n.id === edge.target);
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                // Use a consistent ID for bidirectional lookup
+                const id = [edge.source, edge.target].sort().join('-');
+                g.id = `edge-${id}`;
+                g.classList.add('graph-edge');
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', sourceNode.x); line.setAttribute('y1', sourceNode.y);
+                line.setAttribute('x2', targetNode.x); line.setAttribute('y2', targetNode.y);
+                line.setAttribute('stroke', '#9ca3af'); line.setAttribute('stroke-width', 3);
+                
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', (sourceNode.x + targetNode.x) / 2 + 5);
+                text.setAttribute('y', (sourceNode.y + targetNode.y) / 2 - 5);
+                text.textContent = edge.weight;
+                text.classList.add('edge-weight');
+
+                g.appendChild(line); g.appendChild(text); svg.appendChild(g);
+            });
+
+            // Draw nodes
+            graphData.nodes.forEach(node => {
+                const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                group.id = `node-${node.id}`;
+                group.classList.add('graph-node');
+                group.dataset.nodeId = node.id;
+
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', node.x); circle.setAttribute('cy', node.y);
+                circle.setAttribute('r', 20); circle.setAttribute('fill', '#e5e7eb');
+                circle.setAttribute('stroke', '#6b7280'); circle.setAttribute('stroke-width', 2);
+                
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', node.x); text.setAttribute('y', node.y);
+                text.setAttribute('text-anchor', 'middle'); text.setAttribute('dy', '.3em');
+                text.setAttribute('font-weight', 'bold'); text.setAttribute('font-size', '16px');
+                text.setAttribute('fill', '#1f2937');
+                text.textContent = node.id;
+
+                group.appendChild(circle); group.appendChild(text); svg.appendChild(group);
+            });
+        }
+
+        function setupInitialInfoPanel() {
+            const distanceTable = document.getElementById('distance-table');
+            distanceTable.innerHTML = '';
+            graphData.nodes.sort((a, b) => a.id.localeCompare(b.id)).forEach(node => {
+                distanceTable.innerHTML += `
+                    <tr id="row-${node.id}" class="transition-colors duration-300">
+                        <td class="p-2 font-mono">${node.id}</td>
+                        <td class="p-2 font-mono">∞</td>
+                        <td class="p-2 font-mono">N/A</td>
+                    </tr>`;
+            });
+            document.getElementById('visited-set').textContent = '';
+            document.getElementById('unvisited-set').textContent = '';
+        }
+
+        function runDijkstra(startNodeId, destNodeId) {
+            simState.startNode = startNodeId;
+            simState.destNode = destNodeId;
+            simState.steps = [];
+            
+            const distances = {};
+            const previous = {};
+            let unvisited = new Set(graphData.nodes.map(n => n.id));
+            
+            graphData.nodes.forEach(node => {
+                distances[node.id] = Infinity;
+                previous[node.id] = null;
+            });
+            distances[startNodeId] = 0;
+
+            const getUnvisitedForState = () => Array.from(unvisited).map(node => ({ node, dist: distances[node] })).sort((a,b) => a.dist - b.dist);
+            
+            simState.steps.push({
+                distances: { ...distances }, previous: { ...previous }, visited: [],
+                unvisited: getUnvisitedForState(), currentNode: null,
+                explanation: `<strong>Initialization:</strong><br>Distances set to ∞, except for start node <strong>(${startNodeId})</strong> which is 0.`
+            });
+
+            while (unvisited.size > 0) {
+                let currentNode = [...unvisited].reduce((minNode, nodeId) => 
+                    distances[nodeId] < distances[minNode] ? nodeId : minNode
+                );
+                
+                if (distances[currentNode] === Infinity) {
+                    simState.steps.push({
+                        ...simState.steps[simState.steps.length - 1], // copy last state
+                        explanation: `<strong>Path Not Found:</strong><br>The destination node <strong>${destNodeId}</strong> is unreachable from the start node <strong>${startNodeId}</strong>.`
+                    });
+                    break;
+                }
+                
+                unvisited.delete(currentNode);
+                const visitedNodes = graphData.nodes.map(n => n.id).filter(n => !unvisited.has(n));
+
+                simState.steps.push({
+                    distances: { ...distances }, previous: { ...previous }, visited: [...visitedNodes].filter(n => n !== currentNode),
+                    unvisited: getUnvisitedForState(), currentNode: currentNode,
+                    explanation: `<strong>Node Selection:</strong><br>Select unvisited node with smallest distance: <strong>${currentNode}</strong> (Dist: ${distances[currentNode]}).`
+                });
+                
+                if (currentNode === destNodeId) {
+                    simState.steps.push({
+                        distances: { ...distances }, previous: { ...previous }, visited: [...visitedNodes],
+                        unvisited: getUnvisitedForState(), currentNode: currentNode,
+                        explanation: `<strong>Destination Reached!</strong><br>The destination node <strong>${destNodeId}</strong> is now the current node. The shortest path has been found! You can now hover over the destination row in the table to see the path.`
+                    });
+                    break;
+                }
+                
+                const neighbors = graphData.edges
+                    .filter(e => e.source === currentNode || e.target === currentNode)
+                    .map(e => ({ node: e.source === currentNode ? e.target : e.source, weight: e.weight }));
+                
+                for (const neighbor of neighbors) {
+                    if (unvisited.has(neighbor.node)) {
+                        const newDist = distances[currentNode] + neighbor.weight;
+                        const oldDist = distances[neighbor.node];
+                        if (newDist < oldDist) {
+                            distances[neighbor.node] = newDist;
+                            previous[neighbor.node] = currentNode;
+                            simState.steps.push({
+                                distances: { ...distances }, previous: { ...previous }, visited: [...visitedNodes],
+                                unvisited: getUnvisitedForState(), currentNode: currentNode, updatedNode: neighbor.node,
+                                explanation: `<strong>Distance Update:</strong><br>Path to <strong>${neighbor.node}</strong> via ${currentNode} is ${newDist}, which is shorter than ${oldDist === Infinity ? '∞' : oldDist}. Table updated.`
+                            });
+                        }
+                    }
+                }
+                
+                simState.steps.push({
+                    distances: { ...distances }, previous: { ...previous }, visited: [...visitedNodes],
+                    unvisited: getUnvisitedForState(), currentNode: null,
+                    explanation: `<strong>Node Finalized:</strong><br>Finished checking neighbors for <strong>${currentNode}</strong>. It is now fully visited.`
+                });
+            }
+            
+            finalPaths = previous;
+            simState.initialized = true;
+            simState.currentStep = 0;
+            updateForStep(0);
+            document.getElementById('next-step-btn').disabled = false;
+        }
+
+        function updateForStep(stepIndex) {
+            if (stepIndex < 0 || stepIndex >= simState.steps.length) return;
+            
+            const step = simState.steps[stepIndex];
+            updateGraphUI(step);
+            updateInfoPanelUI(step);
+
+            if (!simState.isModalOpen) showModal(`Step ${stepIndex + 1}`, step.explanation);
+            else {
+                 elements.modalTitle.textContent = `Step ${stepIndex + 1}`;
+                 elements.modalBody.innerHTML = step.explanation;
+            }
+            
+            document.getElementById('prev-step-btn').disabled = stepIndex === 0;
+            const nextBtn = document.getElementById('next-step-btn');
+            const isLastStep = stepIndex === simState.steps.length - 1;
+            nextBtn.disabled = isLastStep;
+            nextBtn.textContent = isLastStep ? 'Start Quiz →' : 'Next Step →';
+        }
+
+        function updateGraphUI(step) {
+            document.querySelectorAll('.graph-node').forEach(n => n.classList.remove('current', 'visited', 'start', 'destination', 'path-node', 'start-selection', 'dest-selection'));
+            document.querySelectorAll('.graph-edge').forEach(e => e.classList.remove('highlighted', 'path-edge'));
+            
+            if (simState.startNode) document.getElementById(`node-${simState.startNode}`).classList.add('start');
+            if (simState.destNode) document.getElementById(`node-${simState.destNode}`).classList.add('destination');
+            
+            step.visited.forEach(nodeId => document.getElementById(`node-${nodeId}`).classList.add('visited'));
+            if (step.currentNode) document.getElementById(`node-${step.currentNode}`).classList.add('current');
+            
+            if (step.highlightedEdge) {
+                const { source, target } = step.highlightedEdge;
+                const id = [source, target].sort().join('-');
+                const edgeElement = document.getElementById(`edge-${id}`);
+                if (edgeElement) edgeElement.classList.add('highlighted');
+            }
+        }
+
+        function updateInfoPanelUI(step) {
+            const distanceTable = document.getElementById('distance-table');
+            distanceTable.innerHTML = '';
+            const sortedNodes = Object.keys(step.distances).sort();
+            for (const node of sortedNodes) {
+                const dist = step.distances[node];
+                const prev = step.previous[node] || 'N/A';
+                const row = document.createElement('tr');
+                row.id = `row-${node}`;
+                row.className = 'transition-colors duration-300';
+                row.innerHTML = `
+                    <td class="p-2 font-mono">${node}</td>
+                    <td class="p-2 font-mono">${dist === Infinity ? '∞' : dist}</td>
+                    <td class="p-2 font-mono">${prev}</td>
+                `;
+                if (node === step.currentNode) row.classList.add('bg-amber-100');
+                if (node === step.updatedNode) row.classList.add('bg-emerald-100');
+                distanceTable.appendChild(row);
+            }
+            document.getElementById('visited-set').textContent = step.visited.join(', ');
+            document.getElementById('unvisited-set').textContent = step.unvisited.map(n => `${n.node}(${n.dist === Infinity ? '∞' : n.dist})`).join(', ');
+        }
+        
+        function handleStepChange(direction) {
+            if (simState.isModalOpen) return;
+            const newStep = simState.currentStep + direction;
+            if (newStep >= 0 && newStep < simState.steps.length) {
+                simState.currentStep = newStep;
+                updateForStep(simState.currentStep);
+            } else if (direction > 0 && newStep >= simState.steps.length) {
+                startQuiz();
+            }
+        }
+
+        function addSimulationEventListeners() {
+            document.getElementById('graph-svg').addEventListener('click', handleGraphClick);
+            document.getElementById('next-step-btn').addEventListener('click', () => handleStepChange(1));
+            document.getElementById('prev-step-btn').addEventListener('click', () => handleStepChange(-1));
+            document.getElementById('reset-sim-btn').addEventListener('click', startSimulation);
+
+            document.getElementById('distance-table').addEventListener('mouseover', e => {
+                if (!simState.destNode || simState.currentStep !== simState.steps.length - 1) return;
+                const row = e.target.closest('tr');
+                if (row && row.id === `row-${simState.destNode}`) {
+                    highlightPath(simState.destNode);
+                }
+            });
+             document.getElementById('distance-table').addEventListener('mouseout', () => {
+                if (simState.currentStep === simState.steps.length - 1) {
+                    updateGraphUI(simState.steps[simState.currentStep]);
+                }
+            });
+        }
+
+        function handleGraphClick(e) {
+            if (simState.selectionPhase === 'running') return;
+            const nodeGroup = e.target.closest('.graph-node');
+            if (!nodeGroup) return;
+
+            const nodeId = nodeGroup.dataset.nodeId;
+            const instructionEl = document.getElementById('sim-instruction');
+            const allNodes = document.querySelectorAll('.graph-node');
+
+            if (simState.selectionPhase === 'start') {
+                simState.startNode = nodeId;
+                simState.selectionPhase = 'destination';
+                allNodes.forEach(n => n.classList.remove('start-selection', 'dest-selection'));
+                nodeGroup.classList.add('start-selection');
+                instructionEl.innerHTML = `Start: <span class="font-bold text-indigo-600">${nodeId}</span>. Now select a destination.`;
+            } else if (simState.selectionPhase === 'destination') {
+                if (nodeId === simState.startNode) {
+                    showToast('Destination cannot be the same as the start node.', 'error');
+                    return;
+                }
+                simState.destNode = nodeId;
+                simState.selectionPhase = 'running';
+                allNodes.forEach(n => n.classList.remove('start-selection', 'dest-selection'));
+                document.getElementById(`node-${simState.startNode}`).classList.add('start');
+                document.getElementById(`node-${simState.destNode}`).classList.add('destination');
+                instructionEl.innerHTML = `Finding path from <span class="font-bold text-indigo-600">${simState.startNode}</span> to <span class="font-bold text-pink-600">${simState.destNode}</span>...`;
+                
+                setTimeout(() => {
+                    runDijkstra(simState.startNode, simState.destNode);
+                }, 200);
+            }
+        }
+        
+        function highlightPath(targetNodeId) {
+            updateGraphUI(simState.steps[simState.currentStep]); // Reset first
+            let currentNode = targetNodeId;
+            while(currentNode && finalPaths[currentNode] !== null) {
+                const prevNode = finalPaths[currentNode];
+                document.getElementById(`node-${currentNode}`).classList.add('path-node');
+                
+                const id = [prevNode, currentNode].sort().join('-');
+                const edgeElement = document.getElementById(`edge-${id}`);
+                if (edgeElement) {
+                    edgeElement.classList.add('path-edge');
+                }
+                currentNode = prevNode;
+            }
+             if(currentNode) document.getElementById(`node-${currentNode}`).classList.add('path-node'); // Highlight start node of path
+        }
+
+        function showModal(title, content) {
+            simState.isModalOpen = true;
+            modalTitle.textContent = title;
+            modalBody.innerHTML = content;
+            modal.classList.add('visible');
+        }
+        
+        // --- Quiz Functions ---
+        function startQuiz() {
+            contentContainer.innerHTML = templates.quiz;
+            resetQuizState();
+            loadQuestion();
+            addQuizEventListeners();
+        }
+
+        function loadQuestion() {
+            quizState.answered = false;
+            const questionData = quizData[quizState.currentQuestionIndex];
+            const quizContent = document.getElementById('quiz-content');
+            let content = `<h3 class="text-xl font-semibold text-gray-700 mb-4">${questionData.question}</h3>`;
+            
+            if (questionData.type === 'mcq') {
+                content += `<div id="quiz-options-container" class="space-y-3">`;
+                questionData.options.forEach(option => {
+                    content += `<div class="quiz-option p-4 rounded-lg cursor-pointer">${option}</div>`;
+                });
+                content += `</div>`;
+            } else {
+                content += `<input type="text" id="text-answer" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-indigo-500" placeholder="Your answer here">`;
+            }
+            
+            quizContent.innerHTML = content;
+            document.getElementById('submit-answer-btn').textContent = 'Submit Answer';
+            document.getElementById('feedback-area').classList.add('hidden');
+            
+            const progress = (quizState.currentQuestionIndex) / quizData.length * 100;
+            document.getElementById('quiz-progress-bar').style.width = `${progress}%`;
+            document.getElementById('quiz-progress').textContent = `Question ${quizState.currentQuestionIndex + 1} / ${quizData.length}`;
+        }
+
+        function addQuizEventListeners() {
+            document.getElementById('submit-answer-btn').addEventListener('click', handleQuizSubmit);
+            document.getElementById('quiz-content').addEventListener('click', e => {
+                if (e.target.classList.contains('quiz-option') && !quizState.answered) {
+                    document.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+                    e.target.classList.add('selected');
+                }
+            });
+        }
+
+        function handleQuizSubmit() {
+            if (quizState.answered) {
+                handleNextQuestion();
+                return;
+            }
+
+            const questionData = quizData[quizState.currentQuestionIndex];
+            let userAnswer, isCorrect;
+
+            if (questionData.type === 'mcq') {
+                const selectedOption = document.querySelector('.quiz-option.selected');
+                if (!selectedOption) {
+                    showToast('Please select an answer.', 'error');
+                    return;
+                }
+                userAnswer = selectedOption.textContent;
+                isCorrect = userAnswer === questionData.answer;
+                
+                document.querySelectorAll('.quiz-option').forEach(opt => {
+                    opt.style.pointerEvents = 'none';
+                    if (opt.textContent === questionData.answer) opt.classList.add('correct');
+                    else if (opt.textContent === userAnswer) opt.classList.add('incorrect');
+                });
+            } else {
+                const input = document.getElementById('text-answer');
+                userAnswer = input.value.trim();
+                if (userAnswer.length < 1) {
+                    showToast('Please provide an answer.', 'error');
+                    return;
+                }
+                isCorrect = userAnswer.toLowerCase() === questionData.answer.toLowerCase();
+                input.classList.add(isCorrect ? 'border-green-500' : 'border-red-500');
+                input.disabled = true;
+            }
+            
+            quizState.answered = true;
+            if (isCorrect) quizState.score++;
+            
+            const feedbackArea = document.getElementById('feedback-area');
+            const icon = isCorrect ? `<svg class="feedback-icon w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
+                                   : `<svg class="feedback-icon w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+            
+            feedbackArea.innerHTML = `<p class="font-bold text-${isCorrect ? 'green' : 'red'}-700">${icon} ${isCorrect ? 'Correct!' : 'Not quite.'}</p>
+                ${!isCorrect ? `<p class="text-red-600 mt-1">The correct answer is: <strong>${questionData.answer}</strong></p>` : ''}`;
+            feedbackArea.className = `mt-4 p-4 rounded-lg bg-${isCorrect ? 'green' : 'red'}-100`;
+            feedbackArea.classList.remove('hidden');
+            
+            document.getElementById('submit-answer-btn').textContent = 'Next Question →';
+            const progress = (quizState.currentQuestionIndex + 1) / quizData.length * 100;
+            document.getElementById('quiz-progress-bar').style.width = `${progress}%`;
+        }
+
+        function handleNextQuestion() {
+            quizState.currentQuestionIndex++;
+            if (quizState.currentQuestionIndex < quizData.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            contentContainer.innerHTML = templates.results(quizState.score, quizData.length);
+            document.getElementById('restart-quiz-btn').addEventListener('click', startSimulation);
+        }
+
+        // --- Global Event Listeners & Init ---
+        modalCloseBtn.addEventListener('click', () => {
+            modal.classList.remove('visible');
+            simState.isModalOpen = false;
+        });
+
+        document.addEventListener('click', e => {
+            if (e.target.closest('.btn')) {
+                const button = e.target.closest('.btn');
+                const ripple = document.createElement("span");
+                const rect = button.getBoundingClientRect();
+                ripple.className = 'ripple';
+                ripple.style.left = `${e.clientX - rect.left}px`;
+                ripple.style.top = `${e.clientY - rect.top}px`;
+                button.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 600);
+            }
+        }, true);
+        
+        initialize();
+    });
+    </script>
+</body>
+</html>

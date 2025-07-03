@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hardware Water Consumption Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .water-tank-container { position: relative; overflow: hidden; border-radius: 0.5rem; }
+        .env-background { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 1s ease-in-out; z-index: 1; }
+        .water-tank { transition: height 0.5s ease-in-out; z-index: 3; position: relative; }
+        .droplet-container { position: absolute; top: 0; left: 0; width: 100%; height: 90%; pointer-events: none; z-index: 4; }
+        .droplet { position: absolute; width: 8px; height: 8px; background-color: #3b82f6; border-radius: 50%; animation: fall 1s linear forwards; }
+        @keyframes fall { from { transform: translateY(0); opacity: 1; } to { transform: translateY(180px); opacity: 0; } }
+        .quiz-option { transition: background-color 0.2s, transform 0.2s; }
+        .quiz-option:hover { transform: translateY(-2px); }
+        .quiz-option.correct { background-color: #22c55e; color: white; }
+        .quiz-option.incorrect { background-color: #ef4444; color: white; }
+        .disabled { pointer-events: none; opacity: 0.7; }
+        .milestone-popup { position: fixed; bottom: -100%; left: 50%; transform: translateX(-50%); background-color: #1e40af; color: white; padding: 1rem 1.5rem; border-radius: 0.75rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 50; transition: bottom 0.5s ease-in-out; text-align: center; }
+        .milestone-popup.show { bottom: 2rem; }
+        .feedback-icon { display: inline-block; vertical-align: middle; margin-right: 0.5rem; }
+        .component-btn { transition: all 0.2s; }
+        .component-btn.active { background-color: #2563eb; color: white; border-color: #1d4ed8; }
+        .map-hotspot {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background-color: rgba(239, 68, 68, 0.8);
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            transform: translate(-50%, -50%);
+        }
+        .map-hotspot:hover {
+            transform: translate(-50%, -50%) scale(1.5);
+            background-color: rgba(239, 68, 68, 1);
+        }
+        .map-info-box { display: none; }
+        .map-info-box.active { display: block; }
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="max-w-5xl mx-auto p-4 md:p-8">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-blue-600">The Hidden Cost of Tech</h1>
+            <p class="text-lg text-gray-600 mt-2">A Deep Dive into Water Consumption in Hardware Manufacturing</p>
+        </header>
+
+        <!-- Main Simulation Area -->
+        <div class="grid md:grid-cols-2 gap-8 items-start">
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+                <h2 class="text-xl font-semibold mb-4 text-center">Step 1: Select a Component</h2>
+                <div id="component-selector" class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
+                    <!-- Buttons will be injected here -->
+                </div>
+
+                <div class="flex flex-col items-center">
+                    <div id="component-icon" class="w-24 h-24 text-gray-400 mb-4">
+                        <!-- Icon will be injected here -->
+                    </div>
+                    <label for="component-slider" class="font-semibold capitalize">Number of <span id="component-name">microchips</span>: <span id="component-count" class="text-blue-600 font-bold">1</span></label>
+                    <input id="component-slider" type="range" min="1" max="100" value="1" class="w-full mt-2 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+                
+                <div class="mt-6">
+                    <h3 class="text-lg font-semibold text-center">Estimated Water Required</h3>
+                    <div class="flex items-end justify-center gap-4 mt-4 h-48">
+                        <div class="w-40 h-full bg-gray-200 water-tank-container border-2 border-gray-300">
+                            <img id="lush-bg" src="https://placehold.co/200x300/a7f3d0/a7f3d0?text=Lush" alt="Lush Environment" class="env-background" style="opacity: 1;">
+                            <img id="arid-bg" src="https://placehold.co/200x300/fde68a/fde68a?text=Arid" alt="Arid Environment" class="env-background" style="opacity: 0;">
+                            <div id="droplet-container" class="droplet-container"></div>
+                            <div class="w-full h-full flex flex-col-reverse">
+                                <div id="water" class="w-full bg-blue-500/80 backdrop-blur-sm rounded-b-md water-tank" style="height: 1%;"></div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <div id="water-usage" class="text-4xl font-bold text-blue-600">30</div>
+                            <div class="text-lg">Litres</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 p-6 rounded-xl border border-blue-200">
+                <h2 class="text-xl font-semibold mb-4 text-blue-800">Why So Much Water?</h2>
+                <ul class="list-disc list-inside space-y-2 text-gray-700">
+                    <li><span class="font-semibold">Ultra-Pure Water:</span> Wafers are washed repeatedly to remove microscopic dust. Even tiny particles can ruin a component.</li>
+                    <li><span class="font-semibold">Cooling:</span> Manufacturing facilities generate immense heat from their machinery and need vast amounts of water for cooling systems.</li>
+                    <li><span class="font-semibold">Dilution & Etching:</span> Water is used to dilute potent chemicals used in the delicate process of etching circuits onto silicon.</li>
+                </ul>
+                <h3 class="text-lg font-semibold mt-6 mb-2 text-blue-800">Test Your Knowledge</h3>
+                <div id="quiz-container" class="max-w-2xl mx-auto bg-white/60 p-4 rounded-lg"></div>
+                <div id="quiz-result" class="text-center mt-2 font-semibold text-xl h-12 flex items-center justify-center"></div>
+            </div>
+        </div>
+
+        <!-- Deeper Dive Section -->
+        <div class="mt-12">
+            <h2 class="text-3xl font-bold text-center text-blue-600 mb-6">Deeper Dive</h2>
+            <div class="space-y-6">
+
+                <!-- Global Impact -->
+                <details class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 group" open>
+                    <summary class="font-semibold text-xl cursor-pointer flex justify-between items-center">
+                        <span>Global Impact: An Interactive Map</span>
+                        <svg class="w-6 h-6 transform transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </summary>
+                    <div class="mt-4 grid md:grid-cols-3 gap-6 items-center">
+                        <div class="md:col-span-2 relative">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Simple_world_map.svg/2560px-Simple_world_map.svg.png" alt="World Map" class="w-full h-auto rounded-lg bg-gray-200">
+                            <!-- Hotspots -->
+                            <div data-region="usa" class="map-hotspot" style="top: 36%; left: 21%;"></div>
+                            <div data-region="taiwan" class="map-hotspot" style="top: 40%; left: 81%;"></div>
+                            <div data-region="skorea" class="map-hotspot" style="top: 36%; left: 82.5%;"></div>
+                        </div>
+
+                        <div id="map-info-container">
+                            <p class="text-gray-500 italic">Click on a red dot to learn about a region.</p>
+                            <div id="info-usa" class="map-info-box p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                <h4 class="font-bold">USA (Arizona)</h4>
+                                <p>A major hub for new chip factories. This region is also experiencing significant long-term drought, creating a conflict between tech growth and water conservation.</p>
+                            </div>
+                            <div id="info-taiwan" class="map-info-box p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                <h4 class="font-bold">Taiwan</h4>
+                                <p>Home to the world's largest chip manufacturer. Taiwan faces seasonal droughts and has had to truck water to factories in the past, highlighting extreme water vulnerability.</p>
+                            </div>
+                            <div id="info-skorea" class="map-info-box p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                <h4 class="font-bold">South Korea</h4>
+                                <p>Another global leader in memory chip production. Like its neighbors, it manages a careful balance of industrial water needs against public and agricultural demand.</p>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Solutions -->
+                <details class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 group">
+                     <summary class="font-semibold text-xl cursor-pointer flex justify-between items-center">
+                        <span>Industry Solutions</span>
+                        <svg class="w-6 h-6 transform transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </summary>
+                    <p class="mt-4 text-gray-700">The tech industry is aware of this issue and is investing heavily in solutions. This isn't just for environmental reasons, but because water shortages can shut down production and cost billions. Key strategies include:</p>
+                    <ul class="mt-2 list-disc list-inside space-y-1 text-gray-700">
+                        <li><b>Advanced Water Recycling:</b> New factories can recycle over 85% of the water they use. This involves building sophisticated on-site water treatment plants.</li>
+                        <li><b>Smarter Manufacturing:</b> Developing new chemical processes and cleaning techniques that require less water from the start.</li>
+                        <li><b>Strategic Siting:</b> Planning future factories in regions with more stable and abundant water supplies.</li>
+                    </ul>
+                </details>
+
+                <!-- Personal Calculator -->
+                <details class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 group">
+                    <summary class="font-semibold text-xl cursor-pointer flex justify-between items-center">
+                        <span>Calculate Your Hardware's Water Footprint</span>
+                         <svg class="w-6 h-6 transform transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </summary>
+                    <p class="mt-4 text-gray-700">Enter the number of devices you own to see a rough estimate of the water used to manufacture them.</p>
+                    <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                        <div>
+                            <label for="calc-smartphones" class="block font-medium">Smartphones</label>
+                            <input type="number" id="calc-smartphones" value="1" min="0" class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label for="calc-laptops" class="block font-medium">Laptops/PCs</label>
+                            <input type="number" id="calc-laptops" value="0" min="0" class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label for="calc-gpus" class="block font-medium">Gaming Consoles/GPUs</label>
+                            <input type="number" id="calc-gpus" value="0" min="0" class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+                        </div>
+                        <button id="calculate-footprint" class="w-full bg-blue-600 text-white font-semibold p-2 rounded-md hover:bg-blue-700">Calculate</button>
+                    </div>
+                    <div id="footprint-result" class="mt-6 text-center bg-blue-50 p-4 rounded-lg text-2xl font-bold text-blue-800" style="display: none;"></div>
+                </details>
+            </div>
+             <div class="text-center mt-10">
+                <button onclick="restartSimulation()" class="px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-transform hover:scale-105">
+                    Start Over / Reset All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="milestone-popup" class="milestone-popup"></div>
+
+    <script>
+        // --- DATA ---
+        const components = {
+            microchip: {
+                name: "microchip", plural: "microchips", waterPerUnit: 30, maxUnits: 100,
+                icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V8.25a2.25 2.25 0 00-2.25-2.25H8.25a2.25 2.25 0 00-2.25 2.25v10.5a2.25 2.25 0 002.25 2.25zm-1.5-10.5h13.5v10.5h-13.5V8.25z" /></svg>`,
+                milestones: [{ l: 1000, f: "Enough drinking water for one person for over a year!" }, { l: 2000, f: "This could fill about 25 average bathtubs!" }, { l: 3000, f: "About the water needed for one whole PC!" }]
+            },
+            gpu: {
+                name: "GPU", plural: "GPUs", waterPerUnit: 1500, maxUnits: 10,
+                icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h12A2.25 2.25 0 0020.25 14.25V3M3.75 3H1.5M3.75 3h16.5M1.5 3h1.5l1.5 16.5h12l1.5-16.5h1.5" /></svg>`,
+                milestones: [{ l: 5000, f: "Equivalent to 100 showers!" }, { l: 10000, f: "Could fill a small backyard pool!" }]
+            },
+            smartphone: {
+                name: "smartphone", plural: "smartphones", waterPerUnit: 12000, maxUnits: 5,
+                icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" /></svg>`,
+                milestones: [{ l: 24000, f: "More water than a car wash uses for 10 cars!" }, { l: 50000, f: "Could supply a family's drinking water for a decade!" }]
+            },
+            laptop: {
+                name: "laptop", plural: "laptops", waterPerUnit: 20000, maxUnits: 5,
+                icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-1.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z" /></svg>`,
+                milestones: [{ l: 40000, f: "That's over 10,000 toilet flushes!" }, { l: 80000, f: "Could irrigate a small crop field for a day!" }]
+            }
+        };
+
+        let currentComponent = 'microchip';
+        let lastSliderValue = 1;
+
+        // --- DOM Elements ---
+        const componentSelector = document.getElementById('component-selector');
+        const slider = document.getElementById('component-slider');
+        const componentIcon = document.getElementById('component-icon');
+        const componentName = document.getElementById('component-name');
+        const componentCount = document.getElementById('component-count');
+        const waterLevel = document.getElementById('water');
+        const waterUsageText = document.getElementById('water-usage');
+        const dropletContainer = document.getElementById('droplet-container');
+        const lushBg = document.getElementById('lush-bg');
+        const aridBg = document.getElementById('arid-bg');
+        const milestonePopup = document.getElementById('milestone-popup');
+        const quizContainer = document.getElementById('quiz-container');
+        const quizResult = document.getElementById('quiz-result');
+
+        // --- Initialization ---
+        function initialize() {
+            // Populate component selector buttons
+            Object.keys(components).forEach(key => {
+                const comp = components[key];
+                const button = document.createElement('button');
+                button.textContent = comp.name;
+                button.dataset.key = key;
+                button.className = `component-btn capitalize p-2 border-2 border-gray-300 rounded-md font-semibold bg-gray-100 hover:bg-gray-200`;
+                button.addEventListener('click', () => selectComponent(key));
+                componentSelector.appendChild(button);
+            });
+            
+            // Map interaction
+            document.querySelectorAll('.map-hotspot').forEach(spot => {
+                spot.addEventListener('click', (e) => {
+                    const region = e.target.dataset.region;
+                    document.querySelectorAll('.map-info-box').forEach(box => box.classList.remove('active'));
+                    document.getElementById(`info-${region}`).classList.add('active');
+                });
+            });
+
+            // Footprint calculator
+            document.getElementById('calculate-footprint').addEventListener('click', calculateFootprint);
+
+            // Set initial state
+            selectComponent('microchip');
+            loadQuiz();
+        }
+
+        // --- Core Logic ---
+        function selectComponent(key) {
+            currentComponent = key;
+            const comp = components[key];
+
+            // Update active button
+            document.querySelectorAll('.component-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.key === key);
+            });
+
+            componentIcon.innerHTML = comp.icon;
+            componentName.textContent = comp.plural;
+            slider.max = comp.maxUnits;
+            slider.value = 1;
+            comp.milestones.forEach(m => m.shown = false); // Reset milestones
+            updateSimulation();
+        }
+
+        function updateSimulation() {
+            const comp = components[currentComponent];
+            const count = parseInt(slider.value, 10);
+            const totalWater = count * comp.waterPerUnit;
+            const maxWater = comp.maxUnits * comp.waterPerUnit;
+            const waterPercentage = (totalWater / maxWater) * 100;
+
+            componentCount.textContent = count;
+            waterUsageText.textContent = totalWater.toLocaleString();
+            waterLevel.style.height = `${Math.max(waterPercentage, 1)}%`;
+
+            if (count > lastSliderValue) createDroplets(count - lastSliderValue);
+            lastSliderValue = count;
+
+            aridBg.style.opacity = waterPercentage / 100;
+            lushBg.style.opacity = 1 - (waterPercentage / 100);
+
+            checkMilestones(totalWater);
+        }
+
+        slider.addEventListener('input', updateSimulation);
+        
+        function calculateFootprint() {
+            const numSmartphones = parseInt(document.getElementById('calc-smartphones').value) || 0;
+            const numLaptops = parseInt(document.getElementById('calc-laptops').value) || 0;
+            const numGpus = parseInt(document.getElementById('calc-gpus').value) || 0;
+
+            const total = (numSmartphones * components.smartphone.waterPerUnit) +
+                          (numLaptops * components.laptop.waterPerUnit) +
+                          (numGpus * components.gpu.waterPerUnit);
+            
+            const resultDiv = document.getElementById('footprint-result');
+            resultDiv.innerHTML = `Your estimated total: <br> <span class="text-4xl">${total.toLocaleString()} Litres</span>`;
+            resultDiv.style.display = 'block';
+        }
+
+        function createDroplets(amount) {
+            const dropletsToCreate = Math.min(amount * 2, 8); 
+            for (let i = 0; i < dropletsToCreate; i++) {
+                const droplet = document.createElement('div');
+                droplet.className = 'droplet';
+                droplet.style.left = `${Math.random() * 100}%`;
+                droplet.style.animationDelay = `${Math.random() * 0.5}s`;
+                dropletContainer.appendChild(droplet);
+                setTimeout(() => droplet.remove(), 1000);
+            }
+        }
+        
+        function checkMilestones(currentWater) {
+            const milestones = components[currentComponent].milestones;
+            for (const milestone of milestones) {
+                if (!milestone.shown && currentWater >= milestone.l) {
+                    milestone.shown = true;
+                    showMilestonePopup(milestone.f);
+                    break;
+                }
+            }
+        }
+
+        function showMilestonePopup(text) {
+            milestonePopup.textContent = text;
+            milestonePopup.classList.add('show');
+            setTimeout(() => milestonePopup.classList.remove('show'), 4000);
+        }
+
+        // --- Quiz Logic ---
+        const quizData = [
+            {
+                question: "What is the primary use of ultra-pure water in chip manufacturing?",
+                options: ["Cooling the machinery", "Washing silicon wafers", "Generating electricity", "Mixing with plastic for casings"],
+                answer: "Washing silicon wafers",
+                explanation: "Tiny impurities can ruin a microchip, so wafers are constantly washed with ultra-pure water."
+            },
+            {
+                question: "The high demand for water in hardware production can lead to what major environmental issue?",
+                options: ["Air pollution", "Soil erosion", "Water scarcity", "Noise pollution"],
+                answer: "Water scarcity",
+                explanation: "Using large amounts of water in water-stressed regions can deplete resources for local communities."
+            },
+            {
+                question: "Which of these is a key solution the tech industry uses to reduce water consumption?",
+                options: ["Using saltwater", "Advanced water recycling", "Building factories in deserts", "Using less powerful chips"],
+                answer: "Advanced water recycling",
+                explanation: "Modern factories can build on-site plants to treat and reuse over 85% of their water."
+            }
+        ];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        const checkSVG = `<svg class="feedback-icon w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+        const crossSVG = `<svg class="feedback-icon w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+
+        function loadQuiz() {
+            quizContainer.innerHTML = '';
+            quizResult.innerHTML = '';
+            if (currentQuestionIndex >= quizData.length) {
+                quizContainer.innerHTML = `<div class="text-center font-bold text-lg text-green-600">Quiz Complete! Score: ${score}/${quizData.length}</div>`;
+                return;
+            }
+
+            const currentQuestion = quizData[currentQuestionIndex];
+            const questionElement = document.createElement('p');
+            questionElement.className = "text-md font-semibold mb-2";
+            questionElement.textContent = `${currentQuestionIndex + 1}. ${currentQuestion.question}`;
+            quizContainer.appendChild(questionElement);
+
+            const optionsWrapper = document.createElement('div');
+            optionsWrapper.className = 'grid grid-cols-1 gap-2';
+            currentQuestion.options.forEach(option => {
+                const optionElement = document.createElement('button');
+                optionElement.textContent = option;
+                optionElement.className = 'quiz-option p-2 bg-gray-100 border border-gray-300 rounded-md hover:bg-blue-100 hover:border-blue-400 text-left text-sm';
+                optionElement.addEventListener('click', (e) => selectAnswer(e, option, currentQuestion.answer, currentQuestion.explanation, optionsWrapper));
+                optionsWrapper.appendChild(optionElement);
+            });
+            quizContainer.appendChild(optionsWrapper);
+        }
+
+        function selectAnswer(event, selectedOption, correctAnswer, explanation, wrapper) {
+            const selectedButton = event.target;
+            Array.from(wrapper.children).forEach(btn => {
+                btn.classList.add('disabled');
+                if (btn.textContent === correctAnswer) btn.classList.add('correct');
+            });
+
+            if (selectedOption === correctAnswer) {
+                score++;
+                selectedButton.classList.add('correct');
+                quizResult.innerHTML = `${checkSVG} <span class="text-green-600 text-sm">${explanation}</span>`;
+            } else {
+                selectedButton.classList.add('incorrect');
+                quizResult.innerHTML = `${crossSVG} <span class="text-red-600 text-sm">${explanation}</span>`;
+            }
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                loadQuiz();
+            }, 5000);
+        }
+        
+        function restartSimulation() {
+            currentQuestionIndex = 0;
+            score = 0;
+            loadQuiz();
+            selectComponent('microchip');
+            document.getElementById('footprint-result').style.display = 'none';
+            ['calc-smartphones', 'calc-laptops', 'calc-gpus'].forEach(id => document.getElementById(id).value = 0);
+             document.getElementById('calc-smartphones').value = 1;
+        }
+
+        // Initial Load
+        window.onload = initialize;
+    </script>
+</body>
+</html>

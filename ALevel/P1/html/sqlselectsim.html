@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive SQL SELECT-FROM-WHERE Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --primary-color: #16213e;
+            --secondary-color: #0f3460;
+            --accent-color: #e94560;
+            --text-color: #dcdcdc;
+            --highlight-color: #537895;
+            --glass-bg: rgba(22, 33, 62, 0.6);
+            --border-color: rgba(255, 255, 255, 0.15);
+            --success-color: #10b981;
+            --error-color: #f43f5e;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+        }
+
+        .glassmorphism {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            will-change: transform;
+        }
+
+        .animated-gradient {
+            background: linear-gradient(-45deg, var(--primary-color), var(--secondary-color), #4e54c8, #8f94fb);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+            will-change: transform, box-shadow;
+            transform: translateZ(0); /* Promotes to its own layer */
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2), 0 6px 6px rgba(0,0,0,0.25);
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: var(--highlight-color);
+            color: white;
+        }
+        
+        .sql-keyword { color: #fb923c; font-weight: 700; }
+        .sql-identifier { color: #60a5fa; }
+        .sql-value { color: #a7f3d0; }
+
+        .step-content {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: opacity, transform;
+        }
+
+        .step-content.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .table-header-interactive {
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .table-header-interactive:hover::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--highlight-color);
+        }
+        
+        .table-header-interactive.selected {
+            background-color: var(--accent-color) !important;
+            color: white;
+        }
+
+        dialog {
+            border: none;
+            border-radius: 1rem;
+            padding: 0;
+            max-width: 500px;
+            width: 90%;
+            background: transparent;
+            color: var(--text-color);
+        }
+        
+        .dialog-content {
+            padding: 2rem;
+            background: var(--primary-color);
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+        }
+
+        dialog[open] {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .progress-bar {
+            background-color: var(--accent-color);
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .quiz-option {
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease-in-out;
+            will-change: border-color, background-color;
+        }
+        
+        .quiz-option:hover {
+             border-color: var(--accent-color);
+             background-color: var(--glass-bg);
+        }
+        .quiz-option.selected {
+            background-color: var(--highlight-color);
+            border-color: var(--highlight-color);
+            transform: scale(1.02);
+        }
+        .quiz-option.correct {
+            background-color: #166534;
+            border-color: var(--success-color);
+        }
+        .quiz-option.incorrect {
+            background-color: #991b1b;
+            border-color: var(--error-color);
+        }
+
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .feedback-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after {
+                animation-delay: -1ms !important;
+                animation-duration: 1ms !important;
+                animation-iteration-count: 1 !important;
+                background-attachment: initial !important;
+                scroll-behavior: auto !important;
+                transition-duration: 0s !important;
+                transition-delay: 0s !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+    <canvas id="particle-canvas"></canvas>
+
+    <div id="simulation-container" class="w-full max-w-7xl mx-auto glassmorphism p-4 sm:p-6 md:p-8 space-y-6">
+        <!-- Header -->
+        <header class="text-center p-4 rounded-lg animated-gradient">
+            <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">Interactive SQL Simulation</h1>
+            <p class="text-lg sm:text-xl text-gray-200">The SELECT-FROM-WHERE Statement</p>
+        </header>
+
+        <!-- Progress Bar and Navigation -->
+        <div class="flex items-center gap-4">
+            <div id="step-name" class="font-semibold text-lg whitespace-nowrap">Step 1: Introduction</div>
+            <div class="w-full bg-gray-700/50 rounded-full h-2">
+                <div id="progress-bar" class="progress-bar h-2 rounded-full" style="width: 0%;"></div>
+            </div>
+        </div>
+        
+        <!-- Main Content Area -->
+        <main id="main-content" class="space-y-6 min-h-[400px]">
+            <!-- Step 1: Introduction -->
+            <div id="step-1" class="step-content">
+                <h2 class="text-2xl font-bold mb-4 text-center">Welcome!</h2>
+                <p class="text-lg text-center mb-6 max-w-3xl mx-auto">This simulation will guide you through writing SQL queries. We'll learn how to fetch exactly the data you need from a database table.</p>
+                <div class="p-4 glassmorphism max-w-md mx-auto">
+                    <h3 class="font-semibold text-xl mb-2">Key SQL Clauses:</h3>
+                    <ul class="list-disc list-inside space-y-2">
+                        <li><span class="sql-keyword">SELECT</span>: Specifies the columns (fields) you want to see.</li>
+                        <li><span class="sql-keyword">FROM</span>: Specifies the table containing the data.</li>
+                        <li><span class="sql-keyword">WHERE</span>: Filters the rows based on specific conditions.</li>
+                        <li><span class="sql-keyword">ORDER BY</span>: Sorts the results.</li>
+                    </ul>
+                </div>
+                <p class="text-center mt-6 text-gray-400">Use the arrow keys or the buttons below to navigate.</p>
+            </div>
+
+            <!-- Step 2: SELECT Clause -->
+            <div id="step-2" class="step-content">
+                <h2 class="text-2xl font-bold mb-2">The <span class="sql-keyword">SELECT</span> Clause</h2>
+                <p class="mb-4">First, let's select which columns we want to see from our sample `Students` table. Click on the column headers to add/remove them from your query.</p>
+                <div class="overflow-x-auto glassmorphism p-4">
+                     <table class="w-full text-left">
+                        <thead class="border-b-2 border-gray-500">
+                            <tr>
+                                <th id="th-star" class="p-3 table-header-interactive" data-col="*">* (All Columns)</th>
+                                <th id="th-StudentID" class="p-3 table-header-interactive" data-col="StudentID">StudentID</th>
+                                <th id="th-FirstName" class="p-3 table-header-interactive" data-col="FirstName">FirstName</th>
+                                <th id="th-LastName" class="p-3 table-header-interactive" data-col="LastName">LastName</th>
+                                <th id="th-Subject" class="p-3 table-header-interactive" data-col="Subject">Subject</th>
+                                <th id="th-Grade" class="p-3 table-header-interactive" data-col="Grade">Grade</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Sample rows for visual reference -->
+                            <tr class="opacity-70"><td class="p-3">101</td><td class="p-3">Alex</td><td class="p-3">Chen</td><td class="p-3">Computer Science</td><td class="p-3">85</td></tr>
+                            <tr class="opacity-70"><td class="p-3">102</td><td class="p-3">Ben</td><td class="p-3">Taylor</td><td class="p-3">Physics</td><td class="p-3">92</td></tr>
+                            <tr class="opacity-70"><td class="p-3">103</td><td class="p-3">Chloe</td><td class="p-3">Jones</td><td class="p-3">Computer Science</td><td class="p-3">78</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Step 3: WHERE Clause -->
+            <div id="step-3" class="step-content">
+                 <h2 class="text-2xl font-bold mb-2">The <span class="sql-keyword">WHERE</span> Clause</h2>
+                 <p class="mb-4">Now, let's filter the data. The <span class="sql-keyword">WHERE</span> clause selects rows that meet a condition. Try creating a condition below.</p>
+                 <div class="flex flex-wrap items-center justify-center gap-4 p-4 glassmorphism">
+                     <span class="sql-keyword">WHERE</span>
+                     <select id="where-column" class="bg-gray-700 text-white p-2 rounded border border-gray-600 focus:ring-2 focus:ring-accent-color focus:border-accent-color"></select>
+                     <select id="where-operator" class="bg-gray-700 text-white p-2 rounded border border-gray-600 focus:ring-2 focus:ring-accent-color focus:border-accent-color">
+                        <option value="=">=</option>
+                        <option value=">">&gt;</option>
+                        <option value="<">&lt;</option>
+                        <option value=">=">&gt;=</option>
+                        <option value="<=">&lt;=</option>
+                        <option value="<>">&lt;&gt; (not equal)</option>
+                        <option value="LIKE">LIKE</option>
+                     </select>
+                     <input id="where-value" type="text" placeholder="Enter value..." class="bg-gray-700 text-white p-2 rounded border border-gray-600 focus:ring-2 focus:ring-accent-color focus:border-accent-color w-48">
+                     <button id="clear-where" class="btn btn-secondary px-4 py-2 rounded-lg">Clear Filter</button>
+                 </div>
+                 <p class="text-sm text-center mt-2 text-gray-400">Example: Try `Subject` `=` `'Computer Science'` or `Grade` `>` `80`.</p>
+            </div>
+            
+            <!-- Step 4: ORDER BY Clause -->
+            <div id="step-4" class="step-content">
+                <h2 class="text-2xl font-bold mb-2">The <span class="sql-keyword">ORDER BY</span> Clause</h2>
+                <p class="mb-4">Finally, let's sort our results. Click a column header in the results table below to sort by that column. Click it again to toggle between <span class="sql-keyword">ASC</span> (ascending) and <span class="sql-keyword">DESC</span> (descending) order.</p>
+                <p class="text-center font-semibold text-gray-300">The results from the previous steps are shown below. Try sorting them!</p>
+            </div>
+            
+             <!-- Step 5: Full Query Task -->
+            <div id="step-5" class="step-content">
+                <h2 class="text-2xl font-bold mb-2">Putting It All Together</h2>
+                <div class="p-4 glassmorphism mb-4">
+                    <p class="font-semibold text-lg">Your Task:</p>
+                    <p>Write a single SQL query to find the <span class="sql-identifier">FirstName</span> and <span class="sql-identifier">Grade</span> of all students who are <span class="sql-keyword">NOT</span> studying 'Physics', and whose <span class="sql-identifier">Grade</span> is 75 or higher. The results should be sorted by <span class="sql-identifier">Grade</span> in descending order.</p>
+                </div>
+                <textarea id="full-query-input" class="w-full h-32 p-2 font-mono bg-gray-900 text-white rounded-lg border border-gray-600 focus:ring-2 focus:ring-accent-color focus:border-accent-color" placeholder="SELECT ... FROM Students WHERE ... ORDER BY ...;"></textarea>
+                <div class="text-center mt-4">
+                    <button id="run-full-query" class="btn btn-primary px-6 py-2 rounded-lg">Run Query</button>
+                </div>
+                <div id="full-query-feedback" class="mt-4 p-3 rounded-lg text-center hidden"></div>
+            </div>
+
+            <!-- Step 6: Quiz -->
+            <div id="step-6" class="step-content">
+                <h2 class="text-2xl font-bold mb-4 text-center">Quiz Time!</h2>
+                <div id="quiz-container" class="p-4 glassmorphism min-h-[250px]">
+                   <!-- Quiz questions will be injected here -->
+                </div>
+                <div id="quiz-feedback" class="mt-4 text-center"></div>
+                <div class="flex justify-center gap-4 mt-4">
+                    <button id="submit-quiz" class="btn btn-primary px-6 py-2 rounded-lg">Submit Answer</button>
+                </div>
+            </div>
+            
+            <!-- Step 7: Final Summary -->
+            <div id="step-7" class="step-content">
+                <h2 class="text-2xl font-bold mb-4 text-center">Simulation Complete!</h2>
+                <div class="text-center space-y-4">
+                    <p class="text-xl">Congratulations! You've completed the SQL simulation.</p>
+                    <div id="summary-score" class="text-2xl font-bold p-4 bg-green-800 rounded-lg inline-block"></div>
+                    <p>You have a solid foundation in using <span class="sql-keyword">SELECT</span>, <span class="sql-keyword">FROM</span>, <span class="sql-keyword">WHERE</span>, and <span class="sql-keyword">ORDER BY</span>.</p>
+                    <p class="text-gray-400">Feel free to use the "Reset" button to try again or practice more.</p>
+                </div>
+            </div>
+
+            <!-- Query & Results Display Area -->
+            <div id="query-and-results" class="space-y-4">
+                <!-- Live Query Display -->
+                <div class="p-4 glassmorphism">
+                    <h3 class="text-xl font-semibold mb-2">Your Live SQL Query:</h3>
+                    <pre id="live-query" class="bg-gray-900 p-4 rounded-lg font-mono text-sm sm:text-base overflow-x-auto"></pre>
+                </div>
+                <!-- Results Table -->
+                <div class="p-4 glassmorphism">
+                    <h3 class="text-xl font-semibold mb-2">Results:</h3>
+                    <div id="results-container" class="overflow-x-auto min-h-[100px]">
+                        <!-- Results table will be generated here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Navigation Footer -->
+        <footer class="flex justify-between items-center pt-6 border-t border-gray-600">
+            <button id="prev-step" class="btn btn-secondary px-4 py-2 sm:px-6 sm:py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+            <button id="reset-sim" class="btn btn-primary px-4 py-2 sm:px-6 sm:py-2 rounded-lg">Reset</button>
+            <button id="next-step" class="btn btn-secondary px-4 py-2 sm:px-6 sm:py-2 rounded-lg">Next</button>
+        </footer>
+    </div>
+    
+    <!-- Info Modal -->
+    <dialog id="info-modal">
+        <div class="dialog-content">
+            <h2 id="modal-title" class="text-2xl font-bold mb-4"></h2>
+            <p id="modal-text" class="mb-6"></p>
+            <div class="text-right">
+                <button id="modal-close" class="btn btn-primary px-6 py-2 rounded-lg">Got it!</button>
+            </div>
+        </div>
+    </dialog>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM ELEMENT CACHING ---
+        const getEl = (id) => document.getElementById(id);
+        const DOMElements = {
+            mainContent: getEl('main-content'),
+            progressBar: getEl('progress-bar'),
+            stepName: getEl('step-name'),
+            prevBtn: getEl('prev-step'),
+            nextBtn: getEl('next-step'),
+            resetBtn: getEl('reset-sim'),
+            liveQuery: getEl('live-query'),
+            resultsContainer: getEl('results-container'),
+            queryAndResults: getEl('query-and-results'),
+            infoModal: getEl('info-modal'),
+            modalTitle: getEl('modal-title'),
+            modalText: getEl('modal-text'),
+            modalClose: getEl('modal-close'),
+            particleCanvas: getEl('particle-canvas'),
+            whereColumnSelect: getEl('where-column'),
+            // Other elements are accessed via their containers
+        };
+
+        const steps = Array.from(document.querySelectorAll('.step-content'));
+        const TOTAL_STEPS = steps.length;
+
+        // --- SAMPLE DATA ---
+        const sampleData = [
+            { StudentID: 101, FirstName: 'Alex', LastName: 'Chen', Subject: 'Computer Science', Grade: 85 },
+            { StudentID: 102, FirstName: 'Ben', LastName: 'Taylor', Subject: 'Physics', Grade: 92 },
+            { StudentID: 103, FirstName: 'Chloe', LastName: 'Jones', Subject: 'Computer Science', Grade: 78 },
+            { StudentID: 104, FirstName: 'David', LastName: 'Smith', Subject: 'Mathematics', Grade: 95 },
+            { StudentID: 105, FirstName: 'Emily', LastName: 'White', Subject: 'Physics', Grade: 88 },
+            { StudentID: 106, FirstName: 'Fatima', LastName: 'Khan', Subject: 'Chemistry', Grade: 72 },
+            { StudentID: 107, FirstName: 'George', LastName: 'Brown', Subject: 'Computer Science', Grade: 91 },
+            { StudentID: 108, FirstName: 'Hannah', LastName: 'Wilson', Subject: 'Mathematics', Grade: 81 },
+        ];
+        const allColumns = Object.keys(sampleData[0]);
+
+        // --- STATE MANAGEMENT ---
+        let state;
+        const getDefaultState = () => ({
+            currentStep: 1,
+            selectedColumns: ['*'],
+            whereClause: null,
+            orderBy: { column: null, direction: 'ASC' },
+            quiz: {
+                currentQuestionIndex: 0,
+                score: 0,
+                userAnswers: []
+            }
+        });
+
+        // --- QUIZ DATA ---
+        const quizQuestions = [
+            { type: 'mcq', question: "Which keyword specifies the table to retrieve data from?", options: ["SELECT", "FROM", "WHERE", "TABLE"], answer: "FROM" },
+            { type: 'fill-blank', question: "To filter rows where 'Grade' is greater than 80, you would use: WHERE Grade ___ 80;", answer: ">" },
+            { type: 'query-write', question: "Write a query to select only the 'LastName' and 'Subject' for all students.", answerKeywords: ["select", "lastname", "subject", "from", "students"] },
+            { type: 'mcq', question: "How do you sort results in descending order?", options: ["ORDER BY ... ASC", "SORT BY ... DESC", "ORDER BY ... DESC", "SORT ... DESC"], answer: "ORDER BY ... DESC" },
+            { type: 'mcq', question: "What does the `<>` operator mean in a WHERE clause?", options: ["Approximately equal to", "Greater than or equal to", "Less than", "Not equal to"], answer: "Not equal to" }
+        ];
+        
+        // --- PARTICLE EFFECT (Optimized) ---
+        const particleCtx = DOMElements.particleCanvas.getContext('2d');
+        let particles = [];
+        let animationFrameId;
+
+        const resizeCanvas = () => {
+            DOMElements.particleCanvas.width = window.innerWidth;
+            DOMElements.particleCanvas.height = window.innerHeight;
+        };
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x; this.y = y;
+                this.size = Math.random() * 5 + 1;
+                this.speedX = Math.random() * 3 - 1.5;
+                this.speedY = Math.random() * 3 - 1.5;
+                this.color = `hsla(${Math.random() * 60 + 200}, 50%, 60%, 0.8)`;
+            }
+            update() {
+                this.x += this.speedX; this.y += this.speedY;
+                if (this.size > 0.2) this.size -= 0.1;
+            }
+            draw() {
+                particleCtx.fillStyle = this.color;
+                particleCtx.beginPath();
+                particleCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                particleCtx.fill();
+            }
+        }
+        
+        function animateParticles() {
+            particleCtx.clearRect(0, 0, DOMElements.particleCanvas.width, DOMElements.particleCanvas.height);
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].size <= 0.2) {
+                    particles.splice(i, 1);
+                }
+            }
+            animationFrameId = requestAnimationFrame(animateParticles);
+        }
+        
+        function createParticleBurst(x, y, count = 30) {
+            if (document.body.classList.contains('reduce-motion')) return;
+            for (let i = 0; i < count; i++) particles.push(new Particle(x, y));
+        }
+
+        // --- UI & LOGIC FUNCTIONS ---
+        const updateUI = () => {
+            requestAnimationFrame(() => {
+                const progress = ((state.currentStep - 1) / (TOTAL_STEPS - 1)) * 100;
+                DOMElements.progressBar.style.width = `${progress}%`;
+
+                const stepTitles = ["Introduction", "SELECT Clause", "WHERE Clause", "ORDER BY Clause", "Full Query Task", "Quiz", "Summary"];
+                DOMElements.stepName.textContent = `Step ${state.currentStep}: ${stepTitles[state.currentStep - 1]}`;
+
+                steps.forEach((step, index) => step.classList.toggle('active', index + 1 === state.currentStep));
+                
+                DOMElements.queryAndResults.style.display = (state.currentStep >= 2 && state.currentStep <= 4) ? 'block' : 'none';
+                
+                DOMElements.prevBtn.disabled = state.currentStep === 1;
+                DOMElements.nextBtn.disabled = state.currentStep === TOTAL_STEPS;
+                
+                if (state.currentStep >= 2 && state.currentStep <= 4) {
+                    buildAndExecuteQuery();
+                }
+            });
+        };
+
+        const buildAndExecuteQuery = () => {
+            // Build Query String for display
+            let query = `<span class="sql-keyword">SELECT</span> ${state.selectedColumns.map(c => `<span class="sql-identifier">${c}</span>`).join(', ')}\n<span class="sql-keyword">FROM</span> <span class="sql-identifier">Students</span>`;
+            if (state.whereClause) {
+                const value = isNaN(Number(state.whereClause.value)) ? `'${state.whereClause.value}'` : state.whereClause.value;
+                query += `\n<span class="sql-keyword">WHERE</span> <span class="sql-identifier">${state.whereClause.column}</span> ${state.whereClause.operator} <span class="sql-value">${value}</span>`;
+            }
+            if (state.orderBy.column) {
+                query += `\n<span class="sql-keyword">ORDER BY</span> <span class="sql-identifier">${state.orderBy.column}</span> <span class="sql-keyword">${state.orderBy.direction}</span>`;
+            }
+            query += ';';
+            DOMElements.liveQuery.innerHTML = query;
+            
+            // Execute Query Logic
+            let results = [...sampleData];
+
+            if (state.whereClause) {
+                const { column, operator, value } = state.whereClause;
+                results = results.filter(row => {
+                    const rowValue = row[column];
+                    const filterValue = isNaN(Number(value)) || value === '' ? value : Number(value);
+
+                    switch (operator) {
+                        case '=': return rowValue == filterValue;
+                        case '>': return rowValue > filterValue;
+                        case '<': return rowValue < filterValue;
+                        case '>=': return rowValue >= filterValue;
+                        case '<=': return rowValue <= filterValue;
+                        case '<>': return rowValue != filterValue;
+                        case 'LIKE': 
+                            const pattern = String(filterValue).replace(/%/g, '.*').replace(/_/g, '.');
+                            return new RegExp(pattern, 'i').test(String(rowValue));
+                        default: return true;
+                    }
+                });
+            }
+
+            if (state.orderBy.column) {
+                const { column, direction } = state.orderBy;
+                results.sort((a, b) => {
+                    const valA = a[column]; const valB = b[column];
+                    if (valA < valB) return direction === 'ASC' ? -1 : 1;
+                    if (valA > valB) return direction === 'ASC' ? 1 : -1;
+                    return 0;
+                });
+            }
+            
+            renderResults(results);
+        };
+
+        const renderResults = (data) => {
+            const columnsToDisplay = state.selectedColumns[0] === '*' ? allColumns : state.selectedColumns;
+            
+            if (data.length === 0) {
+                DOMElements.resultsContainer.innerHTML = `<p class="text-center p-4 text-gray-400">No results match your query.</p>`;
+                return;
+            }
+
+            let tableHTML = `<table class="w-full text-left"><thead><tr class="border-b-2 border-gray-500">`;
+            columnsToDisplay.forEach(col => {
+                let sortIndicator = '';
+                if(state.orderBy.column === col) sortIndicator = state.orderBy.direction === 'ASC' ? ' ▲' : ' ▼';
+                tableHTML += `<th class="p-3 ${state.currentStep === 4 ? 'table-header-interactive' : ''}" data-col="${col}">${col}${sortIndicator}</th>`;
+            });
+            tableHTML += `</tr></thead><tbody>`;
+
+            data.forEach(row => {
+                tableHTML += `<tr class="border-t border-gray-700 hover:bg-gray-700/30">`;
+                columnsToDisplay.forEach(col => tableHTML += `<td class="p-3">${row[col] ?? ''}</td>`);
+                tableHTML += `</tr>`;
+            });
+
+            tableHTML += `</tbody></table>`;
+            DOMElements.resultsContainer.innerHTML = tableHTML;
+        };
+        
+        const showModal = (title, text) => {
+            DOMElements.modalTitle.textContent = title;
+            DOMElements.modalText.innerHTML = text;
+            if(!DOMElements.infoModal.open) DOMElements.infoModal.showModal();
+        };
+
+        // --- EVENT HANDLERS ---
+        const handleNav = (direction) => {
+            const newStep = state.currentStep + direction;
+            if (newStep < 1 || newStep > TOTAL_STEPS) return;
+            
+            if (direction > 0) { // Moving forward
+                if(state.currentStep === 2 && state.selectedColumns.length === 0) {
+                    showModal("Wait!", "You must select at least one column to proceed. Try selecting `* (All Columns)` or specific columns like `FirstName`.");
+                    return;
+                }
+                 if(state.currentStep === 5) {
+                    const feedbackEl = getEl('full-query-feedback');
+                    if(!feedbackEl.dataset.success) {
+                        showModal("Task Not Completed", "Please run the query successfully before proceeding to the quiz.");
+                        return;
+                    }
+                }
+            }
+
+            state.currentStep = newStep;
+            updateUI();
+            
+            // Logic after entering a new step
+            switch(state.currentStep) {
+                case 2: showModal("Step 2: SELECT", "The <span class='sql-keyword'>SELECT</span> statement is the core of any query. It tells the database which columns you want.<br><br><strong>Task:</strong> Click on the column headers to build your query."); break;
+                case 3: showModal("Step 3: WHERE", "The <span class='sql-keyword'>WHERE</span> clause is your filter. It specifies conditions to narrow down the results.<br><br><strong>Task:</strong> Use the dropdowns and input box to filter the student data. For text values, the simulation automatically adds quotes."); break;
+                case 4: showModal("Step 4: ORDER BY", "The <span class='sql-keyword'>ORDER BY</span> clause sorts your final result set. You can sort ascending (A-Z, 1-100) or descending (Z-A, 100-1).<br><br><strong>Task:</strong> Click on the column headers in the 'Results' table to sort the data."); break;
+                case 6: startQuiz(); break;
+            }
+        };
+
+        const resetSimulation = () => {
+            state = getDefaultState();
+            
+            document.querySelectorAll('.table-header-interactive.selected').forEach(th => th.classList.remove('selected'));
+            getEl('th-star').classList.add('selected');
+            
+            getEl('where-column').value = allColumns[0];
+            getEl('where-operator').value = '=';
+            getEl('where-value').value = '';
+
+            const fullQueryInput = getEl('full-query-input');
+            if(fullQueryInput) fullQueryInput.value = '';
+            
+            const fullQueryFeedback = getEl('full-query-feedback');
+            if(fullQueryFeedback) {
+                fullQueryFeedback.classList.add('hidden');
+                fullQueryFeedback.textContent = '';
+                delete fullQueryFeedback.dataset.success;
+            }
+
+            updateUI();
+            showModal("Simulation Reset", "Everything has been reset to the beginning. Good luck!");
+        };
+
+        // BUG FIX: Add a dedicated listener for the modal close button
+        DOMElements.modalClose.addEventListener('click', () => DOMElements.infoModal.close());
+
+        // Delegated event listeners for main container
+        getEl('simulation-container').addEventListener('click', e => {
+            const target = e.target;
+            if (target.id === 'prev-step') handleNav(-1);
+            if (target.id === 'next-step') handleNav(1);
+            if (target.id === 'reset-sim') resetSimulation();
+            if (target.matches('.table-header-interactive')) handleSelectColumn(target);
+            if (target.id === 'clear-where') {
+                getEl('where-value').value = '';
+                state.whereClause = null;
+                buildAndExecuteQuery();
+            }
+            if (target.id === 'run-full-query') checkFullQuery();
+            if (target.id === 'submit-quiz') handleSubmitQuiz();
+            if (target.matches('.quiz-option')) {
+                document.querySelectorAll('.quiz-option.selected').forEach(opt => opt.classList.remove('selected'));
+                target.classList.add('selected');
+            }
+            if (state.currentStep === 4 && target.closest('#results-container') && target.matches('th')) {
+                handleOrderBy(target);
+            }
+        });
+        
+        // Step 2: SELECT handler
+        const handleSelectColumn = (element) => {
+            if (state.currentStep !== 2) return;
+            const colName = element.dataset.col;
+            
+            if (colName === '*') {
+                state.selectedColumns = ['*'];
+            } else {
+                if (state.selectedColumns.includes('*')) state.selectedColumns = [];
+                const index = state.selectedColumns.indexOf(colName);
+                if (index > -1) state.selectedColumns.splice(index, 1);
+                else state.selectedColumns.push(colName);
+            }
+            if (state.selectedColumns.length === 0) state.selectedColumns = ['*'];
+
+            document.querySelectorAll('.table-header-interactive').forEach(th => {
+                th.classList.toggle('selected', state.selectedColumns.includes(th.dataset.col));
+            });
+            getEl('th-star').classList.toggle('selected', state.selectedColumns.includes('*'));
+
+            buildAndExecuteQuery();
+        };
+
+        // Step 3: WHERE handlers
+        const updateWhereClause = () => {
+             const column = getEl('where-column').value;
+             const operator = getEl('where-operator').value;
+             const value = getEl('where-value').value.trim();
+             state.whereClause = value ? { column, operator, value } : null;
+             buildAndExecuteQuery();
+        };
+        ['where-column', 'where-operator'].forEach(id => getEl(id).addEventListener('change', updateWhereClause));
+        getEl('where-value').addEventListener('input', updateWhereClause);
+
+        // Step 4: ORDER BY handler
+        const handleOrderBy = (element) => {
+            const colName = element.dataset.col;
+            if (!colName) return;
+            if (state.orderBy.column === colName) {
+                state.orderBy.direction = state.orderBy.direction === 'ASC' ? 'DESC' : 'ASC';
+            } else {
+                state.orderBy.column = colName;
+                state.orderBy.direction = 'ASC';
+            }
+            buildAndExecuteQuery();
+        };
+        
+        // Step 5: Full Query Task
+        const checkFullQuery = () => {
+             const userInput = getEl('full-query-input').value.toLowerCase().replace(/\s+/g, ' ').trim();
+             const feedbackEl = getEl('full-query-feedback');
+             
+             const checks = {
+                 select: /select\s+(firstname,\s*grade|grade,\s*firstname)/.test(userInput),
+                 from: /from\s+students/.test(userInput),
+                 whereSubject: /where\s+.*subject\s*(<>|!=)\s*'physics'/.test(userInput),
+                 whereGrade: /where\s+.*grade\s*>=\s*75/.test(userInput),
+                 orderBy: /order\s+by\s+grade\s+desc/.test(userInput)
+             };
+
+            feedbackEl.classList.remove('hidden', 'bg-green-800/20', 'bg-red-800/20', 'text-green-300', 'text-red-300');
+            delete feedbackEl.dataset.success;
+            
+            if (Object.values(checks).every(v => v)) {
+                feedbackEl.innerHTML = `<div class="feedback-box"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>Excellent! Your query is correct.</span></div>`;
+                feedbackEl.classList.add('bg-green-800/20', 'text-green-300');
+                feedbackEl.dataset.success = true;
+                createParticleBurst(window.innerWidth / 2, feedbackEl.getBoundingClientRect().top);
+            } else {
+                let errorMsg = 'Almost there! Check the following:<ul>';
+                if (!checks.select) errorMsg += '<li class="text-left list-disc list-inside">- Are you selecting only FirstName and Grade?</li>';
+                if (!checks.from) errorMsg += '<li class="text-left list-disc list-inside">- Did you specify the Students table?</li>';
+                if (!checks.whereSubject) errorMsg += '<li class="text-left list-disc list-inside">- The condition for Subject should be `<> \'Physics\'`.</li>';
+                if (!checks.whereGrade) errorMsg += '<li class="text-left list-disc list-inside">- The condition for Grade should be `>= 75`.</li>';
+                if (!checks.orderBy) errorMsg += '<li class="text-left list-disc list-inside">- Remember to sort by Grade in DESC order.</li>';
+                errorMsg += '</ul>';
+                feedbackEl.innerHTML = errorMsg;
+                feedbackEl.classList.add('bg-red-800/20', 'text-red-300');
+            }
+        };
+        
+        // --- QUIZ LOGIC ---
+        const startQuiz = () => {
+            state.quiz.currentQuestionIndex = 0;
+            state.quiz.score = 0;
+            state.quiz.userAnswers = [];
+            loadQuizQuestion();
+        };
+        
+        const loadQuizQuestion = () => {
+            const quizContainer = getEl('quiz-container');
+            getEl('quiz-feedback').innerHTML = '';
+            getEl('submit-quiz').disabled = false;
+            
+            const qIndex = state.quiz.currentQuestionIndex;
+            if(qIndex >= quizQuestions.length) {
+                handleNav(1); // Move to summary
+                const scoreEl = getEl('summary-score');
+                scoreEl.textContent = `Your Score: ${state.quiz.score} / ${quizQuestions.length}`;
+                createParticleBurst(window.innerWidth / 2, window.innerHeight / 2, 100);
+                return;
+            }
+
+            const q = quizQuestions[qIndex];
+            let html = `<p class="text-lg font-semibold mb-4">Question ${qIndex + 1}/${quizQuestions.length}: ${q.question}</p>`;
+
+            if (q.type === 'mcq') {
+                html += `<div class="space-y-2">`;
+                q.options.forEach(opt => html += `<div class="quiz-option p-3 rounded-lg cursor-pointer">${opt}</div>`);
+                html += `</div>`;
+            } else if (q.type === 'fill-blank') {
+                html += `<input type="text" id="fill-blank-input" class="w-1/2 p-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-accent-color">`;
+            } else if (q.type === 'query-write') {
+                html += `<textarea id="query-write-input" class="w-full h-24 p-2 font-mono bg-gray-900 rounded-lg"></textarea>`;
+            }
+            quizContainer.innerHTML = html;
+        };
+
+        const handleSubmitQuiz = () => {
+            const qIndex = state.quiz.currentQuestionIndex;
+            const q = quizQuestions[qIndex];
+            const feedbackEl = getEl('quiz-feedback');
+            const submitBtn = getEl('submit-quiz');
+            let isCorrect = false;
+            
+            // Logic to check answer based on question type
+            if (q.type === 'mcq') {
+                const selectedOption = document.querySelector('.quiz-option.selected');
+                if (!selectedOption) {
+                    feedbackEl.innerHTML = '<p class="text-red-400">Please select an option.</p>';
+                    return;
+                }
+                isCorrect = selectedOption.textContent === q.answer;
+                document.querySelectorAll('.quiz-option').forEach(opt => {
+                    if (opt.textContent === q.answer) opt.classList.add('correct');
+                    else if (opt.classList.contains('selected')) opt.classList.add('incorrect');
+                });
+            } else if (q.type === 'fill-blank') {
+                 const input = getEl('fill-blank-input');
+                 if (input.value.length < 1) { feedbackEl.innerHTML = '<p class="text-red-400">Please provide an answer.</p>'; return; }
+                 isCorrect = input.value.trim() === q.answer;
+                 input.style.borderColor = isCorrect ? 'var(--success-color)' : 'var(--error-color)';
+            } else if (q.type === 'query-write') {
+                const input = getEl('query-write-input');
+                if (input.value.length < 10) { feedbackEl.innerHTML = '<p class="text-red-400">Please write a more complete query.</p>'; return; }
+                const userAnswer = input.value.toLowerCase().replace(/\s+/g, ' ');
+                isCorrect = q.answerKeywords.every(kw => userAnswer.includes(kw));
+                input.style.borderColor = isCorrect ? 'var(--success-color)' : 'var(--error-color)';
+            }
+            
+            // Provide feedback
+            if(isCorrect) {
+                feedbackEl.innerHTML = `<p class="text-green-400 font-bold">Correct!</p>`;
+                state.quiz.score++;
+                createParticleBurst(window.innerWidth / 2, submitBtn.getBoundingClientRect().top);
+            } else {
+                 let helpText = q.type === 'mcq' ? q.answer : q.type === 'fill-blank' ? `'${q.answer}'` : 'the keywords ' + q.answerKeywords.join(', ');
+                 feedbackEl.innerHTML = `<p class="text-red-400 font-bold">Not quite. The correct answer involves: ${helpText}</p>`;
+            }
+            
+            submitBtn.disabled = true;
+            setTimeout(() => {
+                state.quiz.currentQuestionIndex++;
+                loadQuizQuestion();
+            }, 2000);
+        };
+
+        // Keyboard navigation
+        window.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.key === 'ArrowRight' && !DOMElements.nextBtn.disabled) DOMElements.nextBtn.click();
+            else if (e.key === 'ArrowLeft' && !DOMElements.prevBtn.disabled) DOMElements.prevBtn.click();
+        });
+
+        // --- INITIALIZATION ---
+        const init = () => {
+            state = getDefaultState();
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.body.classList.add('reduce-motion');
+            } else {
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+                animateParticles();
+            }
+
+            // Populate WHERE clause dropdown
+            DOMElements.whereColumnSelect.innerHTML = allColumns.map(c => `<option value="${c}">${c}</option>`).join('');
+
+            updateUI();
+            
+            setTimeout(() => {
+                showModal("Welcome to the SQL Simulation!", "Ready to become a data wizard? This interactive tutorial will teach you the fundamentals of querying databases using SQL. <br><br><strong>Use the 'Next' and 'Previous' buttons or the left/right arrow keys on your keyboard to navigate.</strong>");
+            }, 500);
+        };
+
+        init();
+    });
+    </script>
+</body>
+</html>

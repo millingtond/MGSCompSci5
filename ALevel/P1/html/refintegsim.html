@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Referential Integrity Simulation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #12121c;
+            --primary-color: #1a1a2e;
+            --secondary-color: #16213e;
+            --accent-color: #e94560;
+            --text-color: #e0e0e0;
+            --glow-color: rgba(233, 69, 96, 0.6);
+            --success-color: #4CAF50;
+            --error-color: #F44336;
+            --border-radius: 15px;
+            --font-family: 'Poppins', sans-serif;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        body {
+            font-family: var(--font-family);
+            background: linear-gradient(45deg, #12121c, #1a1a2e, #12121c);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .simulation-container {
+            width: 100%;
+            max-width: 1200px;
+            background: var(--primary-color);
+            border-radius: var(--border-radius);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .simulation-header {
+            background: rgba(0,0,0,0.2);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .simulation-header h1 {
+            margin: 0;
+            font-size: 2.2em;
+            color: white;
+            text-shadow: 0 0 15px var(--glow-color);
+        }
+
+        .simulation-body {
+            position: relative;
+            padding: 20px;
+            min-height: 520px;
+        }
+        
+        .step {
+            display: none;
+            opacity: 0;
+            animation: fadeIn 0.8s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+            position: absolute;
+            width: calc(100% - 40px);
+            left: 20px;
+            top: 20px;
+        }
+
+        .step.active {
+            display: block;
+            opacity: 1;
+            position: relative;
+        }
+        
+        .step-content {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .step-content h2 {
+            color: var(--accent-color);
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .step-content p {
+            font-size: 1.1em;
+            line-height: 1.7;
+            max-width: 800px;
+            margin: 0 auto 20px auto;
+        }
+
+        .tables-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 30px;
+            transform-style: preserve-3d;
+            perspective: 1200px;
+        }
+        
+        .db-table {
+            background-color: var(--secondary-color);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 420px;
+            transition: transform 0.5s ease, box-shadow 0.5s ease;
+            transform: translateZ(0);
+            will-change: transform, box-shadow;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .db-table:hover {
+            transform: translateY(-5px) translateZ(25px) scale(1.02);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.4);
+        }
+
+        .db-table caption {
+            font-size: 1.5em;
+            font-weight: 600;
+            padding: 10px;
+            color: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--primary-color);
+            transition: background-color 0.4s ease;
+        }
+
+        thead tr {
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .pk { font-weight: bold; color: #82aaff; text-shadow: 0 0 5px #82aaff; } /* Primary Key */
+        .fk { font-style: italic; color: #c3e88d; text-shadow: 0 0 5px #c3e88d;} /* Foreign Key */
+        
+        tr.highlight-pk {
+            background-color: rgba(130, 170, 255, 0.2) !important;
+            box-shadow: inset 4px 0 0 #82aaff;
+        }
+        
+        tr.highlight-fk {
+            background-color: rgba(195, 232, 141, 0.2) !important;
+            box-shadow: inset 4px 0 0 #c3e88d;
+        }
+
+        tr.highlight-error {
+            background-color: rgba(244, 67, 54, 0.2) !important;
+            animation: shake 0.6s ease-in-out;
+            box-shadow: inset 4px 0 0 var(--error-color);
+        }
+        
+        tr.highlight-success {
+            background-color: rgba(76, 175, 80, 0.2) !important;
+             box-shadow: inset 4px 0 0 var(--success-color);
+        }
+        
+        tr.fade-out {
+            animation: fadeOut 0.8s forwards;
+        }
+
+        .interaction-area {
+            background: rgba(0,0,0,0.25);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            margin-top: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .interaction-area h3 {
+            margin-top: 0;
+            color: var(--accent-color);
+            font-size: 1.4em;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .form-group label {
+            flex-basis: 120px;
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            flex-grow: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid var(--secondary-color);
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-size: 1em;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 10px var(--glow-color);
+        }
+        
+        .quiz-input {
+            background: var(--bg-color) !important;
+            color: var(--text-color) !important;
+            border: 1px solid var(--secondary-color) !important;
+            border-radius: 6px;
+            padding: 5px 8px;
+            text-align: center;
+        }
+
+        .button, .nav-btn {
+            padding: 12px 28px;
+            font-size: 1em;
+            font-weight: 600;
+            color: white;
+            background: var(--accent-color);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(233, 69, 96, 0.2);
+            will-change: transform, box-shadow;
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .button:after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%, -50%);
+            transform-origin: 50% 50%;
+        }
+        
+        .button:focus:not(:active)::after {
+            animation: ripple 1s ease-out;
+        }
+
+        .button:hover, .nav-btn:hover {
+            background-color: #ff5c7a;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(233, 69, 96, 0.3);
+        }
+        
+        .button:active, .nav-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 10px rgba(233, 69, 96, 0.2);
+        }
+        
+        .button:disabled, .nav-btn:disabled {
+            background-color: #555;
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0,0,0,0.1);
+        }
+        
+        .step-indicator {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(10, 10, 20, 0.5);
+            backdrop-filter: blur(8px);
+            animation: fadeIn 0.4s ease;
+        }
+        .modal-content {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--primary-color);
+            padding: 35px;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+            border-top: 5px solid var(--accent-color);
+            animation: slideIn 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+        }
+        .modal h2 { margin-top: 0; color: var(--accent-color); font-size: 1.8em; }
+        .modal p { font-size: 1.1em; line-height: 1.7; }
+        .modal-close {
+            position: absolute;
+            top: 15px; right: 20px;
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+            transition: color 0.3s, transform 0.3s;
+        }
+        .modal-close:hover { color: white; transform: rotate(90deg); }
+
+        /* Quiz Styles */
+        .quiz-container { max-width: 800px; margin: 20px auto; }
+        .question-card {
+            background: var(--secondary-color);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .options {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+        .options li {
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s, border-left-color 0.3s;
+            border-left: 4px solid transparent;
+        }
+        .options li:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+            border-left-color: var(--accent-color);
+        }
+        .options li.selected {
+             background-color: rgba(233, 69, 96, 0.3);
+             border-left-color: var(--accent-color);
+        }
+        .feedback {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            display: none;
+            font-weight: 600;
+        }
+        .feedback.correct { background-color: var(--success-color); display: block; }
+        .feedback.incorrect { background-color: var(--error-color); display: block; }
+
+        .quiz-results {
+            text-align: center;
+            padding: 40px;
+            background: var(--secondary-color);
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(255,255,255,0.1);
+            animation: fadeIn 0.5s;
+        }
+        
+        .quiz-results h3 { font-size: 2.2em; color: var(--accent-color); }
+        .quiz-results p { font-size: 1.6em; }
+
+        /* Animations */
+        @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; transform: scale(0.9); } }
+        @keyframes slideIn { from { opacity: 0; transform: translate(-50%, -60%) scale(0.9); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+        
+        @keyframes line-draw { to { stroke-dashoffset: 0; } }
+        @keyframes ripple {
+            from { opacity: 1; transform: scale(0, 0) translate(-50%,-50%); }
+            to { opacity: 0; transform: scale(100, 100) translate(-50%,-50%);}
+        }
+        
+        #relation-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .line {
+            stroke: var(--accent-color);
+            stroke-width: 3;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: line-draw 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            filter: drop-shadow(0 0 5px var(--glow-color));
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="simulation-container">
+        <header class="simulation-header">
+            <h1>Referential Integrity Simulation</h1>
+        </header>
+
+        <main class="simulation-body">
+            
+            <svg id="relation-line"></svg>
+
+            <!-- Step 0: Introduction -->
+            <div id="step-0" class="step active">
+                <div class="step-content">
+                    <h2>Welcome!</h2>
+                    <p>This interactive simulation will guide you through the concept of <strong>Referential Integrity</strong> in databases, a key topic in the A-Level Computer Science (9618) syllabus.</p>
+                    <p>You'll learn about primary and foreign keys, and see how rules are enforced to keep data consistent. Use the <strong>Next/Previous</strong> buttons or the <strong>Left/Right arrow keys</strong> to navigate.</p>
+                    <button class="button" onclick="goToStep(1)">Start Learning</button>
+                </div>
+            </div>
+
+            <!-- Step 1: The Keys -->
+            <div id="step-1" class="step">
+                <div class="step-content">
+                    <h2>Primary & Foreign Keys: The Foundation</h2>
+                    <p>Databases use keys to create relationships between tables. The <strong>Authors</strong> table uses <code class="pk">AuthorID</code> as its <strong>Primary Key</strong>—a unique identifier for each author. The <strong>Books</strong> table uses <code class="fk">AuthorID</code> as a <strong>Foreign Key</strong> to link each book to its author.</p>
+                </div>
+                <div class="tables-container">
+                    <table class="db-table" id="authors-table-s1">
+                        <caption>Authors (Primary Table)</caption>
+                        <thead><tr><th>AuthorID (PK)</th><th>Name</th></tr></thead>
+                        <tbody>
+                            <tr data-id="1"><td>1</td><td>George Orwell</td></tr>
+                            <tr data-id="2"><td>2</td><td>J.R.R. Tolkien</td></tr>
+                            <tr data-id="3"><td>3</td><td>J.K. Rowling</td></tr>
+                        </tbody>
+                    </table>
+                    <table class="db-table" id="books-table-s1">
+                        <caption>Books (Foreign Table)</caption>
+                        <thead><tr><th>BookID (PK)</th><th>Title</th><th>AuthorID (FK)</th></tr></thead>
+                        <tbody>
+                            <tr data-id="101" data-author="1"><td>101</td><td>1984</td><td>1</td></tr>
+                            <tr data-id="102" data-author="2"><td>102</td><td>The Hobbit</td><td>2</td></tr>
+                            <tr data-id="103" data-author="1"><td>103</td><td>Animal Farm</td><td>1</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Step 2: Enforcing Integrity (Add) -->
+            <div id="step-2" class="step">
+                <div class="step-content">
+                    <h2>Rule 1: No Orphan Records</h2>
+                    <p>Referential integrity ensures you can't add a record to the 'foreign' table (Books) unless a corresponding record exists in the 'primary' table (Authors). Try adding a new book below.</p>
+                </div>
+                <div class="tables-container">
+                    <table class="db-table" id="authors-table-s2">
+                        <caption>Authors</caption>
+                        <thead><tr><th>AuthorID (PK)</th><th>Name</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    <table class="db-table" id="books-table-s2">
+                        <caption>Books</caption>
+                        <thead><tr><th>BookID (PK)</th><th>Title</th><th>AuthorID (FK)</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="interaction-area">
+                    <h3>Task: Add a New Book</h3>
+                    <div class="form-group">
+                        <label for="book-id">Book ID:</label>
+                        <input type="text" id="book-id" value="103">
+                    </div>
+                    <div class="form-group">
+                        <label for="book-title">Title:</label>
+                        <input type="text" id="book-title" value="The Silmarillion">
+                    </div>
+                    <div class="form-group">
+                        <label for="author-id">Author ID:</label>
+                        <input type="text" id="author-id" value="2">
+                    </div>
+                    <button class="button" id="add-book-btn" onclick="attemptAddBook(this)">Add Book</button>
+                    <p style="font-size: 0.9em; margin-top: 15px;">Try adding a book with an existing <code class="fk">AuthorID</code> (e.g., 1, 2, or 3), then try an ID that doesn't exist (e.g., 5).</p>
+                </div>
+            </div>
+
+            <!-- Step 3: Cascading Delete -->
+            <div id="step-3" class="step">
+                <div class="step-content">
+                    <h2>Rule 2: Cascading Delete</h2>
+                    <p>What happens if we delete a record from the primary table? With <strong>cascading delete</strong> enabled, deleting a record in the 'primary' table automatically deletes all linked records in 'foreign' tables to maintain consistency.</p>
+                </div>
+                <div class="tables-container">
+                    <table class="db-table" id="authors-table-s3">
+                        <caption>Authors</caption>
+                        <thead><tr><th>AuthorID (PK)</th><th>Name</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    <table class="db-table" id="books-table-s3">
+                        <caption>Books</caption>
+                        <thead><tr><th>BookID (PK)</th><th>Title</th><th>AuthorID (FK)</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="interaction-area">
+                    <h3>Task: Delete an Author</h3>
+                    <p>Click the button to delete 'George Orwell' (AuthorID 1) and observe the effect on the Books table.</p>
+                    <button class="button" id="delete-author-btn" onclick="performCascadeDelete(this)">Delete Author 1</button>
+                </div>
+            </div>
+
+            <!-- Step 4: Cascading Update -->
+            <div id="step-4" class="step">
+                 <div class="step-content">
+                    <h2>Rule 3: Cascading Update</h2>
+                    <p>Similarly, if a primary key is modified, <strong>cascading update</strong> ensures that all linked foreign keys in other tables are updated automatically to reflect the change.</p>
+                </div>
+                <div class="tables-container">
+                    <table class="db-table" id="authors-table-s4">
+                        <caption>Authors</caption>
+                        <thead><tr><th>AuthorID (PK)</th><th>Name</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    <table class="db-table" id="books-table-s4">
+                        <caption>Books</caption>
+                        <thead><tr><th>BookID (PK)</th><th>Title</th><th>AuthorID (FK)</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div class="interaction-area">
+                    <h3>Task: Update a Primary Key</h3>
+                    <p>Let's change the AuthorID for 'George Orwell' from 1 to 10 and see what happens.</p>
+                    <button class="button" id="update-author-btn" onclick="performCascadeUpdate(this)">Update AuthorID 1 to 10</button>
+                </div>
+            </div>
+
+            <!-- Step 5: Quiz -->
+            <div id="step-5" class="step">
+                <div class="step-content">
+                    <h2>Knowledge Check</h2>
+                    <p>Time to test your understanding! Answer the following questions.</p>
+                </div>
+                <div class="quiz-container" id="quiz-container">
+                    <div class="question-card">
+                        <p><strong>1. What is the primary purpose of referential integrity?</strong></p>
+                        <ul class="options" data-question="0">
+                            <li data-option="a">To make database queries run faster.</li>
+                            <li data-option="b">To ensure consistency and prevent invalid data between related tables.</li>
+                            <li data-option="c">To encrypt the data stored in tables.</li>
+                            <li data-option="d">To provide a unique identifier for every record in a single table.</li>
+                        </ul>
+                        <div class="feedback"></div>
+                    </div>
+
+                    <div class="question-card">
+                        <p><strong>2. Fill in the blanks:</strong> You cannot add a record to a table with a <input type="text" class="quiz-input" id="q2-a" placeholder="key type"> key unless a matching value exists in the primary key of the linked <input type="text" class="quiz-input" id="q2-b" placeholder="table type"> table.</p>
+                        <button class="button" onclick="markFillInTheBlank(this)">Mark Answer</button>
+                        <div class="feedback"></div>
+                    </div>
+                    
+                    <div class="question-card">
+                        <p><strong>3. A database has cascading delete enabled. If you delete a record from the 'Authors' table, what happens to the books written by that author in the 'Books' table?</strong></p>
+                         <ul class="options" data-question="2">
+                            <li data-option="a">An error occurs and the author is not deleted.</li>
+                            <li data-option="b">The author is deleted, but the books remain with a null AuthorID.</li>
+                            <li data-option="c">The author and all their associated books are deleted.</li>
+                            <li data-option="d">Only the author is deleted; the books are unaffected.</li>
+                        </ul>
+                         <div class="feedback"></div>
+                    </div>
+
+                </div>
+                <div class="quiz-results" id="quiz-results" style="display:none;">
+                    <h3>Quiz Complete!</h3>
+                    <p id="quiz-score"></p>
+                    <button class="button" onclick="goToStep(0)">Restart Simulation</button>
+                </div>
+            </div>
+
+        </main>
+
+        <footer class="navigation">
+            <button id="prev-btn" class="nav-btn" onclick="prevStep()">Previous</button>
+            <div class="step-indicator" id="step-indicator">Step 0 / 5</div>
+            <button id="next-btn" class="nav-btn" onclick="nextStep()">Next</button>
+        </footer>
+    </div>
+    
+    <!-- Modal Template -->
+    <div id="info-modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <h2 id="modal-title"></h2>
+            <p id="modal-text"></p>
+        </div>
+    </div>
+
+
+    <script>
+        // DOM Caching for frequently accessed elements
+        const steps = document.querySelectorAll('.step');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const stepIndicator = document.getElementById('step-indicator');
+        const modal = document.getElementById('info-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalText = document.getElementById('modal-text');
+        const relationLineSVG = document.getElementById('relation-line');
+        const quizContainer = document.getElementById('quiz-container');
+        const quizResults = document.getElementById('quiz-results');
+
+        let currentStep = 0;
+        let animationInProgress = false; // Prevents overlapping animations
+
+        // Correct answers for the quiz
+        const quizAnswers = {
+            q0: 'b', // Question 1
+            q2: 'c'  // Question 3
+        };
+        // Stores user's scores, null indicates unanswered
+        let quizScores = { q0: null, q1: null, q2: null };
+        
+        // Initial data state for resetting the simulation
+        const initialTableData = {
+            authors: [
+                { id: 1, name: "George Orwell" },
+                { id: 2, name: "J.R.R. Tolkien" },
+                { id: 3, name: "J.K. Rowling" },
+            ],
+            books: [
+                { id: 101, title: "1984", author: 1 },
+                { id: 102, title: "The Hobbit", author: 2 },
+                { id: 103, title: "Animal Farm", author: 1 },
+                { id: 104, title: "Harry Potter", author: 3 },
+            ]
+        };
+        
+        /**
+         * Populates a given table with data.
+         * @param {string} tableId - The ID of the table element.
+         * @param {Array<Object>} data - The array of data objects to populate.
+         * @param {string} pK - The name of the primary key field.
+         * @param {string} [fK] - The name of the foreign key field (optional).
+         */
+        function populateTable(tableId, data, pK, fK) {
+            const tableBody = document.getElementById(tableId).getElementsByTagName('tbody')[0];
+            if (!tableBody) return;
+            tableBody.innerHTML = ''; // Clear existing rows
+            data.forEach(rowData => {
+                const row = tableBody.insertRow();
+                row.dataset.id = rowData.id;
+                if (rowData.author) row.dataset.author = rowData.author;
+                
+                Object.keys(rowData).forEach(key => {
+                    const cell = row.insertCell();
+                    cell.innerHTML = rowData[key];
+                    if (key === pK) cell.classList.add('pk');
+                    if (key === fK) cell.classList.add('fk');
+                });
+            });
+        }
+        
+        /**
+         * Resets the entire simulation to its initial state.
+         */
+        function resetSimulationState() {
+            // Restore initial data to all interactive tables
+            populateTable('authors-table-s2', initialTableData.authors.slice(0, 3), 'id');
+            populateTable('books-table-s2', initialTableData.books.slice(0, 2), 'id', 'author');
+
+            populateTable('authors-table-s3', initialTableData.authors.slice(0, 3), 'id');
+            populateTable('books-table-s3', initialTableData.books, 'id', 'author');
+
+            populateTable('authors-table-s4', initialTableData.authors.slice(0, 2), 'id');
+            populateTable('books-table-s4', initialTableData.books.slice(0, 3), 'id', 'author');
+            
+            // Reset quiz state
+            quizScores = { q0: null, q1: null, q2: null };
+            document.querySelectorAll('.feedback').forEach(f => {
+                f.style.display = 'none';
+                f.className = 'feedback';
+            });
+            document.querySelectorAll('.options li').forEach(o => o.classList.remove('selected'));
+            document.getElementById('q2-a').value = '';
+            document.getElementById('q2-b').value = '';
+            quizResults.style.display = 'none';
+            quizContainer.style.display = 'block';
+            
+            // Re-enable any disabled buttons
+            document.querySelectorAll('.button:disabled').forEach(btn => btn.disabled = false);
+        }
+        
+        /**
+         * Updates navigation buttons and step indicator based on the current step.
+         */
+        function updateNav() {
+            prevBtn.disabled = currentStep === 0;
+            nextBtn.disabled = currentStep === steps.length - 1;
+            stepIndicator.textContent = `Step ${currentStep} / ${steps.length - 1}`;
+        }
+        
+        /**
+         * Navigates to a specific step in the simulation.
+         * @param {number} stepNumber - The index of the step to navigate to.
+         */
+        function goToStep(stepNumber) {
+            if (animationInProgress || stepNumber < 0 || stepNumber >= steps.length) return;
+
+            // Reset simulation if returning to the start
+            if (stepNumber === 0) {
+                resetSimulationState();
+            }
+
+            steps[currentStep].classList.remove('active');
+            currentStep = stepNumber;
+            steps[currentStep].classList.add('active');
+            updateNav();
+            
+            relationLineSVG.innerHTML = ''; // Clear relationship lines
+
+            // Use requestAnimationFrame to sync animations with browser repaint cycle
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    if (currentStep === 1) {
+                        drawRelationLine();
+                    }
+                }, 400); // Delay to allow step transition animation to finish
+            });
+        }
+
+        function nextStep() { goToStep(currentStep + 1); }
+        function prevStep() { goToStep(currentStep - 1); }
+
+        /**
+         * Displays the modal with a given title and text.
+         * @param {string} title - The title for the modal.
+         * @param {string} text - The HTML content for the modal body.
+         */
+        function showModal(title, text) {
+            modalTitle.textContent = title;
+            modalText.innerHTML = text;
+            modal.style.display = 'flex';
+        }
+
+        /**
+         * Closes the modal.
+         */
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+        
+        /**
+         * A utility function to temporarily add a class to elements.
+         * @param {Array<HTMLElement>} elements - The elements to highlight.
+         * @param {string} className - The CSS class to add.
+         * @param {number} duration - The duration in ms to keep the class.
+         */
+        function highlightAndClear(elements, className, duration = 2500) {
+            const validElements = elements.filter(el => el); // Filter out null/undefined elements
+            validElements.forEach(el => el.classList.add(className));
+            setTimeout(() => {
+                validElements.forEach(el => el.classList.remove(className));
+            }, duration);
+        }
+
+        // --- Step 1: Key Relationship Visualization ---
+        function drawRelationLine() {
+            const authorIdCell = document.querySelector('#authors-table-s1 tbody tr[data-id="1"] td:first-child');
+            const bookAuthorIdCell = document.querySelector('#books-table-s1 tbody tr[data-id="101"] td:last-child');
+            
+            if (!authorIdCell || !bookAuthorIdCell) return;
+            
+            highlightAndClear([authorIdCell.parentElement], 'highlight-pk', 3000);
+            highlightAndClear([bookAuthorIdCell.parentElement], 'highlight-fk', 3000);
+            
+            const svgRect = relationLineSVG.getBoundingClientRect();
+            const startRect = authorIdCell.getBoundingClientRect();
+            const endRect = bookAuthorIdCell.getBoundingClientRect();
+
+            const x1 = startRect.left + startRect.width / 2 - svgRect.left;
+            const y1 = startRect.top + startRect.height / 2 - svgRect.top;
+            const x2 = endRect.left + endRect.width / 2 - svgRect.left;
+            const y2 = endRect.top + endRect.height / 2 - svgRect.top;
+
+            relationLineSVG.innerHTML = `<line class="line" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+        }
+
+        // --- Step 2: Add Record Task ---
+        function attemptAddBook(button) {
+            if (animationInProgress) return;
+            animationInProgress = true;
+            button.disabled = true;
+
+            const bookId = document.getElementById('book-id').value;
+            const title = document.getElementById('book-title').value;
+            const authorId = parseInt(document.getElementById('author-id').value, 10);
+            
+            const booksTableBody = document.getElementById('books-table-s2').getElementsByTagName('tbody')[0];
+            const authorsTable = document.getElementById('authors-table-s2');
+            const authorIds = Array.from(authorsTable.querySelectorAll('tbody tr td:first-child')).map(td => parseInt(td.textContent, 10));
+
+            const newRow = booksTableBody.insertRow();
+            newRow.innerHTML = `<td>${bookId}</td><td>${title}</td><td class="fk">${authorId}</td>`;
+            newRow.style.opacity = '0';
+            requestAnimationFrame(() => { newRow.style.opacity = '1'; });
+            
+            if (authorIds.includes(authorId)) {
+                // Success case
+                const authorRow = authorsTable.querySelector(`tbody tr[data-id='${authorId}']`);
+                highlightAndClear([newRow], 'highlight-success');
+                highlightAndClear([authorRow], 'highlight-pk');
+                setTimeout(() => {
+                    showModal('Success!', `The book was added successfully because the <strong>AuthorID ${authorId}</strong> exists in the Authors table. Referential integrity is maintained.`);
+                    animationInProgress = false;
+                    button.disabled = false;
+                }, 800);
+            } else {
+                // Failure case
+                highlightAndClear([newRow], 'highlight-error');
+                setTimeout(() => {
+                    newRow.classList.add('fade-out');
+                    setTimeout(() => {
+                        newRow.remove();
+                        showModal('Integrity Violation!', `The operation failed. You cannot add a book with <strong>AuthorID ${authorId}</strong> because no such author exists. This is referential integrity in action!`);
+                        animationInProgress = false;
+                        button.disabled = false;
+                    }, 800);
+                }, 800);
+            }
+        }
+        
+        // --- Step 3: Cascade Delete Task ---
+        function performCascadeDelete(button) {
+            if (animationInProgress) return;
+            animationInProgress = true;
+            button.disabled = true;
+
+            const authorRow = document.querySelector("#authors-table-s3 tbody tr[data-id='1']");
+            const bookRows = document.querySelectorAll("#books-table-s3 tbody tr[data-author='1']");
+
+            authorRow.classList.add('highlight-error');
+            setTimeout(() => bookRows.forEach(row => row.classList.add('highlight-error')), 500);
+            setTimeout(() => {
+                authorRow.classList.add('fade-out');
+                bookRows.forEach(row => row.classList.add('fade-out'));
+            }, 1500);
+            
+            setTimeout(() => {
+                authorRow.remove();
+                bookRows.forEach(row => row.remove());
+                showModal('Cascading Delete', 'When the author with <strong>AuthorID 1</strong> was deleted, all linked books were automatically deleted. This prevents "orphan" records and maintains data consistency.');
+                animationInProgress = false;
+                // button remains disabled as action is complete
+            }, 2300);
+        }
+        
+        // --- Step 4: Cascade Update Task ---
+        function performCascadeUpdate(button) {
+             if (animationInProgress) return;
+            animationInProgress = true;
+            button.disabled = true;
+
+            const authorRow = document.querySelector("#authors-table-s4 tbody tr[data-id='1']");
+            const authorIdCell = authorRow.querySelector('td:first-child');
+            const bookRows = document.querySelectorAll("#books-table-s4 tbody tr[data-author='1']");
+            
+            authorIdCell.parentElement.classList.add('highlight-pk');
+            setTimeout(() => {
+                authorIdCell.textContent = '10';
+                authorIdCell.parentElement.classList.remove('highlight-pk');
+                authorIdCell.parentElement.classList.add('highlight-success');
+                bookRows.forEach(row => {
+                    const fkCell = row.querySelector('td:last-child');
+                    fkCell.parentElement.classList.add('highlight-fk');
+                    setTimeout(() => {
+                        fkCell.textContent = '10';
+                        fkCell.parentElement.classList.remove('highlight-fk');
+                        fkCell.parentElement.classList.add('highlight-success');
+                    }, 500);
+                });
+            }, 1000);
+
+            setTimeout(() => {
+                document.querySelectorAll('.highlight-success').forEach(el => el.classList.remove('highlight-success'));
+                 showModal('Cascading Update', 'When the <strong>AuthorID</strong> was changed from 1 to 10, the change was automatically "cascaded" to all linked records in the Books table. This keeps the relationship intact.');
+                animationInProgress = false;
+                 // button remains disabled as action is complete
+            }, 2800);
+        }
+
+        // --- Step 5: Quiz Logic ---
+        function checkAllQuestionsAnswered() {
+            return Object.values(quizScores).every(score => score !== null);
+        }
+
+        function showQuizResults() {
+            const score = Object.values(quizScores).filter(s => s === true).length;
+            const total = Object.keys(quizScores).length;
+            document.getElementById('quiz-score').textContent = `You scored ${score} out of ${total}!`;
+            
+            // Smoothly transition from quiz to results
+            quizContainer.style.animation = "fadeOut 0.5s forwards";
+            setTimeout(() => {
+                quizContainer.style.display = 'none';
+                quizContainer.style.animation = '';
+                quizResults.style.display = 'block';
+            }, 500);
+        }
+        
+        // Event delegation for multiple-choice questions
+        quizContainer.addEventListener('click', function(e) {
+            const option = e.target.closest('.options li');
+            if (option) {
+                const questionContainer = option.closest('.question-card');
+                const questionIndex = option.parentElement.dataset.question;
+                const selectedOption = option.dataset.option;
+                const feedbackDiv = questionContainer.querySelector('.feedback');
+                
+                if (quizScores[`q${questionIndex}`] !== null) return; // Already answered
+
+                option.parentElement.querySelectorAll('li').forEach(item => item.classList.remove('selected'));
+                option.classList.add('selected');
+
+                if (selectedOption === quizAnswers[`q${questionIndex}`]) {
+                    feedbackDiv.className = 'feedback correct';
+                    feedbackDiv.textContent = 'Correct! Well done.';
+                    quizScores[`q${questionIndex}`] = true;
+                } else {
+                    feedbackDiv.className = 'feedback incorrect';
+                    feedbackDiv.textContent = 'Not quite. Revisit the rules of relationships.';
+                    quizScores[`q${questionIndex}`] = false;
+                }
+                
+                if (checkAllQuestionsAnswered()) {
+                   setTimeout(showQuizResults, 1200);
+                }
+            }
+        });
+        
+        function markFillInTheBlank(button) {
+            if (quizScores.q1 !== null) return; // Already answered
+            const inputA = document.getElementById('q2-a');
+            const inputB = document.getElementById('q2-b');
+            const feedbackDiv = inputA.closest('.question-card').querySelector('.feedback');
+            
+            const answerA = inputA.value.trim().toLowerCase();
+            const answerB = inputB.value.trim().toLowerCase();
+
+            // Check for a reasonable answer length before marking
+            if (answerA.length < 4 || answerB.length < 5) {
+                feedbackDiv.className = 'feedback incorrect';
+                feedbackDiv.textContent = 'Please provide a full answer for both blanks.';
+                return;
+            }
+
+            if (answerA.includes('foreign') && answerB.includes('primary')) {
+                feedbackDiv.className = 'feedback correct';
+                feedbackDiv.textContent = 'Correct! A foreign key must reference an existing primary key.';
+                quizScores.q1 = true;
+            } else {
+                feedbackDiv.className = 'feedback incorrect';
+                feedbackDiv.textContent = 'Incorrect. The rule is: you cannot add to a table with a FOREIGN key unless the value exists in the PRIMARY table.';
+                quizScores.q1 = false;
+            }
+
+            button.disabled = true; // Disable after marking
+            if (checkAllQuestionsAnswered()) {
+                setTimeout(showQuizResults, 1200);
+            }
+        }
+
+
+        // Global Event Listeners
+        document.addEventListener('keydown', (e) => {
+            if (modal.style.display === 'flex') {
+                if (e.key === 'Escape') closeModal();
+                return;
+            }
+            if (document.activeElement.tagName === 'INPUT') return; // Don't navigate while typing
+            if (e.key === 'ArrowRight') nextStep();
+            if (e.key === 'ArrowLeft') prevStep();
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) { // Only close if clicking the backdrop
+                closeModal();
+            }
+        });
+        
+        // Initial setup on window load
+        window.onload = () => {
+            goToStep(0);
+        };
+
+    </script>
+</body>
+</html>

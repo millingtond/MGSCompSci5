@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Binary Subtraction (Two's Complement)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --primary-color: #16213e;
+            --secondary-color: #0f3460;
+            --accent-color: #e94560;
+            --text-color: #dcdcdc;
+            --highlight-color: #53a8b6;
+            --success-color: #4CAF50;
+            --error-color: #f44336;
+            --font-family: 'Inter', sans-serif;
+            --border-radius: 12px;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 900px;
+            background: rgba(22, 33, 62, 0.7);
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 1rem;
+            color: var(--text-color);
+        }
+
+        .content-area {
+            padding: 25px;
+            flex-grow: 1;
+        }
+        
+        .step {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .step.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            color: var(--highlight-color);
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid var(--highlight-color);
+            padding-bottom: 5px;
+            display: inline-block;
+        }
+
+        p, li {
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .simulation-area {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-top: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .binary-grid {
+            display: grid;
+            grid-template-columns: 30px 65px 1fr;
+            justify-items: start;
+            align-items: center;
+            gap: 10px 5px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 2rem;
+            color: #fff;
+            padding: 15px 0;
+            margin: 10px 0;
+        }
+
+        .grid-operator {
+            grid-column: 1;
+            font-size: 2rem;
+            color: var(--accent-color);
+            justify-self: center;
+        }
+
+        .grid-label {
+            grid-column: 2;
+            font-size: 1.2rem;
+            color: var(--text-color);
+            font-family: var(--font-family);
+            justify-self: end;
+        }
+        
+        .grid-label.carry-label {
+            font-size: 1rem;
+            color: var(--text-color);
+        }
+
+        .bits-container {
+            grid-column: 3;
+            display: flex;
+            position: relative;
+        }
+
+        .bit {
+            width: 35px;
+            height: 45px;
+            line-height: 45px;
+            text-align: center;
+            margin: 0 4px;
+            border: 1px solid var(--text-color);
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            position: relative;
+            will-change: transform, box-shadow, border-color;
+        }
+
+        .bit.toggle-bit, .bit.carry-bit-input {
+            border-style: dashed;
+            border-color: var(--highlight-color);
+            background: rgba(255,255,255,0.1);
+            cursor: pointer;
+        }
+
+        .bit.carry-bit-input {
+            height: 30px;
+            line-height: 30px;
+            font-size: 1.5rem;
+            border-color: rgba(83, 168, 182, 0.5);
+            background-color: rgba(0,0,0,0.2);
+            margin-bottom: 5px; /* space between carry and numbers */
+        }
+
+        .bit.toggle-bit:hover, .bit.interactive-bit:hover, .bit.carry-bit-input:hover {
+            border-style: solid;
+            border-color: var(--highlight-color);
+            box-shadow: 0 0 10px var(--highlight-color);
+        }
+        
+        .bit.highlight {
+             background-color: var(--highlight-color);
+             color: var(--primary-color);
+             border-color: var(--highlight-color);
+             transform: scale(1.1);
+        }
+
+        .bit.flipped, .bit.toggled { animation: flip 0.5s ease-in-out; }
+        .bit.correct-glow { animation: correct-glow 0.6s ease; }
+        .bits-container.incorrect-shake { animation: incorrect-shake 0.4s ease-in-out; }
+
+        @keyframes flip {
+            from { transform: rotateX(0deg); }
+            50% { transform: rotateX(90deg); }
+            to { transform: rotateX(0deg); }
+        }
+
+        @keyframes correct-glow {
+            0%, 100% { box-shadow: 0 0 8px var(--success-color); border-color: var(--success-color); }
+            50% { box-shadow: 0 0 16px var(--success-color); border-color: var(--success-color); }
+        }
+
+        @keyframes incorrect-shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        
+        hr.line {
+            grid-column: 1 / -1;
+            width: 100%;
+            border: 1px solid var(--accent-color);
+            margin: 5px 0;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-btn, .quiz-btn, .reset-btn {
+            background: var(--secondary-color);
+            color: var(--text-color);
+            border: 1px solid var(--highlight-color);
+            padding: 12px 24px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            will-change: transform;
+        }
+        
+        .nav-btn:hover, .quiz-btn:hover, .reset-btn:hover {
+            background: var(--highlight-color);
+            color: var(--primary-color);
+            box-shadow: 0 0 15px var(--highlight-color);
+        }
+        
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: var(--secondary-color);
+            color: var(--text-color);
+            box-shadow: none;
+        }
+        
+        .feedback-correct { color: var(--success-color); }
+        .feedback-incorrect { color: var(--error-color); }
+
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .popup-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .popup-content {
+            background: var(--primary-color);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            border: 1px solid var(--highlight-color);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        
+        .popup-overlay.visible .popup-content {
+            transform: scale(1);
+        }
+
+        .popup-content h3 {
+            color: var(--highlight-color);
+            margin-bottom: 15px;
+        }
+
+        .popup-content p {
+            margin-bottom: 20px;
+        }
+
+        #start-sim-btn, .popup-close-btn {
+            background: var(--accent-color);
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+        }
+        
+        #start-sim-btn:hover, .popup-close-btn:hover {
+            background: #d83a56;
+        }
+        
+        /* Quiz Styles */
+        .quiz-container, .results-container {
+            display: none;
+        }
+        
+        .quiz-question {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+        }
+        
+        .quiz-options {
+            list-style: none;
+            padding: 0;
+            margin-top: 15px;
+        }
+
+        .quiz-options li {
+            background: var(--secondary-color);
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--text-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .quiz-options li:hover {
+            border-color: var(--highlight-color);
+            background: var(--highlight-color);
+            color: var(--primary-color);
+        }
+
+        .quiz-options li.selected {
+            background-color: var(--highlight-color);
+            color: var(--primary-color);
+            border-color: var(--highlight-color);
+            font-weight: bold;
+        }
+
+        .quiz-options li.correct {
+            background-color: var(--success-color);
+            border-color: var(--success-color);
+            color: white;
+        }
+        .quiz-options li.incorrect {
+            background-color: var(--error-color);
+            border-color: var(--error-color);
+            color: white;
+        }
+        
+        .results-container {
+            text-align: center;
+        }
+        
+        #score-display {
+            font-size: 1.8rem;
+            margin: 20px 0;
+        }
+
+        #score-display span {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--highlight-color);
+        }
+        
+        .instruction-box {
+            background: rgba(83, 168, 182, 0.1);
+            border-left: 4px solid var(--highlight-color);
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .instruction-box p {
+            margin: 0;
+        }
+
+        .overflow-bit {
+            color: var(--error-color);
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.5rem; }
+            .header p { font-size: 0.9rem; }
+            .content-area { padding: 15px; }
+            .binary-grid { grid-template-columns: 25px 45px 1fr; font-size: 1.5rem; }
+            .bit { width: 30px; height: 40px; line-height: 40px; }
+        }
+
+        @media (max-width: 480px) {
+            .binary-grid { grid-template-columns: 20px 30px 1fr; }
+            .navigation { flex-direction: column; gap: 10px; }
+            .nav-btn { width: 100%; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <header class="header">
+            <h1>Binary Subtraction: Two's Complement</h1>
+            <p>An interactive guide for A-Level Computer Science (9618)</p>
+        </header>
+
+        <div class="content-area">
+            <!-- Step 0: Introduction -->
+            <div id="step-0" class="step active">
+                <h2>Welcome!</h2>
+                <p>This simulation will guide you through subtracting binary numbers using the <strong>two's complement</strong> method. This is the primary method computers use for subtraction.</p>
+                <p>The core idea is to turn a subtraction problem (A - B) into an addition problem (A + (-B)). To do this, we must first represent the negative number (-B) in binary using two's complement.</p>
+                <div class="instruction-box">
+                    <p><strong>How to use:</strong> Follow the on-screen instructions at each step. Use the "Next" and "Previous" buttons or your keyboard's arrow keys to navigate.</p>
+                </div>
+                <div class="simulation-area">
+                    <p style="text-align:center;">Let's solve the following problem:</p>
+                    <div id="problem-display" class="binary-grid">
+                        <!-- Problem will be generated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 1: Find One's Complement -->
+            <div id="step-1" class="step">
+                <h2>Step 1: Find the One's Complement</h2>
+                <p>First, we need to find the two's complement of the number we are subtracting (the <strong>subtrahend</strong>). The first part of this is to find the <strong>one's complement</strong>.</p>
+                <p>This is simple: just invert all the bits (0 becomes 1, and 1 becomes 0).</p>
+                <div class="instruction-box">
+                    <p><strong>Your Task:</strong> Click each bit of the subtrahend to flip it.</p>
+                </div>
+                <div class="simulation-area">
+                    <p style="text-align:center;">Original Subtrahend (B):</p>
+                    <div id="ones-complement-task" class="binary-grid">
+                       <!-- One's complement task will be generated here -->
+                    </div>
+                    <div id="task-feedback-1" class="task-feedback"></div>
+                </div>
+            </div>
+
+            <!-- Step 2: Find Two's Complement -->
+            <div id="step-2" class="step">
+                <h2>Step 2: Find the Two's Complement</h2>
+                <p>Now that you have the one's complement, you find the <strong>two's complement</strong> by simply adding 1.</p>
+                <div class="instruction-box">
+                    <p><strong>Your Task:</strong> Perform the binary addition. Use the "Carry" row for your notes, and click the "Result" cells to set your answer.</p>
+                </div>
+                <div class="simulation-area">
+                    <div id="twos-complement-task" class="binary-grid">
+                         <!-- Two's complement task will be generated here -->
+                    </div>
+                    <div id="task-feedback-2" class="task-feedback"></div>
+                </div>
+            </div>
+
+            <!-- Step 3: Perform Addition -->
+            <div id="step-3" class="step">
+                <h2>Step 3: Add to the Minuend</h2>
+                <p>Great! You now have the two's complement representation of the negative number (-B).</p>
+                <p>The original subtraction problem (A - B) has now become an addition problem: <strong>A + (Two's Complement of B)</strong>.</p>
+                 <div class="instruction-box">
+                    <p><strong>Your Task:</strong> Add the original number (A) and the two's complement of B. Use the "Carry" row and click the "Result" cells to set the answer.</p>
+                </div>
+                <div class="simulation-area">
+                    <div id="final-addition-task" class="binary-grid">
+                        <!-- Final addition task will be generated here -->
+                    </div>
+                     <div id="task-feedback-3" class="task-feedback"></div>
+                </div>
+            </div>
+
+            <!-- Step 4: Handle Overflow and Final Answer -->
+            <div id="step-4" class="step">
+                <h2>Step 4: The Final Answer</h2>
+                <p>You've performed the final addition. Notice that the result has an extra bit on the left. This is called the <strong>overflow bit</strong>.</p>
+                <p>When using two's complement for subtraction, if there is an overflow bit, it is simply <strong>discarded</strong>. The remaining bits form the final, correct answer.</p>
+                <div class="instruction-box">
+                    <p>The overflow bit is discarded, giving us the final result.</p>
+                </div>
+                <div class="simulation-area">
+                    <p style="text-align:center;">Calculation with Overflow:</p>
+                    <div id="final-answer-display" class="binary-grid">
+                       <!-- Final answer with overflow shown -->
+                    </div>
+                    <p style="text-align:center;">Final Answer (Decimal): <strong id="final-decimal-answer"></strong></p>
+                </div>
+            </div>
+            
+             <!-- Step 5: Quiz -->
+            <div id="step-5" class="step">
+                <h2>Check Your Understanding</h2>
+                <p>You've completed the simulation! Now, let's test your knowledge with a short quiz.</p>
+                <div class="quiz-container">
+                    <div id="quiz-question-container">
+                        <!-- Quiz questions will be injected here -->
+                    </div>
+                    <button id="submit-quiz-btn" class="quiz-btn">Submit Answers</button>
+                </div>
+                <div class="results-container">
+                    <h2>Quiz Results</h2>
+                    <div id="score-display">You scored <span>0/0</span></div>
+                    <div id="quiz-review"></div>
+                    <button class="reset-btn">Try Another Problem</button>
+                </div>
+            </div>
+
+
+        </div>
+
+        <nav class="navigation">
+            <button id="prev-btn" class="nav-btn">Previous Step</button>
+            <span id="step-indicator">Step 1 / 5</span>
+            <button id="next-btn" class="nav-btn">Next Step</button>
+        </nav>
+    </div>
+
+    <!-- Contextual Popups -->
+    <div id="popup-twos-complement" class="popup-overlay">
+        <div class="popup-content">
+            <h3>Two's Complement Achieved!</h3>
+            <p>Excellent! You have successfully converted the subtrahend into its two's complement form. This represents the negative version of the number.</p>
+            <button class="popup-close-btn" data-popup="popup-twos-complement">Continue</button>
+        </div>
+    </div>
+    
+     <div id="popup-final-addition" class="popup-overlay">
+        <div class="popup-content">
+            <h3>Calculation Complete!</h3>
+            <p>You've correctly added the minuend and the two's complement. The last step is to interpret the result.</p>
+            <button class="popup-close-btn" data-popup="popup-final-addition">Show Me</button>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Caching frequently accessed DOM elements ---
+        const dom = {
+            steps: document.querySelectorAll('.step'),
+            prevBtn: document.getElementById('prev-btn'),
+            nextBtn: document.getElementById('next-btn'),
+            stepIndicator: document.getElementById('step-indicator'),
+            problemDisplay: document.getElementById('problem-display'),
+            onesComplementTask: document.getElementById('ones-complement-task'),
+            twosComplementTask: document.getElementById('twos-complement-task'),
+            finalAdditionTask: document.getElementById('final-addition-task'),
+            finalAnswerDisplay: document.getElementById('final-answer-display'),
+            finalDecimalAnswer: document.getElementById('final-decimal-answer'),
+            taskFeedbacks: [
+                null, 
+                document.getElementById('task-feedback-1'),
+                document.getElementById('task-feedback-2'),
+                document.getElementById('task-feedback-3')
+            ],
+            popups: document.querySelectorAll('.popup-overlay'),
+            popupCloseBtns: document.querySelectorAll('.popup-close-btn'),
+            quizContainer: document.querySelector('.quiz-container'),
+            resultsContainer: document.querySelector('.results-container'),
+            quizQuestionContainer: document.getElementById('quiz-question-container'),
+            submitQuizBtn: document.getElementById('submit-quiz-btn'),
+            scoreDisplay: document.getElementById('score-display'),
+            quizReview: document.getElementById('quiz-review'),
+            resetBtns: document.querySelectorAll('.reset-btn'),
+            contentArea: document.querySelector('.content-area')
+        };
+
+        // --- Application State ---
+        let state = {
+            currentStep: 0,
+            totalSteps: 5,
+            minuendDec: 0,
+            subtrahendDec: 0,
+            minuendBin: '',
+            subtrahendBin: '',
+            onesComplement: '',
+            twosComplement: '',
+            finalSum: '',
+            isLocked: false,
+        };
+        
+        // --- Quiz Data ---
+        const quizQuestions = [
+            { question: "What is the primary purpose of using two's complement in computing?", type: 'mcq', options: ["To represent floating-point numbers.", "To allow for subtraction using addition hardware.", "To increase the range of positive numbers that can be stored.", "To detect errors in data transmission."], answer: "To allow for subtraction using addition hardware." },
+            { question: "If you have an 8-bit number, and a two's complement subtraction results in a 9th bit (overflow), what do you do with that 9th bit?", type: 'mcq', options: ["It indicates an error has occurred.", "You add it to the result.", "It becomes the new sign bit.", "You discard it."], answer: "You discard it." },
+            { question: "What is the 8-bit two's complement of the binary number 00001101?", type: 'input', answer: "11110011", placeholder: "Enter 8 bits" },
+            { question: "How is the one's complement of a binary number found?", type: 'mcq', options: ["Add 1 to the number.", "Shift all bits to the left.", "Invert all the bits (0s to 1s and 1s to 0s).", "Swap the first and last bit."], answer: "Invert all the bits (0s to 1s and 1s to 0s)." }
+        ];
+
+
+        // --- Core Functions ---
+        
+        const generateProblem = () => {
+            state.minuendDec = Math.floor(Math.random() * 100) + 28; 
+            state.subtrahendDec = Math.floor(Math.random() * state.minuendDec); 
+            
+            state.minuendBin = state.minuendDec.toString(2).padStart(8, '0');
+            state.subtrahendBin = state.subtrahendDec.toString(2).padStart(8, '0');
+
+            state.onesComplement = state.subtrahendBin.split('').map(b => (b === '0' ? '1' : '0')).join('');
+            
+            const twosCompDec = parseInt(state.onesComplement, 2) + 1;
+            state.twosComplement = (twosCompDec).toString(2).padStart(8,'0').slice(-8);
+            
+            const finalSumDec = state.minuendDec + parseInt(state.twosComplement, 2);
+            state.finalSum = finalSumDec.toString(2).padStart(9, '0');
+        };
+
+        const renderStep = () => {
+            dom.steps.forEach((step, index) => step.classList.toggle('active', index === state.currentStep));
+            dom.stepIndicator.textContent = `Step ${state.currentStep + 1} / ${state.totalSteps}`;
+            dom.prevBtn.disabled = state.currentStep === 0;
+            dom.nextBtn.disabled = true;
+
+            if ([0, 4, 5].includes(state.currentStep)) {
+                 dom.nextBtn.disabled = false;
+            }
+            
+            switch(state.currentStep) {
+                case 0: renderProblemDisplay(); break;
+                case 1: renderOnesComplementTask(); break;
+                case 2: renderTwosComplementTask(); break;
+                case 3: renderFinalAdditionTask(); break;
+                case 4: renderFinalAnswer(); break;
+                case 5: renderQuiz(); break;
+            }
+        };
+
+        const createBitsHTML = (bitString, classes = []) => {
+            return `<div class="bits-container">${bitString.split('').map(b => `<div class="bit ${classes.join(' ')}">${b}</div>`).join('')}</div>`;
+        };
+        
+        const triggerFeedbackAnimation = (bitsContainer, feedbackType) => {
+            if (!bitsContainer) return; 
+            if (feedbackType === 'correct') {
+                bitsContainer.querySelectorAll('.bit').forEach(b => b.classList.add('correct-glow'));
+            } else {
+                bitsContainer.classList.add('incorrect-shake');
+            }
+            bitsContainer.addEventListener('animationend', () => {
+                bitsContainer.classList.remove('incorrect-shake');
+                bitsContainer.querySelectorAll('.bit').forEach(b => b.classList.remove('correct-glow'));
+            }, { once: true });
+        };
+
+        // --- Step-Specific Rendering and Logic ---
+
+        const renderProblemDisplay = () => {
+            const decimalProblem = `(${state.minuendDec} - ${state.subtrahendDec})`;
+            dom.problemDisplay.innerHTML = `
+                <div></div><div class="grid-label">A</div>${createBitsHTML(state.minuendBin)}
+                <div class="grid-operator">-</div><div class="grid-label">B</div>${createBitsHTML(state.subtrahendBin)}
+                <p style="grid-column: 1 / -1; font-size: 1.2rem; margin-top: 10px; text-align: center;">${decimalProblem}</p>
+            `;
+        };
+
+        const renderOnesComplementTask = () => {
+            const bitsHTML = createBitsHTML(state.subtrahendBin, ['interactive-bit']);
+            dom.onesComplementTask.innerHTML = `<div></div><div class="grid-label">B</div>${bitsHTML}`;
+            dom.taskFeedbacks[1].textContent = '';
+            state.isLocked = false; 
+        };
+        
+        const handleBitFlip = (e) => {
+            if (state.isLocked) return;
+            const bitDiv = e.target;
+            bitDiv.textContent = bitDiv.textContent === '0' ? '1' : '0';
+            bitDiv.classList.add('flipped');
+            bitDiv.addEventListener('animationend', () => bitDiv.classList.remove('flipped'), { once: true });
+            checkOnesComplement();
+        };
+
+        const checkOnesComplement = () => {
+            const interactiveBits = dom.onesComplementTask.querySelectorAll('.interactive-bit');
+            const bitsContainer = interactiveBits.length > 0 ? interactiveBits[0].parentElement : null;
+            const flippedBits = Array.from(interactiveBits).map(b => b.textContent).join('');
+            
+            if (flippedBits === state.onesComplement) {
+                dom.taskFeedbacks[1].textContent = 'Correct! This is the one\'s complement.';
+                dom.taskFeedbacks[1].className = 'task-feedback feedback-correct';
+                dom.nextBtn.disabled = false;
+                state.isLocked = true;
+                triggerFeedbackAnimation(bitsContainer, 'correct');
+                interactiveBits.forEach(bit => bit.style.cursor = 'default');
+            }
+        };
+
+        const renderTwosComplementTask = () => {
+            const carryBitsHTML = createBitsHTML('0'.repeat(8), ['carry-bit-input']);
+            const toggleBitsHTML = createBitsHTML('0'.repeat(8), ['toggle-bit']);
+            dom.twosComplementTask.innerHTML = `
+                <div></div><div class="grid-label carry-label">Carry</div>${carryBitsHTML}
+                <div></div><div class="grid-label">1's Comp</div>${createBitsHTML(state.onesComplement)}
+                <div class="grid-operator">+</div><div class="grid-label"></div>${createBitsHTML('00000001')}
+                <hr class="line">
+                <div></div><div class="grid-label">Result</div>${toggleBitsHTML}
+            `;
+            dom.taskFeedbacks[2].textContent = '';
+            state.isLocked = false;
+        };
+        
+        const checkTwosComplement = () => {
+            const toggleBits = dom.twosComplementTask.querySelectorAll('.toggle-bit');
+            const bitsContainer = toggleBits.length > 0 ? toggleBits[0].parentElement : null;
+            const userInput = Array.from(toggleBits).map(b => b.textContent).join('');
+
+            if(userInput === state.twosComplement) {
+                dom.taskFeedbacks[2].textContent = 'Correct! This is the two\'s complement.';
+                dom.taskFeedbacks[2].className = 'task-feedback feedback-correct';
+                dom.nextBtn.disabled = false;
+                state.isLocked = true;
+                triggerFeedbackAnimation(bitsContainer, 'correct');
+                showPopup('popup-twos-complement');
+            } else {
+                 dom.taskFeedbacks[2].textContent = 'Not quite right. Check your binary addition.';
+                 dom.taskFeedbacks[2].className = 'task-feedback feedback-incorrect';
+                 triggerFeedbackAnimation(bitsContainer, 'incorrect');
+            }
+        };
+        
+        const renderFinalAdditionTask = () => {
+            const carryBitsHTML = createBitsHTML('0'.repeat(9), ['carry-bit-input']);
+            const toggleBitsHTML = createBitsHTML('0'.repeat(9), ['toggle-bit']);
+            dom.finalAdditionTask.innerHTML = `
+                <div></div><div class="grid-label carry-label">Carry</div>${carryBitsHTML}
+                <div></div><div class="grid-label">A</div>${createBitsHTML(state.minuendBin.padStart(9,'0'))}
+                <div class="grid-operator">+</div><div class="grid-label">-B</div>${createBitsHTML(state.twosComplement.padStart(9,'0'))}
+                <hr class="line">
+                <div></div><div class="grid-label">Result</div>${toggleBitsHTML}
+            `;
+            dom.taskFeedbacks[3].textContent = '';
+            state.isLocked = false;
+        };
+
+        const checkFinalAddition = () => {
+            const toggleBits = dom.finalAdditionTask.querySelectorAll('.toggle-bit');
+            const bitsContainer = toggleBits.length > 0 ? toggleBits[0].parentElement : null;
+            const userInput = Array.from(toggleBits).map(b => b.textContent).join('');
+
+            if(userInput === state.finalSum) {
+                 dom.taskFeedbacks[3].textContent = 'Correct! Now for the final step.';
+                 dom.taskFeedbacks[3].className = 'task-feedback feedback-correct';
+                 dom.nextBtn.disabled = false;
+                 state.isLocked = true;
+                 triggerFeedbackAnimation(bitsContainer, 'correct');
+                 showPopup('popup-final-addition');
+            } else {
+                dom.taskFeedbacks[3].textContent = 'There seems to be an error in your addition. Try again.';
+                dom.taskFeedbacks[3].className = 'task-feedback feedback-incorrect';
+                triggerFeedbackAnimation(bitsContainer, 'incorrect');
+            }
+        };
+
+        const renderFinalAnswer = () => {
+            const overflowBitHTML = `<div class="bit overflow-bit">${state.finalSum[0]}</div>`;
+            const answerBitsHTML = state.finalSum.slice(1).split('').map(b => `<div class="bit highlight">${b}</div>`).join('');
+            const fullResultHTML = `<div class="bits-container">${overflowBitHTML}${answerBitsHTML}</div>`;
+
+            dom.finalAnswerDisplay.innerHTML = `<div></div><div class="grid-label">Final</div>${fullResultHTML}`;
+            
+            const finalDecimal = state.minuendDec - state.subtrahendDec;
+            dom.finalDecimalAnswer.textContent = `${finalDecimal} (since ${state.minuendDec} - ${state.subtrahendDec} = ${finalDecimal})`;
+            dom.nextBtn.disabled = false;
+        };
+
+        const renderQuiz = () => {
+            dom.nextBtn.disabled = true;
+            dom.quizContainer.style.display = 'block';
+            dom.resultsContainer.style.display = 'none';
+            dom.submitQuizBtn.style.display = 'block';
+            
+            dom.quizQuestionContainer.innerHTML = quizQuestions.map((q, index) => {
+                const questionHTML = `<p><strong>Question ${index + 1}:</strong> ${q.question}</p>`;
+                if (q.type === 'mcq') {
+                    const optionsHTML = q.options.map(option => `<li data-answer="${option}">${option}</li>`).join('');
+                    return `<div class="quiz-question" data-q-index="${index}">${questionHTML}<ul class="quiz-options">${optionsHTML}</ul></div>`;
+                }
+                return `<div class="quiz-question" data-q-index="${index}">${questionHTML}<input type="text" class="quiz-input" placeholder="${q.placeholder || 'Your answer here'}"></div>`;
+            }).join('');
+        };
+        
+        const handleToggleBit = (checkFunction, e) => {
+            if (state.isLocked && !e.target.matches('.carry-bit-input')) return;
+            const bitDiv = e.target;
+            bitDiv.textContent = bitDiv.textContent === '0' ? '1' : '0';
+            bitDiv.classList.add('toggled');
+            bitDiv.addEventListener('animationend', () => bitDiv.classList.remove('toggled'), { once: true });
+            
+            if (checkFunction) {
+                checkFunction();
+            }
+        };
+
+        const handleSubmitQuiz = () => {
+            let score = 0;
+            const questions = dom.quizQuestionContainer.querySelectorAll('.quiz-question');
+            
+            questions.forEach((qEl, index) => {
+                const question = quizQuestions[index];
+                if (question.type === 'mcq') {
+                    const selected = qEl.querySelector('.quiz-options li.selected');
+                    if (selected && selected.dataset.answer === question.answer) score++;
+                } else if (question.type === 'input') {
+                    const input = qEl.querySelector('.quiz-input');
+                    if (input.value.trim().replace(/\s+/g, '') === question.answer) score++;
+                }
+            });
+
+            dom.scoreDisplay.innerHTML = `You scored <span>${score}/${quizQuestions.length}</span>`;
+            showQuizReview();
+            dom.quizContainer.style.display = 'none';
+            dom.resultsContainer.style.display = 'block';
+            dom.submitQuizBtn.style.display = 'none';
+        };
+
+        const showQuizReview = () => {
+            dom.quizReview.innerHTML = quizQuestions.map((q, index) => {
+                const qEl = dom.quizQuestionContainer.querySelector(`[data-q-index="${index}"]`);
+                let userAnswerHTML = '';
+                if (q.type === 'mcq') {
+                    const selected = qEl.querySelector('.quiz-options li.selected');
+                    userAnswerHTML = `Your answer: ${selected ? selected.dataset.answer : 'Not answered'}`;
+                } else {
+                    userAnswerHTML = `Your answer: ${qEl.querySelector('.quiz-input').value || 'Not answered'}`;
+                }
+                return `<div class="quiz-question"><p><strong>Q${index+1}: ${q.question}</strong></p><p>${userAnswerHTML}<br>Correct answer: ${q.answer}</p></div>`;
+            }).join('');
+        };
+        
+        function showPopup(popupId) {
+            const popup = document.getElementById(popupId);
+            popup.classList.add('visible');
+        }
+
+        function hidePopup(popupId) {
+            const popup = document.getElementById(popupId);
+            popup.classList.remove('visible');
+        }
+
+        const next = () => {
+            if (state.currentStep < state.totalSteps) {
+                state.currentStep++;
+                renderStep();
+            }
+        };
+
+        const prev = () => {
+            if (state.currentStep > 0) {
+                state.currentStep--;
+                renderStep();
+            }
+        };
+        
+        const resetSimulation = () => {
+            state.currentStep = 0;
+            state.isLocked = false;
+            generateProblem();
+            renderStep();
+        };
+
+        // --- Event Delegation Setup ---
+        dom.contentArea.addEventListener('click', (e) => {
+            const target = e.target;
+            if (target.matches('.interactive-bit')) {
+                handleBitFlip(e);
+            } else if (target.matches('.carry-bit-input')) {
+                handleToggleBit(null, e);
+            } else if (target.matches('.toggle-bit')) {
+                if (target.closest('#twos-complement-task')) {
+                    handleToggleBit(checkTwosComplement, e);
+                } else if (target.closest('#final-addition-task')) {
+                    handleToggleBit(checkFinalAddition, e);
+                }
+            } else if (target.matches('.quiz-options li')) {
+                target.parentElement.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
+                target.classList.add('selected');
+            }
+        });
+
+        // --- Standard Event Listeners ---
+        dom.nextBtn.addEventListener('click', next);
+        dom.prevBtn.addEventListener('click', prev);
+        
+        dom.popupCloseBtns.forEach(btn => btn.addEventListener('click', () => hidePopup(btn.dataset.popup)));
+        
+        dom.submitQuizBtn.addEventListener('click', handleSubmitQuiz);
+        
+        dom.resetBtns.forEach(btn => btn.addEventListener('click', resetSimulation));
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            if (e.key === 'ArrowRight' && !dom.nextBtn.disabled) next();
+            if (e.key === 'ArrowLeft' && !dom.prevBtn.disabled) prev();
+        });
+
+        // --- Initialization ---
+        generateProblem();
+        renderStep();
+    });
+    </script>
+</body>
+</html>

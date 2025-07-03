@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Systems: Binary & Hexadecimal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
+        .lesson-header-glow {
+            animation: lessonHeaderGlow 3s ease-in-out infinite;
+        }
+        @keyframes lessonHeaderGlow {
+            0%, 100% { text-shadow: 0 0 10px #fff, 0 0 20px #8b5cf6, 0 0 30px #8b5cf6, 0 0 40px #8b5cf6; } /* Purple Glow */
+            50% { text-shadow: 0 0 20px #fff, 0 0 30px #6366f1, 0 0 40px #6366f1, 0 0 50px #6366f1; } /* Indigo Glow */
+        }
+        .achievement-unlocked {
+            animation: achievementPopBinHex 0.6s ease-out;
+            opacity: 1 !important;
+        }
+        @keyframes achievementPopBinHex {
+            0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+            60% { transform: scale(1.2) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); padding-top: 60px; }
+        .modal-content { background-color: #1f2937; color: #e5e7eb; margin: 5% auto; padding: 24px; border: 1px solid #4f46e5; width: 80%; max-width: 500px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-close { color: #9ca3af; float: right; font-size: 28px; font-weight: bold; }
+        .modal-close:hover, .modal-close:focus { color: #e5e7eb; text-decoration: none; cursor: pointer; }
+        #modalMessageTextBinHex { font-size: 1.125rem; line-height: 1.75rem; }
+
+        .reset-button {
+            background-color: #ef4444; /* Tailwind red-500 */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: background-color 0.2s ease-in-out;
+            border: none;
+            cursor: pointer;
+        }
+        .reset-button:hover { background-color: #dc2626; /* Tailwind red-600 */ }
+        
+        section p, section li { font-size: 1rem; line-height: 1.625; }
+        section h3 { font-size: 1.125rem; }
+
+        /* Binary Adder Grid Styling */
+        .binary-adder-grid-container {
+            display: grid;
+            grid-template-columns: 35px repeat(9, 32px); /* Label col + 9 bit cols (1 overflow + 8 bits) */
+            gap: 3px; 
+            justify-content: center; 
+            font-family: monospace;
+            margin-bottom: 1rem;
+            align-items: center; 
+        }
+        .grid-label {
+            grid-column: 1 / 2; 
+            text-align: right;
+            color: #a5b4fc; /* Indigo-300 */
+            font-weight: bold;
+            padding-right: 5px; 
+            align-self: center; 
+        }
+        .grid-bit { /* Base style for all bit boxes */
+            width: 30px;
+            height: 30px;
+            line-height: 30px;
+            text-align: center;
+            border: 1px solid #4b5563; 
+            background-color: #374151; 
+            color: #e5e7eb; 
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .grid-bit.static-bit { /* For A and B number rows */
+            background-color: #262b36; 
+            cursor: default;
+        }
+        .grid-bit.input-bit { /* For S (Sum) and O (Overflow) student clickable input */
+            background-color: #6d28d9; /* Purple-700 */
+            color: white;
+            cursor: pointer;
+            user-select: none;
+        }
+        .grid-bit.input-bit:hover {
+            background-color: #8b5cf6; /* Purple-500 */
+        }
+        .grid-bit.carry-input { /* For C (Carry) student typed input */
+            background-color: #4b5563; /* Slightly lighter than static bits, gray-600 */
+            color: #facc15; /* Yellow text for carry */
+            font-size: 0.9rem; /* Make carry text slightly smaller */
+            height: 25px; /* Make carry boxes slightly shorter */
+            line-height: 25px;
+            padding: 0; /* Remove padding for input text */
+        }
+        .grid-bit.placeholder { /* For empty spots in A and B rows for alignment */
+            background-color: transparent;
+            border-color: transparent;
+        }
+        .grid-line-span {
+            grid-column: 2 / span 9; 
+            height: 2px;
+            background-color: #6b7280; 
+            margin: 5px 0; 
+        }
+
+
+        /* Canvas for Working Out */
+        .working-out-canvas { border: 1px dashed #4f46e5; border-radius: 0.375rem; cursor: crosshair; background-color: #312e811a; transition: height 0.3s ease-in-out; }
+        .working-out-canvas.default-size { width:100%; height: 100px; }
+        .working-out-canvas.expanded-size { width:100%; height: 250px; }
+        .canvas-controls button { background-color: #7e22ce; color:white; padding: 0.25rem 0.5rem; font-size:0.75rem; border-radius:0.25rem; margin-top:0.25rem; margin-left: 0.25rem;}
+        .canvas-controls button:hover { background-color: #6b21a8; }
+
+        /* Conversion Guide Styling */
+        .conversion-guide { background-color: #2c2a4a; border: 1px solid #4f46e5; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; }
+        .conversion-guide h4 { color: #a5b4fc; margin-bottom: 0.75rem; font-size: 1.2rem; }
+        .conversion-step { margin-bottom: 0.75rem; padding: 0.75rem; background-color: #373063; border-radius: 0.25rem;}
+        .conversion-step strong { color: #c7d2fe; } /* Lighter color for emphasis */
+        .conversion-step code { background-color: #4f46e5; color: #e0e7ff; padding: 0.1em 0.4em; border-radius: 0.2em; font-family: monospace; }
+        .conversion-example { margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px dashed #4338ca; font-style: italic; color: #c7d2fe; }
+        .arrow-visual { color: #8b5cf6; margin: 0 0.5rem; font-weight: bold; }
+
+        /* Color Picker Styling */
+        .color-swatch { width: 100px; height: 100px; border: 2px solid #fff; border-radius: 8px; margin: 10px auto; transition: background-color 0.3s; }
+        input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; background: #4338ca; border-radius: 5px; outline: none; opacity: 0.7; transition: opacity .2s; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; background: #8b5cf6; border-radius: 50%; cursor: pointer; }
+        input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; background: #8b5cf6; border-radius: 50%; cursor: pointer; border:0; }
+
+         /* General Quiz Option Styling (for Hex Professions) */
+        .quiz-option label { display: block; padding: 0.75rem; border: 2px solid #4338ca; border-radius: 0.375rem; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; background-color: #312e81; color: #c7d2fe;}
+        .quiz-option input[type="radio"]:checked + label { background-color: #8b5cf6; border-color: #a78bfa; color: #1e1b4b; font-weight:bold; }
+        .quiz-option input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
+
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 via-indigo-900 to-purple-900 min-h-screen p-4 md:p-8 text-gray-200">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-12 relative">
+            <h1 class="text-4xl md:text-6xl font-bold lesson-header-glow mb-3 relative z-10">
+                Number Systems: Binary & Hexadecimal <i class="fas fa-cogs text-indigo-300"></i>
+            </h1>
+            <p class="text-gray-400 text-lg md:text-xl relative z-10">Explore binary operations and the utility of hexadecimal.</p>
+            
+            <div class="mt-8 bg-gray-800 rounded-full p-2 shadow-xl max-w-lg mx-auto relative z-10 border border-indigo-500">
+                <div class="flex items-center justify-between">
+                    <span id="levelDisplayBinHex" class="text-sm font-semibold text-gray-300 ml-4">Level 1: Binary Beginner</span>
+                    <span class="text-sm font-semibold text-purple-400 mr-4"><span id="xpPointsBinHex">0</span> XP</span>
+                </div>
+                <div class="bg-gray-700 rounded-full h-4 mt-2 mx-1">
+                    <div id="xpBarBinHex" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="mb-10 bg-gray-800/80 backdrop-blur-md p-3 rounded-lg shadow-lg sticky top-4 z-50 border border-indigo-700">
+            <ul class="flex flex-wrap justify-center gap-x-3 md:gap-x-4 gap-y-2">
+                <li><a href="#section-binhex-starter" class="text-sm md:text-base text-indigo-300 hover:text-purple-300 font-medium">🤔 Starter</a></li>
+                <li><a href="#section-binary-addition" class="text-sm md:text-base text-indigo-300 hover:text-purple-300 font-medium">➕ Binary Addition</a></li>
+                <li><a href="#section-hello-hex" class="text-sm md:text-base text-indigo-300 hover:text-purple-300 font-medium">HEX️⃣ Bin↔Hex</a></li>
+                <li><a href="#section-dec-hex-bridge" class="text-sm md:text-base text-indigo-300 hover:text-purple-300 font-medium">🌉 Dec↔Hex</a></li>
+                <li><a href="#section-hex-colors-professions" class="text-sm md:text-base text-indigo-300 hover:text-purple-300 font-medium">🎨 Hex Uses</a></li>
+                <li><a href="#section-binhex-exam-prep" class="text-sm md:text-base text-indigo-300 hover:text-purple-300 font-medium">📝 Exam Prep</a></li>
+                <li><a href="#section-binhex-extensions" class="text-sm md:text-base text-indigo-300 hover:text-purple-300 font-medium">🚀 Extensions</a></li>
+                <li><a href="#section-binhex-achievements" class="text-sm md:text-base text-indigo-300 hover:text-purple-300 font-medium">🏆 Achievements</a></li>
+            </ul>
+        </nav>
+
+        <!-- Section 1: Starter - Hexadecimal Knowledge Check -->
+        <section id="section-binhex-starter" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-indigo-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-indigo-400">🤔 Starter: Hexadecimal Brainstorm</h2>
+                <button onclick="resetBinHexStarter(false)" class="reset-button">Reset Starter</button>
+            </div>
+            <p class="text-gray-300 mb-4">Let's start by thinking about Hexadecimal (often called "Hex").</p>
+            <div class="bg-gray-700/50 p-4 rounded-lg mb-6">
+                <label for="starterHexKnowledge" class="block font-semibold text-indigo-300 mb-2">Consider these questions:</label>
+                 <ul class="list-disc list-inside text-gray-300 mb-3 pl-4 text-sm">
+                    <li>What do you believe hexadecimal is?</li>
+                    <li>What purposes do you think it serves in computing?</li>
+                    <li>Why might it be preferred over binary in certain situations?</li>
+                </ul>
+                <textarea id="starterHexKnowledge" class="w-full p-3 bg-gray-700 border-2 border-gray-600 rounded-md focus:border-indigo-500 focus:ring-indigo-500 text-gray-200 h-32" placeholder="Jot down your initial ideas here..." onblur="checkStarterHexKnowledge()"></textarea>
+                <div id="starterHexKnowledgeFeedback" class="mt-3 p-2 bg-gray-700 rounded-lg text-gray-300 min-h-[30px] text-sm"></div>
+            </div>
+        </section>
+
+        <!-- Section 2: Binary Addition -->
+        <section id="section-binary-addition" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-purple-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-purple-400">➕ Task 1: Binary Addition (8-bit)</h2>
+                <button onclick="resetBinaryAddition(false)" class="reset-button">Reset Task</button>
+            </div>
+            <p class="text-gray-300 mb-2">Binary addition follows simple rules. For each column (from right to left):</p>
+            <ul class="list-disc list-inside text-gray-300 mb-4 pl-4 space-y-1 text-sm">
+                <li>0 + 0 = 0</li>
+                <li>0 + 1 = 1</li>
+                <li>1 + 0 = 1</li>
+                <li>1 + 1 = 0, carry 1</li>
+            </ul>
+            <p class="text-gray-300 mb-4">For the questions below, the numbers to be added (A and B) are given. You can type '0' or '1' into the 'C' (Carry) row boxes for your working. Click the S (Sum) and O (Overflow) bits to input your final answer. Only S and O are checked.</p>
+            
+            <div id="binaryAdditionQuestionsContainer" class="space-y-10">
+                <!-- Questions will be populated by JS using CSS Grid -->
+            </div>
+        </section>
+
+        <!-- Section 3: Binary & Hexadecimal Conversions -->
+        <section id="section-hello-hex" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-sky-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-sky-400">HEX️⃣ Task 2: Binary & Hexadecimal Conversions</h2>
+                <button onclick="resetHelloHex(false)" class="reset-button">Reset Task</button>
+            </div>
+            <p class="text-gray-300 mb-4">Hexadecimal (Base-16) uses digits 0-9 and letters A-F (where A is 10, B is 11, ..., F is 15). It's a handy way to write long binary numbers because <strong>one hexadecimal digit represents exactly four binary digits</strong> (also called a nibble).</p>
+            
+            <div class="conversion-guide">
+                <h4>Guide: How to Convert Binary to Hexadecimal</h4>
+                <div class="conversion-step"><strong>Step 1: Group the Binary Bits.</strong> Starting from the right-hand side of the binary number, split it into groups of four bits. If the last group on the left doesn't have four bits, add leading zeros to it (e.g., binary <code>101</code> becomes <code>0101</code>).</div>
+                <div class="conversion-step"><strong>Step 2: Convert Each Group to Hex.</strong> Take each group of four binary bits and convert it into its single hexadecimal equivalent. Use this table if you need a reminder:
+                    <ul class="list-disc list-inside pl-5 mt-1 text-sm text-gray-300">
+                        <li><code>0000</code> = 0, <code>0001</code> = 1, ..., <code>0111</code> = 7</li>
+                        <li><code>1000</code> = 8, ..., <code>1001</code> = 9, <code>1010</code> = A, ..., <code>1111</code> = F</li>
+                    </ul>
+                </div>
+                <div class="conversion-step"><strong>Step 3: Combine the Hex Digits.</strong> Write down the hexadecimal digits you found, in the same order as their binary groups.</div>
+                <div class="conversion-example"><strong>Example:</strong> Convert binary <code>11010101</code> to Hex.<br>
+                    1. Group into fours from the right: <code>1101</code> and <code>0101</code>.<br>
+                    2. Convert: <code>1101</code> is <code>D</code> in hex. <code>0101</code> is <code>5</code> in hex.<br>
+                    3. Combine: The hexadecimal is <code>D5</code>.
+                </div>
+            </div>
+
+            <div class="conversion-guide">
+                <h4>Guide: How to Convert Hexadecimal to Binary</h4>
+                <div class="conversion-step"><strong>Step 1: Take Each Hex Digit.</strong> Look at each digit of the hexadecimal number one by one.</div>
+                <div class="conversion-step"><strong>Step 2: Convert to 4-Bit Binary.</strong> Change each hexadecimal digit into its 4-bit binary string. It's important that each binary group has exactly four bits, so add leading zeros if the binary equivalent is shorter (e.g., Hex <code>2</code> is Binary <code>0010</code>, not just <code>10</code>).</div>
+                <div class="conversion-step"><strong>Step 3: Combine the Binary Groups.</strong> Put all the 4-bit binary strings together in the same order as the original hex digits.</div>
+                 <div class="conversion-example"><strong>Example:</strong> Convert Hexadecimal <code>A7</code> to Binary.<br>
+                    1. Digits are: <code>A</code> and <code>7</code>.<br>
+                    2. Convert: Hex <code>A</code> (which is 10 in decimal) is Binary <code>1010</code>. Hex <code>7</code> is Binary <code>0111</code>.<br>
+                    3. Combine: The binary number is <code>10100111</code>.
+                </div>
+            </div>
+            <div id="hexConversionPracticeContainer"> <!-- JS will populate practice Qs here --> </div>
+        </section>
+
+        <!-- Section 4: Decimal & Hexadecimal Conversions -->
+        <section id="section-dec-hex-bridge" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-fuchsia-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-fuchsia-400">🌉 Task 3: Decimal & Hexadecimal Conversions</h2>
+                 <button onclick="resetDecHexBridge(false)" class="reset-button">Reset Task</button>
+            </div>
+            <p class="text-gray-300 mb-4">Now, let's learn how to convert between decimal numbers (what we use every day, Base-10) and hexadecimal (Base-16).</p>
+
+            <div class="conversion-guide">
+                <h4>Guide: How to Convert Decimal to Hexadecimal</h4>
+                <div class="conversion-step"><strong>Step 1: Divide by 16.</strong> Take your decimal number and divide it by 16. Write down the whole number part of the answer (this is your new "quotient") and also note the remainder.</div>
+                <div class="conversion-step"><strong>Step 2: Convert Remainder to Hex.</strong> The remainder will be a number from 0 to 15. Convert this number into its single hexadecimal digit (0-9 are themselves, 10 becomes A, 11 becomes B, ..., 15 becomes F). This hex digit is part of your answer.</div>
+                <div class="conversion-step"><strong>Step 3: Repeat with the Quotient.</strong> Take the whole number quotient you got in Step 1. If this quotient is not 0, use it as your new decimal number and go back to Step 1.</div>
+                <div class="conversion-step"><strong>Step 4: Collect Remainders.</strong> Keep repeating Steps 1-3 until your quotient becomes 0. The hexadecimal number is formed by all the hex remainders you collected, written in reverse order (the last remainder you calculated is the leftmost digit of your hex number, and the first remainder is the rightmost).</div>
+                <div class="conversion-example"><strong>Example:</strong> Convert Decimal <code>250</code> to Hex.<br>
+                    1. <code>250 ÷ 16 = 15</code> with a remainder of <code>10</code>. Remainder 10 is Hex <code>A</code>. New quotient is 15.<br>
+                    2. Take quotient <code>15</code>: <code>15 ÷ 16 = 0</code> with a remainder of <code>15</code>. Remainder 15 is Hex <code>F</code>. New quotient is 0.<br>
+                    3. Quotient is 0, so we stop. Read the collected hex remainders in reverse order of calculation: <code>F</code> then <code>A</code>.<br>
+                    So, Decimal <code>250</code> is Hexadecimal <code>FA</code>.
+                </div>
+            </div>
+
+            <div class="conversion-guide">
+                <h4>Guide: How to Convert Hexadecimal to Decimal</h4>
+                <div class="conversion-step"><strong>Step 1: Note Hex Digits and Positions.</strong> Write down your hexadecimal number. Assign a position to each digit, starting with 0 for the rightmost digit, 1 for the next, 2 for the one after that, and so on.</div>
+                <div class="conversion-step"><strong>Step 2: Convert Hex Digits to Decimal Values.</strong> For each digit in your hex number, find its decimal equivalent (e.g., A=10, B=11, ... F=15; digits 0-9 are the same).</div>
+                <div class="conversion-step"><strong>Step 3: Multiply by Powers of 16.</strong> For each hex digit, take its decimal value (from Step 2) and multiply it by 16 raised to the power of its position (from Step 1). So, for a digit at position 'p', you calculate (decimal value of digit) × 16<sup>p</sup>.</div>
+                <div class="conversion-step"><strong>Step 4: Add Them Up.</strong> Sum all the results you calculated in Step 3. This total is your decimal number.</div>
+                <div class="conversion-example"><strong>Example:</strong> Convert Hexadecimal <code>1BC</code> to Decimal.<br>
+                    Digits & Positions: <code>C</code> (pos 0), <code>B</code> (pos 1), <code>1</code> (pos 2).<br>
+                    Decimal Values: C &rarr; 12, B &rarr; 11, 1 &rarr; 1.<br>
+                    Calculations:<br>
+                    For C (pos 0): 12 × 16<sup>0</sup> = 12 × 1 = 12.<br>
+                    For B (pos 1): 11 × 16<sup>1</sup> = 11 × 16 = 176.<br>
+                    For 1 (pos 2): 1 × 16<sup>2</sup> = 1 × 256 = 256.<br>
+                    Add Results: <code>12 + 176 + 256 = 444</code>. So, Hex <code>1BC</code> is Decimal <code>444</code>.
+                </div>
+            </div>
+            <div id="decHexConversionPracticeContainer"> <!-- JS will populate practice Qs here --> </div>
+        </section>
+
+        <!-- Section 5: Hex Color Picker & Professions Challenge -->
+        <section id="section-hex-colors-professions" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-rose-500">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-rose-400">🎨 Task 4: Hex Uses - Colors & Professions</h2>
+                 <button onclick="resetHexColorsProfessions(false)" class="reset-button">Reset Task</button>
+            </div>
+            <p class="text-gray-300 mb-2">Hexadecimal is famously used for colors on the web! A 6-digit hex code #RRGGBB defines a color, where RR is Red, GG is Green, and BB is Blue (00-FF for each component, representing decimal 0-255).</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center mb-6">
+                <div class="bg-gray-700/50 p-4 rounded-lg">
+                    <div class="mb-3">
+                        <label for="redSlider" class="block text-sm font-medium text-red-400">Red: <span id="redValueDec">128</span> (<span id="redValueHex">80</span>)</label>
+                        <input type="range" id="redSlider" min="0" max="255" value="128" class="w-full accent-red-500">
+                    </div>
+                    <div class="mb-3">
+                        <label for="greenSlider" class="block text-sm font-medium text-green-400">Green: <span id="greenValueDec">128</span> (<span id="greenValueHex">80</span>)</label>
+                        <input type="range" id="greenSlider" min="0" max="255" value="128" class="w-full accent-green-500">
+                    </div>
+                    <div class="mb-3">
+                        <label for="blueSlider" class="block text-sm font-medium text-blue-400">Blue: <span id="blueValueDec">128</span> (<span id="blueValueHex">80</span>)</label>
+                        <input type="range" id="blueSlider" min="0" max="255" value="128" class="w-full accent-blue-500">
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div id="colorSwatch" class="color-swatch" style="background-color: #808080;"></div>
+                    <p class="text-lg font-bold text-rose-300">Hex Code: <span id="hexColorCode">#808080</span></p>
+                </div>
+            </div>
+            <div id="hexColorChallengesContainer" class="mb-8"> <!-- JS will populate color challenges --> </div>
+            
+            <div class="bg-gray-700/50 p-4 rounded-lg mt-8">
+                <h3 class="text-xl font-semibold text-rose-300 mb-3">Hexadecimal in Professions</h3>
+                <p class="text-gray-300 mb-3">Which of the following professions is MOST LIKELY to use hexadecimal numbers regularly in their work?</p>
+                <div id="professionsQuizContainer" class="space-y-3">
+                    <div class="quiz-option"><input type="radio" name="profession" id="prof_chef" value="chef"><label for="prof_chef">A) Chef</label></div>
+                    <div class="quiz-option"><input type="radio" name="profession" id="prof_webdev" value="webdev"><label for="prof_webdev">B) Web Developer</label></div>
+                    <div class="quiz-option"><input type="radio" name="profession" id="prof_historian" value="historian"><label for="prof_historian">C) Historian</label></div>
+                    <div class="quiz-option"><input type="radio" name="profession" id="prof_athlete" value="athlete"><label for="prof_athlete">D) Professional Athlete</label></div>
+                </div>
+                <label for="professionExplanation" class="block text-sm font-semibold text-gray-300 mt-4 mb-1">Explain your choice briefly:</label>
+                <textarea id="professionExplanation" class="w-full p-2 bg-gray-600 border-gray-500 rounded text-sm h-20" placeholder="Your explanation..."></textarea>
+                <button onclick="checkProfessionChoice()" class="mt-3 bg-rose-600 text-white px-4 py-2 rounded hover:bg-rose-700 text-sm">Check Profession Answer</button>
+                <p id="professionFeedback" class="text-sm mt-2 min-h-[20px]"></p>
+            </div>
+        </section>
+        
+        <!-- Section 6: Exam Prep Zone -->
+        <section id="section-binhex-exam-prep" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-orange-500">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-orange-400">📝 Binary & Hex Exam Prep</h2>
+                <button onclick="resetBinHexExamPrep(false)" class="reset-button">Reset Exam Qs</button>
+            </div>
+            <p class="text-gray-300 mb-6">Test your number system knowledge! For each question, provide your answer, attempt to self-assess your marks, and then reveal the mark scheme.</p>
+            <div id="binHexExamQuestionsContainer"> <!-- Questions will be populated here --> </div>
+        </section>
+
+        <!-- Section 7: Extension Activities -->
+        <section id="section-binhex-extensions" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-yellow-500">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-yellow-400">🚀 Extension Activities</h2>
+                <button onclick="resetBinHexExtensions(false)" class="reset-button">Reset Extensions</button>
+            </div>
+            <!-- Two's Complement (Hardcoded part of extensions) -->
+             <div class="bg-gray-700/50 p-6 rounded-lg shadow mb-8">
+                <h3 class="text-xl font-bold text-yellow-300 mb-3">Extension 1: Two's Complement</h3>
+                <p class="text-gray-300 mb-2">Computers represent negative binary numbers using a system called <strong>Two's Complement</strong>. This allows subtraction to be performed by addition (A - B is the same as A + (-B)).</p>
+                <p class="text-gray-300 mb-4">To find the two's complement of an 8-bit binary number:</p>
+                <ol class="list-decimal list-inside text-gray-300 mb-4 pl-4 space-y-1">
+                    <li><strong>Invert all the bits:</strong> Change every 0 to a 1, and every 1 to a 0 (this is called One's Complement).</li>
+                    <li><strong>Add 1</strong> to the result.</li>
+                </ol>
+                <div class="bg-gray-700/50 p-4 rounded-lg mb-6">
+                    <h4 class="text-lg font-semibold text-yellow-300 mb-2">Two's Complement Calculator (8-bit)</h4>
+                    <label for="twosCompInput" class="text-sm text-gray-300">Enter 8-bit binary number:</label>
+                    <input type="text" id="twosCompInput" maxlength="8" class="font-mono p-1 bg-gray-600 border-gray-500 rounded" value="00000000" oninput="validateBinaryInput(this, 8)" style="width: auto; letter-spacing: 2px;">
+                    <button onclick="calculateTwosComplement()" class="ml-2 bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 text-sm">Calculate -ve</button>
+                    <p class="mt-2 text-sm text-gray-300">One's Complement: <span id="onesComplementValue" class="font-mono text-yellow-200">--------</span></p>
+                    <p class="text-sm text-gray-300">Two's Complement (-ve): <span id="twosComplementValue" class="font-mono text-yellow-200">--------</span> (Decimal: <span id="twosComplementDecimalValue" class="font-mono text-yellow-200">0</span>)</p>
+                </div>
+
+                <div class="bg-gray-700/50 p-4 rounded-lg">
+                    <h4 class="text-lg font-semibold text-yellow-300 mb-2">Binary Subtraction (A - B) using Two's Complement</h4>
+                    <div class="grid grid-cols-2 gap-4 mb-2">
+                        <div>
+                            <label for="subBinaryA" class="block text-sm text-gray-300">A (8-bit):</label>
+                            <input type="text" id="subBinaryA" maxlength="8" value="00000101" class="w-full p-2 bg-gray-600 border-gray-500 rounded" oninput="validateBinaryInput(this, 8)">
+                        </div>
+                        <div>
+                            <label for="subBinaryB" class="block text-sm text-gray-300">B (8-bit):</label>
+                            <input type="text" id="subBinaryB" maxlength="8" value="00000011" class="w-full p-2 bg-gray-600 border-gray-500 rounded" oninput="validateBinaryInput(this, 8)">
+                        </div>
+                    </div>
+                    <button onclick="performTwosComplementSubtraction()" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 text-sm">Subtract (A - B)</button>
+                    <div id="twosSubtractionFeedback" class="mt-3 p-2 bg-gray-600 rounded text-sm text-gray-300 min-h-[60px]">
+                        <p>Two's Complement of B (-B): <span id="subTwosB" class="font-mono">--------</span></p>
+                        <p>A + (-B) Result (Binary): <span id="subResultBinary" class="font-mono">---------</span> (incl. carry)</p>
+                        <p>Final 8-bit Result (Decimal): <span id="subResultDecimal" class="font-mono">--</span></p>
+                        <p class="text-xs mt-1" id="subExplanation"></p>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-4">Note: If A + (-B) results in a carry-out from the most significant bit (9th bit for 8-bit numbers), and the result is positive, this carry is typically discarded in 8-bit signed arithmetic unless checking for overflow in specific ways. If the MSB of the 8-bit result is 1, the number is negative.</p>
+            </div>
+            <!-- Container for dynamically added extensions -->
+            <div id="binHexExtensionsContainerDynamic" class="space-y-8">
+            </div>
+        </section>
+
+
+        <!-- Section 8: Achievement Gallery -->
+        <section id="section-binhex-achievements" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-6 border border-purple-400"> 
+            <h2 class="text-2xl md:text-3xl font-bold text-purple-300 mb-5">🏆 Your Number System Achievements!</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div id="achieve-binhex-starter-ace" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🤔</span><p class="font-bold text-sm mt-2 text-gray-200">Starter Thinker</p><p class="text-xs text-gray-400">Shared hex thoughts</p></div>
+                <div id="achieve-binhex-addition-pro" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">➕</span><p class="font-bold text-sm mt-2 text-gray-200">Addition Pro</p><p class="text-xs text-gray-400">Solved addition Qs</p></div>
+                <div id="achieve-binhex-hex-explorer" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🧭</span><p class="font-bold text-sm mt-2 text-gray-200">Hex Explorer</p><p class="text-xs text-gray-400">Solved Bin/Hex Qs</p></div>
+                <div id="achieve-binhex-conversion-king" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">👑</span><p class="font-bold text-sm mt-2 text-gray-200">Conversion King/Queen</p><p class="text-xs text-gray-400">Solved Dec/Hex Qs</p></div>
+                <div id="achieve-binhex-color-wizard" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🎨</span><p class="font-bold text-sm mt-2 text-gray-200">Color Wizard</p><p class="text-xs text-gray-400">Matched hex colors</p></div>
+                <div id="achieve-binhex-profession-profiler" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🧑‍💻</span><p class="font-bold text-sm mt-2 text-gray-200">Profession Profiler</p><p class="text-xs text-gray-400">Identified hex users</p></div>
+                <div id="achieve-binhex-exam-champ" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🎓</span><p class="font-bold text-sm mt-2 text-gray-200">Exam Champion</p><p class="text-xs text-gray-400">Aced the exam prep</p></div>
+                 <div id="achieve-binhex-extension-explorer" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🚀</span><p class="font-bold text-sm mt-2 text-gray-200">Extension Explorer</p><p class="text-xs text-gray-400">Tackled Extensions</p></div>
+                <div id="achieve-binhex-number-ninja" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🥷</span><p class="font-bold text-sm mt-2 text-gray-200">Number System Ninja</p><p class="text-xs text-gray-400">Completed all tasks!</p></div>
+            </div>
+        </section>
+
+        <footer class="text-center mt-12 py-6 border-t border-gray-700">
+            <p class="text-gray-500 text-sm">&copy; Your School Name/Your Name - Number Systems Lesson</p>
+        </footer>
+    </div>
+
+    <div id="messageModalBinHex" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModalBinHex('messageModalBinHex')">&times;</span>
+            <p id="modalMessageTextBinHex" class="text-lg"></p>
+            <button onclick="closeModalBinHex('messageModalBinHex')" class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // --- XP and Level System (BinHex Lesson Specific) ---
+        let totalXPBinHex = 0;
+        const MAX_XP_PER_LEVEL_BINHEX = 100; 
+        let currentLevelBinHex = 1; // Start at level 1
+        const levelsBinHex = ["Binary Beginner", "Bit Explorer", "Nibble Navigator", "Byte Buster", "Hex Helper", "Arithmetic Ace", "Base Boss", "Number System Ninja"];
+
+        // --- Activity State ---
+        let starterKnowledgeSubmitted = false;
+        let binaryAdditionQuestionStates = {};
+        let hexConversionPracticeStates = {}; 
+        let decHexConversionPracticeStates = {}; 
+        let hexColorChallengeStates = {};
+        let professionChoiceMade = false;
+        const binHexExamPrepState = {};
+        const binHexExtensionStates = {}; // For tracking XP awarded for extensions
+
+        // --- Achievements Object (BinHex Lesson Specific) ---
+        const achievementsBinHex = {
+            'binhex-starter-ace': { unlocked: false, points: 10, condition: () => starterKnowledgeSubmitted },
+            'binhex-addition-pro': { unlocked: false, points: 25, condition: () => Object.values(binaryAdditionQuestionStates).filter(s => s.correct).length >= 3 },
+            'binhex-hex-explorer': { unlocked: false, points: 30, condition: () => Object.values(hexConversionPracticeStates).filter(s => s.correct).length >= 4 },
+            'binhex-conversion-king': { unlocked: false, points: 30, condition: () => Object.values(decHexConversionPracticeStates).filter(s => s.correct).length >= 4 },
+            'binhex-color-wizard': { unlocked: false, points: 20, condition: () => Object.values(hexColorChallengeStates).filter(s => s.solved).length >= 2 },
+            'binhex-profession-profiler': {unlocked: false, points: 15, condition: () => professionChoiceMade },
+            'binhex-exam-champ': { unlocked: false, points: 40, condition: () => Object.values(binHexExamPrepState).filter(q => q.selfMark && parseInt(q.selfMark) >= 0 && q.markSchemeViewed).length >= 2 }, // Allow 0 marks
+            'binhex-extension-explorer': { unlocked: false, points: 20, condition: () => Object.values(binHexExtensionStates).filter(s => s.xpAwarded).length >= 1 }, // XP for completing at least one extension
+            'binhex-number-ninja': { unlocked: false, points: 100, condition: () => {
+                const coreAchievements = ['binhex-starter-ace', 'binhex-addition-pro', 'binhex-hex-explorer', 'binhex-conversion-king', 'binhex-color-wizard', 'binhex-profession-profiler', 'binhex-exam-champ'];
+                return coreAchievements.every(achKey => achievementsBinHex[achKey]?.unlocked);
+            }}
+        };
+        Object.keys(achievementsBinHex).forEach(key => achievementsBinHex[key].name = key);
+
+        // --- Utility Functions (XP, Modal, Achievements) ---
+        function showModalBinHex(message, isInitialSetup = false) {
+            if (isInitialSetup && !message.toLowerCase().includes("level up")) return; 
+            const modalTextEl = document.getElementById('modalMessageTextBinHex');
+            const modalEl = document.getElementById('messageModalBinHex');
+            if (modalTextEl && modalEl) {
+                modalTextEl.innerHTML = message; 
+                modalEl.style.display = 'block';
+            }
+        }
+        function closeModalBinHex(modalId) {
+            const modalEl = document.getElementById(modalId);
+            if (modalEl) modalEl.style.display = 'none';
+        }
+        window.addEventListener('click', (event) => {
+            const modal = document.getElementById('messageModalBinHex');
+            if (modal && event.target == modal) closeModalBinHex('messageModalBinHex');
+        });
+
+        function addXPBinHex(points, feedbackMessage = "", isInitialSetup = false) {
+            if (isInitialSetup && points > 0) return; 
+
+            totalXPBinHex += points;
+            document.getElementById('xpPointsBinHex').textContent = totalXPBinHex;
+            
+            let xpForCurrentLevelDisplay = totalXPBinHex - ( (currentLevelBinHex - 1) * MAX_XP_PER_LEVEL_BINHEX );
+            const newLevelCalc = Math.floor(totalXPBinHex / MAX_XP_PER_LEVEL_BINHEX) + 1;
+
+            if (newLevelCalc > currentLevelBinHex) {
+                currentLevelBinHex = newLevelCalc;
+                showModalBinHex(`<strong>Level Up!</strong> You are now Level ${currentLevelBinHex}: ${levelsBinHex[Math.min(currentLevelBinHex - 1, levelsBinHex.length - 1)]}!`);
+                xpForCurrentLevelDisplay = totalXPBinHex - ( (currentLevelBinHex-1) * MAX_XP_PER_LEVEL_BINHEX );
+            }
+            
+            document.getElementById('levelDisplayBinHex').textContent = `Level ${currentLevelBinHex}: ${levelsBinHex[Math.min(currentLevelBinHex - 1, levelsBinHex.length - 1)]}`;
+            
+            const xpBarPercentage = Math.min(100, (xpForCurrentLevelDisplay / MAX_XP_PER_LEVEL_BINHEX) * 100);
+            document.getElementById('xpBarBinHex').style.width = xpBarPercentage + '%';
+            
+            if (feedbackMessage && points > 0 && !isInitialSetup) {
+                 showModalBinHex(`${feedbackMessage} (+${points} XP)`);
+            }
+            checkAchievementsBinHex(isInitialSetup);
+        }
+
+        function checkAchievementsBinHex(isInitialSetup = false) {
+            if (isInitialSetup) return;
+
+            let allCoreAchievementsUnlocked = true;
+            const coreAchievementKeys = ['binhex-starter-ace', 'binhex-addition-pro', 'binhex-hex-explorer', 'binhex-conversion-king', 'binhex-color-wizard', 'binhex-profession-profiler', 'binhex-exam-champ'];
+
+            for (const key in achievementsBinHex) {
+                if (key === 'binhex-number-ninja') continue;
+                const ach = achievementsBinHex[key];
+                if (ach && !ach.unlocked && ach.condition && ach.condition()) {
+                    ach.unlocked = true;
+                    const achElement = document.getElementById(`achieve-${key}`);
+                    if (achElement) {
+                        achElement.classList.remove('opacity-40');
+                        achElement.classList.add('achievement-unlocked');
+                        const achNameEl = achElement.querySelector('p.font-bold');
+                        addXPBinHex(ach.points, `🏆 Achievement: <strong>${achNameEl ? achNameEl.textContent : key}</strong> Unlocked!`);
+                    }
+                }
+                if(coreAchievementKeys.includes(key) && ach && !ach.unlocked) {
+                    allCoreAchievementsUnlocked = false;
+                }
+            }
+
+            const numberNinjaAch = achievementsBinHex['binhex-number-ninja'];
+            if (numberNinjaAch && !numberNinjaAch.unlocked && allCoreAchievementsUnlocked && numberNinjaAch.condition()) {
+                numberNinjaAch.unlocked = true;
+                const achElement = document.getElementById(`achieve-binhex-number-ninja`);
+                if (achElement) {
+                    achElement.classList.remove('opacity-40');
+                    achElement.classList.add('achievement-unlocked');
+                    const achNameEl = achElement.querySelector('p.font-bold');
+                    addXPBinHex(numberNinjaAch.points, `🏆 MASTER Achievement: <strong>${achNameEl ? achNameEl.textContent : 'Number System Ninja'}</strong> Unlocked! You've mastered the lesson!`);
+                }
+            }
+        }
+        
+        function validateBitInput(inputElement) { 
+            const value = inputElement.value;
+            if (value !== '0' && value !== '1') {
+                inputElement.value = ''; 
+            } else if (value.length > 1) {
+                inputElement.value = value.slice(0,1); 
+            }
+        }
+        function validateBinaryInput(inputElement, maxLength) { 
+            inputElement.value = inputElement.value.replace(/[^01]/g, '');
+            if (maxLength && inputElement.value.length > maxLength) {
+                inputElement.value = inputElement.value.slice(0, maxLength);
+            }
+        }
+         function validateHexInput(inputElement, maxLength) {
+            inputElement.value = inputElement.value.toUpperCase().replace(/[^0-9A-F]/g, '');
+            if (maxLength && inputElement.value.length > maxLength) {
+                inputElement.value = inputElement.value.slice(0, maxLength);
+            }
+        }
+        function validateNumericInput(inputElement, maxLength) {
+            inputElement.value = inputElement.value.replace(/[^0-9]/g, '');
+             if (maxLength && inputElement.value.length > maxLength) {
+                inputElement.value = inputElement.value.slice(0, maxLength);
+            }
+        }
+
+
+        // --- Canvas Drawing Functionality ---
+        function initializeCanvas(canvasId, clearButtonId, toggleButtonId) {
+            const canvas = document.getElementById(canvasId);
+            const clearButton = document.getElementById(clearButtonId);
+            const toggleButton = document.getElementById(toggleButtonId);
+            if (!canvas || !clearButton || !toggleButton) { return; }
+
+            const ctx = canvas.getContext('2d');
+            let drawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            canvas.classList.add('default-size'); 
+
+            function setCanvasDimensions() {
+                const parentWidth = canvas.parentElement.clientWidth;
+                canvas.width = parentWidth > 0 ? parentWidth * 0.98 : 300; 
+                ctx.strokeStyle = '#c7d2fe'; 
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+            }
+            
+            function getMousePos(evt) { const rect = canvas.getBoundingClientRect(); return { x: evt.clientX - rect.left, y: evt.clientY - rect.top }; }
+            function getTouchPos(evt) { const rect = canvas.getBoundingClientRect(); return { x: evt.touches[0].clientX - rect.left, y: evt.touches[0].clientY - rect.top }; }
+            function startDrawing(e) { drawing = true; const pos = e.touches ? getTouchPos(e) : getMousePos(e); [lastX, lastY] = [pos.x, pos.y]; e.preventDefault(); }
+            function draw(e) { if (!drawing) return; const pos = e.touches ? getTouchPos(e) : getMousePos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke(); [lastX, lastY] = [pos.x, pos.y]; e.preventDefault(); }
+            function stopDrawing() { drawing = false; }
+
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            canvas.addEventListener('touchstart', startDrawing, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing);
+
+            clearButton.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+            toggleButton.addEventListener('click', () => { canvas.classList.toggle('expanded-size'); canvas.classList.toggle('default-size'); });
+            
+            window.addEventListener('resize', setCanvasDimensions);
+            setCanvasDimensions(); 
+        }
+
+        // --- Section 1: Starter Functions ---
+        function checkStarterHexKnowledge() {
+            const knowledge = document.getElementById('starterHexKnowledge').value.trim();
+            const feedbackEl = document.getElementById('starterHexKnowledgeFeedback');
+            if (knowledge.length > 20) { 
+                if (!starterKnowledgeSubmitted) {
+                    feedbackEl.innerHTML = `<span class="text-green-400">Great start! Thanks for sharing your initial ideas.</span>`;
+                    addXPBinHex(10, "Shared initial thoughts on Hexadecimal");
+                    starterKnowledgeSubmitted = true;
+                } else {
+                    feedbackEl.innerHTML = `<span class="text-blue-400">Your thoughts have been noted.</span>`;
+                }
+            } else if (knowledge.length > 0) {
+                 feedbackEl.innerHTML = `<span class="text-yellow-400">Try to elaborate a bit more on your thoughts.</span>`;
+            } else {
+                feedbackEl.innerHTML = ''; 
+            }
+            checkAchievementsBinHex();
+        }
+        function resetBinHexStarter(isInitialSetup = false) {
+            document.getElementById('starterHexKnowledge').value = '';
+            document.getElementById('starterHexKnowledgeFeedback').innerHTML = '';
+            starterKnowledgeSubmitted = false;
+            if (!isInitialSetup) showModalBinHex("Starter section reset.");
+        }
+
+        // --- Section 2: Binary Addition ---
+        const binaryAdditionQuestions = [
+            { qNum: 1, num1: "00000101", num2: "00000011", answer: "00001000", overflow: "0" }, 
+            { qNum: 2, num1: "01101001", num2: "00101110", answer: "10010111", overflow: "0" }, 
+            { qNum: 3, num1: "10001111", num2: "01110001", answer: "00000000", overflow: "1" }, 
+            { qNum: 4, num1: "11111110", num2: "00000011", answer: "00000001", overflow: "1" }  
+        ];
+
+        function setupBinaryAdditionQuestions() {
+            const container = document.getElementById('binaryAdditionQuestionsContainer');
+            container.innerHTML = '';
+            binaryAdditionQuestionStates = {};
+
+            binaryAdditionQuestions.forEach(q => {
+                const qIdBase = `binAddQ${q.qNum}`;
+                binaryAdditionQuestionStates[qIdBase] = { correct: false, xpAwarded: false, bitsSet: false };
+
+                let html = `
+                    <div class="bg-gray-700/50 p-4 rounded-lg shadow-md mb-6">
+                        <p class="font-semibold text-gray-300 mb-3 text-center">Question ${q.qNum}: Add these 8-bit numbers</p>
+                        <div class="binary-adder-grid-container">
+                            <!-- Row C (Carry Inputs) -->
+                            <div class="grid-label">C:</div>`;
+                for(let i=0; i<9; i++) { 
+                    // Carry bits are numbered from C8 (leftmost, above overflow) down to C0 (rightmost)
+                    html += `<input type="text" maxlength="1" class="grid-bit carry-input" id="${qIdBase}_carryBit${8-i}" oninput="validateBitInput(this)" placeholder="">`; 
+                }
+                html += `
+                            <!-- Row A (Number 1) -->
+                            <div class="grid-label">A:</div>
+                            <div class="grid-bit placeholder">&nbsp;</div>`; // Align with C8
+                for(let i=0; i<8; i++) { html += `<div class="grid-bit static-bit">${q.num1[i]}</div>`; } // Bits 7 down to 0
+                html += `
+                            <!-- Row B (Number 2) -->
+                            <div class="grid-label">B: +</div>
+                            <div class="grid-bit placeholder">&nbsp;</div>`; // Align with C8
+                for(let i=0; i<8; i++) { html += `<div class="grid-bit static-bit">${q.num2[i]}</div>`; } // Bits 7 down to 0
+                html += `
+                            <!-- Horizontal Line -->
+                            <div class="grid-line-span"></div>
+                            <!-- Row S (Sum - Student Input) -->
+                            <div class="grid-label">S:</div>
+                            <div class="grid-bit input-bit" id="${qIdBase}_overflowBit" onclick="toggleBitDisplay(this, '${qIdBase}')">0</div>`; // Overflow Bit (aligns with C8)
+                for(let i=0; i<8; i++) { html += `<div class="grid-bit input-bit" id="${qIdBase}_sumBit${i}" onclick="toggleBitDisplay(this, '${qIdBase}')">0</div>`; } // Sum bits 7 down to 0
+                html += `
+                        </div>
+                        <div class="text-center mt-4">
+                            <button onclick="checkBinaryAdditionQuestion('${qIdBase}', '${q.answer}', '${q.overflow}')" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 text-sm">Check Answer</button>
+                        </div>
+                        <div id="${qIdBase}_feedback" class="text-center mt-2 min-h-[20px] text-sm"></div>
+                        <div class="mt-3">
+                            <canvas id="${qIdBase}_canvas" class="working-out-canvas mx-auto"></canvas>
+                            <div class="text-center canvas-controls">
+                                <button id="${qIdBase}_clearCanvas">Clear</button>
+                                <button id="${qIdBase}_toggleCanvas">Toggle Size</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += html;
+            });
+            binaryAdditionQuestions.forEach(q => {
+                 initializeCanvas(`binAddQ${q.qNum}_canvas`, `binAddQ${q.qNum}_clearCanvas`, `binAddQ${q.qNum}_toggleCanvas`);
+            });
+        }
+
+        function toggleBitDisplay(element, qIdBase) { 
+            element.textContent = element.textContent === '0' ? '1' : '0';
+            if (qIdBase && binaryAdditionQuestionStates[qIdBase]) {
+                binaryAdditionQuestionStates[qIdBase].bitsSet = true; 
+            }
+        }
+
+        function checkBinaryAdditionQuestion(qIdBase, expectedSum, expectedOverflow) {
+            let userAnswer = "";
+            for (let i = 0; i < 8; i++) { 
+                userAnswer += document.getElementById(`${qIdBase}_sumBit${i}`).textContent;
+            }
+            const userOverflow = document.getElementById(`${qIdBase}_overflowBit`).textContent;
+            const feedbackEl = document.getElementById(`${qIdBase}_feedback`);
+            const state = binaryAdditionQuestionStates[qIdBase];
+
+            if (!state.bitsSet && userAnswer === "00000000" && userOverflow === "0") {
+                feedbackEl.innerHTML = `<span class="text-yellow-400">Please input your answer by clicking the S and O bits.</span>`;
+                return;
+            }
+
+            if (userAnswer === expectedSum && userOverflow === expectedOverflow) {
+                feedbackEl.innerHTML = `<span class="text-green-400">Correct! Excellent work.</span>`;
+                state.correct = true;
+                if (!state.xpAwarded) { addXPBinHex(10); state.xpAwarded = true; }
+            } else {
+                feedbackEl.innerHTML = `<span class="text-red-400">Not quite. Your Answer: ${userOverflow}${userAnswer}. Correct: ${expectedOverflow}${expectedSum}. Review carries.</span>`;
+                state.correct = false; 
+            }
+            checkAchievementsBinHex();
+        }
+
+        function resetBinaryAddition(isInitialSetup = false) {
+            setupBinaryAdditionQuestions();
+            if (!isInitialSetup) showModalBinHex("Binary Addition task reset.");
+        }
+
+        // --- Section 3: Binary & Hexadecimal Conversions ---
+        const hexConversionPracticeData = [ /* Same Data */ 
+            { type: "b2h", q: "10100111", a: "A7", bits: 8 }, { type: "b2h", q: "00111100", a: "3C", bits: 8 },
+            { type: "h2b", q: "F2", a: "11110010", bits: 2 }, { type: "h2b", q: "5B", a: "01011011", bits: 2 },
+            { type: "b2h", q: "11110000", a: "F0", bits: 8 }, { type: "b2h", q: "0101", a: "5", bits: 4 }, { type: "b2h", q: "10011110", a: "9E", bits: 8},
+            { type: "h2b", q: "D", a: "1101", bits: 1 }, { type: "h2b", q: "8A", a: "10001010", bits: 2 }, { type: "h2b", q: "C5", a: "11000101", bits: 2}
+        ];
+        function setupHexConversionPractice() {
+            const container = document.getElementById('hexConversionPracticeContainer');
+            container.innerHTML = '<h3 class="text-xl font-semibold text-sky-300 mt-6 mb-3">Conversion Practice Questions</h3>';
+            hexConversionPracticeStates = {};
+            hexConversionPracticeData.forEach((item, index) => {
+                const qId = `hex_conv_q${index}`;
+                hexConversionPracticeStates[qId] = { correct: false, xpAwarded: false };
+                let questionText = item.type === "b2h" ? `Binary <code class="text-sky-200">${item.q}</code> to Hex:` : `Hex <code class="text-sky-200">${item.q}</code> to Binary:`;
+                let inputValidationFunc = item.type === "b2h" ? `validateHexInput(this, ${Math.ceil(item.bits/4)})` : `validateBinaryInput(this, ${item.bits*4})`;
+                let maxLength = item.type === "b2h" ? Math.ceil(item.bits/4) : item.bits*4;
+
+                container.innerHTML += `
+                    <div class="bg-gray-700/60 p-3 rounded-md mb-3">
+                        <label for="${qId}" class="text-sm text-gray-300 block mb-1">${index + 1}. ${questionText}</label>
+                        <input type="text" id="${qId}" maxlength="${maxLength}" class="w-full md:w-1/2 p-1 bg-gray-600 border-gray-500 rounded text-sm mb-2" placeholder="Your answer" oninput="${inputValidationFunc}">
+                        <button onclick="checkHexConversionPractice('${qId}', '${item.a}')" class="bg-sky-500 text-white px-2 py-1 rounded text-xs ml-1">Check</button>
+                        <span id="${qId}Feedback" class="text-xs ml-2"></span>
+                        <div class="mt-2">
+                            <canvas id="${qId}_canvas" class="working-out-canvas mx-auto"></canvas>
+                            <div class="text-center canvas-controls">
+                                <button id="${qId}_clearCanvas">Clear</button>
+                                <button id="${qId}_toggleCanvas">Toggle Size</button>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+             hexConversionPracticeData.forEach((item, index) => {
+                 initializeCanvas(`hex_conv_q${index}_canvas`, `hex_conv_q${index}_clearCanvas`, `hex_conv_q${index}_toggleCanvas`);
+            });
+        }
+        function checkHexConversionPractice(qId, correctAnswer) {
+            const userAnswer = document.getElementById(qId).value.trim().toUpperCase();
+            const feedbackEl = document.getElementById(`${qId}Feedback`);
+            const state = hexConversionPracticeStates[qId];
+
+            if (userAnswer === correctAnswer) {
+                feedbackEl.innerHTML = `<span class="text-green-400">Correct!</span>`;
+                state.correct = true;
+                if (!state.xpAwarded) { addXPBinHex(5); state.xpAwarded = true; }
+            } else {
+                feedbackEl.innerHTML = `<span class="text-red-400">Incorrect. Correct answer is ${correctAnswer}.</span>`;
+                state.correct = false;
+            }
+            checkAchievementsBinHex();
+        }
+        function resetHelloHex(isInitialSetup = false) {
+            setupHexConversionPractice(); 
+            if (!isInitialSetup) showModalBinHex("Binary/Hex conversion task reset.");
+        }
+
+        // --- Section 4: Decimal <-> Hexadecimal Bridge ---
+        const decHexConversionPracticeData = [ /* Same Data */ 
+            { type: "d2h", q: "255", a: "FF" }, { type: "d2h", q: "42", a: "2A" }, { type: "d2h", q: "170", a: "AA"}, { type: "d2h", q: "99", a: "63"},
+            { type: "h2d", q: "C3", a: "195" }, { type: "h2d", q: "1B", a: "27" }, { type: "h2d", q: "9F", a: "159"}, { type: "h2d", q: "E0", a: "224"}
+        ];
+        function setupDecHexConversionPractice() {
+            const container = document.getElementById('decHexConversionPracticeContainer');
+            container.innerHTML = '<h3 class="text-xl font-semibold text-fuchsia-300 mt-6 mb-3">Conversion Practice Questions</h3>';
+            decHexConversionPracticeStates = {};
+            decHexConversionPracticeData.forEach((item, index) => {
+                const qId = `dec_hex_conv_q${index}`;
+                decHexConversionPracticeStates[qId] = { correct: false, xpAwarded: false };
+                let questionText = item.type === "d2h" ? `Decimal <code class="text-fuchsia-200">${item.q}</code> to Hex:` : `Hex <code class="text-fuchsia-200">${item.q}</code> to Decimal:`;
+                let inputValidationFunc = item.type === "d2h" ? `validateHexInput(this, 2)` : `validateNumericInput(this,3)`;
+                let maxLength = item.type === "d2h" ? 2 : 3;
+
+                container.innerHTML += `
+                    <div class="bg-gray-700/60 p-3 rounded-md mb-3">
+                        <label for="${qId}" class="text-sm text-gray-300 block mb-1">${index + 1}. ${questionText}</label>
+                        <input type="text" id="${qId}" maxlength="${maxLength}" class="w-full md:w-1/2 p-1 bg-gray-600 border-gray-500 rounded text-sm mb-2" placeholder="Your answer" oninput="${inputValidationFunc}">
+                        <button onclick="checkDecHexConversionPractice('${qId}', '${item.a}')" class="bg-fuchsia-500 text-white px-2 py-1 rounded text-xs ml-1">Check</button>
+                        <span id="${qId}Feedback" class="text-xs ml-2"></span>
+                         <div class="mt-2">
+                            <canvas id="${qId}_canvas" class="working-out-canvas mx-auto"></canvas>
+                             <div class="text-center canvas-controls">
+                                <button id="${qId}_clearCanvas">Clear</button>
+                                <button id="${qId}_toggleCanvas">Toggle Size</button>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+            decHexConversionPracticeData.forEach((item, index) => {
+                 initializeCanvas(`dec_hex_conv_q${index}_canvas`, `dec_hex_conv_q${index}_clearCanvas`, `dec_hex_conv_q${index}_toggleCanvas`);
+            });
+        }
+        
+        function checkDecHexConversionPractice(qId, correctAnswer) {
+            const userAnswer = document.getElementById(qId).value.trim().toUpperCase();
+            const feedbackEl = document.getElementById(`${qId}Feedback`);
+            const state = decHexConversionPracticeStates[qId];
+
+            if (userAnswer === correctAnswer) {
+                feedbackEl.innerHTML = `<span class="text-green-400">Correct!</span>`;
+                state.correct = true;
+                if (!state.xpAwarded) { addXPBinHex(5); state.xpAwarded = true; }
+            } else {
+                feedbackEl.innerHTML = `<span class="text-red-400">Incorrect. Correct answer is ${correctAnswer}.</span>`;
+                 state.correct = false;
+            }
+            checkAchievementsBinHex();
+        }
+        function resetDecHexBridge(isInitialSetup = false) {
+            setupDecHexConversionPractice();
+            if(!isInitialSetup) showModalBinHex("Decimal/Hex conversion task reset.");
+        }
+
+        // --- Section 5: Hex Color Picker & Professions ---
+        const redSlider = document.getElementById('redSlider');
+        const greenSlider = document.getElementById('greenSlider');
+        const blueSlider = document.getElementById('blueSlider');
+        
+        function updateColorPickerUI() {
+            const r = parseInt(redSlider.value);
+            const g = parseInt(greenSlider.value);
+            const b = parseInt(blueSlider.value);
+            const rHex = r.toString(16).padStart(2, '0').toUpperCase();
+            const gHex = g.toString(16).padStart(2, '0').toUpperCase();
+            const bHex = b.toString(16).padStart(2, '0').toUpperCase();
+            document.getElementById('redValueDec').textContent = r;
+            document.getElementById('redValueHex').textContent = rHex;
+            document.getElementById('greenValueDec').textContent = g;
+            document.getElementById('greenValueHex').textContent = gHex;
+            document.getElementById('blueValueDec').textContent = b;
+            document.getElementById('blueValueHex').textContent = bHex;
+            const hexColor = `#${rHex}${gHex}${bHex}`;
+            document.getElementById('colorSwatch').style.backgroundColor = hexColor;
+            document.getElementById('hexColorCode').textContent = hexColor;
+        }
+        
+        const hexColorChallengeData = [ /* Same Data */
+            { name: "Vibrant Purple", hex: "#8A2BE2", r:138, g:43, b:226, xp: 5 }, 
+            { name: "Forest Green", hex: "#228B22", r:34, g:139, b:34, xp: 5 },
+            { name: "Tomato Red", hex: "#FF6347", r:255, g:99, b:71, xp: 5 }, 
+            { name: "Steel Blue", hex: "#4682B4", r:70, g:130, b:180, xp: 5}
+        ];
+        let currentHexColorChallengeIndex = -1;
+
+        function setupHexColorChallenges() {
+            const container = document.getElementById('hexColorChallengesContainer');
+            container.innerHTML = ''; 
+            hexColorChallengeStates = {}; 
+            hexColorChallengeData.forEach((challenge, index) => {
+                hexColorChallengeStates[`hex_color_challenge_${index}`] = { solved: false, xpAwarded: false };
+            });
+            currentHexColorChallengeIndex = -1; 
+            loadNextHexColorChallenge();
+        }
+
+        function loadNextHexColorChallenge() {
+            currentHexColorChallengeIndex++;
+            const container = document.getElementById('hexColorChallengesContainer');
+            container.innerHTML = ''; 
+            if (currentHexColorChallengeIndex >= hexColorChallengeData.length) {
+                container.innerHTML = `<p class="text-green-400 font-semibold text-center">All color challenges completed! Well done!</p>`;
+                return;
+            }
+            const challenge = hexColorChallengeData[currentHexColorChallengeIndex];
+            const challengeId = `hex_color_challenge_${currentHexColorChallengeIndex}`;
+            container.innerHTML = `
+                <div class="bg-gray-700/60 p-4 rounded-lg text-center">
+                    <h4 class="text-md font-semibold text-rose-300 mb-1">Color Challenge ${currentHexColorChallengeIndex + 1}/${hexColorChallengeData.length}: Make "${challenge.name}"</h4>
+                    <p class="text-xs text-gray-400 mb-2">Target Hex: <code class="text-rose-200">${challenge.hex}</code></p>
+                    <button id="checkColorMatchBtn" onclick="checkHexColorMatch()" class="bg-rose-500 text-white px-3 py-1 rounded text-sm">Check My Color</button>
+                    <p id="${challengeId}Feedback" class="text-sm mt-2 min-h-[20px]"></p>
+                </div>`;
+        }
+
+        function checkHexColorMatch() {
+            if (currentHexColorChallengeIndex < 0 || currentHexColorChallengeIndex >= hexColorChallengeData.length) return;
+            const challenge = hexColorChallengeData[currentHexColorChallengeIndex];
+            const challengeId = `hex_color_challenge_${currentHexColorChallengeIndex}`;
+            const feedbackEl = document.getElementById(`${challengeId}Feedback`);
+            const state = hexColorChallengeStates[challengeId];
+            
+            const currentR = parseInt(redSlider.value);
+            const currentG = parseInt(greenSlider.value);
+            const currentB = parseInt(blueSlider.value);
+            const currentHexDisplay = document.getElementById('hexColorCode').textContent;
+
+            const targetR = challenge.r;
+            const targetG = challenge.g;
+            const targetB = challenge.b;
+            const tolerance = 20; // Allow each component to be +/- 20
+
+            const rDiff = Math.abs(currentR - targetR);
+            const gDiff = Math.abs(currentG - targetG);
+            const bDiff = Math.abs(currentB - targetB);
+
+            if (rDiff <= tolerance && gDiff <= tolerance && bDiff <= tolerance) {
+                let feedbackText = `<span class="text-green-400">Great job! That's ${challenge.name}!</span>`;
+                if (currentHexDisplay.toUpperCase() !== challenge.hex.toUpperCase()){
+                    feedbackText = `<span class="text-green-400">Very close to ${challenge.name}! Well done.</span>`;
+                } else {
+                     feedbackText = `<span class="text-green-500 font-bold">Perfect Match for ${challenge.name}! Excellent!</span>`;
+                }
+                feedbackEl.innerHTML = feedbackText;
+
+                if (!state.xpAwarded) {
+                    addXPBinHex(challenge.xp, `Matched color ${challenge.name}`);
+                    state.xpAwarded = true; state.solved = true;
+                }
+                document.getElementById('checkColorMatchBtn').disabled = true;
+                setTimeout(loadNextHexColorChallenge, 2000); 
+            } else {
+                feedbackEl.innerHTML = `<span class="text-yellow-400">Not quite ${challenge.name}. Your hex: ${currentHexDisplay}. Keep adjusting!</span>`;
+            }
+            checkAchievementsBinHex();
+        }
+        
+        function checkProfessionChoice() {
+            const selectedProfession = document.querySelector('input[name="profession"]:checked');
+            const explanation = document.getElementById('professionExplanation').value.trim();
+            const feedbackEl = document.getElementById('professionFeedback');
+            if (!selectedProfession) { feedbackEl.innerHTML = `<span class="text-yellow-400">Please select a profession.</span>`; return; }
+            if (explanation.length < 10) { feedbackEl.innerHTML = `<span class="text-yellow-400">Please provide a brief explanation.</span>`; return; }
+
+            if (selectedProfession.value === "webdev") {
+                feedbackEl.innerHTML = `<span class="text-green-400">Correct! Web Developers use hex for colors, and may see it elsewhere.</span>`;
+                if (!professionChoiceMade) { addXPBinHex(10, "Identified Hex profession"); professionChoiceMade = true; }
+            } else {
+                feedbackEl.innerHTML = `<span class="text-red-400">While possible, Web Developers are more likely to use Hex regularly.</span>`;
+                if (!professionChoiceMade) { addXPBinHex(2, "Attempted profession question"); professionChoiceMade = true; }
+            }
+            checkAchievementsBinHex();
+        }
+
+        function resetHexColorsProfessions(isInitialSetup = false) {
+            redSlider.value = 128; greenSlider.value = 128; blueSlider.value = 128;
+            updateColorPickerUI(); setupHexColorChallenges();
+            document.querySelectorAll('input[name="profession"]').forEach(rb => rb.checked = false);
+            document.getElementById('professionExplanation').value = '';
+            document.getElementById('professionFeedback').innerHTML = '';
+            professionChoiceMade = false;
+            if(!isInitialSetup) showModalBinHex("Hex Colors & Professions task reset.");
+        }
+
+        redSlider.addEventListener('input', updateColorPickerUI);
+        greenSlider.addEventListener('input', updateColorPickerUI);
+        blueSlider.addEventListener('input', updateColorPickerUI);
+
+        // --- Section 7 (Extension): Two's Complement & Flippy Bit ---
+        const binHexExtensionData = [
+            {
+                id: "twosCompExt", // Matches the hardcoded section's effective role
+                title: "Two's Complement & Binary Subtraction",
+                type: "interactive", 
+                xp: 15 
+            },
+            {
+                id: "flippyBitExt",
+                title: "Explore with Flippy Bit!",
+                type: "link",
+                description: "Challenge your understanding of binary and hexadecimal with this fun game!",
+                link: "https://flippybitandtheattackofthehexadecimalsfrombase16.com/",
+                xp: 5
+            }
+        ];
+
+        function setupBinHexExtensions() {
+            const dynamicExtensionsContainer = document.getElementById('binHexExtensionsContainerDynamic');
+            dynamicExtensionsContainer.innerHTML = ''; // Clear only dynamic extensions
+            
+            binHexExtensionData.forEach(ext => {
+                // Initialize state for all extensions, including the hardcoded "twosCompExt"
+                if (!binHexExtensionStates[ext.id]) {
+                     binHexExtensionStates[ext.id] = { xpAwarded: false };
+                }
+
+                if (ext.type === "link") { // Only dynamically add link-based extensions here
+                    let extHTML = `<div class="bg-gray-700/50 p-6 rounded-lg shadow">
+                                    <h3 class="text-xl font-bold text-yellow-300 mb-3">${ext.title}</h3>
+                                    <p class="text-gray-300 mb-3">${ext.description}</p>
+                                    <a href="${ext.link}" target="_blank" class="inline-block bg-yellow-500 text-gray-900 px-4 py-2 rounded hover:bg-yellow-400 transition-colors text-sm font-semibold">Visit ${ext.title.replace("Explore with ", "")} <i class="fas fa-external-link-alt ml-1"></i></a>
+                                    <button onclick="markExtensionExplored('${ext.id}', ${ext.xp})" id="btn_${ext.id}" class="ml-3 bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 text-sm">I've explored this!</button>
+                                 </div>`;
+                    dynamicExtensionsContainer.innerHTML += extHTML;
+                }
+            });
+        }
+
+        function markExtensionExplored(extId, xp) {
+            const state = binHexExtensionStates[extId];
+            if (state && !state.xpAwarded) {
+                addXPBinHex(xp, `Explored ${binHexExtensionData.find(e=>e.id===extId)?.title || 'extension'}`);
+                state.xpAwarded = true;
+                const buttonEl = document.getElementById(`btn_${extId}`);
+                if(buttonEl) {
+                    buttonEl.disabled = true;
+                    buttonEl.textContent = "XP Awarded!";
+                }
+            }
+            checkAchievementsBinHex();
+        }
+        
+        let twosComplementCalcUsed = false; 
+        let twosSubtractionCalcUsed = false;
+
+        function checkTwosComplementExtensionCompletion() {
+            if (twosComplementCalcUsed && twosSubtractionCalcUsed && binHexExtensionStates["twosCompExt"] && !binHexExtensionStates["twosCompExt"].xpAwarded) {
+                const twosCompExtData = binHexExtensionData.find(e => e.id === "twosCompExt");
+                if (twosCompExtData) {
+                    addXPBinHex(twosCompExtData.xp, "Completed Two's Complement Extension"); 
+                    binHexExtensionStates["twosCompExt"].xpAwarded = true;
+                }
+                checkAchievementsBinHex(); 
+            }
+        }
+
+        function calculateTwosComplement() { 
+            const binaryInput = document.getElementById('twosCompInput').value.padStart(8,'0');
+            if (binaryInput.length !== 8 || !/^[01]+$/.test(binaryInput)) { showModalBinHex("Enter valid 8-bit binary."); return; }
+            let onesComp = ""; binaryInput.split('').forEach(bit => onesComp += (bit === '0' ? '1' : '0'));
+            document.getElementById('onesComplementValue').textContent = onesComp;
+            let twosCompVal = parseInt(onesComp, 2) + 1;
+            let twosCompBinary = twosCompVal.toString(2).padStart(8, '0').slice(-8);
+            document.getElementById('twosComplementValue').textContent = twosCompBinary;
+            let decimalValue = binaryInput === "00000000" ? 0 : (twosCompBinary[0] === '1' ? -parseInt((parseInt(twosCompBinary.split('').map(b=>(b==='0'?'1':'0')).join(''),2)+1).toString(2).padStart(8,'0').slice(-8),2) : parseInt(twosCompBinary,2));
+            document.getElementById('twosComplementDecimalValue').textContent = decimalValue;
+            if (binaryInput !== "00000000") twosComplementCalcUsed = true; 
+            checkTwosComplementExtensionCompletion(); 
+        }
+        function performTwosComplementSubtraction() { 
+            const binA_str = document.getElementById('subBinaryA').value.padStart(8,'0');
+            const binB_str = document.getElementById('subBinaryB').value.padStart(8,'0');
+            if (!/^[01]{8}$/.test(binA_str) || !/^[01]{8}$/.test(binB_str)) { showModalBinHex("Enter valid 8-bit binary for A & B."); return; }
+            let onesCompB = ""; binB_str.split('').forEach(bit => onesCompB += (bit === '0' ? '1' : '0'));
+            let twosCompB_bin = (parseInt(onesCompB, 2) + 1).toString(2).padStart(8, '0').slice(-8);
+            document.getElementById('subTwosB').textContent = twosCompB_bin;
+            let sumVal = parseInt(binA_str, 2) + parseInt(twosCompB_bin, 2);
+            let sumBinaryWithCarry = sumVal.toString(2).padStart(9,'0'); 
+            document.getElementById('subResultBinary').textContent = sumBinaryWithCarry;
+            let final8BitResultBinary = sumBinaryWithCarry.slice(-8);
+            let decimalResult = final8BitResultBinary[0] === '1' ? -parseInt((parseInt(final8BitResultBinary.split('').map(b=>(b==='0'?'1':'0')).join(''),2)+1).toString(2).padStart(8,'0').slice(-8),2) : parseInt(final8BitResultBinary,2);
+            document.getElementById('subResultDecimal').textContent = decimalResult;
+            document.getElementById('subExplanation').textContent = `A (${parseInt(binA_str,2)}) - B (${parseInt(binB_str,2)}) = ${decimalResult}.`;
+            if (binA_str !== "00000101" || binB_str !== "00000011") twosSubtractionCalcUsed = true; 
+            checkTwosComplementExtensionCompletion(); 
+        }
+        
+        function resetBinHexExtensions(isInitialSetup = false) {
+            setupBinHexExtensions(); 
+            resetTwosComplement(isInitialSetup); 
+            if (!isInitialSetup) showModalBinHex("Extension activities reset.");
+        }
+
+        function resetTwosComplement(isInitialSetup = false) { 
+            const twosCompInputEl = document.getElementById('twosCompInput');
+            if (twosCompInputEl) twosCompInputEl.value = "00000000";
+            const onesComplementValueEl = document.getElementById('onesComplementValue');
+            if (onesComplementValueEl) onesComplementValueEl.textContent = "--------";
+            const twosComplementValueEl = document.getElementById('twosComplementValue');
+            if (twosComplementValueEl) twosComplementValueEl.textContent = "--------";
+            const twosComplementDecimalValueEl = document.getElementById('twosComplementDecimalValue');
+            if (twosComplementDecimalValueEl) twosComplementDecimalValueEl.textContent = "0";
+            const subBinaryAEl = document.getElementById('subBinaryA');
+            if (subBinaryAEl) subBinaryAEl.value = "00000101";
+            const subBinaryBEl = document.getElementById('subBinaryB');
+            if (subBinaryBEl) subBinaryBEl.value = "00000011";
+            const subTwosBEl = document.getElementById('subTwosB');
+            if (subTwosBEl) subTwosBEl.textContent = "--------";
+            const subResultBinaryEl = document.getElementById('subResultBinary');
+            if (subResultBinaryEl) subResultBinaryEl.textContent = "---------";
+            const subResultDecimalEl = document.getElementById('subResultDecimal');
+            if (subResultDecimalEl) subResultDecimalEl.textContent = "--";
+            const subExplanationEl = document.getElementById('subExplanation');
+            if (subExplanationEl) subExplanationEl.textContent = "";
+
+            if (!isInitialSetup) {
+                twosComplementCalcUsed = false; 
+                twosSubtractionCalcUsed = false;
+                if(binHexExtensionStates["twosCompExt"]) binHexExtensionStates["twosCompExt"].xpAwarded = false;
+            }
+        }
+
+        // --- Section 8: Exam Prep --- (Changed to 8 as Extensions is 7)
+        const binHexExamQuestionsData = [ /* Same data */ 
+            { id: "bhq1", text: "Add the 8-bit binary numbers: <code class='bg-gray-600 px-1 rounded'>01101101</code> + <code class='bg-gray-600 px-1 rounded'>00110011</code>. Show your 8-bit result and any overflow. [3 marks]", 
+              markScheme: "<li><code>01101101</code> + <code>00110011</code> = <code>10100000</code> (1 mark for correct 8-bit sum).</li><li>Carry bits shown correctly or method clear (1 mark).</li><li>Overflow bit identified correctly (<code>0</code> in this case) (1 mark).</li>" },
+            { id: "bhq2", text: "Convert the binary number <code class='bg-gray-600 px-1 rounded'>11101001</code> to hexadecimal. [2 marks]", 
+              markScheme: "<li>Binary: <code>1110 1001</code> (1 mark for correct grouping or implied grouping).</li><li>Hexadecimal: <code>E9</code> (1 mark for correct conversion of both nibbles).</li>" },
+            { id: "bhq3", text: "Convert the hexadecimal number <code class='bg-gray-600 px-1 rounded'>B7</code> to decimal. [2 marks]", 
+              markScheme: "<li>B (hex) = 11 (dec). 7 (hex) = 7 (dec). (0.5 marks each if shown)</li><li>(11 * 16^1) + (7 * 16^0) = (11 * 16) + (7 * 1) (1 mark for method).</li><li>176 + 7 = 183 (1 mark for correct decimal answer).</li>" },
+            { id: "bhq4", text: "Explain one reason why hexadecimal is often used in computer systems, providing a specific example of its use. [2 marks]",
+              markScheme: "<li>It's a compact/shorthand way to represent long binary numbers, making them easier for humans to read/write (1 mark).</li><li>Specific example: e.g., for memory addresses (0x7FFF0A3D), color codes (#FF0000), MAC addresses, or representing raw data in debugging (1 mark for a valid example).</li>"}
+        ];
+        function setupBinHexExamPrep() {
+            const container = document.getElementById('binHexExamQuestionsContainer');
+            if(!container) return;
+            container.innerHTML = '';
+            Object.keys(binHexExamPrepState).forEach(key => delete binHexExamPrepState[key]);
+            binHexExamQuestionsData.forEach((q, index) => {
+                const qId = `bh_exam_q${index + 1}`;
+                binHexExamPrepState[qId] = { selfMark: null, markSchemeViewed: false, marksSelected: false, xpAwardedForMarking: false };
+                const marks = q.text.match(/\[(\d) marks\]/)?.[1] || '2';
+                container.innerHTML += `
+                    <div class="bg-gray-700/50 p-6 rounded-lg shadow mb-6">
+                        <div class="flex justify-between items-start mb-3"><h3 class="text-lg font-bold text-gray-200">Question ${index + 1}</h3><span class="bg-orange-700 text-orange-200 px-3 py-1 rounded-full text-sm font-semibold">[${marks} marks]</span></div>
+                        <p class="text-gray-300 mb-3">${q.text}</p>
+                        <textarea id="${qId}Answer" class="w-full p-3 bg-gray-600 border-2 border-gray-500 rounded-lg focus:border-orange-400 focus:ring-orange-400 text-gray-200 h-24 mb-3 text-base" placeholder="Your answer..." oninput="checkExamPrerequisites('${qId}')"></textarea>
+                        <div class="mt-2 mb-3">
+                            <canvas id="${qId}_canvas" class="working-out-canvas mx-auto"></canvas>
+                            <div class="text-center canvas-controls">
+                                <button id="${qId}_clearCanvas">Clear</button>
+                                <button id="${qId}_toggleCanvas">Toggle Size</button>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 mb-3">
+                            <label for="${qId}Marks" class="text-sm font-semibold text-gray-300">Self-Assessed Marks:</label>
+                            <select id="${qId}Marks" class="p-2 bg-gray-600 border border-gray-500 rounded-md text-gray-200 text-base" onchange="checkExamPrerequisites('${qId}')"><option value="">Select...</option>${[...Array(parseInt(marks) + 1).keys()].map(i => `<option value="${i}">${i}</option>`).join('')}</select>
+                        </div>
+                        <button id="${qId}ShowSchemeBtn" onclick="toggleBinHexMarkScheme('${qId}')" class="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors text-sm disabled:opacity-50" disabled>Show/Hide Mark Scheme</button>
+                        <div id="${qId}MarkScheme" class="hidden mt-3 bg-purple-800/30 p-4 rounded-lg border border-purple-700 text-base"><h4 class="font-bold text-purple-300 mb-2">Mark Scheme:</h4><ul class="text-sm space-y-1 list-disc list-inside text-purple-200">${q.markScheme}</ul></div>
+                    </div>`;
+            });
+            binHexExamQuestionsData.forEach((q, index) => {
+                 initializeCanvas(`bh_exam_q${index + 1}_canvas`, `bh_exam_q${index + 1}_clearCanvas`, `bh_exam_q${index + 1}_toggleCanvas`);
+            });
+        }
+        function checkExamPrerequisites(questionId) { 
+            const marksEl = document.getElementById(`${questionId}Marks`);
+            const showSchemeBtn = document.getElementById(`${questionId}ShowSchemeBtn`);
+            const state = binHexExamPrepState[questionId];
+            if (!marksEl || !showSchemeBtn || !state) return;
+            
+            state.marksSelected = marksEl.value !== "";
+            // Enable button if marks are selected (removed answer length check from previous iteration)
+            showSchemeBtn.disabled = !state.marksSelected; 
+
+            if (state.marksSelected) {
+                state.selfMark = marksEl.value;
+                if (parseInt(marksEl.value) >= 0 && !state.xpAwardedForMarking) { 
+                    addXPBinHex(2, `Self-assessed ${questionId}`);
+                    state.xpAwardedForMarking = true; 
+                }
+            } else { state.selfMark = null; }
+            checkAchievementsBinHex();
+        }
+        function toggleBinHexMarkScheme(questionId) { 
+            const markSchemeEl = document.getElementById(questionId + 'MarkScheme');
+            const showSchemeBtn = document.getElementById(`${questionId}ShowSchemeBtn`);
+            if(!markSchemeEl || !showSchemeBtn || showSchemeBtn.disabled) return;
+            markSchemeEl.classList.toggle('hidden');
+            const state = binHexExamPrepState[questionId];
+            if (state && !state.markSchemeViewed && !markSchemeEl.classList.contains('hidden')) {
+                addXPBinHex(5, `Viewed mark scheme for ${questionId}`); 
+                state.markSchemeViewed = true;
+            }
+            checkAchievementsBinHex();
+        }
+        function resetBinHexExamPrep(isInitialSetup = false) { 
+            setupBinHexExamPrep();
+            if (!isInitialSetup) showModalBinHex("Binary & Hex exam prep reset.");
+        }
+
+        // --- DOMContentLoaded Initializations ---
+        document.addEventListener('DOMContentLoaded', () => {
+            addXPBinHex(0, "", true); 
+            resetBinHexStarter(true); resetBinaryAddition(true); resetHelloHex(true); 
+            resetDecHexBridge(true); updateColorPickerUI(); resetHexColorsProfessions(true);
+            resetBinHexExtensions(true); 
+            resetBinHexExamPrep(true);
+            checkAchievementsBinHex(true); 
+        });
+    </script>
+</body>
+</html>

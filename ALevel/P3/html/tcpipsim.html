@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TCP/IP Suite - A-Level Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --primary-color: #38bdf8;
+            --secondary-color: #818cf8;
+            --text-color: #e2e8f0;
+            --text-muted-color: #94a3b8;
+            --panel-bg-color: rgba(30, 41, 59, 0.7);
+            --glass-blur: backdrop-filter: blur(10px);
+            --border-color: rgba(56, 189, 248, 0.3);
+            --success-color: #4ade80;
+            --error-color: #f87171;
+            --tcp-color: #f59e0b; /* Amber */
+            --ip-color: #ec4899;  /* Pink */
+            --font-family: 'Poppins', sans-serif;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #particle-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; opacity: 0.5;
+        }
+        
+        .simulation-container {
+            width: 100%; max-width: 1200px; height: 95%; max-height: 850px;
+            display: flex; flex-direction: column;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 20px; border: 1px solid var(--border-color);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            overflow: hidden; position: relative;
+        }
+
+        header {
+            padding: 1rem 2rem; border-bottom: 1px solid var(--border-color);
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            color: #020617; text-align: center;
+        }
+        header h1 { font-size: 1.5rem; font-weight: 700; }
+
+        main { flex-grow: 1; position: relative; }
+        .step {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            padding: 1.5rem; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s;
+            will-change: opacity, transform;
+            gap: 1rem;
+        }
+        .step.active { opacity: 1; visibility: visible; }
+        
+        .explanation-panel {
+            width: 100%; padding: 1rem 1.5rem;
+            background: var(--panel-bg-color); border: 1px solid var(--border-color);
+            border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+            text-align: center;
+        }
+        .explanation-panel h2 { color: var(--primary-color); margin-bottom: 0.5rem; font-size: 1.3rem; }
+        .explanation-panel p { font-size: 1rem; line-height: 1.6; color: var(--text-muted-color); }
+        .explanation-panel p strong { color: var(--text-color); font-weight: 600; }
+        .tcp-text { color: var(--tcp-color); font-weight: bold; }
+        .ip-text { color: var(--ip-color); font-weight: bold; }
+
+        .animation-stage {
+            flex-grow: 1; width: 100%; display: flex; align-items: center; justify-content: space-around;
+            position: relative; min-height: 300px;
+        }
+
+        /* TCP/IP Stack Visualization */
+        .stack-container { display: flex; gap: 2rem; justify-content: center; align-items: flex-start; }
+        .layer-stack { display: flex; flex-direction: column; align-items: center; }
+        .layer-stack h3 { margin-bottom: 0.5rem; color: var(--secondary-color); }
+        .layer {
+            width: 200px; padding: 0.8rem; margin-bottom: 0.5rem;
+            border-radius: 8px; text-align: center; font-weight: 600;
+            border: 1px solid; transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        .layer:hover { transform: scale(1.05); box-shadow: 0 0 15px var(--border-color); }
+        .layer-app { background: #34d39920; border-color: #34d399; }
+        .layer-transport { background: #f59e0b20; border-color: var(--tcp-color); }
+        .layer-internet { background: #ec489920; border-color: var(--ip-color); }
+        .layer-link { background: #60a5fa20; border-color: #60a5fa; }
+        
+        .layer-info { width: 300px; text-align: left; }
+        
+        /* Data & Packet Visuals */
+        .device { text-align: center; }
+        .device-label { font-weight: 600; color: var(--secondary-color); margin-top: 0.5rem; }
+        .data-block {
+            width: 150px; height: 100px; background: #34d399; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: var(--bg-color);
+            position: relative; margin: 0 auto;
+            transition: height 2s;
+        }
+        .packet-container { display: flex; gap: 5px; position: absolute; left: 50%; transform: translateX(-50%); }
+        .tcp-segment {
+            background: var(--tcp-color); color: var(--bg-color);
+            padding: 5px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;
+            position: absolute; opacity: 0;
+        }
+        .ip-packet {
+            border: 2px solid var(--ip-color); border-radius: 6px; padding: 2px;
+            position: absolute; opacity: 0;
+        }
+        .ip-header { font-size: 0.6rem; color: var(--ip-color); position: absolute; bottom: 100%; white-space: nowrap; }
+
+        .ack-packet {
+            width: 20px; height: 15px; background: var(--success-color); border-radius: 50%;
+            position: absolute; font-size: 0.6rem; text-align: center; line-height: 15px;
+            color: var(--bg-color); opacity: 0;
+        }
+
+        .internet-cloud {
+            width: 40%; height: 150px; border: 2px dashed var(--border-color);
+            border-radius: 50%; position: absolute; left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            display: flex; justify-content: space-around; align-items: center;
+        }
+        .router {
+            width: 30px; height: 30px; background: var(--secondary-color); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; color: var(--bg-color);
+            font-weight: bold;
+        }
+        
+        /* Step-specific Animations */
+        #step-2.active .data-block { animation: sliceData 2s forwards; }
+        @keyframes sliceData { 0% { height: 100px; } 100% { height: 0px; } }
+        
+        #step-2.active .tcp-segment { animation: showSegments 1s 1.5s forwards; }
+        @keyframes showSegments { to { opacity: 1; } }
+
+        #step-3.active .tcp-segment, #step-4.active .tcp-segment { animation: sendSegment 4s infinite; }
+        #step-3.active .ack-packet, #step-4.active .ack-packet { animation: sendAck 4s infinite; }
+        
+        #step-4.active .tcp-segment.dropped { animation-name: sendSegmentDropped; animation-iteration-count: 1; animation-fill-mode: forwards; }
+        #step-4.active .retransmitted { animation-name: sendSegment; animation-delay: 5s !important; }
+        
+        @keyframes sendSegment {
+            0% { left: 10%; opacity: 0; } 20% { opacity: 1; }
+            80% { left: 90%; transform: translateX(-100%); opacity: 1; }
+            100% { left: 90%; transform: translateX(-100%); opacity: 0; }
+        }
+        @keyframes sendSegmentDropped {
+            0% { left: 10%; opacity: 0; } 20% { opacity: 1; }
+            50% { left: 50%; transform: translate(-50%, -50px) scale(0.5); opacity: 0; }
+            100% { left: 50%; transform: translate(-50%, -50px) scale(0.5); opacity: 0; }
+        }
+        @keyframes sendAck {
+            0%, 80% { opacity: 0; } 81% { right: 10%; opacity: 1; }
+            100% { right: 90%; transform: translateX(100%); opacity: 0; }
+        }
+
+        #step-5.active .ip-packet { animation: addIpHeader 2s forwards; }
+        @keyframes addIpHeader { to { opacity: 1; } }
+        
+        #step-6.active .ip-packet { animation: routePacket 5s infinite; }
+        @keyframes routePacket {
+            0% { left: 10%; transform: translateY(0); opacity: 0;}
+            10% { opacity: 1; } 30% { left: 40%; transform: translateY(-30px); }
+            50% { left: 50%; transform: translateY(20px); } 70% { left: 60%; transform: translateY(-30px); }
+            90% { left: 90%; transform: translateY(0); opacity: 1; } 100% { opacity: 0; }
+        }
+        
+        #step-7 .packet-reassembly { display: flex; gap: 5px; min-height: 40px; border: 2px dashed var(--text-muted-color); padding: 10px; border-radius: 8px;}
+        #step-7.active .arrived-packet { animation: arriveAndReassemble 1.5s forwards; }
+        @keyframes arriveAndReassemble { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Quiz Section Styles */
+        #quiz-section { width: 100%; max-width: 800px; overflow-y: auto; max-height: calc(100% - 100px); padding-right: 1rem;}
+        .quiz-question { background: var(--panel-bg-color); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border-left: 5px solid var(--secondary-color); }
+        .question-text { margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600; }
+        .options { display: flex; flex-direction: column; gap: 0.5rem; }
+        .option { padding: 0.8rem 1.2rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: all 0.3s ease; }
+        .option:hover { background: rgba(56, 189, 248, 0.2); border-color: var(--primary-color); }
+        .option.selected { background: var(--secondary-color); color: var(--bg-color); font-weight: 600; }
+        .option.correct { background: var(--success-color); color: var(--bg-color); border-color: var(--success-color); }
+        .option.incorrect { background: var(--error-color); color: var(--bg-color); border-color: var(--error-color); }
+        textarea { width: 100%; min-height: 100px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; color: var(--text-color); font-family: var(--font-family); resize: vertical; }
+        textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
+        .mark-scheme { margin-top: 1rem; padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; display: none; }
+        .mark-scheme.visible { display: block; animation: fadeIn 0.5s; }
+        #quiz-feedback { margin-top: 1.5rem; font-size: 1.2rem; font-weight: 600; text-align: center; height: 2rem; }
+
+        /* Footer and Navigation */
+        footer { padding: 1rem 2rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; margin-top: auto; width: 100%;}
+        .nav-button { padding: 0.6rem 1.5rem; font-size: 1rem; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; background: linear-gradient(90deg, var(--primary-color), var(--secondary-color)); color: #020617; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .nav-button:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4); }
+        .nav-button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        #step-indicator { font-weight: 600; color: var(--text-muted-color); }
+        
+        /* Popup Modal Styles */
+        .popup { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+        .popup.visible { opacity: 1; visibility: visible; }
+        .popup-content { background: var(--panel-bg-color); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); padding: 2.5rem; border-radius: 15px; width: 90%; max-width: 500px; text-align: center; border: 1px solid var(--border-color); transform: scale(0.9); transition: transform 0.3s ease; }
+        .popup.visible .popup-content { transform: scale(1); }
+        .popup h2 { color: var(--primary-color); margin-bottom: 1rem; }
+        .popup p { margin-bottom: 2rem; color: var(--text-muted-color); line-height: 1.6; }
+
+        /* Animation Keyframes */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation: none !important; transition: none !important; }
+        }
+        @media (max-width: 768px) {
+            .simulation-container { height: 100%; border-radius: 0; border: none; }
+            header h1 { font-size: 1.2rem; }
+            .step { padding: 1rem; }
+            .explanation-panel { padding: 1rem; }
+            .animation-stage { flex-direction: column; gap: 1.5rem; min-height: 200px; }
+            footer { padding: 0.8rem 1rem; }
+            .nav-button { padding: 0.5rem 1rem; font-size: 0.9rem; }
+            .stack-container { flex-direction: column; align-items: center; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="particle-canvas"></canvas>
+    <div class="simulation-container">
+        <header><h1>A-Level CS 9618: TCP/IP Protocol Suite</h1></header>
+        <main>
+            <!-- Step 1: 4 Layers -->
+            <section class="step active" id="step-1" data-step="1">
+                <div class="explanation-panel">
+                    <h2>The TCP/IP 4-Layer Model</h2>
+                    <p>The internet's communication is built on the TCP/IP suite, a set of protocols organized into four conceptual layers. Each layer has a specific job, and they work together to reliably send data from a source to a destination.</p>
+                </div>
+                <div class="animation-stage">
+                    <div class="stack-container">
+                        <div class="layer-stack">
+                            <h3>Protocol Stack</h3>
+                            <div class="layer layer-app" data-info="app">Application</div>
+                            <div class="layer layer-transport" data-info="transport">Transport</div>
+                            <div class="layer layer-internet" data-info="internet">Internet</div>
+                            <div class="layer layer-link" data-info="link">Link</div>
+                        </div>
+                        <div class="explanation-panel layer-info">
+                            <h2 id="layer-title">Click a Layer</h2>
+                            <p id="layer-desc">Click on a layer to see its primary responsibility.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 2: TCP - Segmentation -->
+            <section class="step" id="step-2" data-step="2">
+                <div class="explanation-panel">
+                    <h2>Transport Layer: <span class="tcp-text">TCP</span> Breaks Down Data</h2>
+                    <p>When you send large data (like an image), the Transmission Control Protocol (<span class="tcp-text">TCP</span>) at the Transport layer takes over. Its first job is to break the data into smaller, manageable chunks called <strong>segments</strong> and add a <strong>sequence number</strong> to each one.</p>
+                </div>
+                <div class="animation-stage">
+                     <div class="device">
+                        <div class="data-block">IMAGE.JPG</div>
+                        <div class="packet-container" style="top: 120px;">
+                            <div class="tcp-segment" style="left: -60px;">1</div>
+                            <div class="tcp-segment" style="left: -20px;">2</div>
+                            <div class="tcp-segment" style="left: 20px;">3</div>
+                            <div class="tcp-segment" style="left: 60px;">4</div>
+                        </div>
+                        <div class="device-label">Sender</div>
+                     </div>
+                </div>
+            </section>
+
+            <!-- Step 3: TCP - Acknowledgements -->
+            <section class="step" id="step-3" data-step="3">
+                <div class="explanation-panel">
+                    <h2><span class="tcp-text">TCP</span> Reliability: Connection & Acknowledgements</h2>
+                    <p><span class="tcp-text">TCP</span> establishes and maintains a connection. For each segment received, the destination sends back an <strong>acknowledgement (ACK)</strong>. This tells the sender the segment arrived safely. This process ensures reliable, host-to-host communication.</p>
+                </div>
+                <div class="animation-stage">
+                    <div class="device-label" style="position:absolute; left: 10%;">Sender</div>
+                    <div class="tcp-segment" style="animation-delay: 0s;">1</div>
+                    <div class="ack-packet" style="animation-delay: 0s;">ACK 1</div>
+                    <div class="tcp-segment" style="animation-delay: 1s;">2</div>
+                    <div class="ack-packet" style="animation-delay: 1s;">ACK 2</div>
+                    <div class="device-label" style="position:absolute; right: 10%;">Receiver</div>
+                </div>
+            </section>
+            
+            <!-- Step 4: TCP - Retransmission -->
+            <section class="step" id="step-4" data-step="4">
+                 <div class="explanation-panel">
+                    <h2><span class="tcp-text">TCP</span> Error Control: Dropped Packets</h2>
+                    <p>What if a packet gets lost? <span class="tcp-text">TCP</span> uses a timer. If an ACK isn't received in time, it assumes the packet was dropped and <strong>retransmits</strong> it. This is a crucial part of its congestion and flow control mechanism.</p>
+                </div>
+                <div class="animation-stage">
+                    <div class="device-label" style="position:absolute; left: 10%;">Sender</div>
+                    <div class="tcp-segment" style="animation-delay: 0s;">1</div>
+                    <div class="ack-packet" style="animation-delay: 0s;">ACK 1</div>
+                    <div class="tcp-segment dropped" style="animation-delay: 1s; background: var(--error-color);">2</div>
+                    <div class="tcp-segment retransmitted" style="animation-delay: 1s;">2</div>
+                    <div class="ack-packet" style="animation-delay: 5s;">ACK 2</div>
+                    <div class="device-label" style="position:absolute; right: 10%;">Receiver</div>
+                </div>
+            </section>
+
+            <!-- Step 5: IP - Encapsulation -->
+            <section class="step" id="step-5" data-step="5">
+                 <div class="explanation-panel">
+                    <h2>Internet Layer: <span class="ip-text">IP</span> Adds Addresses</h2>
+                    <p>The Internet Protocol (<span class="ip-text">IP</span>) takes the TCP segments and encapsulates them into <strong>IP packets (datagrams)</strong>. It adds an <span class="ip-text">IP</span> header containing the <strong>source and destination IP addresses</strong>. This is like putting a letter into an addressed envelope.</p>
+                </div>
+                <div class="animation-stage">
+                    <div class="ip-packet" style="left: 50%; top: 50%; transform: translate(-50%, -50%);">
+                         <div class="ip-header">IP: 192.168.1.10 -> 8.8.8.8</div>
+                         <div class="tcp-segment" style="position: relative; opacity: 1;">Data (TCP Segment)</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 6: IP - Routing -->
+            <section class="step" id="step-6" data-step="6">
+                 <div class="explanation-panel">
+                    <h2><span class="ip-text">IP</span> Routing: Navigating the Internet</h2>
+                    <p>The <span class="ip-text">IP</span> protocol is responsible for routing these packets across networks. Routers read the destination <span class="ip-text">IP</span> address on each packet and forward it towards its destination, choosing the best path.</p>
+                </div>
+                <div class="animation-stage">
+                    <div class="device-label" style="position:absolute; left: 10%;">Source</div>
+                    <div class="internet-cloud">
+                        <div class="router">R1</div>
+                        <div class="router">R2</div>
+                        <div class="router">R3</div>
+                    </div>
+                    <div class="ip-packet" style="top: 50%; transform: translateY(-50%);">
+                        <div class="tcp-segment" style="position: relative; opacity: 1;">Packet</div>
+                    </div>
+                    <div class="device-label" style="position:absolute; right: 10%;">Destination</div>
+                </div>
+            </section>
+
+            <!-- Step 7: Reassembly -->
+            <section class="step" id="step-7" data-step="7">
+                 <div class="explanation-panel">
+                    <h2>Arrival & Reassembly</h2>
+                    <p>Packets may arrive out of order. At the destination, the Link and Internet layers process the packet. Then, <span class="tcp-text">TCP</span> strips the <span class="ip-text">IP</span> header and uses its <strong>sequence numbers</strong> to reassemble the segments into the original data, in the correct order.</p>
+                </div>
+                <div class="animation-stage" style="flex-direction: column; justify-content: center; gap: 2rem;">
+                    <div>Incoming Packets (potentially out of order):</div>
+                    <div class="packet-container" style="position:relative; transform: none; left: auto;">
+                        <div class="ip-packet arrived-packet" style="position: relative; opacity: 0; animation-delay: 0.2s;"><div class="tcp-segment" style="position: relative; opacity: 1;">1</div></div>
+                        <div class="ip-packet arrived-packet" style="position: relative; opacity: 0; animation-delay: 0.8s;"><div class="tcp-segment" style="position: relative; opacity: 1;">3</div></div>
+                        <div class="ip-packet arrived-packet" style="position: relative; opacity: 0; animation-delay: 0.5s;"><div class="tcp-segment" style="position: relative; opacity: 1;">2</div></div>
+                        <div class="ip-packet arrived-packet" style="position: relative; opacity: 0; animation-delay: 1.1s;"><div class="tcp-segment" style="position: relative; opacity: 1;">4</div></div>
+                    </div>
+                     <div>Reassembled Data:</div>
+                     <div class="packet-reassembly" id="reassembly-box"></div>
+                </div>
+            </section>
+
+            <!-- Step 8: Quiz -->
+            <section class="step" id="step-8" data-step="8">
+                <div class="explanation-panel" style="margin-bottom: 0;">
+                    <h2>Check Your Understanding</h2>
+                </div>
+                <div id="quiz-section">
+                    <div class="quiz-question">
+                        <p class="question-text">1. Which layer is responsible for establishing a connection and ensuring reliable, in-order delivery of data?</p>
+                        <div class="options" data-question="1"><div class="option" data-answer="a">Link</div><div class="option" data-answer="b">Internet</div><div class="option" data-answer="c">Transport</div><div class="option" data-answer="d">Application</div></div>
+                    </div>
+                    <div class="quiz-question">
+                        <p class="question-text">2. What is the primary function of the Internet Protocol (IP)?</p>
+                        <div class="options" data-question="2"><div class="option" data-answer="a">Managing flow control.</div><div class="option" data-answer="b">Adding source and destination addresses for routing.</div><div class="option" data-answer="c">Breaking data into segments.</div><div class="option" data-answer="d">Retransmitting lost packets.</div></div>
+                    </div>
+                    <div class="quiz-question">
+                        <p class="question-text">3. What happens if a sender using TCP does not receive an acknowledgement for a packet?</p>
+                        <div class="options" data-question="3"><div class="option" data-answer="a">It sends the next packet anyway.</div><div class="option" data-answer="b">It closes the connection.</div><div class="option" data-answer="c">It assumes the packet was lost and retransmits it.</div><div class="option" data-answer="d">It waits for an instruction from the IP layer.</div></div>
+                    </div>
+                    <div class="quiz-question">
+                        <p class="question-text">4. Describe the roles of TCP and IP in sending a file from a web server to a browser. Mention two distinct functions for <strong>each</strong> protocol.</p>
+                        <textarea id="short-answer" placeholder="Type your answer here..."></textarea>
+                        <button class="nav-button" id="check-short-answer" style="margin-top: 1rem;" disabled>Check Answer</button>
+                        <div class="mark-scheme" id="mark-scheme-4">
+                            <h4>Mark Scheme (Max 4 marks):</h4>
+                            <ul>
+                                <li><strong>TCP (1 mark):</strong> Breaks file into numbered segments.</li>
+                                <li><strong>TCP (1 mark):</strong> Manages connection, handles ACKs/retransmissions for reliability/flow control.</li>
+                                <li><strong>IP (1 mark):</strong> Encapsulates segments into packets, adding source/destination IP addresses.</li>
+                                <li><strong>IP (1 mark):</strong> Responsible for routing packets across networks towards the destination.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div id="quiz-feedback"></div>
+                </div>
+            </section>
+        </main>
+        
+        <footer id="main-footer">
+            <button class="nav-button" id="prev-btn" disabled>Previous</button>
+            <span id="step-indicator">Step 1 of 8</span>
+            <button class="nav-button" id="next-btn">Next</button>
+            <button class="nav-button" id="reset-btn" style="display: none;">Reset</button>
+        </footer>
+    </div>
+    
+    <div class="popup visible" id="instructions-popup">
+        <div class="popup-content">
+            <h2>Welcome to the TCP/IP Simulation!</h2>
+            <p>This simulation explores the TCP/IP stack. Use the <strong>Next/Previous buttons</strong> or your <strong>arrow keys</strong> to navigate through the steps.</p>
+            <button class="nav-button" id="start-sim-btn">Begin</button>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Caching ---
+        const dom = {
+            steps: document.querySelectorAll('.step'),
+            nextBtn: document.getElementById('next-btn'),
+            prevBtn: document.getElementById('prev-btn'),
+            resetBtn: document.getElementById('reset-btn'),
+            stepIndicator: document.getElementById('step-indicator'),
+            instructionsPopup: document.getElementById('instructions-popup'),
+            startSimBtn: document.getElementById('start-sim-btn'),
+            layers: document.querySelectorAll('.layer'),
+            layerTitle: document.getElementById('layer-title'),
+            layerDesc: document.getElementById('layer-desc'),
+            reassemblyBox: document.getElementById('reassembly-box'),
+            quizSection: document.getElementById('quiz-section'),
+            shortAnswerTextarea: document.getElementById('short-answer'),
+            checkShortAnswerBtn: document.getElementById('check-short-answer'),
+            markScheme: document.getElementById('mark-scheme-4'),
+            quizFeedback: document.getElementById('quiz-feedback'),
+        };
+
+        // --- State ---
+        let state = { currentStep: 1, totalSteps: 8, quizAnswers: {}, quizScore: 0 };
+        const correctAnswers = { 1: 'c', 2: 'b', 3: 'c' };
+        const layerInfo = {
+            app: { title: 'Application Layer', desc: 'Interfaces with the application (e.g., your browser). Protocols like HTTP, FTP, and SMTP operate here.' },
+            transport: { title: 'Transport Layer (TCP/UDP)', desc: 'Provides host-to-host communication. Manages connection, reliability, flow control, and segmentation.' },
+            internet: { title: 'Internet Layer (IP)', desc: 'Handles addressing and routing of packets between networks to get them to their destination.' },
+            link: { title: 'Link Layer', desc: 'Deals with the physical transmission of data over the local network medium, like Ethernet or Wi-Fi.' }
+        };
+
+        // --- Particle Animation ---
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        const setupCanvas = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+        class Particle { 
+            constructor() {
+                this.x = Math.random() * canvas.width; this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 1; this.speedX = Math.random() * 1 - 0.5;
+                this.speedY = Math.random() * 1 - 0.5; this.color = `rgba(56, 189, 248, ${Math.random()})`;
+            }
+            update() {
+                this.x += this.speedX; this.y += this.speedY;
+                if (this.size > 0.2) this.size -= 0.01;
+                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+            }
+            draw() {
+                ctx.fillStyle = this.color; ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+        const initParticles = () => { for (let i = 0; i < 50; i++) particles.push(new Particle()); };
+        const animateParticles = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(animateParticles);
+        };
+        
+        // --- Core Logic ---
+        const updateUI = () => {
+            dom.steps.forEach(step => step.classList.toggle('active', parseInt(step.dataset.step) === state.currentStep));
+            dom.prevBtn.disabled = state.currentStep === 1;
+            dom.nextBtn.disabled = state.currentStep === state.totalSteps;
+            dom.nextBtn.style.display = state.currentStep === state.totalSteps ? 'none' : 'block';
+            dom.resetBtn.style.display = state.currentStep === state.totalSteps ? 'block' : 'none';
+            dom.stepIndicator.textContent = `Step ${state.currentStep} of ${state.totalSteps}`;
+
+            // *** ANIMATION FIX ***
+            // This block forces animations to restart when a step becomes active.
+            const activeStep = document.querySelector('.step.active');
+            if (activeStep) {
+                // Select all elements that might be animated
+                const animatedElements = activeStep.querySelectorAll('.data-block, .tcp-segment, .ip-packet, .ack-packet, .arrived-packet');
+                animatedElements.forEach(el => {
+                    // A trick to force a DOM reflow, which makes the browser re-evaluate the CSS animations
+                    el.style.animation = 'none';
+                    void el.offsetWidth; // This triggers the reflow
+                    el.style.animation = '';
+                });
+
+                // Special handling for the reassembly step which is driven by JavaScript
+                if (state.currentStep === 7) {
+                    runReassemblyAnimation();
+                }
+            }
+        };
+
+        const goToStep = (stepNumber) => {
+            if (stepNumber >= 1 && stepNumber <= state.totalSteps) {
+                state.currentStep = stepNumber;
+                updateUI();
+            }
+        };
+
+        const handleReset = () => {
+            state.quizAnswers = {}; state.quizScore = 0;
+            dom.quizFeedback.textContent = '';
+            document.querySelectorAll('.option.selected, .option.correct, .option.incorrect').forEach(el => el.className = 'option');
+            dom.shortAnswerTextarea.value = ''; dom.shortAnswerTextarea.disabled = false;
+            dom.checkShortAnswerBtn.disabled = true; dom.checkShortAnswerBtn.style.display = 'block';
+            dom.markScheme.classList.remove('visible');
+            goToStep(1);
+        };
+        
+        // --- Step-Specific Logic ---
+        const handleLayerClick = (e) => {
+            const infoKey = e.target.dataset.info;
+            if (infoKey && layerInfo[infoKey]) {
+                dom.layerTitle.textContent = layerInfo[infoKey].title;
+                dom.layerDesc.textContent = layerInfo[infoKey].desc;
+            }
+        };
+
+        const runReassemblyAnimation = () => {
+            dom.reassemblyBox.innerHTML = '';
+            const packets = [ { id: 1 }, { id: 3 }, { id: 2 }, { id: 4 } ].sort((a,b) => a.id - b.id);
+            packets.forEach((pkt, index) => {
+                setTimeout(() => {
+                    const el = document.createElement('div');
+                    el.className = 'tcp-segment';
+                    el.style.position = 'relative';
+                    el.style.opacity = '1';
+                    el.textContent = pkt.id;
+                    dom.reassemblyBox.appendChild(el);
+                }, 1000 + index * 300);
+            });
+        };
+
+        // --- Quiz Logic ---
+        const handleQuizInteraction = (e) => {
+            const target = e.target.closest('.option');
+            if (!target) return;
+            const questionContainer = target.closest('.options');
+            const questionNumber = questionContainer.dataset.question;
+            if (state.quizAnswers[questionNumber]) return;
+
+            const selectedAnswer = target.dataset.answer;
+            state.quizAnswers[questionNumber] = selectedAnswer;
+            target.classList.add('selected');
+
+            setTimeout(() => {
+                const isCorrect = selectedAnswer === correctAnswers[questionNumber];
+                if (isCorrect) state.quizScore++;
+                questionContainer.querySelectorAll('.option').forEach(opt => {
+                    if (opt.dataset.answer === correctAnswers[questionNumber]) opt.classList.add('correct');
+                    else if (opt.classList.contains('selected')) opt.classList.add('incorrect');
+                });
+                updateQuizFeedback();
+            }, 500);
+        };
+
+        const handleShortAnswerCheck = () => {
+            dom.shortAnswerTextarea.disabled = true;
+            dom.checkShortAnswerBtn.style.display = 'none';
+            dom.markScheme.classList.add('visible');
+            if(dom.shortAnswerTextarea.value.trim().length > 30) state.quizScore++;
+            updateQuizFeedback();
+        };
+
+        const updateQuizFeedback = () => {
+            const totalQuestions = Object.keys(correctAnswers).length + 1;
+            const answeredQuestions = Object.keys(state.quizAnswers).length + (dom.shortAnswerTextarea.disabled ? 1 : 0);
+            if(answeredQuestions === totalQuestions) {
+                dom.quizFeedback.textContent = `Quiz Complete! Indicative score: ${state.quizScore} / ${totalQuestions}`;
+                dom.quizFeedback.style.color = state.quizScore === totalQuestions ? 'var(--success-color)' : 'var(--primary-color)';
+            }
+        };
+
+        // --- Event Listeners ---
+        dom.nextBtn.addEventListener('click', () => goToStep(state.currentStep + 1));
+        dom.prevBtn.addEventListener('click', () => goToStep(state.currentStep - 1));
+        dom.resetBtn.addEventListener('click', handleReset);
+        dom.startSimBtn.addEventListener('click', () => dom.instructionsPopup.classList.remove('visible'));
+        dom.layers.forEach(layer => layer.addEventListener('click', handleLayerClick));
+        dom.quizSection.addEventListener('click', handleQuizInteraction);
+        dom.shortAnswerTextarea.addEventListener('input', () => {
+            dom.checkShortAnswerBtn.disabled = dom.shortAnswerTextarea.value.trim().length < 30;
+        });
+        dom.checkShortAnswerBtn.addEventListener('click', handleShortAnswerCheck);
+
+        window.addEventListener('keydown', (e) => {
+            if (dom.instructionsPopup.classList.contains('visible')) return;
+            if (e.key === 'ArrowRight' && !dom.nextBtn.disabled) dom.nextBtn.click();
+            else if (e.key === 'ArrowLeft' && !dom.prevBtn.disabled) dom.prevBtn.click();
+        });
+        
+        // --- Init ---
+        setupCanvas(); initParticles(); animateParticles();
+        window.addEventListener('resize', setupCanvas);
+        updateUI();
+    });
+    </script>
+</body>
+</html>

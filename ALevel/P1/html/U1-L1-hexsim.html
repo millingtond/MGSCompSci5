@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number System Conversions</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #10b981;
+            --background-color: #111827;
+            --card-bg-color: rgba(31, 41, 55, 0.7);
+            --text-color: #f3f4f6;
+            --border-color: rgba(75, 85, 99, 0.5);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background-size: 200% 200%;
+            animation: gradient-animation 15s ease infinite;
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .card {
+            background-color: var(--card-bg-color);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            will-change: transform, box-shadow;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .step-section {
+            display: none;
+            opacity: 0;
+            transform: translateX(20px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+            will-change: opacity, transform;
+        }
+
+        .step-section.active {
+            display: block;
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            border: none;
+            cursor: pointer;
+            z-index: 1;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(90deg, var(--primary-color), #6366f1);
+            color: white;
+        }
+
+        .btn-secondary {
+             background: linear-gradient(90deg, #374151, #4b5563);
+            color: white;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.7);
+            opacity: 0;
+            border-radius: 50%;
+            transform: scale(1, 1) translate(-50%, -50%);
+            transform-origin: 50% 50%;
+        }
+
+        .btn:focus:not(:active)::after {
+            animation: ripple 1s ease-out;
+        }
+        
+        @keyframes ripple {
+            0% { transform: scale(0, 0) translate(-50%, -50%); opacity: 1; }
+            100% { transform: scale(20, 20) translate(-50%, -50%); opacity: 0; }
+        }
+
+        .binary-digit, .hex-digit {
+            width: 3rem;
+            height: 3rem;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            margin: 0 0.25rem;
+            font-size: 1.25rem;
+            transition: all 0.3s ease;
+        }
+
+        .nibble-group {
+            padding: 0.5rem;
+            border: 2px dashed transparent;
+            border-radius: 0.75rem;
+            margin: 0.5rem;
+            transition: all 0.5s ease;
+        }
+
+        .input-field {
+            background-color: #1f2937;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            text-align: center;
+            font-size: 1.25rem;
+            width: 5rem;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.5);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+
+        .feedback {
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+            font-weight: 500;
+        }
+
+        .feedback.correct {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+
+        .feedback.incorrect {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        .quiz-option {
+            cursor: pointer;
+        }
+
+        .quiz-option.selected {
+            border-color: var(--primary-color);
+            background-color: rgba(79, 70, 229, 0.2);
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 p-4 sm:p-6 md:p-8">
+
+    <div class="max-w-5xl mx-auto">
+        <header class="text-center mb-8 p-6 rounded-2xl gradient-bg">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-white shadow-lg">Number System Conversions</h1>
+            <p class="text-lg text-indigo-200 mt-2">An Interactive Guide for A-Level Computer Science (9618)</p>
+        </header>
+
+        <main id="simulation-container">
+            <!-- Step 0: Introduction -->
+            <section id="step-0" class="step-section card p-6 md:p-8 active">
+                <h2 class="text-2xl font-bold text-emerald-400 mb-4">Welcome! What is Hexadecimal?</h2>
+                <p class="text-lg mb-4">Hexadecimal (or 'hex') is a base-16 number system. It uses 16 symbols: the numbers 0-9 and the letters A-F.</p>
+                <p class="text-lg mb-6">In computing, hexadecimal is a convenient way to represent long binary numbers. It's shorter and easier for humans to read and remember than a long string of 1s and 0s. For example, it's commonly used for memory addresses and color codes (like #FFFFFF for white).</p>
+                <div class="bg-gray-800 p-4 rounded-lg text-center">
+                    <p class="font-mono text-lg"><span class="text-cyan-400">Binary:</span> 11111111 &nbsp;&nbsp;&nbsp; <span class="text-emerald-400">Denary:</span> 255 &nbsp;&nbsp;&nbsp; <span class="text-indigo-400">Hexadecimal:</span> FF</p>
+                </div>
+                 <div class="mt-6 p-4 border border-indigo-500/30 rounded-lg bg-indigo-500/10">
+                    <h3 class="font-bold text-lg text-indigo-300">How to use this simulation:</h3>
+                    <p class="mt-2">Use the <span class="font-bold text-emerald-400">'Next Step'</span> and <span class="font-bold text-emerald-400">'Previous Step'</span> buttons, or the <span class="font-bold text-emerald-400">left (←)</span> and <span class="font-bold text-emerald-400">right (→)</span> arrow keys on your keyboard to navigate through the steps.</p>
+                </div>
+            </section>
+
+            <!-- Step 1: Binary to Hex - Grouping -->
+            <section id="step-1" class="step-section card p-6 md:p-8">
+                <h2 class="text-2xl font-bold text-emerald-400 mb-4">Binary → Hex (Step 1): Group The Binary Digits</h2>
+                <p class="text-lg mb-6">The first step is to take your binary number and split it into groups of four digits, starting from the right. Each group of four binary digits is called a <strong class="text-cyan-400">nibble</strong>.</p>
+                <p class="text-lg mb-6">Let's use the 8-bit binary number <strong class="font-mono text-cyan-300">10110101</strong> as our example.</p>
+                <div id="binary-container" class="flex justify-center items-center flex-wrap my-6">
+                    <!-- Binary digits will be injected here -->
+                </div>
+                <div class="text-center">
+                    <button id="group-btn" class="btn btn-primary">Group into Nibbles</button>
+                </div>
+                <div id="nibble-feedback" class="text-center mt-4 text-lg"></div>
+            </section>
+
+            <!-- Step 2: Binary to Hex - Convert Nibbles -->
+            <section id="step-2" class="step-section card p-6 md:p-8">
+                <h2 class="text-2xl font-bold text-emerald-400 mb-4">Binary → Hex (Step 2): Convert Each Nibble</h2>
+                <p class="text-lg mb-6">Next, convert each nibble into its denary equivalent, then to hex. Remember the place values in binary: 8, 4, 2, 1.</p>
+                 <div class="flex flex-col md:flex-row justify-around items-center gap-8 my-6">
+                    <div id="nibble-1-container" class="text-center"></div>
+                    <div id="nibble-2-container" class="text-center"></div>
+                </div>
+                <div class="text-center mt-8 bg-gray-800 p-6 rounded-lg">
+                    <p class="text-2xl font-bold">So, binary <span class="font-mono text-cyan-300">10110101</span> is <span class="font-mono text-indigo-400">B5</span> in hexadecimal.</p>
+                </div>
+            </section>
+            
+            <!-- Step 3: Binary to Hex - Practice -->
+            <section id="step-3" class="step-section card p-6 md:p-8">
+                <h2 class="text-2xl font-bold text-emerald-400 mb-4">Binary → Hex: Practice Problem</h2>
+                <p class="text-lg mb-6">Now, try converting this binary number yourself. Follow the steps we just learned.</p>
+                <div class="text-center bg-gray-800 p-4 rounded-lg mb-6">
+                    <p class="text-xl">Convert binary <strong id="practice-binary" class="font-mono text-cyan-300">01101100</strong> to hexadecimal.</p>
+                </div>
+                <div class="space-y-6">
+                    <div><label class="block text-lg mb-2">1. Split into two nibbles:</label><div class="flex justify-center gap-4"><input type="text" id="practice-nibble1" class="input-field w-24" maxlength="4" placeholder="Nibble 1"><input type="text" id="practice-nibble2" class="input-field w-24" maxlength="4" placeholder="Nibble 2"></div></div>
+                    <div><label class="block text-lg mb-2">2. Convert each nibble to denary:</label><div class="flex justify-center gap-4"><input type="number" id="practice-decimal1" class="input-field w-24" placeholder="Denary 1"><input type="number" id="practice-decimal2" class="input-field w-24" placeholder="Denary 2"></div></div>
+                    <div><label class="block text-lg mb-2">3. Convert to hex and combine:</label><div class="flex justify-center"><input type="text" id="practice-hex" class="input-field w-24 uppercase" maxlength="2" placeholder="Hex"></div></div>
+                </div>
+                <div class="text-center mt-8"><button id="check-practice-btn" class="btn btn-primary">Check Answer</button></div>
+                <div id="practice-feedback" class="mt-6 text-center text-lg"></div>
+            </section>
+
+            <!-- Step 4: Denary to Hex -->
+            <section id="step-4" class="step-section card p-6 md:p-8">
+                <h2 class="text-2xl font-bold text-emerald-400 mb-4">Denary → Hexadecimal Conversion</h2>
+                <p class="text-lg mb-4">To convert a denary (base-10) number to hexadecimal, we use division.</p>
+                <ul class="list-disc list-inside mb-6 ml-4 space-y-2">
+                    <li>Divide the denary number by 16.</li>
+                    <li>The result of the division is the first hex digit.</li>
+                    <li>The remainder is the second hex digit.</li>
+                </ul>
+                <div class="bg-gray-800 p-6 rounded-lg text-center font-mono text-xl">
+                    <p>Denary <strong class="text-cyan-300">19</strong> becomes:</p>
+                    <p class="mt-2">19 / 16 = <span class="text-emerald-400">1</span> with a remainder of <span class="text-indigo-400">3</span></p>
+                    <p class="mt-4">So, denary 19 is <strong class="text-indigo-400">13</strong> in Hex. (Pronounced "one, three")</p>
+                </div>
+                 <div class="text-center mt-8">
+                    <p class="text-xl">Your turn: Convert denary <strong id="d2h-practice-denary" class="text-cyan-300">45</strong> to hex.</p>
+                     <div class="flex justify-center items-center gap-4 mt-4">
+                        <input type="text" id="d2h-practice-hex" class="input-field w-24 uppercase" maxlength="2" placeholder="Hex">
+                        <button id="d2h-check-btn" class="btn btn-primary">Check</button>
+                    </div>
+                    <div id="d2h-feedback" class="mt-4"></div>
+                </div>
+            </section>
+            
+            <!-- Step 5: Hex to Denary -->
+            <section id="step-5" class="step-section card p-6 md:p-8">
+                <h2 class="text-2xl font-bold text-emerald-400 mb-4">Hexadecimal → Denary Conversion</h2>
+                <p class="text-lg mb-4">To convert from hexadecimal back to denary:</p>
+                <ul class="list-disc list-inside mb-6 ml-4 space-y-2">
+                    <li>Multiply the left-hand hex digit by 16.</li>
+                    <li>Add the value of the right-hand hex digit.</li>
+                    <li>Remember to convert letters (A-F) to their denary values (10-15) first!</li>
+                </ul>
+                <div class="bg-gray-800 p-6 rounded-lg text-center font-mono text-xl">
+                     <p>Hex <strong class="text-indigo-400">B5</strong> becomes:</p>
+                     <p class="mt-2">(<span class="text-emerald-400">B</span> x 16) + <span class="text-cyan-300">5</span></p>
+                     <p class="mt-2">(<span class="text-emerald-400">11</span> x 16) + <span class="text-cyan-300">5</span> = 176 + 5 = <strong class="text-cyan-300">181</strong></p>
+                </div>
+                 <div class="text-center mt-8">
+                    <p class="text-xl">Your turn: Convert hex <strong id="h2d-practice-hex" class="text-indigo-400">4C</strong> to denary.</p>
+                     <div class="flex justify-center items-center gap-4 mt-4">
+                        <input type="number" id="h2d-practice-denary" class="input-field w-24" placeholder="Denary">
+                        <button id="h2d-check-btn" class="btn btn-primary">Check</button>
+                    </div>
+                    <div id="h2d-feedback" class="mt-4"></div>
+                </div>
+            </section>
+
+            <!-- Step 6: Hex to Binary -->
+            <section id="step-6" class="step-section card p-6 md:p-8">
+                <h2 class="text-2xl font-bold text-emerald-400 mb-4">Hexadecimal → Binary Conversion</h2>
+                <p class="text-lg mb-4">This is the reverse of what we did first. Each hexadecimal digit corresponds to a 4-bit binary nibble.</p>
+                 <ul class="list-disc list-inside mb-6 ml-4 space-y-2">
+                    <li>Split the two hexadecimal characters.</li>
+                    <li>Convert each character to its 4-bit binary equivalent.</li>
+                    <li>Combine the two binary nibbles to get an 8-bit binary number.</li>
+                </ul>
+                <div class="bg-gray-800 p-6 rounded-lg text-center font-mono text-xl">
+                    <p>Hex <strong class="text-indigo-400">4C</strong> becomes:</p>
+                    <div class="flex justify-center gap-8 mt-4">
+                        <div><p>4 → <span class="text-cyan-400">0100</span></p></div>
+                        <div><p>C (12) → <span class="text-cyan-400">1100</span></p></div>
+                    </div>
+                    <p class="mt-4">So, hex 4C is <strong class="text-cyan-300">01001100</strong> in binary.</p>
+                </div>
+                 <div class="text-center mt-8">
+                    <p class="text-xl">Your turn: Convert hex <strong id="h2b-practice-hex" class="text-indigo-400">A7</strong> to binary.</p>
+                     <div class="flex justify-center items-center gap-4 mt-4">
+                        <input type="text" id="h2b-practice-binary" class="input-field w-48" maxlength="8" placeholder="8-bit Binary">
+                        <button id="h2b-check-btn" class="btn btn-primary">Check</button>
+                    </div>
+                    <div id="h2b-feedback" class="mt-4"></div>
+                </div>
+            </section>
+
+            <!-- Step 7: Quiz -->
+            <section id="step-7" class="step-section card p-6 md:p-8">
+                <h2 class="text-2xl font-bold text-emerald-400 mb-4">Knowledge Check Quiz</h2>
+                <p class="text-lg mb-6">Test your understanding with a few questions covering all conversion types.</p>
+                <div id="quiz-container">
+                    <!-- Quiz questions will be injected here -->
+                </div>
+                <div class="text-center mt-8">
+                    <button id="submit-quiz-btn" class="btn btn-primary hidden">Submit Quiz</button>
+                </div>
+                <div id="quiz-results" class="mt-6"></div>
+            </section>
+        </main>
+        
+        <footer class="mt-8 flex justify-between items-center">
+             <button id="prev-btn" class="btn btn-secondary">← Previous Step</button>
+             <div id="step-indicator" class="text-center text-gray-400"></div>
+             <button id="next-btn" class="btn btn-secondary">Next Step →</button>
+        </footer>
+        <div class="text-center mt-4">
+            <button id="reset-btn" class="text-gray-400 hover:text-white transition">Reset Simulation</button>
+        </div>
+    </div>
+
+    <!-- Modal for Popups -->
+    <div id="modal" class="modal-overlay">
+        <div class="modal-content card w-11/12 max-w-md p-6 text-center">
+            <h3 id="modal-title" class="text-2xl font-bold text-emerald-400 mb-4"></h3>
+            <p id="modal-text" class="text-lg mb-6"></p>
+            <button id="modal-close-btn" class="btn btn-primary">Got it!</button>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- DOM Caching ---
+    const dom = {
+        stepSections: document.querySelectorAll('.step-section'),
+        prevBtn: document.getElementById('prev-btn'),
+        nextBtn: document.getElementById('next-btn'),
+        resetBtn: document.getElementById('reset-btn'),
+        stepIndicator: document.getElementById('step-indicator'),
+        
+        // Step 1
+        binaryContainer: document.getElementById('binary-container'),
+        groupBtn: document.getElementById('group-btn'),
+        nibbleFeedback: document.getElementById('nibble-feedback'),
+        
+        // Step 2
+        nibble1Container: document.getElementById('nibble-1-container'),
+        nibble2Container: document.getElementById('nibble-2-container'),
+
+        // Step 3 (Practice)
+        practiceBinary: document.getElementById('practice-binary'),
+        practiceNibble1: document.getElementById('practice-nibble1'),
+        practiceNibble2: document.getElementById('practice-nibble2'),
+        practiceDecimal1: document.getElementById('practice-decimal1'),
+        practiceDecimal2: document.getElementById('practice-decimal2'),
+        practiceHex: document.getElementById('practice-hex'),
+        checkPracticeBtn: document.getElementById('check-practice-btn'),
+        practiceFeedback: document.getElementById('practice-feedback'),
+
+        // Step 4 (Denary to Hex)
+        d2hPracticeDenary: document.getElementById('d2h-practice-denary'),
+        d2hPracticeHex: document.getElementById('d2h-practice-hex'),
+        d2hCheckBtn: document.getElementById('d2h-check-btn'),
+        d2hFeedback: document.getElementById('d2h-feedback'),
+        
+        // Step 5 (Hex to Denary)
+        h2dPracticeHex: document.getElementById('h2d-practice-hex'),
+        h2dPracticeDenary: document.getElementById('h2d-practice-denary'),
+        h2dCheckBtn: document.getElementById('h2d-check-btn'),
+        h2dFeedback: document.getElementById('h2d-feedback'),
+
+        // Step 6 (Hex to Binary)
+        h2bPracticeHex: document.getElementById('h2b-practice-hex'),
+        h2bPracticeBinary: document.getElementById('h2b-practice-binary'),
+        h2bCheckBtn: document.getElementById('h2b-check-btn'),
+        h2bFeedback: document.getElementById('h2b-feedback'),
+
+        // Step 7 (Quiz)
+        quizContainer: document.getElementById('quiz-container'),
+        submitQuizBtn: document.getElementById('submit-quiz-btn'),
+        quizResults: document.getElementById('quiz-results'),
+
+        // Modal
+        modal: document.getElementById('modal'),
+        modalTitle: document.getElementById('modal-title'),
+        modalText: document.getElementById('modal-text'),
+        modalCloseBtn: document.getElementById('modal-close-btn'),
+    };
+
+    // --- State ---
+    let currentState = {
+        currentStep: 0,
+        totalSteps: dom.stepSections.length,
+        binaryString: '10110101',
+        practiceBinaryString: '',
+        d2hPracticeDenary: 0,
+        h2dPracticeHex: '',
+        h2bPracticeHex: '',
+        isGrouped: false,
+        quizAnswers: {},
+    };
+
+    const quizQuestions = [
+        {
+            type: 'mcq',
+            question: 'What is the correct hexadecimal conversion for the binary number 10011111?',
+            options: ['9F', 'A0', '19F', '9E'],
+            answer: '9F'
+        },
+        {
+            type: 'fib',
+            question: 'Convert the hexadecimal value A7 to an 8-bit binary number.',
+            answers: ['10100111']
+        },
+        {
+            type: 'mcq',
+            question: 'What is the denary equivalent of the hexadecimal number 3B?',
+            options: ['59', '311', '60', '3B'],
+            answer: '59'
+        },
+        {
+            type: 'fib', // Fill in the blanks
+            question: 'The denary number 200 is equivalent to ______ in hexadecimal.',
+            answers: ['C8']
+        },
+    ];
+
+    // --- Functions ---
+    const updateUI = () => {
+        requestAnimationFrame(() => {
+            dom.stepSections.forEach((section, index) => {
+                section.classList.toggle('active', index === currentState.currentStep);
+            });
+            dom.prevBtn.disabled = currentState.currentStep === 0;
+            dom.nextBtn.disabled = currentState.currentStep === currentState.totalSteps - 1;
+            dom.prevBtn.style.opacity = currentState.currentStep === 0 ? 0.5 : 1;
+            dom.nextBtn.style.opacity = currentState.currentStep === currentState.totalSteps - 1 ? 0.5 : 1;
+            dom.stepIndicator.textContent = `Step ${currentState.currentStep + 1} of ${currentState.totalSteps}`;
+        });
+    };
+    
+    const showModal = (title, text, onclose = () => {}) => {
+        dom.modalTitle.textContent = title;
+        dom.modalText.innerHTML = text; // Use innerHTML to allow for bold/strong tags
+        dom.modal.classList.add('visible');
+        const closeHandler = () => {
+            dom.modal.classList.remove('visible');
+            dom.modalCloseBtn.removeEventListener('click', closeHandler);
+            onclose();
+        };
+        dom.modalCloseBtn.addEventListener('click', closeHandler);
+    };
+
+    const generateBinaryDigits = () => {
+        dom.binaryContainer.innerHTML = '';
+        currentState.binaryString.split('').forEach(digit => {
+            const digitEl = document.createElement('div');
+            digitEl.className = 'binary-digit bg-gray-700';
+            digitEl.textContent = digit;
+            dom.binaryContainer.appendChild(digitEl);
+        });
+        currentState.isGrouped = false;
+        dom.nibbleFeedback.innerHTML = '';
+    };
+    
+    const groupNibbles = () => {
+        if (currentState.isGrouped) return;
+        const digits = dom.binaryContainer.querySelectorAll('.binary-digit');
+        dom.binaryContainer.innerHTML = '';
+        const nibble1 = document.createElement('div');
+        nibble1.className = 'nibble-group inline-block';
+        const nibble2 = document.createElement('div');
+        nibble2.className = 'nibble-group inline-block';
+        digits.forEach((digit, index) => {
+            if (index < 4) nibble1.appendChild(digit);
+            else nibble2.appendChild(digit);
+        });
+        dom.binaryContainer.appendChild(nibble1);
+        dom.binaryContainer.appendChild(nibble2);
+        requestAnimationFrame(() => {
+            nibble1.style.borderColor = '#34d399';
+            nibble2.style.borderColor = '#60a5fa';
+        });
+        dom.nibbleFeedback.innerHTML = `Great! We've split <span class="font-mono text-cyan-300">10110101</span> into two nibbles: <span class="font-mono text-emerald-400">1011</span> and <span class="font-mono text-blue-400">0101</span>.`;
+        currentState.isGrouped = true;
+    };
+    
+    const setupStep2 = () => {
+        const nibble1Str = currentState.binaryString.substring(0, 4);
+        const nibble2Str = currentState.binaryString.substring(4, 8);
+        const decimal1 = parseInt(nibble1Str, 2);
+        const decimal2 = parseInt(nibble2Str, 2);
+
+        const createNibbleDisplay = (nibbleStr, decimalVal, color) => {
+            const container = document.createElement('div');
+            const hexVal = decimalVal.toString(16).toUpperCase();
+            const placeValues = document.createElement('div');
+            placeValues.className = 'flex justify-center text-sm text-gray-400';
+            '8421'.split('').forEach(v => {
+                placeValues.innerHTML += `<div class="w-12 text-center">${v}</div>`;
+            });
+            const digits = document.createElement('div');
+            digits.className = 'flex justify-center';
+            nibbleStr.split('').forEach(d => {
+                digits.innerHTML += `<div class="binary-digit" style="border-color:${color};">${d}</div>`;
+            });
+            const calculation = document.createElement('p');
+            calculation.className = 'mt-4 text-lg font-mono';
+            calculation.innerHTML = `${nibbleStr.split('').map((d, i) => d === '1' ? Math.pow(2, 3-i) : null).filter(Boolean).join(' + ')} = <span class="font-bold text-xl text-cyan-300">${decimalVal}</span> → <span class="font-bold text-2xl text-indigo-400">${hexVal}</span>`;
+            container.append(placeValues, digits, calculation);
+            return container;
+        };
+        dom.nibble1Container.innerHTML = '';
+        dom.nibble1Container.appendChild(createNibbleDisplay(nibble1Str, decimal1, '#34d399'));
+        dom.nibble2Container.innerHTML = '';
+        dom.nibble2Container.appendChild(createNibbleDisplay(nibble2Str, decimal2, '#60a5fa'));
+    };
+
+    const generatePracticeProblem = () => {
+        let num = Math.floor(Math.random() * 256);
+        currentState.practiceBinaryString = num.toString(2).padStart(8, '0');
+        dom.practiceBinary.textContent = currentState.practiceBinaryString;
+        dom.practiceNibble1.value = '';
+        dom.practiceNibble2.value = '';
+        dom.practiceDecimal1.value = '';
+        dom.practiceDecimal2.value = '';
+        dom.practiceHex.value = '';
+        dom.practiceFeedback.innerHTML = '';
+        dom.practiceFeedback.className = 'mt-6 text-center text-lg';
+    };
+
+    const checkPracticeAnswer = () => {
+        const correctNibble1 = currentState.practiceBinaryString.substring(0, 4);
+        const correctNibble2 = currentState.practiceBinaryString.substring(4, 8);
+        const correctDecimal1 = parseInt(correctNibble1, 2);
+        const correctDecimal2 = parseInt(correctNibble2, 2);
+        const correctHex = parseInt(currentState.practiceBinaryString, 2).toString(16).toUpperCase().padStart(2, '0');
+        const userNibble1 = dom.practiceNibble1.value;
+        const userNibble2 = dom.practiceNibble2.value;
+        const userDecimal1 = dom.practiceDecimal1.value;
+        const userDecimal2 = dom.practiceDecimal2.value;
+        const userHex = dom.practiceHex.value.toUpperCase();
+
+        if (userNibble1.length < 4 || userNibble2.length < 4 || !userDecimal1 || !userDecimal2 || userHex.length < 1) {
+             showModal('Incomplete Answer', 'Please fill in all the fields to check your answer.');
+             return;
+        }
+        let allCorrect = true;
+        let feedbackHTML = '';
+        if (userNibble1 === correctNibble1 && userNibble2 === correctNibble2) feedbackHTML += '<p>✅ Nibbles are grouped correctly.</p>';
+        else { feedbackHTML += `<p>❌ Grouping is incorrect. Should be <span class="font-mono">${correctNibble1}</span> and <span class="font-mono">${correctNibble2}</span>.</p>`; allCorrect = false; }
+        if (parseInt(userDecimal1) === correctDecimal1 && parseInt(userDecimal2) === correctDecimal2) feedbackHTML += '<p>✅ Denary conversions are correct.</p>';
+        else { feedbackHTML += `<p>❌ Denary conversion is incorrect. Should be ${correctDecimal1} and ${correctDecimal2}.</p>`; allCorrect = false; }
+        if (userHex === correctHex) feedbackHTML += '<p>✅ Final hex value is correct.</p>';
+        else { feedbackHTML += `<p>❌ Final hex value is incorrect. The correct answer is <span class="font-mono">${correctHex}</span>.</p>`; allCorrect = false; }
+        dom.practiceFeedback.innerHTML = feedbackHTML;
+        if (allCorrect) {
+            dom.practiceFeedback.className = 'feedback correct';
+            dom.practiceFeedback.insertAdjacentHTML('afterbegin', '<p class="font-bold text-lg mb-2">Excellent! All steps are correct.</p>');
+        } else {
+            dom.practiceFeedback.className = 'feedback incorrect';
+            dom.practiceFeedback.insertAdjacentHTML('afterbegin', '<p class="font-bold text-lg mb-2">Not quite. Review the feedback below:</p>');
+        }
+    };
+    
+    // --- New Conversion Functions ---
+    const generateD2HPractice = () => {
+        currentState.d2hPracticeDenary = Math.floor(Math.random() * (255 - 17)) + 17; // Denary between 17 and 255
+        dom.d2hPracticeDenary.textContent = currentState.d2hPracticeDenary;
+        dom.d2hPracticeHex.value = '';
+        dom.d2hFeedback.innerHTML = '';
+        dom.d2hFeedback.className = 'mt-4';
+    };
+    const checkD2HAnswer = () => {
+        const correctHex = currentState.d2hPracticeDenary.toString(16).toUpperCase();
+        const userHex = dom.d2hPracticeHex.value.toUpperCase();
+        if(userHex.length < 1) { showModal('Incomplete Answer', 'Please provide a hexadecimal value.'); return; }
+        if (userHex === correctHex) {
+            dom.d2hFeedback.innerHTML = `<p class="font-bold">Correct! ${currentState.d2hPracticeDenary} is ${correctHex} in hex.</p>`;
+            dom.d2hFeedback.className = 'feedback correct';
+        } else {
+            dom.d2hFeedback.innerHTML = `<p class="font-bold">Not quite. The correct answer is ${correctHex}.</p> <p>${currentState.d2hPracticeDenary} / 16 = ${Math.floor(currentState.d2hPracticeDenary / 16)} remainder ${currentState.d2hPracticeDenary % 16}</p>`;
+            dom.d2hFeedback.className = 'feedback incorrect';
+        }
+    };
+
+    const generateH2DPractice = () => {
+        const num = Math.floor(Math.random() * (255 - 17)) + 17;
+        currentState.h2dPracticeHex = num.toString(16).toUpperCase().padStart(2, '0');
+        dom.h2dPracticeHex.textContent = currentState.h2dPracticeHex;
+        dom.h2dPracticeDenary.value = '';
+        dom.h2dFeedback.innerHTML = '';
+        dom.h2dFeedback.className = 'mt-4';
+    };
+    const checkH2DAnswer = () => {
+        const correctDenary = parseInt(currentState.h2dPracticeHex, 16);
+        const userDenary = parseInt(dom.h2dPracticeDenary.value);
+        if(!dom.h2dPracticeDenary.value) { showModal('Incomplete Answer', 'Please provide a denary value.'); return; }
+        if (userDenary === correctDenary) {
+            dom.h2dFeedback.innerHTML = `<p class="font-bold">Correct! ${currentState.h2dPracticeHex} is ${correctDenary} in denary.</p>`;
+            dom.h2dFeedback.className = 'feedback correct';
+        } else {
+            dom.h2dFeedback.innerHTML = `<p class="font-bold">Not quite. The correct answer is ${correctDenary}.</p>`;
+            dom.h2dFeedback.className = 'feedback incorrect';
+        }
+    };
+
+    const generateH2BPractice = () => {
+        const num = Math.floor(Math.random() * 256);
+        currentState.h2bPracticeHex = num.toString(16).toUpperCase().padStart(2, '0');
+        dom.h2bPracticeHex.textContent = currentState.h2bPracticeHex;
+        dom.h2bPracticeBinary.value = '';
+        dom.h2bFeedback.innerHTML = '';
+        dom.h2bFeedback.className = 'mt-4';
+    };
+    const checkH2BAnswer = () => {
+        const correctBinary = parseInt(currentState.h2bPracticeHex, 16).toString(2).padStart(8, '0');
+        const userBinary = dom.h2bPracticeBinary.value;
+        if(userBinary.length < 8) { showModal('Incomplete Answer', 'Please provide a full 8-bit binary number.'); return; }
+        if (userBinary === correctBinary) {
+            dom.h2bFeedback.innerHTML = `<p class="font-bold">Correct! ${currentState.h2bPracticeHex} is ${correctBinary} in binary.</p>`;
+            dom.h2bFeedback.className = 'feedback correct';
+        } else {
+            dom.h2bFeedback.innerHTML = `<p class="font-bold">Not quite. The correct answer is ${correctBinary}.</p>`;
+            dom.h2bFeedback.className = 'feedback incorrect';
+        }
+    };
+    // --------------------------------
+
+    const setupQuiz = () => {
+        dom.quizContainer.innerHTML = '';
+        dom.quizResults.innerHTML = '';
+        currentState.quizAnswers = {};
+        quizQuestions.forEach((q, index) => {
+            const questionEl = document.createElement('div');
+            questionEl.className = 'mb-8';
+            let content = `<p class="text-lg font-semibold mb-3">${index + 1}. ${q.question}</p>`;
+            if (q.type === 'mcq') {
+                content += `<div class="space-y-2 quiz-options" data-question-index="${index}">`;
+                q.options.forEach(option => { content += `<div class="card p-4 quiz-option border-2 border-transparent hover:border-indigo-500">${option}</div>`; });
+                content += `</div>`;
+            } else if (q.type === 'fib') {
+                 let questionText = q.question;
+                 q.answers.forEach((ans, i) => { questionText = questionText.replace('_____', `<input type="text" class="input-field w-32 mx-1 quiz-fib uppercase" data-question-index="${index}" data-answer-index="${i}">`); });
+                 content += `<div>${questionText}</div>`;
+            }
+            questionEl.innerHTML = content;
+            dom.quizContainer.appendChild(questionEl);
+        });
+        dom.submitQuizBtn.classList.remove('hidden');
+    };
+    
+    const handleQuizInteraction = (e) => {
+        if (e.target.classList.contains('quiz-option')) {
+            const parent = e.target.parentElement;
+            const questionIndex = parent.dataset.questionIndex;
+            parent.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+            e.target.classList.add('selected');
+            currentState.quizAnswers[questionIndex] = e.target.textContent;
+        }
+        if (e.target.classList.contains('quiz-fib')) {
+            const questionIndex = e.target.dataset.questionIndex;
+            const answerIndex = e.target.dataset.answerIndex;
+            if(!currentState.quizAnswers[questionIndex]) currentState.quizAnswers[questionIndex] = [];
+            currentState.quizAnswers[questionIndex][answerIndex] = e.target.value.trim().toUpperCase();
+        }
+    };
+    
+    const submitQuiz = () => {
+        let score = 0;
+        let resultsHTML = '<h3 class="text-2xl font-bold mb-4 text-center">Quiz Results</h3>';
+        quizQuestions.forEach((q, index) => {
+            const userAnswer = currentState.quizAnswers[index];
+            let isCorrect = false;
+            resultsHTML += `<div class="p-4 rounded-lg mb-4 bg-gray-800"><p class="font-semibold">${index + 1}. ${q.question}</p>`;
+            if (q.type === 'mcq') {
+                isCorrect = userAnswer === q.answer;
+                resultsHTML += `<p class="mt-2">Your answer: <span class="font-mono ${isCorrect ? 'text-emerald-400' : 'text-red-400'}">${userAnswer || 'Not answered'}</span></p>`;
+                if (!isCorrect) resultsHTML += `<p>Correct answer: <span class="font-mono text-emerald-400">${q.answer}</span></p>`;
+            } else if (q.type === 'fib') {
+                let allFibCorrect = true;
+                q.answers.forEach((ans, i) => {
+                    if (!userAnswer || userAnswer[i] !== ans.toUpperCase()) allFibCorrect = false;
+                });
+                isCorrect = allFibCorrect;
+                const userAnswerStr = userAnswer ? userAnswer.join(', ') : 'Not answered';
+                resultsHTML += `<p class="mt-2">Your answer: <span class="font-mono ${isCorrect ? 'text-emerald-400' : 'text-red-400'}">${userAnswerStr}</span></p>`;
+                 if (!isCorrect) resultsHTML += `<p>Correct answer: <span class="font-mono text-emerald-400">${q.answers.join(', ')}</span></p>`;
+            }
+            if (isCorrect) { score++; resultsHTML += `<p class="font-bold text-emerald-400 mt-1">Correct!</p>`; } 
+            else { resultsHTML += `<p class="font-bold text-red-400 mt-1">Incorrect.</p>`; }
+            resultsHTML += `</div>`;
+        });
+        const finalScore = `<div class="text-center mt-6 p-4 rounded-lg bg-indigo-900/50"><p class="text-2xl font-bold">You scored ${score} out of ${quizQuestions.length}</p></div>`;
+        dom.quizResults.innerHTML = resultsHTML + finalScore;
+        dom.submitQuizBtn.classList.add('hidden');
+        dom.quizContainer.classList.add('hidden');
+    };
+
+    const changeStep = (direction) => {
+        const newStep = currentState.currentStep + direction;
+        if (newStep >= 0 && newStep < currentState.totalSteps) {
+            if(direction > 0 && currentState.currentStep === 1 && !currentState.isGrouped) {
+                showModal('Task Required', 'Please click the "Group into Nibbles" button to continue.');
+                return;
+            }
+            currentState.currentStep = newStep;
+            if (currentState.currentStep === 1) generateBinaryDigits();
+            if (currentState.currentStep === 2) setupStep2();
+            if (currentState.currentStep === 3) generatePracticeProblem();
+            if (currentState.currentStep === 4) generateD2HPractice();
+            if (currentState.currentStep === 5) generateH2DPractice();
+            if (currentState.currentStep === 6) generateH2BPractice();
+            if (currentState.currentStep === 7) setupQuiz();
+            updateUI();
+        }
+    };
+    
+    const reset = () => {
+        currentState.currentStep = 0;
+        currentState.isGrouped = false;
+        dom.nibbleFeedback.innerHTML = '';
+        dom.practiceFeedback.innerHTML = '';
+        dom.d2hFeedback.innerHTML = '';
+        dom.h2dFeedback.innerHTML = '';
+        dom.h2bFeedback.innerHTML = '';
+        dom.quizContainer.classList.remove('hidden');
+        dom.quizResults.innerHTML = '';
+        dom.submitQuizBtn.classList.add('hidden');
+        currentState.quizAnswers = {};
+        updateUI();
+        generateBinaryDigits();
+    };
+
+    // --- Event Listeners ---
+    dom.nextBtn.addEventListener('click', () => changeStep(1));
+    dom.prevBtn.addEventListener('click', () => changeStep(-1));
+    dom.resetBtn.addEventListener('click', reset);
+    dom.groupBtn.addEventListener('click', () => {
+        groupNibbles();
+        showModal('Nice!', 'Each group of 4 binary digits is called a <strong>nibble</strong>. We work with one nibble at a time.');
+    });
+    dom.checkPracticeBtn.addEventListener('click', checkPracticeAnswer);
+    dom.d2hCheckBtn.addEventListener('click', checkD2HAnswer);
+    dom.h2dCheckBtn.addEventListener('click', checkH2DAnswer);
+    dom.h2bCheckBtn.addEventListener('click', checkH2BAnswer);
+    dom.quizContainer.addEventListener('click', handleQuizInteraction);
+    dom.quizContainer.addEventListener('input', handleQuizInteraction);
+    dom.submitQuizBtn.addEventListener('click', submitQuiz);
+
+    document.addEventListener('keydown', (e) => {
+        if (document.activeElement.tagName === 'INPUT') return;
+        if (e.key === 'ArrowRight') changeStep(1);
+        else if (e.key === 'ArrowLeft') changeStep(-1);
+    });
+
+    // --- Initialization ---
+    updateUI();
+    generateBinaryDigits();
+});
+</script>
+</body>
+</html>

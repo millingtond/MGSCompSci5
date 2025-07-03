@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 2NF Normalization Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles and variables */
+        :root {
+            --bg-color-start: #1a237e;
+            --bg-color-end: #0d47a1;
+            --card-bg: rgba(255, 255, 255, 0.1);
+            --text-color: #f0f4f8;
+            --primary-color: #82b1ff;
+            --accent-color: #40c4ff;
+            --success-color: #00e676;
+            --error-color: #ff5252;
+            --border-color: rgba(255, 255, 255, 0.2);
+            --shadow-color: rgba(0, 0, 0, 0.2);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Reduced motion accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-color-start), var(--bg-color-end));
+            background-size: 400% 400%;
+            animation: gradient-animation 20s ease infinite;
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #particle-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            background-color: rgba(130, 177, 255, 0.5);
+            border-radius: 50%;
+            opacity: 0;
+            animation: float 25s ease-in-out infinite;
+            will-change: transform, opacity;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) scale(1); opacity: 1; }
+            100% { transform: translateY(-10vh) scale(0.5); opacity: 0; }
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Main simulation container */
+        #simulation-container {
+            width: 95%;
+            max-width: 1200px;
+            height: 90vh;
+            max-height: 800px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            box-shadow: 0 8px 32px 0 var(--shadow-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            z-index: 2;
+            transform: translateZ(0); /* Promotes to its own layer */
+        }
+
+        header {
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+            background: rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            text-shadow: 0 0 10px rgba(130, 177, 255, 0.5);
+        }
+
+        main {
+            flex-grow: 1;
+            position: relative;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        /* Step management */
+        .step {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100%;
+            animation: fadeIn 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            will-change: opacity, transform;
+        }
+
+        .step.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .step-content {
+            width: 100%;
+            text-align: center;
+        }
+        
+        /* Navigation controls */
+        footer {
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border-color);
+            background: rgba(0,0,0,0.1);
+        }
+
+        .nav-btn, .reset-btn, .start-btn, .check-btn {
+            background: linear-gradient(45deg, var(--accent-color), var(--primary-color));
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 1rem;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            will-change: transform, box-shadow;
+            transform: translateZ(0);
+        }
+        
+        .nav-btn:hover, .reset-btn:hover, .start-btn:hover, .check-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .nav-btn:active, .reset-btn:active, .start-btn:active, .check-btn:active {
+            transform: translateY(1px) scale(1);
+        }
+        
+        /* Ripple effect for buttons */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7);
+            transform: scale(0);
+            animation: ripple-animation 0.6s linear;
+        }
+
+        @keyframes ripple-animation {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.2);
+        }
+        
+        .reset-btn {
+             background: linear-gradient(45deg, #757575, #9e9e9e);
+        }
+
+        /* Glassmorphism cards */
+        .info-card {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 2rem;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: left;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .info-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+        }
+
+        .info-card h2 { color: var(--primary-color); margin-bottom: 1rem; }
+        .info-card p, .info-card li { font-size: 1.1rem; line-height: 1.6; margin-bottom: 0.5rem; }
+        .info-card code {
+            background-color: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'SF Mono', 'Courier New', Courier, monospace;
+        }
+
+        /* Tables */
+        .table-container {
+            margin-top: 1.5rem;
+            transition: all 0.5s ease;
+            position: relative;
+            width: 100%;
+            perspective: 1000px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            font-size: 0.9rem;
+            overflow: hidden;
+            will-change: transform, opacity;
+            transform-style: preserve-3d;
+        }
+        
+        /* Shake animation for incorrect answers */
+        .shake {
+            animation: shake-animation 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake-animation {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.3s ease;
+        }
+        
+        th {
+            background-color: rgba(130, 177, 255, 0.2);
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        tr:last-child td { border-bottom: none; }
+        
+        th.interactive {
+            cursor: pointer;
+            position: relative;
+        }
+        th.interactive::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--accent-color);
+            transform: scaleX(0);
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform-origin: center;
+        }
+        th.interactive:hover::after { transform: scaleX(1); }
+        th.selected { background-color: rgba(0, 230, 118, 0.2); color: var(--success-color); }
+        th.selected::after { transform: scaleX(1); background-color: var(--success-color); }
+        
+        /* Modal / Dialogue Box */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000; opacity: 0; visibility: hidden;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: linear-gradient(135deg, var(--bg-color-start), var(--bg-color-end));
+            padding: 2.5rem; border-radius: 20px; border: 1px solid var(--border-color);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4); max-width: 600px; width: 90%;
+            text-align: center; transform: scale(0.9);
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            will-change: transform;
+        }
+        .modal-overlay.active .modal-content { transform: scale(1); }
+        .modal-content h2 { color: var(--primary-color); margin-bottom: 1rem; }
+        .modal-content p { font-size: 1.1rem; line-height: 1.6; margin-bottom: 1.5rem; }
+        .modal-close-btn { margin-top: 1rem; }
+
+        /* Quiz styles */
+        .quiz-options {
+            display: flex; flex-direction: column; gap: 1rem;
+            margin-top: 1.5rem; width: 100%; max-width: 600px;
+        }
+        .quiz-option {
+            background: var(--card-bg); border: 1px solid var(--border-color);
+            padding: 1rem; border-radius: 12px; cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            text-align: left;
+        }
+        .quiz-option:hover { background: rgba(255, 255, 255, 0.2); transform: translateY(-2px); }
+        .quiz-option.selected { border-color: var(--accent-color); background: rgba(64, 196, 255, 0.2); }
+        
+        .feedback {
+            margin-top: 1.5rem; padding: 1rem; border-radius: 12px;
+            font-weight: 500; display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        .feedback.correct { background-color: rgba(0, 230, 118, 0.2); border: 1px solid var(--success-color); color: var(--success-color); }
+        .feedback.incorrect { background-color: rgba(255, 82, 82, 0.2); border: 1px solid var(--error-color); color: var(--error-color); }
+        
+        /* Animation classes for table decomposition */
+        .table-split-container {
+            display: grid; grid-template-columns: 1fr; grid-gap: 2rem;
+            width: 100%;
+        }
+        @media (min-width: 1000px) {
+            .table-split-container {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        .split-table-wrapper {
+            opacity: 0; transform: translateY(30px);
+            animation: popIn 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+            will-change: opacity, transform;
+        }
+        .split-table-wrapper h3 { margin-bottom: 0.5rem; color: var(--accent-color); }
+        
+        @keyframes popIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            header h1 { font-size: 1.2rem; }
+            main { padding: 1rem; }
+            .nav-btn, .reset-btn, .start-btn, .check-btn { padding: 0.6rem 1rem; font-size: 0.9rem; }
+            .info-card { padding: 1.5rem; }
+            .info-card p, .info-card li { font-size: 1rem; }
+            th, td { padding: 8px 10px; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="particle-container"></div>
+
+    <div id="simulation-container">
+        <header>
+            <h1>Interactive Guide to Second Normal Form (2NF)</h1>
+        </header>
+
+        <main>
+            <section id="step-0" class="step active">
+                <div class="step-content info-card">
+                    <h2>Welcome to the 2NF Simulation!</h2>
+                    <p>This interactive guide is designed for A-Level Computer Science students (Cambridge 9618) to master one of the key concepts in database normalization: <strong>Second Normal Form (2NF)</strong>.</p>
+                    <p>You will learn to identify and resolve partial dependencies through a step-by-step, hands-on process. Follow the instructions, complete the tasks, and test your knowledge with integrated quizzes.</p>
+                    <button id="start-btn" class="start-btn">Start Learning</button>
+                </div>
+            </section>
+
+            <section id="step-1" class="step">
+                <div class="step-content info-card">
+                    <h2>What is Second Normal Form (2NF)?</h2>
+                    <p>For a database table to be in 2NF, it must meet two essential conditions:</p>
+                    <ol>
+                        <li>The table must already be in <strong>First Normal Form (1NF)</strong>. This means it has a primary key, and all columns contain atomic (single) values.</li>
+                        <li>The table must have <strong>no partial dependencies</strong>.</li>
+                    </ol>
+                    <p>A partial dependency occurs when a non-key attribute is functionally dependent on only a <strong>part</strong> of a composite primary key, instead of the <strong>whole</strong> key. This concept only applies to tables with composite keys.</p>
+                </div>
+            </section>
+            
+            <section id="step-2" class="step">
+                <div class="step-content">
+                    <h2>Our Scenario: Project Assignments</h2>
+                    <p>Let's examine a table used by a company to track which employees are working on which projects, and for how many hours.</p>
+                    <div id="initial-table-container" class="table-container">
+                        </div>
+                </div>
+            </section>
+            
+            <section id="step-3" class="step">
+                 <div class="step-content">
+                    <h2>Task: Identify the Composite Primary Key</h2>
+                    <p>A primary key must uniquely identify each row. No single column here can do that. Click on the column headers that, when combined, create a unique identifier for each record.</p>
+                    <div id="key-task-table-container" class="table-container">
+                        </div>
+                    <button id="check-key-btn" class="check-btn" style="margin-top: 1.5rem;" disabled>Check Answer</button>
+                    <div id="key-feedback" class="feedback"></div>
+                </div>
+            </section>
+            
+             <section id="step-4" class="step">
+                <div class="step-content">
+                    <h2>Visualizing Functional Dependencies</h2>
+                    <p>These arrows show how non-key attributes depend on the primary key.</p>
+                    <div id="dependency-table-container" class="table-container">
+                       </div>
+                </div>
+            </section>
+            
+            <section id="step-5" class="step">
+                <div class="step-content">
+                    <h2>Quiz: Spotting the Violations</h2>
+                    <p>Based on the dependencies we just saw, which non-key attributes are <strong>partially dependent</strong> on the composite key? (Select all that apply)</p>
+                     <div class="quiz-options" id="partial-dependency-quiz">
+                        <div class="quiz-option" data-value="EmployeeName">EmployeeName</div>
+                        <div class="quiz-option" data-value="ProjectName">ProjectName</div>
+                        <div class="quiz-option" data-value="HoursWorked">HoursWorked</div>
+                    </div>
+                    <button id="check-quiz1-btn" class="check-btn" style="margin-top: 1.5rem;" disabled>Check Answer</button>
+                    <div id="quiz1-feedback" class="feedback"></div>
+                </div>
+            </section>
+
+            <section id="step-6" class="step">
+                <div class="step-content">
+                    <h2>The Solution: Decomposing the Table</h2>
+                    <p>To achieve 2NF, we must eliminate partial dependencies by splitting the original table into several smaller, well-structured tables.</p>
+                    <div id="decomposition-container" class="table-container">
+                        </div>
+                </div>
+            </section>
+            
+             <section id="step-7" class="step">
+                <div class="step-content">
+                    <h2>The Result: A 2NF Compliant Database</h2>
+                    <p>Our database is now in Second Normal Form. Data redundancy is reduced, and we've avoided potential update anomalies.</p>
+                    <div id="final-tables-container" class="table-container table-split-container">
+                        </div>
+                </div>
+            </section>
+            
+            <section id="step-8" class="step">
+                 <div class="step-content info-card">
+                    <h2>Congratulations! You've reached 2NF.</h2>
+                    <p>Let's recap what we accomplished:</p>
+                    <ul>
+                        <li>We started with a table in 1NF that had a <strong>composite primary key</strong>.</li>
+                        <li>We identified <strong>partial dependencies</strong>, where non-key attributes depended on only part of the key.</li>
+                        <li>We <strong>decomposed</strong> the original table into multiple new tables to eliminate those partial dependencies.</li>
+                        <li>The resulting database design is more efficient, less redundant, and more robust.</li>
+                    </ul>
+                    <p>You are now ready to tackle more complex normalization challenges!</p>
+                </div>
+            </section>
+
+        </main>
+
+        <footer>
+            <button id="prev-btn" class="nav-btn" disabled>&#8592; Previous Step</button>
+            <button id="reset-btn" class="reset-btn">Reset</button>
+            <button id="next-btn" class="nav-btn" disabled>Next Step &#8594;</button>
+        </footer>
+    </div>
+    
+    <div id="modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 id="modal-title"></h2>
+            <p id="modal-text"></p>
+            <button id="modal-close-btn" class="nav-btn modal-close-btn">Continue</button>
+        </div>
+    </div>
+
+
+    <script>
+    // --- Self-Executing Anonymous Function (IIFE) to Encapsulate Code ---
+    // This prevents conflicts with other scripts and keeps the global scope clean.
+    (() => {
+        // --- 1. DOM Caching & State Management ---
+        
+        // Cache frequently accessed DOM elements for improved performance.
+        const elements = {
+            container: document.getElementById('simulation-container'),
+            steps: document.querySelectorAll('.step'),
+            prevBtn: document.getElementById('prev-btn'),
+            nextBtn: document.getElementById('next-btn'),
+            resetBtn: document.getElementById('reset-btn'),
+            startBtn: document.getElementById('start-btn'),
+            initialTableContainer: document.getElementById('initial-table-container'),
+            keyTaskTableContainer: document.getElementById('key-task-table-container'),
+            checkKeyBtn: document.getElementById('check-key-btn'),
+            keyFeedback: document.getElementById('key-feedback'),
+            dependencyTableContainer: document.getElementById('dependency-table-container'),
+            quiz1Options: document.getElementById('partial-dependency-quiz'),
+            checkQuiz1Btn: document.getElementById('check-quiz1-btn'),
+            quiz1Feedback: document.getElementById('quiz1-feedback'),
+            decompositionContainer: document.getElementById('decomposition-container'),
+            finalTablesContainer: document.getElementById('final-tables-container'),
+            modal: document.getElementById('modal'),
+            modalTitle: document.getElementById('modal-title'),
+            modalText: document.getElementById('modal-text'),
+            modalCloseBtn: document.getElementById('modal-close-btn'),
+            particleContainer: document.getElementById('particle-container'),
+        };
+
+        // Centralized state object to manage the simulation's progress and user interactions.
+        let currentState = {
+            currentStep: 0,
+            totalSteps: elements.steps.length,
+            selectedKeys: new Set(),
+            selectedQuizOptions: new Set(),
+            isModalOpen: false,
+            onModalClose: null,
+            // A flag to ensure the arrow animation style is only added once.
+            arrowStyleAdded: false,
+        };
+
+        // Data for our simulation scenario.
+        const tableData = [
+            { EmployeeID: 'E101', EmployeeName: 'Alice', ProjectID: 'P01', ProjectName: 'Website Redesign', HoursWorked: 20 },
+            { EmployeeID: 'E101', EmployeeName: 'Alice', ProjectID: 'P02', ProjectName: 'Mobile App Dev', HoursWorked: 35 },
+            { EmployeeID: 'E102', EmployeeName: 'Bob', ProjectID: 'P01', ProjectName: 'Website Redesign', HoursWorked: 40 },
+            { EmployeeID: 'E103', EmployeeName: 'Charlie', ProjectID: 'P03', ProjectName: 'API Integration', HoursWorked: 25 },
+            { EmployeeID: 'E103', EmployeeName: 'Charlie', ProjectID: 'P01', ProjectName: 'Website Redesign', HoursWorked: 15 },
+        ];
+        const headers = ['EmployeeID', 'EmployeeName', 'ProjectID', 'ProjectName', 'HoursWorked'];
+
+        // --- 2. Core Functions ---
+
+        /**
+         * Navigates to a specific step, handling animations and state updates.
+         * @param {number} stepIndex - The zero-based index of the step to display.
+         */
+        function goToStep(stepIndex) {
+            if (stepIndex < 0 || stepIndex >= currentState.totalSteps || currentState.isModalOpen) return;
+
+            // Use requestAnimationFrame to batch DOM changes for smoother rendering.
+            requestAnimationFrame(() => {
+                elements.steps[currentState.currentStep].classList.remove('active');
+                elements.steps[stepIndex].classList.add('active');
+                currentState.currentStep = stepIndex;
+                updateNavButtons();
+                executeStepLogic(stepIndex);
+            });
+        }
+
+        /**
+         * Updates the state (enabled/disabled) and visibility of navigation buttons based on the current step.
+         */
+        function updateNavButtons() {
+            elements.prevBtn.disabled = currentState.currentStep === 0;
+            
+            // The "Next" button is disabled if a task/quiz on the current step is incomplete.
+            const isTaskIncomplete = (currentState.currentStep === 3 && !elements.keyFeedback.classList.contains('correct')) || 
+                                     (currentState.currentStep === 5 && !elements.quiz1Feedback.classList.contains('correct'));
+            elements.nextBtn.disabled = currentState.currentStep >= currentState.totalSteps - 1 || isTaskIncomplete || currentState.isModalOpen;
+            
+            // Hide navigation on the welcome screen for a cleaner start.
+             if(currentState.currentStep === 0) {
+                 elements.prevBtn.style.display = 'none';
+                 elements.nextBtn.style.display = 'none';
+                 elements.resetBtn.style.display = 'none';
+             } else {
+                 elements.prevBtn.style.display = 'inline-block';
+                 elements.nextBtn.style.display = 'inline-block';
+                 elements.resetBtn.style.display = 'inline-block';
+             }
+        }
+        
+        /**
+         * Shows a modal dialog. The simulation is paused until the modal is closed.
+         * @param {string} title - The title for the modal.
+         * @param {string} text - The HTML content for the modal body.
+         * @param {Function} [onClose] - Optional callback to execute after the modal is closed.
+         */
+        function showModal(title, text, onClose) {
+            currentState.isModalOpen = true;
+            elements.modalTitle.textContent = title;
+            elements.modalText.innerHTML = text; // Use innerHTML to allow for formatting tags like <strong>.
+            elements.modal.classList.add('active');
+            currentState.onModalClose = onClose;
+            updateNavButtons(); // Disable nav buttons while the modal is open.
+        }
+
+        /**
+         * Hides the modal dialog and executes any pending onClose callback.
+         */
+        function closeModal() {
+            currentState.isModalOpen = false;
+            elements.modal.classList.remove('active');
+            if (typeof currentState.onModalClose === 'function') {
+                // Delay the callback slightly to allow the closing animation to begin.
+                setTimeout(currentState.onModalClose, 100); 
+                currentState.onModalClose = null;
+            }
+            // Re-enable navigation buttons after a short delay.
+            setTimeout(updateNavButtons, 150);
+        }
+
+        /**
+         * Generates an HTML table element from data.
+         * @param {Array<Object>} data - Array of data objects for rows.
+         * @param {Array<string>} headers - Array of strings for table headers.
+         * @param {string} [id] - Optional ID to assign to the table.
+         * @param {boolean} [interactiveHeaders=false] - If true, headers get a special class for interaction.
+         * @returns {HTMLTableElement} The constructed HTML table element.
+         */
+        function createTable(data, headers, id, interactiveHeaders = false) {
+            const table = document.createElement('table');
+            if (id) table.id = id;
+
+            const thead = table.createTHead();
+            const headerRow = thead.insertRow();
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                th.dataset.key = headerText;
+                if(interactiveHeaders) th.classList.add('interactive');
+                headerRow.appendChild(th);
+            });
+
+            const tbody = table.createTBody();
+            data.forEach(rowData => {
+                const row = tbody.insertRow();
+                headers.forEach(header => {
+                    const cell = row.insertCell();
+                    cell.textContent = rowData[header];
+                });
+            });
+            return table;
+        }
+
+        /**
+         * Executes logic specific to each step, such as showing modals or setting up interactive tasks.
+         * This acts as the main controller for the simulation's flow.
+         * @param {number} stepIndex - The index of the current step.
+         */
+        function executeStepLogic(stepIndex) {
+            // Cleanup logic to reset states when leaving a step
+            if (stepIndex !== 3) {
+                 elements.keyTaskTableContainer.innerHTML = '';
+                 elements.keyFeedback.style.display = 'none';
+                 elements.keyFeedback.textContent = '';
+                 elements.checkKeyBtn.disabled = true;
+                 currentState.selectedKeys.clear();
+            }
+            if (stepIndex !== 5) {
+                elements.quiz1Feedback.style.display = 'none';
+            }
+
+            switch(stepIndex) {
+                case 1:
+                    showModal('What is 2NF?', `A table is in <strong>Second Normal Form (2NF)</strong> if it is in 1NF and all non-key attributes are fully functional dependent on the <em>entire</em> composite primary key. <br><br>Let's see what that means with an example.`);
+                    break;
+                case 2:
+                    elements.initialTableContainer.innerHTML = ''; // Clear previous table if any
+                    elements.initialTableContainer.appendChild(createTable(tableData, headers, 'initial-table'));
+                    showModal('The Scenario', `This table stores project assignments. It's in 1NF because each cell has a single value, and we can determine a primary key. But is it efficient? Notice the repeated <code>EmployeeName</code> and <code>ProjectName</code> data. This redundancy is a problem.`);
+                    break;
+                case 3:
+                    elements.keyTaskTableContainer.appendChild(createTable(tableData, headers, 'key-task-table', true));
+                     showModal('Task: Identify the Key', `To check for partial dependencies, we first need to identify the table's primary key. Since this table links employees and projects, a single column won't be unique. <br><br>Click on the two column headers that form the <strong>composite primary key</strong>.`);
+                    break;
+                case 4:
+                     showModal('Visualizing Dependencies', `A <strong>partial dependency</strong> (red arrow) exists when a non-key attribute depends on only ONE PART of the composite key. A <strong>full dependency</strong> (green arrow) is correct, as it depends on the WHOLE key.`, () => animateDependencies());
+                    break;
+                case 5: 
+                    currentState.selectedQuizOptions.clear();
+                    document.querySelectorAll('#partial-dependency-quiz .quiz-option').forEach(el => el.classList.remove('selected'));
+                    elements.quiz1Feedback.textContent = '';
+                    elements.checkQuiz1Btn.disabled = true;
+                    showModal('Quiz Time!', 'Now it\'s your turn to identify the attributes that violate 2NF.');
+                    break;
+                case 6:
+                    showModal('The Solution', 'To fix these partial dependencies and achieve 2NF, we must decompose (split) the original table. Watch closely!', () => animateDecomposition());
+                    break;
+                case 7:
+                     showModal('The 2NF Structure', `Here is our database in perfect 2NF. We now have three separate, related tables. Notice how 'Alice' and 'Website Redesign' are now only stored once, eliminating redundancy!`);
+                     displayFinalTables();
+                     break;
+                 case 8:
+                     showModal('Summary', `Excellent work! You have successfully normalized a table to 2NF. This process is crucial for creating efficient, reliable, and scalable databases.`);
+                     createBurst();
+                     break;
+            }
+        }
+        
+        /**
+         * Renders animated arrows with labels over the table to visualize dependencies.
+         */
+        function animateDependencies() {
+            const table = createTable(tableData, headers, 'dependency-table');
+            elements.dependencyTableContainer.innerHTML = '';
+            elements.dependencyTableContainer.appendChild(table);
+
+            const getPos = (headerText) => {
+                const headerEl = table.querySelector(`th[data-key="${headerText}"]`);
+                if (!headerEl) return { x: 0, y: 0 };
+                const rect = headerEl.getBoundingClientRect();
+                const containerRect = elements.dependencyTableContainer.getBoundingClientRect();
+                return {
+                    x: rect.left - containerRect.left + (rect.width / 2),
+                    y: rect.top - containerRect.top + rect.height,
+                };
+            };
+            
+            const createArrow = (fromPos, toPos, color, delay, text) => {
+                const svgNS = "http://www.w3.org/2000/svg";
+                const svg = document.createElementNS(svgNS, 'svg');
+                svg.style.cssText = `position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; opacity:0; animation:fadeIn 0.3s ${delay}s ease-out forwards;`;
+
+                const defs = document.createElementNS(svgNS, 'defs');
+                const marker = document.createElementNS(svgNS, 'marker');
+                const markerId = `arrowhead-${color.replace(/[^a-zA-Z0-9]/g, '')}`;
+                marker.setAttribute('id', markerId);
+                marker.setAttribute('viewBox', '0 0 10 10');
+                marker.setAttribute('refX', '8');
+                marker.setAttribute('refY', '5');
+                marker.setAttribute('markerWidth', '6');
+                marker.setAttribute('markerHeight', '6');
+                marker.setAttribute('orient', 'auto-start-reverse');
+                const pathEl = document.createElementNS(svgNS, 'path');
+                pathEl.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+                pathEl.setAttribute('fill', color);
+                marker.appendChild(pathEl);
+                defs.appendChild(marker);
+                svg.appendChild(defs);
+                
+                const line = document.createElementNS(svgNS, 'path');
+                const d = `M${fromPos.x},${fromPos.y} C${fromPos.x},${toPos.y - 60} ${toPos.x},${fromPos.y + 60} ${toPos.x},${toPos.y - 40}`;
+                line.setAttribute('d', d);
+                line.setAttribute('stroke', color);
+                line.setAttribute('stroke-width', '3');
+                line.setAttribute('fill', 'none');
+                line.setAttribute('marker-end', `url(#${markerId})`);
+                
+                svg.appendChild(line);
+                elements.dependencyTableContainer.appendChild(svg);
+                
+                // Add text label along the path
+                const textEl = document.createElementNS(svgNS, 'text');
+                const textPath = document.createElementNS(svgNS, 'textPath');
+                textPath.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', `#${line.id || (line.id = `path-${Math.random()}`)}`);
+                textPath.setAttribute('startOffset', '50%');
+                textPath.setAttribute('text-anchor', 'middle');
+                textPath.style.fill = color;
+                textPath.style.fontSize = '14px';
+                textPath.style.fontWeight = 'bold';
+                textPath.style.textShadow = '0 0 3px black';
+                textPath.textContent = text;
+                textEl.appendChild(textPath);
+                svg.appendChild(textEl);
+
+
+                const pathLength = line.getTotalLength();
+                line.setAttribute('stroke-dasharray', pathLength);
+                line.setAttribute('stroke-dashoffset', pathLength);
+                
+                line.style.animation = `draw 1.5s ${delay}s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards`;
+            };
+
+            if (!currentState.arrowStyleAdded) {
+                const css = document.createElement('style');
+                css.innerHTML = `@keyframes draw { to { stroke-dashoffset: 0; } }`;
+                document.head.appendChild(css);
+                currentState.arrowStyleAdded = true;
+            }
+
+            // Create arrows with delays and labels
+            const pKey1Pos = getPos('EmployeeID');
+            const pKey2Pos = getPos('ProjectID');
+            const fullKeyMidPos = { x: (pKey1Pos.x + pKey2Pos.x) / 2, y: pKey1Pos.y };
+            
+            setTimeout(() => createArrow(pKey1Pos, getPos('EmployeeName'), 'var(--error-color)', 0.1, 'Partial Dependency'), 500);
+            setTimeout(() => createArrow(pKey2Pos, getPos('ProjectName'), 'var(--error-color)', 0.1, 'Partial Dependency'), 1500);
+            setTimeout(() => createArrow(fullKeyMidPos, getPos('HoursWorked'), 'var(--success-color)', 0.1, 'Full Dependency'), 2500);
+        }
+
+        /**
+         * Animates the decomposition of the main table into three smaller tables.
+         */
+        function animateDecomposition() {
+            const container = elements.decompositionContainer;
+            container.innerHTML = '';
+            
+            const originalTable = createTable(tableData, headers);
+            originalTable.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+            container.appendChild(originalTable);
+
+            setTimeout(() => {
+                originalTable.style.opacity = '0';
+                originalTable.style.transform = 'scale(0.8)';
+            }, 500);
+
+            setTimeout(() => {
+                container.innerHTML = ''; // Clear the old table
+                displayFinalTables(true); // Display final tables with animation
+            }, 1100);
+        }
+
+        /**
+         * Displays the final, normalized tables.
+         * @param {boolean} [withAnimation=false] - If true, tables will fade in sequentially.
+         */
+        function displayFinalTables(withAnimation = false) {
+             const container = withAnimation ? elements.decompositionContainer : elements.finalTablesContainer;
+             container.innerHTML = ''; // Clear previous content
+
+            // Use Map to get unique records for new tables, a common and efficient technique.
+            const employeesData = [...new Map(tableData.map(item => [item.EmployeeID, { EmployeeID: item.EmployeeID, EmployeeName: item.EmployeeName }])).values()];
+            const projectsData = [...new Map(tableData.map(item => [item.ProjectID, { ProjectID: item.ProjectID, ProjectName: item.ProjectName }])).values()];
+            const assignmentsData = tableData.map(({ EmployeeID, ProjectID, HoursWorked }) => ({ EmployeeID, ProjectID, HoursWorked }));
+
+            const tables = [
+                { title: 'Employees Table (PK: EmployeeID)', data: employeesData, headers: ['EmployeeID', 'EmployeeName'] },
+                { title: 'Projects Table (PK: ProjectID)', data: projectsData, headers: ['ProjectID', 'ProjectName'] },
+                { title: 'Assignments Table (PK: EmployeeID, ProjectID)', data: assignmentsData, headers: ['EmployeeID', 'ProjectID', 'HoursWorked'] }
+            ];
+
+            tables.forEach((tableInfo, index) => {
+                const wrapper = document.createElement('div');
+                if (withAnimation) {
+                    wrapper.classList.add('split-table-wrapper');
+                    wrapper.style.animationDelay = `${index * 0.3}s`;
+                }
+                const title = document.createElement('h3');
+                title.textContent = tableInfo.title;
+                const table = createTable(tableInfo.data, tableInfo.headers);
+                
+                wrapper.appendChild(title);
+                wrapper.appendChild(table);
+                container.appendChild(wrapper);
+            });
+        }
+        
+         /**
+         * Creates a confetti-like burst for positive reinforcement.
+         */
+        function createBurst() {
+            const container = document.getElementById('step-' + currentState.currentStep);
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                const size = Math.random() * 10 + 5;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${Math.random() * 100}%`;
+                particle.style.top = `${Math.random() * 100}%`;
+                particle.style.background = `hsl(${Math.random() * 360}, 100%, 70%)`;
+                
+                particle.style.animation = `burst 1s ease-out forwards`;
+                container.appendChild(particle);
+                setTimeout(() => particle.remove(), 1000);
+            }
+            const css = document.createElement('style');
+            css.innerHTML = `@keyframes burst {
+                0% { transform: scale(0); opacity: 1; }
+                100% { transform: scale(1); opacity: 0; }
+            }`;
+            document.head.appendChild(css);
+            setTimeout(() => css.remove(), 1100);
+        }
+
+        /**
+         * Creates ambient, floating particles in the background.
+         */
+        function createAmbientParticles() {
+            for (let i = 0; i < 15; i++) {
+                const p = document.createElement('div');
+                p.classList.add('particle');
+                const size = Math.random() * 7 + 3;
+                p.style.width = `${size}px`;
+                p.style.height = `${size}px`;
+                p.style.left = `${Math.random() * 100}vw`;
+                p.style.animationDelay = `${Math.random() * 25}s`;
+                p.style.animationDuration = `${Math.random() * 15 + 10}s`;
+                elements.particleContainer.appendChild(p);
+            }
+        }
+        
+        // --- 3. Event Handlers ---
+
+        function handleKeySelection(event) {
+            const header = event.target.closest('th.interactive');
+            if (!header) return;
+
+            const key = header.dataset.key;
+            if (currentState.selectedKeys.has(key)) {
+                currentState.selectedKeys.delete(key);
+                header.classList.remove('selected');
+            } else {
+                currentState.selectedKeys.add(key);
+                header.classList.add('selected');
+            }
+            elements.checkKeyBtn.disabled = currentState.selectedKeys.size === 0;
+        }
+
+        function checkKeyAnswer() {
+            const isCorrect = currentState.selectedKeys.has('EmployeeID') && currentState.selectedKeys.has('ProjectID') && currentState.selectedKeys.size === 2;
+            elements.keyFeedback.textContent = isCorrect ? 'Correct! This composite key uniquely identifies each assignment.' : 'Not quite. A composite key is the minimum set of columns needed to uniquely identify a row.';
+            elements.keyFeedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+            elements.keyFeedback.style.display = 'block';
+            
+            if (isCorrect) {
+                createBurst();
+                elements.checkKeyBtn.disabled = true;
+                updateNavButtons();
+            } else {
+                elements.keyTaskTableContainer.classList.add('shake');
+                setTimeout(() => {
+                     elements.keyTaskTableContainer.classList.remove('shake');
+                    document.querySelectorAll('#key-task-table th.selected').forEach(th => th.classList.remove('selected'));
+                    currentState.selectedKeys.clear();
+                    elements.checkKeyBtn.disabled = true;
+                }, 1500);
+            }
+        }
+        
+        function handleQuiz1Selection(event) {
+            const option = event.target.closest('.quiz-option');
+            if (!option) return;
+            
+            const value = option.dataset.value;
+            if (currentState.selectedQuizOptions.has(value)) {
+                currentState.selectedQuizOptions.delete(value);
+                option.classList.remove('selected');
+            } else {
+                currentState.selectedQuizOptions.add(value);
+                option.classList.add('selected');
+            }
+            elements.checkQuiz1Btn.disabled = currentState.selectedQuizOptions.size === 0;
+        }
+
+        function checkQuiz1Answer() {
+             const isCorrect = currentState.selectedQuizOptions.has('EmployeeName') && 
+                               currentState.selectedQuizOptions.has('ProjectName') && 
+                               currentState.selectedQuizOptions.size === 2;
+            
+            elements.quiz1Feedback.textContent = isCorrect ? 
+                'Correct! Both EmployeeName and ProjectName depend on only part of the key.' : 
+                'Incorrect. Think about which attributes depend on just EmployeeID or just ProjectID, but not both.';
+            elements.quiz1Feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+            elements.quiz1Feedback.classList.add('active');
+            elements.quiz1Feedback.style.display = 'block';
+
+            if (isCorrect) {
+                createBurst();
+                elements.checkQuiz1Btn.disabled = true;
+                updateNavButtons();
+            } else {
+                elements.quiz1Options.classList.add('shake');
+                setTimeout(() => elements.quiz1Options.classList.remove('shake'), 500);
+            }
+        }
+
+        function resetSimulation() {
+             showModal('Reset Simulation?', 'Are you sure you want to start over from the beginning?', () => {
+                currentState.selectedKeys.clear();
+                currentState.selectedQuizOptions.clear();
+                goToStep(0);
+            });
+        }
+        
+        // --- 4. Initialization ---
+        
+        function init() {
+            // Use event delegation on the body for all click events. This is simpler and more robust.
+            document.body.addEventListener('click', (e) => {
+                const target = e.target;
+                
+                // Button ripple effect
+                const button = target.closest('.nav-btn, .reset-btn, .start-btn, .check-btn');
+                if (button && !button.disabled) {
+                    const ripple = document.createElement("span");
+                    ripple.classList.add("ripple");
+                    const rect = button.getBoundingClientRect();
+                    ripple.style.left = `${e.clientX - rect.left}px`;
+                    ripple.style.top = `${e.clientY - rect.top}px`;
+                    button.appendChild(ripple);
+                    setTimeout(() => ripple.remove(), 600);
+                }
+
+                // Event routing
+                if (target.closest('#start-btn')) goToStep(1);
+                else if (target.closest('#prev-btn')) goToStep(currentState.currentStep - 1);
+                else if (target.closest('#next-btn')) goToStep(currentState.currentStep + 1);
+                else if (target.closest('#reset-btn')) resetSimulation();
+                else if (target.closest('#key-task-table-container')) handleKeySelection(e);
+                else if (target.closest('#check-key-btn')) checkKeyAnswer();
+                else if (target.closest('#partial-dependency-quiz')) handleQuiz1Selection(e);
+                else if (target.closest('#check-quiz1-btn')) checkQuiz1Answer();
+                else if (target.closest('#modal-close-btn')) closeModal();
+            });
+
+            // Keyboard navigation for accessibility and ease of use.
+            window.addEventListener('keydown', (e) => {
+                if(currentState.isModalOpen) {
+                    if (e.key === 'Enter' || e.key === 'Escape') closeModal();
+                    return;
+                }
+                if (e.key === 'ArrowRight' && !elements.nextBtn.disabled) goToStep(currentState.currentStep + 1);
+                if (e.key === 'ArrowLeft' && !elements.prevBtn.disabled) goToStep(currentState.currentStep - 1);
+            });
+
+            // Set up initial UI state.
+            updateNavButtons();
+            createAmbientParticles();
+        }
+
+        // Run the initialization function once the DOM is fully loaded.
+        document.addEventListener('DOMContentLoaded', init);
+
+    })();
+    </script>
+</body>
+</html>

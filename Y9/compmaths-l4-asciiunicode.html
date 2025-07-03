@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASCII & Unicode: Teaching Computers to Read & Write</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
+        .lesson-header-glow {
+            animation: lessonHeaderGlowAU 3s ease-in-out infinite;
+        }
+        @keyframes lessonHeaderGlowAU { /* Unique animation name */
+            0%, 100% { text-shadow: 0 0 10px #fff, 0 0 20px #2dd4bf, 0 0 30px #2dd4bf, 0 0 40px #2dd4bf; } /* Teal Glow */
+            50% { text-shadow: 0 0 20px #fff, 0 0 30px #38bdf8, 0 0 40px #38bdf8, 0 0 50px #38bdf8; } /* Sky Blue Glow */
+        }
+        .achievement-unlocked {
+            animation: achievementPopAU 0.6s ease-out; /* Unique animation name */
+            opacity: 1 !important;
+        }
+        @keyframes achievementPopAU {
+            0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+            60% { transform: scale(1.2) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        /* Modal Styles (for level up, errors) */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); padding-top: 60px; }
+        .modal-content { background-color: #1e293b; /* slate-800 */ color: #e2e8f0; /* slate-200 */ margin: 5% auto; padding: 24px; border: 1px solid #334155; /* slate-700 */ width: 80%; max-width: 500px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-close { color: #94a3b8; /* slate-400 */ float: right; font-size: 28px; font-weight: bold; }
+        .modal-close:hover, .modal-close:focus { color: #e2e8f0; text-decoration: none; cursor: pointer; }
+        #modalMessageTextAU { font-size: 1.125rem; line-height: 1.75rem; }
+
+        /* Flash Notification Styles (for XP/Badges) */
+        .flash-notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .flash-message {
+            background-color: #10b981; /* Emerald-500 */
+            color: white;
+            padding: 12px 18px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+        }
+        .flash-message.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .flash-message.hide {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        .flash-message i { margin-right: 8px; }
+
+
+        .reset-button {
+            background-color: #f43f5e; /* Rose-500 */
+            color: white; padding: 0.5rem 1rem; border-radius: 0.375rem;
+            font-size: 0.875rem; font-weight: 500;
+            transition: background-color 0.2s ease-in-out; border: none; cursor: pointer;
+        }
+        .reset-button:hover { background-color: #e11d48; /* Rose-600 */ }
+        
+        section p, section li { font-size: 1rem; line-height: 1.625; }
+        section h3 { font-size: 1.125rem; }
+
+        /* ASCII/Unicode Specific Styles */
+        .code-display { font-family: monospace; background-color: #334155; /* Slate-700 */ color: #93c5fd; /* Blue-300 */ padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+        .character-input { width: 50px; text-align: center; }
+      
+        /* Python Playground Styles */
+        .python-challenge-box { background-color: #0f172a; /* Slate-900 */ border: 1px solid #334155; border-radius: 8px; padding: 1rem; margin-top: 1rem; }
+        .python-challenge-box .code-block { background-color: #1e293b; /* Slate-800 */ color: #a7f3d0; /* Emerald-200 */ border: 1px solid #334155; border-radius: 4px; font-family: monospace; padding: 0.5rem; white-space: pre-wrap; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        .python-challenge-box .output-input-label {display: block; margin-top:0.5rem; margin-bottom:0.25rem; font-size:0.9rem; color: #cbd5e1;}
+        .python-challenge-box .output-input { background-color: #334155; color: #e2e8f0; padding: 0.5rem; border-radius: 4px; min-height: 30px; font-family: monospace; white-space: pre-wrap; width:100%;}
+        .python-sponge-link { display:inline-block; margin-bottom:1rem; background-color: #f59e0b; color: #422006; padding: 0.5rem 1rem; border-radius: 0.375rem; text-decoration:none; font-weight:500; }
+        .python-sponge-link:hover { background-color: #d97706; }
+
+
+         /* Canvas for Working Out */
+        .working-out-canvas { border: 1px dashed #0ea5e9; border-radius: 0.375rem; cursor: crosshair; background-color: #0c4a6e1a; transition: height 0.3s ease-in-out; }
+        .working-out-canvas.default-size { width:100%; height: 100px; }
+        .working-out-canvas.expanded-size { width:100%; height: 250px; }
+        .canvas-controls button { background-color: #0369a1; color:white; padding: 0.25rem 0.5rem; font-size:0.75rem; border-radius:0.25rem; margin-top:0.25rem; margin-left: 0.25rem;}
+        .canvas-controls button:hover { background-color: #075985; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-sky-900 to-cyan-900 min-h-screen p-4 md:p-8 text-slate-200">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-12 relative">
+            <h1 class="text-4xl md:text-6xl font-bold lesson-header-glowAU mb-3 relative z-10">
+                ASCII & Unicode: Teaching Computers to Read & Write <i class="fas fa-scroll text-sky-300"></i>
+            </h1>
+            <p class="text-slate-400 text-lg md:text-xl relative z-10">From Simple Signals to Global Text</p>
+            
+            <div class="mt-8 bg-slate-800 rounded-full p-2 shadow-xl max-w-lg mx-auto relative z-10 border border-sky-500">
+                <div class="flex items-center justify-between">
+                    <span id="levelDisplayAU" class="text-sm font-semibold text-slate-300 ml-4">Level 1: Character Novice</span>
+                    <span class="text-sm font-semibold text-teal-400 mr-4"><span id="xpPointsAU">0</span> XP</span>
+                </div>
+                <div class="bg-slate-700 rounded-full h-4 mt-2 mx-1">
+                    <div id="xpBarAU" class="bg-gradient-to-r from-sky-500 to-teal-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="mb-10 bg-slate-800/80 backdrop-blur-md p-3 rounded-lg shadow-lg sticky top-4 z-50 border border-sky-700">
+            <ul class="flex flex-wrap justify-center gap-x-3 md:gap-x-4 gap-y-2">
+                <li><a href="#section-au-starter" class="text-sm md:text-base text-sky-300 hover:text-teal-300 font-medium">🤔 Starter</a></li>
+                <li><a href="#section-ascii-unveiled" class="text-sm md:text-base text-sky-300 hover:text-teal-300 font-medium">🅰️ ASCII</a></li>
+                <li><a href="#section-beyond-ascii" class="text-sm md:text-base text-sky-300 hover:text-teal-300 font-medium">🌐 Beyond ASCII</a></li>
+                <li><a href="#section-unicode-utf8" class="text-sm md:text-base text-sky-300 hover:text-teal-300 font-medium">UTF8️⃣ Unicode & UTF-8</a></li>
+                <li><a href="#section-python-charcodes" class="text-sm md:text-base text-sky-300 hover:text-teal-300 font-medium">🐍 Python Codes</a></li>
+                <li><a href="#section-au-exam-prep" class="text-sm md:text-base text-sky-300 hover:text-teal-300 font-medium">📝 Exam Prep</a></li>
+                <li><a href="#section-au-extensions" class="text-sm md:text-base text-sky-300 hover:text-teal-300 font-medium">🚀 Extensions</a></li>
+                <li><a href="#section-au-achievements" class="text-sm md:text-base text-sky-300 hover:text-teal-300 font-medium">🏆 Achievements</a></li>
+            </ul>
+        </nav>
+
+        <!-- Flash Notification Container -->
+        <div id="flashNotificationContainerAU" class="flash-notification-container"></div>
+
+        <!-- Section 1: Starter - The Numbered Alphabet -->
+        <section id="section-au-starter" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-sky-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-sky-400">🤔 Starter: The Numbered Alphabet</h2>
+                <button onclick="resetAUStarter(false)" class="reset-button">Reset</button>
+            </div>
+            <p class="text-slate-300 mb-3">Computers fundamentally work with numbers, especially binary (0s and 1s). So, how do they manage to display text like 'A', 'b', or even '!' on your screen?</p>
+            <p class="text-slate-300 mb-4">And what problems might occur if every computer company used different numbers for the same letters?</p>
+            <div class="bg-slate-700/50 p-4 rounded-lg">
+                <label for="starterAUThoughts" class="block font-semibold text-sky-300 mb-2">Your initial thoughts:</label>
+                <textarea id="starterAUThoughts" class="w-full p-3 bg-slate-700 border-2 border-slate-600 rounded-md focus:border-sky-500 focus:ring-sky-500 text-slate-200 h-28" placeholder="How do computers handle letters? What if standards didn't exist?" onblur="checkAUStarterThoughts()"></textarea>
+                <div id="starterAUFeedback" class="mt-3 p-2 bg-slate-700 rounded-lg text-slate-300 min-h-[30px] text-sm"></div>
+            </div>
+        </section>
+
+        <!-- Section 2: ASCII Unveiled -->
+        <section id="section-ascii-unveiled" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-teal-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-teal-400">🅰️ Task 1: ASCII Unveiled - The Original Digital Alphabet</h2>
+                <button onclick="resetAUAsciiTask(false)" class="reset-button">Reset</button>
+            </div>
+            <p class="text-slate-300 mb-2">One of the earliest solutions was <strong>ASCII</strong> (American Standard Code for Information Interchange). Standard ASCII uses <strong>7 bits</strong>, allowing it to represent 128 different characters (2<sup>7</sup> = 128). These include:</p>
+            <ul class="list-disc list-inside text-slate-300 mb-4 pl-4 text-sm">
+                <li>Uppercase English letters (A-Z)</li>
+                <li>Lowercase English letters (a-z)</li>
+                <li>Digits (0-9)</li>
+                <li>Common punctuation symbols (like !, ?, .)</li>
+                <li>Some non-printable control characters (like newline or tab)</li>
+            </ul>
+            <p class="text-slate-300 mb-4 text-xs">Later, "Extended ASCII" used 8 bits (1 byte, 256 characters) to add more symbols and some European language characters, but these varied between systems.</p>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-slate-700/50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-teal-300 mb-2">ASCII Lookup Tool</h3>
+                    <label for="asciiCharInput" class="block text-sm mb-1">Enter a character (A-Z, a-z, 0-9, !, ?, .):</label>
+                    <input type="text" id="asciiCharInput" maxlength="1" class="character-input p-1 bg-slate-600 border-slate-500 rounded text-center mb-2">
+                    <button onclick="lookupAsciiValue()" class="bg-teal-600 text-white px-4 py-1.5 rounded hover:bg-teal-700 text-sm ml-2">Lookup</button>
+                    <div id="asciiLookupOutput" class="mt-2 p-2 bg-slate-600 rounded min-h-[60px] text-sm">
+                        <p>Decimal: <span id="asciiDecimal" class="code-display">--</span></p>
+                        <p>7-bit Binary: <span id="asciiBinary" class="code-display">-------</span></p>
+                    </div>
+                </div>
+                <div class="bg-slate-700/50 p-4 rounded-lg">
+                     <h3 class="text-lg font-semibold text-teal-300 mb-2">ASCII Table Snippet</h3>
+                     <table class="w-full text-sm text-left text-slate-300">
+                        <thead class="text-xs text-teal-300 uppercase bg-slate-600"><tr><th scope="col" class="px-3 py-2">Char</th><th scope="col" class="px-3 py-2">Decimal</th><th scope="col" class="px-3 py-2">7-bit Binary</th></tr></thead>
+                        <tbody>
+                            <tr class="border-b border-slate-600"><td>...</td><td>...</td><td>...</td></tr>
+                            <tr class="border-b border-slate-600"><td>A</td><td class="code-display">65</td><td class="code-display">1000001</td></tr>
+                            <tr class="border-b border-slate-600"><td>B</td><td class="code-display">66</td><td class="code-display">1000010</td></tr>
+                            <tr class="border-b border-slate-600"><td>C</td><td class="code-display">67</td><td class="code-display">1000011</td></tr>
+                            <tr class="border-b border-slate-600"><td>...</td><td>...</td><td>...</td></tr>
+                             <tr class="border-b border-slate-600"><td>a</td><td class="code-display">97</td><td class="code-display">1100001</td></tr>
+                            <tr class="border-b border-slate-600"><td>b</td><td class="code-display">98</td><td class="code-display">1100010</td></tr>
+                            <tr class="border-b border-slate-600"><td>...</td><td>...</td><td>...</td></tr>
+                            <tr class="border-b border-slate-600"><td>0</td><td class="code-display">48</td><td class="code-display">0110000</td></tr>
+                            <tr class="border-b border-slate-600"><td>1</td><td class="code-display">49</td><td class="code-display">0110001</td></tr>
+                            <tr><td>!</td><td class="code-display">33</td><td class="code-display">0100001</td></tr>
+                        </tbody>
+                     </table>
+                     <p class="text-xs text-slate-400 mt-2"><strong>Key takeaway:</strong> Notice how uppercase letters (A, B, C...), lowercase letters (a, b, c...), and digits (0, 1, 2...) each have their own sequential block of decimal and binary codes. This orderliness is important! For example, 'D' would be 68, and 'c' would be 99.</p>
+                </div>
+            </div>
+            <div id="asciiDecoderChallengesContainer" class="mt-6"></div>
+        </section>
+
+        <!-- Section 3: Beyond ASCII -->
+        <section id="section-beyond-ascii" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-sky-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-sky-400">🌐 Task 2: Beyond ASCII - The World Needs More Characters!</h2>
+                 <button onclick="resetAUBeyondAscii(false)" class="reset-button">Reset</button>
+            </div>
+            <p class="text-slate-300 mb-4">ASCII was a great start, but the world is a big place with many languages and symbols! Consider these greetings:</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-4">
+                <div class="p-3 bg-slate-700 rounded-lg"><span class="text-xl font-semibold text-sky-300">Hello</span><p class="text-xs text-slate-400">(English)</p></div>
+                <div class="p-3 bg-slate-700 rounded-lg"><span class="text-xl font-semibold text-sky-300">Hola</span><p class="text-xs text-slate-400">(Spanish)</p></div>
+                <div class="p-3 bg-slate-700 rounded-lg"><span class="text-xl font-semibold text-sky-300">こんにちは</span><p class="text-xs text-slate-400">(Japanese)</p></div>
+                <div class="p-3 bg-slate-700 rounded-lg"><span class="text-xl font-semibold text-sky-300">مرحبا</span><p class="text-xs text-slate-400">(Arabic)</p></div>
+            </div>
+            <div class="bg-slate-700/50 p-4 rounded-lg">
+                <label for="beyondAsciiThoughts" class="block font-semibold text-sky-300 mb-2">Can standard ASCII (128 characters) represent all these greetings easily? Why or why not?</label>
+                <textarea id="beyondAsciiThoughts" class="w-full p-2 bg-slate-600 border-slate-500 rounded text-slate-200 h-20" placeholder="Your reasoning..."></textarea>
+                <button onclick="checkBeyondAsciiThoughts()" class="mt-2 bg-sky-600 text-white px-4 py-1.5 rounded hover:bg-sky-700 text-sm">Submit Answer</button>
+                <div id="beyondAsciiFeedback" class="mt-2 p-2 bg-slate-600 rounded min-h-[30px] text-sm"></div>
+            </div>
+            <p id="unicodeIntro" class="hidden mt-4 p-3 bg-sky-800/30 border border-sky-700 rounded-lg text-slate-200">
+                You're right! ASCII, designed primarily for English, doesn't have nearly enough codes for all the world's characters (like 'ち' or 'ح') or even common symbols like '€' or '😂'. This led to the creation of <strong>Unicode</strong>, a universal character set that aims to assign a unique number (called a <strong>code point</strong>) to every character from every writing system, plus a vast collection of symbols and emojis.
+            </p>
+        </section>
+
+        <!-- Section 4: Unicode & UTF-8 -->
+         <section id="section-unicode-utf8" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-cyan-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-cyan-400">UTF8️⃣ Task 3: Unicode & UTF-8 - Encoding Everything</h2>
+                 <button onclick="resetAUUnicodeUTF8(false)" class="reset-button">Reset</button>
+            </div>
+            <p class="text-slate-300 mb-2">Unicode provides a unique number (a "code point," often written like U+0041 for 'A') for potentially millions of characters. But how are these large numbers actually stored as bytes (groups of 8 bits) in files and transmitted over the internet?</p>
+            <p class="text-slate-300 mb-4">That's where <strong>encoding schemes</strong> like <strong>UTF-8</strong> come in. UTF-8 is very popular because:</p>
+            <ul class="list-disc list-inside text-slate-300 mb-4 pl-4 text-sm">
+                <li>It's <strong>compatible with ASCII</strong>: For characters in the original ASCII set (like 'A'-'Z', '0'-'9'), UTF-8 uses just <strong>1 byte</strong>, exactly like ASCII.</li>
+                <li>It's <strong>variable-width</strong>: For characters beyond ASCII, UTF-8 uses <strong>2, 3, or 4 bytes</strong> as needed. This is efficient – common characters use fewer bytes.</li>
+            </ul>
+
+            <div class="bg-slate-700/50 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold text-cyan-300 mb-2">Character Inspector</h3>
+                <label for="charInspectorInput" class="block text-sm mb-1">Enter a single character (e.g., X, £, ü, ❤️, 😂):</label>
+                <input type="text" id="charInspectorInput" maxlength="2" class="character-input p-1 bg-slate-600 border-slate-500 rounded text-center mb-2"> 
+                <button onclick="inspectCharacter()" class="bg-cyan-600 text-white px-4 py-1.5 rounded hover:bg-cyan-700 text-sm ml-2">Inspect</button>
+                <div id="charInspectorOutput" class="mt-2 p-2 bg-slate-600 rounded min-h-[70px] text-sm">
+                    <p>Character: <span id="inspectedChar" class="font-bold text-xl">?</span></p>
+                    <p>Unicode Code Point: <span id="inspectedCodePoint" class="code-display">U+????</span></p>
+                    <p>Typical UTF-8 Bytes: <span id="inspectedUTF8Bytes" class="code-display">-</span></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Python & Character Codes -->
+        <section id="section-python-charcodes" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-emerald-600">
+             <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-emerald-400">🐍 Task 4: Python & Character Codes</h2>
+                <button onclick="resetAUPythonCharCodes(false)" class="reset-button">Reset</button>
+            </div>
+            <p class="text-slate-300 mb-2">Programming languages like Python have built-in ways to work with character codes:</p>
+            <ul class="list-disc list-inside text-slate-300 mb-2 pl-4 text-sm">
+                <li><code class="code-display">ord(character)</code>: Takes a single character and returns its Unicode code point (as a decimal number).</li>
+                <li><code class="code-display">chr(number)</code>: Takes a decimal number (a Unicode code point) and returns its corresponding character.</li>
+            </ul>
+            <p class="text-slate-300 mb-4">For the challenges below, use an online Python interpreter like <a href="https://www.pythonsponge.com/" target="_blank" class="python-sponge-link">Python Sponge <i class="fas fa-external-link-alt"></i></a>. Copy the template code into Python Sponge, run it, and then follow the task instructions. Enter the output you see from Python Sponge into the box on this worksheet.</p>
+            <div id="pythonChallengesContainer"></div>
+        </section>
+
+        <!-- Section 6: Exam Prep Zone -->
+        <section id="section-au-exam-prep" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-orange-500">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-orange-400">📝 ASCII & Unicode Exam Prep</h2>
+                <button onclick="resetAUExamPrep(false)" class="reset-button">Reset Exam Qs</button>
+            </div>
+            <p class="text-slate-300 mb-6">Test your knowledge! For each question, provide your answer, attempt to self-assess your marks, and then reveal the mark scheme.</p>
+            <div id="auExamQuestionsContainer"> <!-- Questions will be populated here --> </div>
+        </section>
+
+        <!-- Section 7: Extension Activities -->
+        <section id="section-au-extensions" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-yellow-500">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-yellow-400">🚀 Extension Activities</h2>
+                <button onclick="resetAUExtensions(false)" class="reset-button">Reset Extensions</button>
+            </div>
+            <div id="auExtensionsContainer" class="space-y-8">
+                <!-- Extension activities will be populated here -->
+            </div>
+        </section>
+
+        <!-- Section 8: Achievement Gallery -->
+        <section id="section-au-achievements" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-6 border border-sky-400"> 
+            <h2 class="text-2xl md:text-3xl font-bold text-sky-300 mb-5">🏆 Your Glyph Badges!</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div id="achieve-au-scroll-scrutinizer" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">📜</span><p class="font-bold text-sm mt-2 text-slate-200">Scroll Scrutinizer</p><p class="text-xs text-slate-400">Shared initial thoughts</p></div>
+                <div id="achieve-au-ascii-ace" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🅰️</span><p class="font-bold text-sm mt-2 text-slate-200">ASCII Ace</p><p class="text-xs text-slate-400">Mastered ASCII tasks</p></div>
+                <div id="achieve-au-unicode-understander" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🌐</span><p class="font-bold text-sm mt-2 text-slate-200">Unicode Understander</p><p class="text-xs text-slate-400">Grasped Unicode's reach</p></div>
+                <div id="achieve-au-utf8-navigator" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">UTF8️⃣</span><p class="font-bold text-sm mt-2 text-slate-200">UTF-8 Navigator</p><p class="text-xs text-slate-400">Used Character Inspector</p></div>
+                <div id="achieve-au-python-scripter" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🐍</span><p class="font-bold text-sm mt-2 text-slate-200">Python Scripter</p><p class="text-xs text-slate-400">Completed Python challenges</p></div>
+                <div id="achieve-au-exam-expert" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🎓</span><p class="font-bold text-sm mt-2 text-slate-200">Exam Expert</p><p class="text-xs text-slate-400">Aced AU exam prep</p></div>
+                <div id="achieve-au-extension-explorer" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🚀</span><p class="font-bold text-sm mt-2 text-slate-200">Extension Explorer</p><p class="text-xs text-slate-400">Completed an Extension</p></div>
+                <div id="achieve-au-glyph-grandmaster" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🏆</span><p class="font-bold text-sm mt-2 text-slate-200">Glyph Grandmaster</p><p class="text-xs text-slate-400">Mastered Character Codes!</p></div>
+            </div>
+        </section>
+
+        <footer class="text-center mt-12 py-6 border-t border-slate-700">
+            <p class="text-slate-500 text-sm">&copy; Your School Name/Your Name - ASCII & Unicode Lesson</p>
+        </footer>
+    </div>
+
+    <div id="messageModalAU" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModalAU('messageModalAU')">&times;</span>
+            <p id="modalMessageTextAU" class="text-lg"></p>
+            <button onclick="closeModalAU('messageModalAU')" class="mt-4 bg-sky-600 text-white px-4 py-2 rounded-md hover:bg-sky-700">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // --- XP and Level System ---
+        let totalXPAU = 0; 
+        const MAX_XP_PER_LEVEL_AU = 75; 
+        let currentLevelAU = 1;
+        const levelsAU = ["Character Novice", "ASCII Apprentice", "Unicode User", "UTF-8 Expert", "Master Coder"];
+
+        // --- Activity States & Data ---
+        let starterAUThoughtsSubmitted = false;
+        let asciiLookupUsed = false;
+        const asciiDecoderChallenges = [
+            { decimal: [72, 69, 76, 76, 79], answer: "HELLO", id: "decoder1", solved: false, xp: 10 },
+            { decimal: [67, 79, 68, 69], answer: "CODE", id: "decoder2", solved: false, xp: 10 },
+            { decimal: [80, 89, 84, 72, 79, 78], answer: "PYTHON", id: "decoder3", solved: false, xp: 10 }
+        ];
+        let beyondAsciiAnswered = false;
+        let charInspectorUsed = false;
+        const pythonChallengeStates = { chal1: false, chal2: false, chal3: false, chal4: false }; 
+        const auExamPrepState = {};
+        const auExtensionStates = {};
+
+
+        // --- Achievements ---
+        const achievementsAU = {
+            'au-scroll-scrutinizer': { unlocked: false, points: 15, condition: () => starterAUThoughtsSubmitted },
+            'au-ascii-ace': { unlocked: false, points: 30, condition: () => asciiLookupUsed && asciiDecoderChallenges.filter(c => c.solved).length >= 2 },
+            'au-unicode-understander': { unlocked: false, points: 25, condition: () => beyondAsciiAnswered },
+            'au-utf8-navigator': { unlocked: false, points: 30, condition: () => charInspectorUsed }, 
+            'au-python-scripter': { unlocked: false, points: 40, condition: () => Object.values(pythonChallengeStates).filter(Boolean).length >= 3 },
+            'au-exam-expert': { unlocked: false, points: 40, condition: () => Object.values(auExamPrepState).filter(q => q.selfMark && parseInt(q.selfMark) >= 0 && q.markSchemeViewed).length >= 2 },
+            'au-extension-explorer': { unlocked: false, points: 15, condition: () => Object.values(auExtensionStates).some(s => s.xpAwarded) },
+            'au-glyph-grandmaster': { unlocked: false, points: 100, condition: () => {
+                const core = ['au-scroll-scrutinizer', 'au-ascii-ace', 'au-unicode-understander', 'au-utf8-navigator', 'au-python-scripter', 'au-exam-expert'];
+                return core.every(key => achievementsAU[key]?.unlocked);
+            }}
+        };
+        Object.keys(achievementsAU).forEach(key => achievementsAU[key].name = key);
+
+        // --- Utility Functions ---
+        function showModalAU(message) { 
+            const modalEl = document.getElementById('messageModalAU');
+            const modalTextEl = document.getElementById('modalMessageTextAU');
+            if (modalEl && modalTextEl) {
+                modalTextEl.innerHTML = message;
+                modalEl.style.display = 'block';
+            }
+        }
+        function closeModalAU(modalId) {
+            const modalEl = document.getElementById(modalId);
+            if(modalEl) modalEl.style.display = 'none';
+        }
+         window.addEventListener('click', (event) => {
+            const modal = document.getElementById('messageModalAU');
+            if (modal && event.target == modal) closeModalAU('messageModalAU');
+        });
+
+        function showFlashNotificationAU(message, type = 'success', isInitialSetup = false) {
+            if (isInitialSetup) return;
+
+            const container = document.getElementById('flashNotificationContainerAU');
+            if (!container) return;
+
+            const flashMessage = document.createElement('div');
+            flashMessage.className = 'flash-message';
+            let iconClass = 'fas fa-check-circle'; 
+            if (type === 'badge') {
+                iconClass = 'fas fa-award';
+                flashMessage.style.backgroundColor = '#fbbf24'; 
+            } else if (type === 'error') {
+                 iconClass = 'fas fa-exclamation-circle';
+                 flashMessage.style.backgroundColor = '#f43f5e'; 
+            } else if (type === 'info') {
+                iconClass = 'fas fa-info-circle';
+                flashMessage.style.backgroundColor = '#38bdf8'; // Sky blue for info
+            }
+            
+            flashMessage.innerHTML = `<i class="${iconClass}"></i><span>${message}</span>`;
+            container.appendChild(flashMessage);
+
+            setTimeout(() => { flashMessage.classList.add('show'); }, 10); 
+            setTimeout(() => {
+                flashMessage.classList.remove('show');
+                flashMessage.classList.add('hide');
+                setTimeout(() => { if (container.contains(flashMessage)) { container.removeChild(flashMessage);}}, 500); 
+            }, 3500); 
+        }
+
+        function addXPAU(points, feedbackMessage = "", isInitialSetup = false) { 
+            if (isInitialSetup && points > 0) return;
+            totalXPAU += points;
+            document.getElementById('xpPointsAU').textContent = totalXPAU; 
+            let xpForCurrentLevel = totalXPAU - ((currentLevelAU - 1) * MAX_XP_PER_LEVEL_AU);
+            const newLevelCalc = Math.floor(totalXPAU / MAX_XP_PER_LEVEL_AU) + 1;
+            if (newLevelCalc > currentLevelAU) {
+                currentLevelAU = newLevelCalc;
+                showModalAU(`<strong>Level Up!</strong> You are now Level ${currentLevelAU}: ${levelsAU[Math.min(currentLevelAU - 1, levelsAU.length - 1)]}!`);
+                xpForCurrentLevel = totalXPAU - ((currentLevelAU - 1) * MAX_XP_PER_LEVEL_AU);
+            }
+            document.getElementById('levelDisplayAU').textContent = `Level ${currentLevelAU}: ${levelsAU[Math.min(currentLevelAU - 1, levelsAU.length - 1)]}`;
+            const xpBarPercentage = Math.min(100, (xpForCurrentLevel / MAX_XP_PER_LEVEL_AU) * 100);
+            document.getElementById('xpBarAU').style.width = xpBarPercentage + '%'; 
+            
+            if (feedbackMessage && points > 0 && !isInitialSetup) {
+                showFlashNotificationAU(`${feedbackMessage} (+${points} XP)`);
+            }
+            checkAchievementsAU(isInitialSetup);
+        }
+
+        function checkAchievementsAU(isInitialSetup = false) {
+            if(isInitialSetup) return;
+            let allCoreUnlocked = true;
+            const coreKeys = ['au-scroll-scrutinizer', 'au-ascii-ace', 'au-unicode-understander', 'au-utf8-navigator', 'au-python-scripter', 'au-exam-expert'];
+            for (const key in achievementsAU) {
+                if (key === 'au-glyph-grandmaster') continue;
+                const ach = achievementsAU[key];
+                if (ach && !ach.unlocked && ach.condition && ach.condition()) {
+                    ach.unlocked = true;
+                    const achEl = document.getElementById(`achieve-${key}`);
+                    if(achEl) {
+                        achEl.classList.remove('opacity-40'); achEl.classList.add('achievement-unlocked');
+                        const nameEl = achEl.querySelector('p.font-bold');
+                        addXPAU(ach.points, "", isInitialSetup); 
+                        showFlashNotificationAU(`🏆 Badge Unlocked: <strong>${nameEl ? nameEl.textContent : key}</strong>! (+${ach.points} XP)`, 'badge');
+                    }
+                }
+                if(coreKeys.includes(key) && ach && !ach.unlocked) allCoreUnlocked = false;
+            }
+            const grandmasterAch = achievementsAU['au-glyph-grandmaster'];
+            if(grandmasterAch && !grandmasterAch.unlocked && allCoreUnlocked && grandmasterAch.condition()){
+                grandmasterAch.unlocked = true;
+                const achEl = document.getElementById(`achieve-au-glyph-grandmaster`);
+                 if(achEl) {
+                    achEl.classList.remove('opacity-40'); achEl.classList.add('achievement-unlocked');
+                    const nameEl = achEl.querySelector('p.font-bold');
+                    addXPAU(grandmasterAch.points, "", isInitialSetup);
+                    showFlashNotificationAU(`🏆 MASTER Badge: <strong>${nameEl ? nameEl.textContent : 'Glyph Grandmaster'}</strong>! (+${grandmasterAch.points} XP)`, 'badge');
+                }
+            }
+        }
+        
+        function initializeCanvas(canvasId, clearButtonId, toggleButtonId) {
+            const canvas = document.getElementById(canvasId);
+            const clearButton = document.getElementById(clearButtonId);
+            const toggleButton = document.getElementById(toggleButtonId);
+            if (!canvas || !clearButton || !toggleButton) { return; }
+
+            const ctx = canvas.getContext('2d');
+            let drawing = false; let lastX = 0; let lastY = 0;
+            canvas.classList.add('default-size'); 
+
+            function setCanvasDimensions() {
+                const parentWidth = canvas.parentElement.clientWidth;
+                canvas.width = parentWidth > 0 ? parentWidth * 0.98 : 300; 
+                ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            }
+            function getMousePos(evt) { const rect = canvas.getBoundingClientRect(); return { x: evt.clientX - rect.left, y: evt.clientY - rect.top }; }
+            function getTouchPos(evt) { const rect = canvas.getBoundingClientRect(); return { x: evt.touches[0].clientX - rect.left, y: evt.touches[0].clientY - rect.top }; }
+            function startDrawing(e) { drawing = true; const pos = e.touches ? getTouchPos(e) : getMousePos(e); [lastX, lastY] = [pos.x, pos.y]; e.preventDefault(); }
+            function draw(e) { if (!drawing) return; const pos = e.touches ? getTouchPos(e) : getMousePos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(pos.x, pos.y); ctx.stroke(); [lastX, lastY] = [pos.x, pos.y]; e.preventDefault(); }
+            function stopDrawing() { drawing = false; }
+
+            canvas.addEventListener('mousedown', startDrawing); canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing); canvas.addEventListener('mouseout', stopDrawing);
+            canvas.addEventListener('touchstart', startDrawing, { passive: false }); canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing);
+            clearButton.addEventListener('click', () => ctx.clearRect(0, 0, canvas.width, canvas.height));
+            toggleButton.addEventListener('click', () => { canvas.classList.toggle('expanded-size'); canvas.classList.toggle('default-size'); });
+            window.addEventListener('resize', setCanvasDimensions); setCanvasDimensions(); 
+        }
+
+
+        // --- Section 1: Starter ---
+        function checkAUStarterThoughts() {
+            const thoughts = document.getElementById('starterAUThoughts').value.trim();
+            const feedbackEl = document.getElementById('starterAUFeedback');
+            if (thoughts.length > 20) {
+                if (!starterAUThoughtsSubmitted) {
+                    feedbackEl.innerHTML = `<span class="text-green-400">Great thinking! We'll explore these ideas.</span>`;
+                    addXPAU(15, "Shared starter thoughts"); 
+                    starterAUThoughtsSubmitted = true;
+                } else {
+                    feedbackEl.innerHTML = `<span class="text-sky-400">Thoughts noted!</span>`;
+                }
+            } else if (thoughts.length > 0) {
+                feedbackEl.innerHTML = `<span class="text-yellow-400">Try to add a bit more detail to your thoughts.</span>`;
+            } else {
+                 feedbackEl.innerHTML = '';
+            }
+            checkAchievementsAU();
+        }
+        function resetAUStarter(isInitialSetup = false) {
+            document.getElementById('starterAUThoughts').value = '';
+            document.getElementById('starterAUFeedback').innerHTML = '';
+            starterAUThoughtsSubmitted = false;
+            if (!isInitialSetup) showFlashNotificationAU("Starter section reset.", "info");
+        }
+
+        // --- Section 2: ASCII ---
+        function setupAsciiDecoderChallenges() {
+            const container = document.getElementById('asciiDecoderChallengesContainer');
+            container.innerHTML = '<h3 class="text-lg font-semibold text-teal-300 mt-6 mb-3">ASCII Decoder Challenges</h3>';
+            asciiDecoderChallenges.forEach(challenge => {
+                challenge.solved = false; 
+                container.innerHTML += `
+                    <div class="bg-slate-700/50 p-3 rounded-lg mb-3">
+                        <p class="text-sm text-slate-300 mb-1">Decode: <code class="code-display">${challenge.decimal.join(' ')}</code></p>
+                        <input type="text" id="${challenge.id}_input" class="p-1 bg-slate-600 border-slate-500 rounded w-1/2 text-sm" placeholder="Type decoded text">
+                        <button onclick="checkAsciiDecoder('${challenge.id}')" class="bg-teal-500 text-white px-3 py-1 rounded text-xs ml-2">Check</button>
+                        <span id="${challenge.id}_feedback" class="text-xs ml-2"></span>
+                    </div>`;
+            });
+        }
+        function lookupAsciiValue() {
+            const char = document.getElementById('asciiCharInput').value;
+            const decEl = document.getElementById('asciiDecimal');
+            const binEl = document.getElementById('asciiBinary');
+            if (char.length === 1) {
+                const decimalValue = char.charCodeAt(0);
+                if (decimalValue >= 0 && decimalValue <= 127) { 
+                    decEl.textContent = decimalValue;
+                    binEl.textContent = decimalValue.toString(2).padStart(7, '0');
+                    if(!asciiLookupUsed){ addXPAU(10, "Used ASCII Lookup"); asciiLookupUsed = true; }
+                } else {
+                    decEl.textContent = "N/A"; binEl.textContent = "N/A";
+                    showModalAU("Please enter a standard ASCII character (A-Z, a-z, 0-9, !, ?, .)");
+                }
+            } else {
+                decEl.textContent = "--"; binEl.textContent = "-------";
+                 showModalAU("Please enter a single character.");
+            }
+            checkAchievementsAU();
+        }
+        function checkAsciiDecoder(challengeId) {
+            const challenge = asciiDecoderChallenges.find(c => c.id === challengeId);
+            const userInput = document.getElementById(`${challengeId}_input`).value;
+            const feedbackEl = document.getElementById(`${challengeId}_feedback`);
+            if (userInput.toUpperCase() === challenge.answer.toUpperCase()) { 
+                feedbackEl.innerHTML = `<span class="text-green-400">Correct!</span>`;
+                if(!challenge.solved) { addXPAU(challenge.xp); challenge.solved = true; }
+            } else {
+                feedbackEl.innerHTML = `<span class="text-red-400">Try again.</span>`;
+            }
+            checkAchievementsAU();
+        }
+        function resetAUAsciiTask(isInitialSetup = false) {
+            document.getElementById('asciiCharInput').value = '';
+            document.getElementById('asciiDecimal').textContent = '--';
+            document.getElementById('asciiBinary').textContent = '-------';
+            setupAsciiDecoderChallenges();
+            asciiLookupUsed = false;
+            if(!isInitialSetup) showFlashNotificationAU("ASCII Task reset.", "info");
+        }
+
+        // --- Section 3: Beyond ASCII ---
+        function checkBeyondAsciiThoughts() {
+            const thoughts = document.getElementById('beyondAsciiThoughts').value.trim();
+            const feedbackEl = document.getElementById('beyondAsciiFeedback');
+            const unicodeIntroEl = document.getElementById('unicodeIntro');
+            if (thoughts.length > 10) {
+                feedbackEl.innerHTML = `<span class="text-green-400">Good points! ASCII's limits are a key reason for Unicode.</span>`;
+                unicodeIntroEl.classList.remove('hidden');
+                if(!beyondAsciiAnswered){ addXPAU(15, "Explained ASCII limitations"); beyondAsciiAnswered = true; }
+            } else {
+                feedbackEl.innerHTML = `<span class="text-yellow-400">Please elaborate a bit on why ASCII might have limitations for global text.</span>`;
+                unicodeIntroEl.classList.add('hidden');
+            }
+            checkAchievementsAU();
+        }
+        function resetAUBeyondAscii(isInitialSetup = false){
+            document.getElementById('beyondAsciiThoughts').value = '';
+            document.getElementById('beyondAsciiFeedback').innerHTML = '';
+            document.getElementById('unicodeIntro').classList.add('hidden');
+            beyondAsciiAnswered = false;
+            if(!isInitialSetup) showFlashNotificationAU("Beyond ASCII Task reset.", "info");
+        }
+        
+        // --- Section 4: Unicode & UTF-8 ---
+        function inspectCharacter() {
+            const char = document.getElementById('charInspectorInput').value;
+            const charDispEl = document.getElementById('inspectedChar');
+            const codePointEl = document.getElementById('inspectedCodePoint');
+            const utf8BytesEl = document.getElementById('inspectedUTF8Bytes');
+
+            if (char.length >= 1) { 
+                const firstChar = char[0]; 
+                const actualCharToInspect = char.length > 1 && char.codePointAt(0) > 0xFFFF ? char.substring(0,char.codePointAt(0) > 0xFFFF ? 2 : 1) : firstChar;
+                
+                charDispEl.textContent = actualCharToInspect;
+                const codePoint = actualCharToInspect.codePointAt(0);
+                codePointEl.textContent = `U+${codePoint.toString(16).toUpperCase().padStart(4, '0')}`;
+
+                if (codePoint <= 0x7F) utf8BytesEl.textContent = "1 Byte";
+                else if (codePoint <= 0x7FF) utf8BytesEl.textContent = "2 Bytes";
+                else if (codePoint <= 0xFFFF) utf8BytesEl.textContent = "3 Bytes";
+                else if (codePoint <= 0x10FFFF) utf8BytesEl.textContent = "4 Bytes";
+                else utf8BytesEl.textContent = "Invalid";
+                
+                if(!charInspectorUsed){ addXPAU(10, "Used Character Inspector"); charInspectorUsed = true; }
+            } else {
+                charDispEl.textContent = "?"; codePointEl.textContent = "U+????"; utf8BytesEl.textContent = "-";
+                showModalAU("Please enter a character to inspect."); 
+            }
+            checkAchievementsAU();
+        }
+        
+        function resetAUUnicodeUTF8(isInitialSetup = false){
+            document.getElementById('charInspectorInput').value = '';
+            document.getElementById('inspectedChar').textContent = '?';
+            document.getElementById('inspectedCodePoint').textContent = 'U+????';
+            document.getElementById('inspectedUTF8Bytes').textContent = '-';
+            charInspectorUsed = false;
+            if(!isInitialSetup) showFlashNotificationAU("Unicode & UTF-8 Task reset.", "info");
+        }
+
+        // --- Section 5: Python & Character Codes ---
+        const pythonChallenges = [
+            { 
+                id: 'chal1', title: "Challenge 1: Find the Code Point", 
+                task: "Go to <a href='https://www.pythonsponge.com/' target='_blank' class='text-emerald-300 hover:underline'>Python Sponge</a>. Type the following Python code into the editor there to find the Unicode code point for the character 'P'. Then, enter the numerical output from Python Sponge below. After you've done that, feel free to experiment by changing 'P' to other characters to see their code points!", 
+                template: "print(ord('P'))", expectedOutput: "80", 
+                outputPlaceholder: "Enter numerical output here..." 
+            },
+            { 
+                id: 'chal2', title: "Challenge 2: Find the Character", 
+                task: "In Python Sponge, type and run the code below to find out which character is represented by the Unicode code point 35. Enter the character output below. Once done, try changing the number 35 to other numbers (e.g., 65, 97) to discover other characters!", 
+                template: "print(chr(35))", expectedOutput: "#",
+                outputPlaceholder: "Enter character output here..." 
+            },
+            { 
+                id: 'chal3', title: "Challenge 3: Uppercase Check", 
+                task: "The following Python code checks if the character 'm' is an uppercase letter. Copy it to Python Sponge, run it, and enter the output (True or False) below. Then, try changing <code class='code-display'>char = 'm'</code> to <code class='code-display'>char = 'M'</code> and see what happens!", 
+                template: `char = 'm'\ncode = ord(char)\nis_uppercase = False\nif code >= 65 and code <= 90: # ASCII 'A' to 'Z'\n  is_uppercase = True\nprint(is_uppercase)`, expectedOutput: "False",
+                outputPlaceholder: "Enter True or False..." 
+            },
+            { 
+                id: 'chal4', title: "Challenge 4: Digit Check & Modify", 
+                task: "This Python code checks if '7' is a digit. First, run it in Python Sponge to see the output. Then, <strong>modify the line <code class='code-display'>char = '7'</code> to be <code class='code-display'>char = '$'</code></strong>. Run the modified code. What is the new output for '$'?",
+                template: `char = '7'\ncode = ord(char)\nis_digit = False\nif code >= 48 and code <= 57: # ASCII '0' to '9'\n  is_digit = True\nprint(is_digit)`, expectedOutput: "False", // This is for the '$' case
+                outputPlaceholder: "Output for '$'..."
+            }
+        ];
+        function setupPythonChallenges() {
+            const container = document.getElementById('pythonChallengesContainer');
+            container.innerHTML = '';
+            Object.keys(pythonChallengeStates).forEach(key => pythonChallengeStates[key] = false); 
+
+            pythonChallenges.forEach(chal => {
+                container.innerHTML += `
+                <div class="python-challenge-box mb-6">
+                    <h4 class="text-lg font-semibold text-emerald-300 mb-2">${chal.title}</h4>
+                    <p class="text-sm text-slate-300 mb-2">${chal.task}</p>
+                    <p class="text-xs text-emerald-200 mb-1">Python Code Template (to copy to Python Sponge):</p>
+                    <pre class="code-block">${chal.template}</pre>
+                    <label for="${chal.id}_output_user" class="output-input-label">Enter Output from Python Sponge (based on the original template for this worksheet):</label>
+                    <input type="text" id="${chal.id}_output_user" class="output-input" placeholder="${chal.outputPlaceholder}">
+                    <button onclick="checkPythonChallengeOutput('${chal.id}')" class="mt-2 bg-emerald-600 text-white px-4 py-1.5 rounded hover:bg-emerald-700 text-sm">Check My Output</button>
+                    <p id="${chal.id}_feedback" class="text-xs mt-1 min-h-[18px]"></p>
+                </div>`;
+            });
+        }
+        function checkPythonChallengeOutput(challengeId) {
+            const challenge = pythonChallenges.find(c => c.id === challengeId);
+            const userInput = document.getElementById(`${challengeId}_output_user`).value.trim();
+            const feedbackEl = document.getElementById(`${challengeId}_feedback`);
+            
+            if (userInput === challenge.expectedOutput) {
+                feedbackEl.innerHTML = `<span class="text-green-400">Correct output! Well done.</span>`;
+                if(!pythonChallengeStates[challengeId]) { addXPAU(15); pythonChallengeStates[challengeId] = true;}
+            } else {
+                feedbackEl.innerHTML = `<span class="text-red-400">Output not quite right. Expected: ${challenge.expectedOutput}. You entered: ${userInput}</span>`;
+            }
+            checkAchievementsAU();
+        }
+
+        function resetAUPythonCharCodes(isInitialSetup = false){
+            setupPythonChallenges();
+             if(!isInitialSetup) showFlashNotificationAU("Python Challenges reset.", "info");
+        }
+
+        // --- Section 6: Exam Prep ---
+        const auExamQuestionsData = [
+            { id: "auexq1", text: "Define ASCII. What is its standard bit size, and what does this mean for the number of characters it can represent? [3 marks]", markScheme: "<li>ASCII stands for American Standard Code for Information Interchange (1 mark).</li><li>Its standard size is 7 bits, though it's often stored in 8 bits (1 byte) with the most significant bit unused or used for extended ASCII (0.5 mark for 7 or 8 bit mention).</li><li>This allows it to represent 128 unique characters (2<sup>7</sup>) (0.5 mark for number of characters, 1 mark for linking bit size to character count).</li>" },
+            { id: "auexq2", text: "What is Unicode? How many bytes per character can it use, and how does it relate to ASCII? [3 marks]", markScheme: "<li>Unicode is a universal character encoding standard designed to represent characters from almost all of the world's writing systems (1 mark).</li><li>Unicode characters can be encoded using a variable number of bytes, commonly 1 to 4 bytes in UTF-8 (1 mark for mentioning variable bytes, e.g. 1-4, or specific examples like 16/24/32 bits).</li><li>Unicode is a superset of ASCII; the first 128 Unicode code points are identical to the ASCII character set (1 mark).</li>" },
+            { id: "auexq3", text: "Compare ASCII and Unicode in terms of Language Support and typical Use Cases. [2 marks]", markScheme: "<li><strong>Language Support:</strong> ASCII primarily supports English. Unicode supports a vast range of world languages and scripts (1 mark).</li><li><strong>Use Cases:</strong> ASCII is suitable for simple English text or older systems. Unicode (often via UTF-8) is essential for multi-language applications, websites, documents, and representing diverse symbols/emojis (1 mark).</li>" },
+            { id: "auexq4", text: "What is a 'character set'? [1 mark]", markScheme: "<li>A defined list/collection of characters that are recognized and can be represented by computer hardware and/or software (1 mark).</li>" }
+        ];
+        function setupAUExamPrep() {
+            const container = document.getElementById('auExamQuestionsContainer');
+            if(!container) return;
+            container.innerHTML = '';
+            Object.keys(auExamPrepState).forEach(key => delete auExamPrepState[key]);
+            auExamQuestionsData.forEach((q, index) => {
+                const qId = `au_exam_q${index + 1}`;
+                auExamPrepState[qId] = { selfMark: null, markSchemeViewed: false, marksSelected: false, xpAwardedForMarking: false };
+                const marks = q.text.match(/\[(\d) marks\]/)?.[1] || '2';
+                container.innerHTML += `
+                    <div class="bg-slate-700/50 p-6 rounded-lg shadow mb-6">
+                        <div class="flex justify-between items-start mb-3"><h3 class="text-lg font-bold text-slate-200">Question ${index + 1}</h3><span class="bg-orange-600 text-orange-100 px-3 py-1 rounded-full text-sm font-semibold">[${marks} marks]</span></div>
+                        <p class="text-slate-300 mb-3">${q.text}</p>
+                        <textarea id="${qId}Answer" class="w-full p-3 bg-slate-600 border-2 border-slate-500 rounded-lg focus:border-orange-400 focus:ring-orange-400 text-slate-200 h-24 mb-3 text-base" placeholder="Your answer..." oninput="checkAUExamPrerequisites('${qId}')"></textarea>
+                        <div class="mt-2 mb-3">
+                            <canvas id="${qId}_canvas" class="working-out-canvas mx-auto"></canvas>
+                            <div class="text-center canvas-controls">
+                                <button id="${qId}_clearCanvas">Clear</button>
+                                <button id="${qId}_toggleCanvas">Toggle Size</button>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 mb-3">
+                            <label for="${qId}Marks" class="text-sm font-semibold text-slate-300">Self-Assessed Marks:</label>
+                            <select id="${qId}Marks" class="p-2 bg-slate-600 border border-slate-500 rounded-md text-slate-200 text-base" onchange="checkAUExamPrerequisites('${qId}')"><option value="">Select...</option>${[...Array(parseInt(marks) + 1).keys()].map(i => `<option value="${i}">${i}</option>`).join('')}</select>
+                        </div>
+                        <button id="${qId}ShowSchemeBtn" onclick="toggleAUMarkScheme('${qId}')" class="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors text-sm disabled:opacity-50" disabled>Show/Hide Mark Scheme</button>
+                        <div id="${qId}MarkScheme" class="hidden mt-3 bg-sky-800/30 p-4 rounded-lg border border-sky-700 text-base"><h4 class="font-bold text-sky-300 mb-2">Mark Scheme:</h4><ul class="text-sm space-y-1 list-disc list-inside text-sky-200">${q.markScheme}</ul></div>
+                    </div>`;
+            });
+            auExamQuestionsData.forEach((q, index) => {
+                 initializeCanvas(`au_exam_q${index + 1}_canvas`, `au_exam_q${index + 1}_clearCanvas`, `au_exam_q${index + 1}_toggleCanvas`);
+            });
+        }
+        function checkAUExamPrerequisites(questionId) {
+            const marksEl = document.getElementById(`${questionId}Marks`);
+            const showSchemeBtn = document.getElementById(`${questionId}ShowSchemeBtn`);
+            const state = auExamPrepState[questionId];
+            if (!marksEl || !showSchemeBtn || !state) return;
+            state.marksSelected = marksEl.value !== "";
+            showSchemeBtn.disabled = !state.marksSelected; 
+            if (state.marksSelected) {
+                state.selfMark = marksEl.value;
+                if (parseInt(marksEl.value) >= 0 && !state.xpAwardedForMarking) { 
+                    addXPAU(2, `Self-assessed ${questionId}`); 
+                    state.xpAwardedForMarking = true; 
+                }
+            } else { state.selfMark = null; }
+            checkAchievementsAU();
+        }
+        function toggleAUMarkScheme(questionId) { 
+            const markSchemeEl = document.getElementById(questionId + 'MarkScheme');
+            const showSchemeBtn = document.getElementById(`${questionId}ShowSchemeBtn`);
+            if(!markSchemeEl || !showSchemeBtn || showSchemeBtn.disabled) return;
+            markSchemeEl.classList.toggle('hidden');
+            const state = auExamPrepState[questionId];
+            if (state && !state.markSchemeViewed && !markSchemeEl.classList.contains('hidden')) {
+                addXPAU(5, `Viewed mark scheme for ${questionId}`); 
+                state.markSchemeViewed = true;
+            }
+            checkAchievementsAU();
+        }
+        function resetAUExamPrep(isInitialSetup = false) { 
+            setupAUExamPrep();
+            if (!isInitialSetup) showFlashNotificationAU("ASCII/Unicode Exam Prep reset.", "info");
+        }
+
+        // --- Section 7: Extension Activities ---
+        const auExtensionData = [
+            { id: "extAU1", title: "Emoji Deep Dive", task: "Research how complex emojis (like those with skin tones or multiple people) are represented in Unicode. Write a short summary (30+ words) of your findings.", type: "textarea", xp: 15 },
+            { id: "extAU2", title: "Character Set History", task: "Briefly investigate another older character encoding (e.g., EBCDIC or a specific ISO 8859 variant). What was one main reason it was largely superseded by Unicode? (30+ words)", type: "textarea", xp: 15 },
+            { 
+                id: "extAU3", 
+                title: "Python ASCII Category Sorter", 
+                type: "textarea_python", 
+                task: `<strong>Part 1 (Setup):</strong> You are given a character. Write Python code using <code class="code-display">ord()</code> and <code class="code-display">if-elif-else</code> statements to determine if the character is an uppercase letter, a lowercase letter, a digit, or some other type of printable ASCII symbol. Use the template below and test it in <a href="https://www.pythonsponge.com/" target="_blank" class="python-sponge-link">Python Sponge <i class="fas fa-external-link-alt"></i></a>.<br>
+                       <strong>Part 2 (Test & Record):</strong> Test your code with the following characters one by one by changing the <code class="code-display">my_char</code> variable in Python Sponge: 'R', 'g', '8', '!'. <br>
+                       <strong>Deliverable:</strong> In the textarea below, paste your final Python code and then list the category Python outputted for each of the four test characters.`,
+                template: `my_char = 'R' # Change this character to test others!\ncode = ord(my_char)\ncategory = "Other Symbol"\n\nif code >= 65 and code <= 90: # ASCII for 'A' to 'Z'\n    category = "Uppercase Letter"\nelif code >= 97 and code <= 122: # ASCII for 'a' to 'z'\n    category = "Lowercase Letter"\nelif code >= 48 and code <= 57: # ASCII for '0' to '9'\n    category = "Digit"\n\nprint(f"The character '{my_char}' is a: {category}")`,
+                xp: 20 
+            }
+        ];
+        function setupAUExtensions() {
+            const container = document.getElementById('auExtensionsContainer');
+            container.innerHTML = '';
+            auExtensionData.forEach(ext => {
+                if (!auExtensionStates[ext.id]) auExtensionStates[ext.id] = { xpAwarded: false };
+                let extHTML = `<div class="bg-slate-700/50 p-6 rounded-lg shadow">
+                                <h3 class="text-xl font-bold text-yellow-300 mb-3">${ext.title}</h3>`;
+                if (ext.type === "textarea" || ext.type === "textarea_python") {
+                    extHTML += `<p class="text-slate-300 mb-2 text-sm">${ext.task}</p>`;
+                    if(ext.template){ 
+                         const escapedTemplate = ext.template.replace(/\$\{/g, '\\${'); // Escaping ${} for JS
+                         extHTML += `<p class="text-xs text-emerald-200 mb-1 mt-3">Python Code Template (to copy to Python Sponge):</p>
+                                     <pre class="code-block mb-3">${escapedTemplate}</pre>`;
+                    }
+                    extHTML += `<textarea id="${ext.id}_answer" class="w-full p-2 bg-slate-600 border-slate-500 rounded h-32 text-sm" placeholder="Your response / code & output..."></textarea>
+                                <button onclick="submitAUExtensionAnswer('${ext.id}', ${ext.xp})" id="btn_${ext.id}" class="mt-2 bg-yellow-600 text-white px-4 py-1.5 rounded hover:bg-yellow-700 text-sm">Submit Response</button>`;
+                }
+                extHTML += `</div>`;
+                container.innerHTML += extHTML;
+            });
+        }
+        function submitAUExtensionAnswer(extId, xp){
+            const answerEl = document.getElementById(`${extId}_answer`);
+            const state = auExtensionStates[extId];
+            if(answerEl && answerEl.value.trim().length >= 30 && state && !state.xpAwarded){ 
+                addXPAU(xp, `Completed ${auExtensionData.find(e=>e.id===extId)?.title || 'extension'}`);
+                state.xpAwarded = true;
+                const btn = document.getElementById(`btn_${extId}`);
+                if(btn) {btn.disabled = true; btn.textContent="Submitted!";}
+            } else if (answerEl && answerEl.value.trim().length < 30) {
+                showModalAU("Please provide a more detailed response (at least 30 characters/words)."); 
+            } else if (state && state.xpAwarded){
+                 showFlashNotificationAU("You've already received points for this extension.", "info");
+            }
+            checkAchievementsAU();
+        }
+        function resetAUExtensions(isInitialSetup = false){
+            setupAUExtensions();
+            if(!isInitialSetup) showFlashNotificationAU("Extension Activities reset.", "info");
+        }
+
+
+        // --- DOMContentLoaded Initializations ---
+        document.addEventListener('DOMContentLoaded', () => {
+            addXPAU(0, "", true); 
+            resetAUStarter(true); 
+            resetAUAsciiTask(true);
+            resetAUBeyondAscii(true);
+            resetAUUnicodeUTF8(true);
+            resetAUPythonCharCodes(true);
+            resetAUExamPrep(true);
+            resetAUExtensions(true);
+            checkAchievementsAU(true); 
+        });
+    </script>
+</body>
+</html>

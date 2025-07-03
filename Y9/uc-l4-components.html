@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lesson: Computer Components Adventure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+            font-size: 16px; 
+        }
+
+        .component-glow { animation: componentGlow 2.5s ease-in-out infinite; }
+        @keyframes componentGlow {
+            0%, 100% { box-shadow: 0 0 25px rgba(76, 175, 80, 0.6); }
+            50% { box-shadow: 0 0 45px rgba(76, 175, 80, 0.9); }
+        }
+        
+        .pulse { animation: pulse 1.8s ease-in-out infinite; }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        
+        .draggable { cursor: grab; transition: all 0.3s ease; user-select: none; }
+        .draggable.dragging-active { opacity: 0.5; transform: scale(0.95); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+        
+        .drop-zone { min-height: 70px; transition: all 0.3s ease; border: 2px dashed #cbd5e1; }
+        .drop-zone.drag-over { background-color: #e0f2fe; border-color: #0ea5e9; transform: scale(1.02); }
+        
+        .achievement-unlocked { animation: achievementPop 0.6s ease-out; opacity: 1 !important; }
+        @keyframes achievementPop {
+            0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+            60% { transform: scale(1.2) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        
+        .flip-card { background-color: transparent; width: 100%; height: 300px; perspective: 1000px; }
+        .flip-card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.7s; transform-style: preserve-3d; }
+        .flip-card.flipped .flip-card-inner { transform: rotateY(180deg); }
+        .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 14px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .flip-card-back { transform: rotateY(180deg); justify-content: space-around; }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        #motherboardInfoBox { transition: opacity 0.3s ease, transform 0.3s ease; }
+
+        .component-option { transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
+        .component-option:hover { transform: translateY(-4px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+        .component-option.selected { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); }
+        .budget-warning { color: #dc2626; }
+
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); padding-top: 60px; }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 24px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+        .modal-close:hover, .modal-close:focus { color: black; text-decoration: none; cursor: pointer; }
+        #modalMessageText { font-size: 1.125rem; line-height: 1.75rem; }
+
+        #svgMotherboard rect.board-base { fill: #2d3748; } 
+        #svgMotherboard .slot { fill: #4a5568; stroke: #718096; stroke-width:0.5; }
+        #svgMotherboard .slot-contact { fill: #d4af37; } 
+        #svgMotherboard .cpu-socket-base { fill: #718096; }
+        #svgMotherboard .cpu-socket-lever { fill: #a0aec0; }
+        #svgMotherboard .cpu-socket-center { fill: #374151; } 
+        #svgMotherboard .port { fill: #a0aec0; stroke: #718096; stroke-width:0.5;}
+        #svgMotherboard .chipset-heatsink { fill: #718096; }
+        #svgMotherboard .capacitor { fill: #4a5568; }
+        #svgMotherboard .power-connector { fill: #374151; stroke: #a0aec0; stroke-width:0.5;}
+        .svg-hotspot-text { font-size: 9px; fill: white; text-anchor: middle; dominant-baseline: middle; pointer-events: none; font-weight: bold;}
+        .svg-io-port-label { font-size: 7px; fill: #cbd5e0; text-anchor: middle; dominant-baseline: central; pointer-events: none;}
+
+        .temp-bar-bg { background-color: #e5e7eb; border-radius: 6px; height: 20px; overflow: hidden;}
+        .temp-bar { height: 100%; border-radius: 6px; transition: width 0.5s ease-in-out, background-color 0.5s ease-in-out;}
+        .temp-green { background-color: #34d399; } 
+        .temp-yellow { background-color: #f59e0b; } 
+        .temp-red { background-color: #ef4444; } 
+
+        .reset-button {
+            background-color: #f87171; 
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem; 
+            font-size: 0.875rem; 
+            font-weight: 500; 
+            transition: background-color 0.2s ease-in-out;
+            border: none;
+            cursor: pointer;
+        }
+        .reset-button:hover {
+            background-color: #ef4444; 
+        }
+        .quiz-option label { display: block; margin-bottom: 0.5rem; padding: 0.6rem; border: 1px solid #e2e8f0; border-radius: 0.375rem; cursor: pointer; transition: background-color 0.2s; font-size: 0.875rem; }
+        .quiz-option input[type="radio"]:checked + label { background-color: #c6f6d5; border-color: #68d391; }
+        .quiz-option input[type="radio"] { display: none; }
+        
+        section p, section li {
+            font-size: 1rem; 
+            line-height: 1.625; 
+        }
+        section h3 { 
+             font-size: 1.125rem; 
+        }
+        .spec-note {
+            background-color: #ffedd5; 
+            border-left: 4px solid #fb923c; 
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            color: #c2410c; 
+        }
+
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-100 via-gray-100 to-stone-100 min-h-screen p-4 md:p-8 text-gray-800">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-12 relative">
+            <div class="absolute inset-0 flex justify-center items-center opacity-10">
+                <div class="w-72 h-72 bg-green-500 rounded-lg component-glow transform rotate-45"></div>
+            </div>
+            <h1 class="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-teal-600 mb-3 relative z-10">
+                Computer Components Adventure! 🛠️
+            </h1>
+            <p class="text-gray-600 text-lg md:text-xl relative z-10">Unlock the secrets inside your computer and become a Hardware Hero!</p>
+            
+            <div class="mt-8 bg-white rounded-full p-2 shadow-xl max-w-lg mx-auto relative z-10">
+                <div class="flex items-center justify-between">
+                    <span id="levelDisplay" class="text-sm font-semibold text-gray-700 ml-4">Level 1: Hardware Novice</span>
+                    <span class="text-sm font-semibold text-green-600 mr-4"><span id="xpPoints">0</span> XP</span>
+                </div>
+                <div class="bg-gray-200 rounded-full h-4 mt-2 mx-1">
+                    <div id="xpBar" class="bg-gradient-to-r from-green-500 to-teal-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="mb-10 bg-white p-3 rounded-lg shadow-md sticky top-4 z-50">
+            <ul class="flex flex-wrap justify-center gap-x-3 md:gap-x-4 gap-y-2">
+                <li><a href="#section-anagram-challenge" class="text-sm md:text-base text-green-700 hover:text-teal-600 font-medium">🚀 Anagrams</a></li>
+                <li><a href="#section-component-investigator" class="text-sm md:text-base text-green-700 hover:text-teal-600 font-medium">🕵️ Investigator</a></li>
+                <li><a href="#section-function-match" class="text-sm md:text-base text-green-700 hover:text-teal-600 font-medium">🧩 Function Match</a></li>
+                <li><a href="#section-build-a-rig" class="text-sm md:text-base text-green-700 hover:text-teal-600 font-medium">🖥️ Build-A-Rig</a></li>
+                <li><a href="#section-motherboard" class="text-sm md:text-base text-green-700 hover:text-teal-600 font-medium">🔗 Motherboard</a></li>
+                <li><a href="#section-memory-duel" class="text-sm md:text-base text-green-700 hover:text-teal-600 font-medium">🧠 Memory Duel</a></li>
+                <li><a href="#section-cooling-config" class="text-sm md:text-base text-green-700 hover:text-teal-600 font-medium">❄️ Cooling Config</a></li>
+                <li><a href="#section-exam-prep" class="text-sm md:text-base text-green-700 hover:text-teal-600 font-medium">📝 Exam Prep</a></li>
+                <li><a href="#section-extensions" class="text-sm md:text-base text-green-700 hover:text-teal-600 font-medium">🚀 Extensions</a></li>
+                <li><a href="#section-achievements" class="text-sm md:text-base text-green-700 hover:text-teal-600 font-medium">🏆 Achievements</a></li>
+            </ul>
+        </nav>
+
+        <!-- Section 1: Starter - Component Anagram Challenge -->
+        <section id="section-anagram-challenge" class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-10 relative overflow-hidden">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-teal-700">🚀 Starter: Component Anagram Challenge!</h2>
+                <button onclick="resetAnagramChallenge()" class="reset-button">Reset Anagrams</button>
+            </div>
+            <p class="text-gray-700 mb-6">Unscramble these component names! Type your answer and hit "Check".</p>
+            <div id="anagramContainer" class="space-y-4"></div>
+            <div id="anagramFeedback" class="mt-4 p-3 bg-teal-50 rounded-lg text-teal-800 min-h-[50px] text-center text-base"></div>
+        </section>
+
+        <!-- Section 2: Task 1 - Component Investigator (Quiz Version) -->
+        <section id="section-component-investigator" class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-10">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-sky-700">🕵️ Task 1: Component Investigator Quiz</h2>
+                <button onclick="resetInvestigatorQuiz()" class="reset-button">Reset Quizzes</button>
+            </div>
+            <p class="text-gray-700 mb-6">Flip the card to learn about a component, then answer the multiple-choice question about its primary purpose.</p>
+            <div id="investigatorCardContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8"></div>
+            <div id="investigatorFeedback" class="mt-6 p-3 bg-sky-50 rounded-lg text-sky-800 min-h-[50px] text-center text-base">Flip a card and test your knowledge!</div>
+        </section>
+
+        <!-- Section 3: Task 2 - Function Match-Up -->
+        <section id="section-function-match" class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-10">
+             <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-orange-700">🧩 Task 2: Function Match-Up</h2>
+                <button onclick="resetFunctionMatch()" class="reset-button">Reset Match-Up</button>
+            </div>
+            <p class="text-gray-700 mb-6">Drag the component names to their correct function descriptions. Let's see if you know what each part does!</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div class="bg-orange-50 p-4 rounded-lg"><h3 class="font-semibold text-lg text-orange-800 mb-3">Components:</h3><div id="draggableComponentsContainer" class="space-y-3"></div></div>
+                <div class="bg-gray-50 p-4 rounded-lg"><h3 class="font-semibold text-lg text-gray-800 mb-3">Functions:</h3><div id="functionDropZonesContainer" class="space-y-3"></div></div>
+            </div>
+            <button onclick="checkFunctionMatches()" class="mt-6 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-all text-base font-semibold">Check My Matches!</button>
+            <div id="functionMatchFeedback" class="mt-4 p-3 bg-orange-50 rounded-lg text-orange-800 min-h-[50px] text-center text-base"></div>
+        </section>
+
+        <!-- Section 4: Task 3 - "Build-A-Rig" Simulator -->
+        <section id="section-build-a-rig" class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-10">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-lime-700">🖥️ Task 3: "Build-A-Rig" Simulator!</h2>
+                <button onclick="resetBuildARig()" class="reset-button">Reset Build</button>
+            </div>
+            <p class="text-gray-700 mb-3">You've got a budget! Choose components to build the best PC for the job. Think about what each component does and how it affects performance.</p>
+            <p class="text-gray-700 mb-6"><strong>Scenario:</strong> Build a PC for smooth 1080p gaming and everyday schoolwork. <strong>Budget: £800</strong></p>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 space-y-6">
+                    <div id="buildCpuOptions" class="p-4 border border-gray-200 rounded-lg shadow-sm"></div>
+                    <div id="buildRamOptions" class="p-4 border border-gray-200 rounded-lg shadow-sm"></div>
+                    <div id="buildGpuOptions" class="p-4 border border-gray-200 rounded-lg shadow-sm"></div>
+                    <div id="buildStorageOptions" class="p-4 border border-gray-200 rounded-lg shadow-sm"></div>
+                    <div class="p-4 border border-gray-200 rounded-lg shadow-sm bg-lime-50"><h4 class="font-semibold text-lg text-lime-800 mb-2">5. Motherboard & Power Supply (PSU)</h4><p class="text-sm text-gray-700">For this build, we'll use a compatible Motherboard and a 550W PSU.</p><p class="font-semibold text-lime-600">Fixed Cost: £120 (Motherboard £70, PSU £50)</p><input type="hidden" id="fixedMotherboardPSUPrice" value="120"></div>
+                </div>
+                <div class="lg:col-span-1 bg-lime-50 p-6 rounded-lg shadow-lg sticky top-24">
+                    <h3 class="font-bold text-xl text-lime-900 mb-4">Your Build Summary</h3>
+                    <ul id="buildSummaryList" class="space-y-2 text-sm mb-4"><li data-type="cpu">CPU: Not selected</li><li data-type="ram">RAM: Not selected</li><li data-type="gpu">GPU: Not selected</li><li data-type="storage">Storage: Not selected</li><li>Motherboard & PSU: £120 (Fixed)</li></ul>
+                    <hr class="my-4 border-lime-300">
+                    <div class="text-lg font-semibold">Total Cost: <span id="totalCostDisplay" class="text-lime-700">£120</span></div>
+                    <div id="budgetStatus" class="mt-1 text-sm font-medium">Remaining Budget: £680</div>
+                    <button onclick="finalizeBuild()" class="mt-6 w-full bg-lime-600 text-white px-6 py-3 rounded-lg hover:bg-lime-700 transition-all text-base font-semibold">Finalize My Build!</button>
+                    <div id="buildFeedback" class="mt-4 p-3 bg-lime-100 rounded-lg text-lime-800 min-h-[50px] text-center text-base"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Motherboard Explorer (SVG Version) -->
+        <section id="section-motherboard" class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-10">
+            <h2 class="text-2xl md:text-3xl font-bold text-cyan-700 mb-2">🔗 Motherboard Explorer</h2>
+            <div class="spec-note">
+                <i class="fas fa-info-circle mr-2"></i>
+                <strong>Heads-up, Future Tech Gurus!</strong> The level of detail on this motherboard diagram (like specific M.2 slots or chipset visuals) is a bit beyond what you'd typically need for your current spec. It's here to give you a richer understanding of how a real motherboard looks and connects!
+            </div>
+            <p class="text-gray-700 mb-6">The motherboard is the computer's main communication hub. Click on the areas of the SVG motherboard diagram to see what connects where!</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-2 bg-gray-200 p-4 rounded-lg relative min-h-[450px] md:min-h-[550px] flex items-center justify-center overflow-hidden">
+                    <svg id="svgMotherboard" viewBox="0 0 320 250" class="max-w-full max-h-full"></svg> 
+                </div>
+                <div id="motherboardInfoBox" class="md:col-span-1 bg-cyan-50 p-6 rounded-lg shadow opacity-0 transform translate-y-5">
+                    <h3 id="motherboardInfoTitle" class="font-bold text-xl text-cyan-800 mb-3">Click an area!</h3>
+                    <p id="motherboardInfoText" class="text-sm text-gray-700">Learn about different parts of the motherboard.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 6: RAM vs. ROM - The Memory Duel -->
+        <section id="section-memory-duel" class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-10">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-purple-700">🧠 RAM vs. ROM - The Memory Duel!</h2>
+                <button onclick="resetMemoryDuel()" class="reset-button">Reset Duel</button>
+            </div>
+            <p class="text-gray-700 mb-6">RAM and ROM are both types of memory, but they do very different jobs. Drag the characteristics to the correct memory type.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-1 bg-purple-50 p-4 rounded-lg"><h3 class="font-semibold text-lg text-purple-800 mb-3">Characteristics:</h3><div id="memoryCharacteristicsContainer" class="space-y-3"></div></div>
+                <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="bg-indigo-100 p-4 rounded-lg"><h3 class="font-semibold text-lg text-indigo-800 mb-3 text-center">RAM</h3><div id="ramDropZone" class="drop-zone space-y-2 p-2 min-h-[200px]" data-memory-type="RAM"></div></div>
+                    <div class="bg-pink-100 p-4 rounded-lg"><h3 class="font-semibold text-lg text-pink-800 mb-3 text-center">ROM</h3><div id="romDropZone" class="drop-zone space-y-2 p-2 min-h-[200px]" data-memory-type="ROM"></div></div>
+                </div>
+            </div>
+            <button onclick="checkMemoryDuel()" class="mt-6 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-all text-base font-semibold">Check My Answers!</button>
+            <div id="memoryDuelFeedback" class="mt-4 p-3 bg-purple-50 rounded-lg text-purple-800 min-h-[50px] text-center text-base"></div>
+        </section>
+        
+        <!-- Section 7: Cooling System Configurator -->
+        <section id="section-cooling-config" class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-10">
+             <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-blue-700">❄️ Cooling System Configurator</h2>
+                <button onclick="resetCoolingConfigurator()" class="reset-button">Reset Cooling</button>
+            </div>
+            <p class="text-gray-700 mb-6">Different tasks generate different amounts of heat. Choose a cooling solution for each scenario and see the (simulated) temperature result!</p>
+            <div class="space-y-8">
+                <div class="bg-blue-50 p-6 rounded-lg shadow"> <h3 class="font-semibold text-lg text-blue-800 mb-2">Scenario 1: Light Office Work</h3> <p class="text-sm text-gray-600 mb-3">(Word processing, web browsing)</p> <div class="mb-3"><label for="coolingScenario1" class="block text-sm font-medium text-gray-700 mb-1">Choose Cooling:</label><select id="coolingScenario1" class="w-full p-2 border border-blue-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"><option value="basic_fan">Basic CPU Fan</option><option value="tower_air">Tower Air Cooler</option><option value="liquid_aio">Liquid AIO Cooler</option></select></div> <button onclick="simulateCooling('scenario1', document.getElementById('coolingScenario1').value)" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm">Simulate</button> <div class="mt-3"><p class="text-sm font-medium text-gray-700">Simulated CPU Temp:</p><div class="temp-bar-bg mt-1"><div id="tempBar_scenario1" class="temp-bar"></div></div><p id="tempFeedback_scenario1" class="text-sm mt-1 text-gray-600"></p></div> </div>
+                <div class="bg-blue-50 p-6 rounded-lg shadow"> <h3 class="font-semibold text-lg text-blue-800 mb-2">Scenario 2: Moderate Gaming</h3> <p class="text-sm text-gray-600 mb-3">(eSports titles, 1080p)</p> <div class="mb-3"><label for="coolingScenario2" class="block text-sm font-medium text-gray-700 mb-1">Choose Cooling:</label><select id="coolingScenario2" class="w-full p-2 border border-blue-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"><option value="basic_fan">Basic CPU Fan</option><option value="tower_air" selected>Tower Air Cooler</option><option value="liquid_aio">Liquid AIO Cooler</option></select></div> <button onclick="simulateCooling('scenario2', document.getElementById('coolingScenario2').value)" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm">Simulate</button> <div class="mt-3"><p class="text-sm font-medium text-gray-700">Simulated CPU Temp:</p><div class="temp-bar-bg mt-1"><div id="tempBar_scenario2" class="temp-bar"></div></div><p id="tempFeedback_scenario2" class="text-sm mt-1 text-gray-600"></p></div> </div>
+                <div class="bg-blue-50 p-6 rounded-lg shadow"> <h3 class="font-semibold text-lg text-blue-800 mb-2">Scenario 3: Intense Workload</h3> <p class="text-sm text-gray-600 mb-3">(4K Video Editing / AAA Gaming)</p> <div class="mb-3"><label for="coolingScenario3" class="block text-sm font-medium text-gray-700 mb-1">Choose Cooling:</label><select id="coolingScenario3" class="w-full p-2 border border-blue-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"><option value="basic_fan">Basic CPU Fan</option><option value="tower_air">Tower Air Cooler</option><option value="liquid_aio" selected>Liquid AIO Cooler</option></select></div> <button onclick="simulateCooling('scenario3', document.getElementById('coolingScenario3').value)" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 text-sm">Simulate</button> <div class="mt-3"><p class="text-sm font-medium text-gray-700">Simulated CPU Temp:</p><div class="temp-bar-bg mt-1"><div id="tempBar_scenario3" class="temp-bar"></div></div><p id="tempFeedback_scenario3" class="text-sm mt-1 text-gray-600"></p></div> </div>
+            </div>
+            <div id="coolingConfigOverallFeedback" class="mt-6 p-3 bg-blue-100 rounded-lg text-blue-800 min-h-[50px] text-center text-base">Configure cooling for each scenario.</div>
+        </section>
+
+        <!-- Section 8: Exam Prep Zone -->
+        <section id="section-exam-prep" class="bg-gradient-to-r from-red-100 to-orange-100 rounded-xl shadow-lg p-6 md:p-8 mb-10">
+            <div class="flex justify-between items-center mb-5"><h2 class="text-2xl md:text-3xl font-bold text-red-700">📝 Exam Prep Zone</h2><button onclick="resetExamPrep()" class="reset-button">Reset Exam Qs</button></div>
+            <p class="text-gray-700 mb-6">Test your knowledge! Answer these exam-style questions. Self-assess before checking the mark scheme.</p>
+            <div class="bg-white p-6 rounded-lg shadow mb-6"> <div class="flex justify-between items-start mb-3"><h3 class="text-lg font-bold text-gray-800">Question 1</h3><span class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-semibold">[2 marks]</span></div> <p class="text-gray-700 mb-3">Describe the main function of a motherboard in a computer system.</p> <textarea id="examQ1Answer" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-red-400 focus:outline-none h-24 mb-3 text-base" placeholder="Write your answer here..."></textarea> <div class="flex items-center gap-4 mb-3"><label for="examQ1Marks" class="text-sm font-semibold">Self-Assessed Marks:</label><select id="examQ1Marks" class="p-2 border border-gray-300 rounded-md text-base"><option value="">Select...</option><option value="0">0</option><option value="1">1</option><option value="2">2</option></select></div> <button onclick="toggleMarkScheme('examQ1')" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors text-sm">Show/Hide Mark Scheme</button> <div id="examQ1MarkScheme" class="hidden mt-3 bg-green-50 p-4 rounded-lg border border-green-200 text-base"><h4 class="font-bold text-green-700 mb-2">Mark Scheme:</h4><ul class="text-sm space-y-1 list-disc list-inside text-green-800"><li>Connects all major internal components of the computer. (1 mark)</li><li>Allows communication/data transfer between these components. (1 mark)</li><li>(Alternative point) Provides pathways/buses for data, power distribution.</li></ul></div> </div>
+            <div class="bg-white p-6 rounded-lg shadow mb-6"> <div class="flex justify-between items-start mb-3"><h3 class="text-lg font-bold text-gray-800">Question 2</h3><span class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-semibold">[3 marks]</span></div> <p class="text-gray-700 mb-3">Explain the difference between RAM and ROM in terms of volatility and their primary use.</p> <textarea id="examQ2Answer" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-red-400 focus:outline-none h-32 mb-3 text-base" placeholder="Write your answer here..."></textarea> <div class="flex items-center gap-4 mb-3"><label for="examQ2Marks" class="text-sm font-semibold">Self-Assessed Marks:</label><select id="examQ2Marks" class="p-2 border border-gray-300 rounded-md text-base"><option value="">Select...</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div> <button onclick="toggleMarkScheme('examQ2')" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors text-sm">Show/Hide Mark Scheme</button> <div id="examQ2MarkScheme" class="hidden mt-3 bg-green-50 p-4 rounded-lg border border-green-200 text-base"><h4 class="font-bold text-green-700 mb-2">Mark Scheme:</h4><ul class="text-sm space-y-1 list-disc list-inside text-green-800"><li>RAM is volatile (loses data when power is off). (1 mark)</li><li>ROM is non-volatile (retains data when power is off). (1 mark)</li><li>RAM is used to store currently running programs and data for quick access by the CPU. (1 mark for primary use)</li><li>ROM is used to store startup instructions (BIOS/UEFI) for the computer. (1 mark for primary use - award one mark for correct use of either RAM or ROM if both volatility points are made, or vice versa, up to max 3)</li></ul></div> </div>
+            <div class="bg-white p-6 rounded-lg shadow"> <div class="flex justify-between items-start mb-3"><h3 class="text-lg font-bold text-gray-800">Question 3</h3><span class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-semibold">[2 marks]</span></div> <p class="text-gray-700 mb-3">Identify two types of secondary storage and state one benefit of an SSD over an HDD.</p> <textarea id="examQ3Answer" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-red-400 focus:outline-none h-24 mb-3 text-base" placeholder="Write your answer here..."></textarea> <div class="flex items-center gap-4 mb-3"><label for="examQ3Marks" class="text-sm font-semibold">Self-Assessed Marks:</label><select id="examQ3Marks" class="p-2 border border-gray-300 rounded-md text-base"><option value="">Select...</option><option value="0">0</option><option value="1">1</option><option value="2">2</option></select></div> <button onclick="toggleMarkScheme('examQ3')" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors text-sm">Show/Hide Mark Scheme</button> <div id="examQ3MarkScheme" class="hidden mt-3 bg-green-50 p-4 rounded-lg border border-green-200 text-base"><h4 class="font-bold text-green-700 mb-2">Mark Scheme:</h4><ul class="text-sm space-y-1 list-disc list-inside text-green-800"><li>Type 1: Hard Disk Drive (HDD) / Magnetic Storage. (1 mark for one correct type, up to 2 types for 1 mark)</li><li>Type 2: Solid State Drive (SSD) / Optical Disc (CD/DVD/Blu-ray) / USB Flash Drive. (Award mark if two distinct valid types are given)</li><li>Benefit of SSD over HDD: Faster data access/read/write speeds / More durable (no moving parts) / Quieter operation / Lower power consumption / More compact/lighter. (1 mark for one valid benefit)</li></ul></div> </div>
+        </section>
+
+        <!-- Section 9: Extension Activities -->
+        <section id="section-extensions" class="bg-gradient-to-r from-indigo-100 to-purple-100 rounded-xl shadow-lg p-6 md:p-8 mb-10">
+            <div class="flex justify-between items-center mb-5"><h2 class="text-2xl md:text-3xl font-bold text-indigo-700">🚀 Extension Activities</h2><button onclick="resetExtensionActivities()" class="reset-button">Reset Extensions</button></div>
+            <p class="text-gray-700 mb-6">Ready for a challenge? Explore these topics further!</p>
+            <div class="bg-white p-6 rounded-lg shadow mb-6"> <h3 class="font-bold text-lg mb-3 text-indigo-600">🔬 Extension 1: Storage Technologies - NVMe vs. SATA SSDs</h3> <p class="text-gray-700 mb-4">You've learned about HDDs and SSDs. SSDs themselves come in different types that connect to the motherboard in different ways, offering varying speeds. Two common types are SATA SSDs and NVMe SSDs.</p> <p class="text-gray-700 mb-4"><strong>Your Task:</strong> Do a quick search (or use your existing knowledge) to answer the following:</p> <ol class="list-decimal list-inside text-gray-700 space-y-2 mb-4"><li>What does NVMe stand for?</li><li>Which type of SSD (SATA or NVMe) generally offers faster read/write speeds?</li><li>How does an NVMe SSD typically connect to the motherboard (e.g., what kind of slot)?</li></ol> <textarea id="extension1Answer" class="w-full p-3 border-2 border-indigo-200 rounded-lg focus:border-indigo-400 focus:outline-none h-32 text-base" placeholder="Write your findings here..."></textarea> <button id="extension1Button" onclick="submitExtensionAnswer('extension1', 15)" class="mt-3 bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-600 text-sm">Submit & Get XP</button> </div>
+            <div class="bg-white p-6 rounded-lg shadow"> <h3 class="font-bold text-lg mb-3 text-purple-600">🤝 Extension 2: Component Compatibility Conundrum</h3> <p class="text-gray-700 mb-4">Building a PC isn't just about picking the "best" parts; they also need to be compatible with each other! For example, a CPU needs to fit the motherboard's socket type, and RAM needs to be the correct generation (like DDR4 or DDR5) for the motherboard.</p> <p class="text-gray-700 mb-4"><strong>Scenario:</strong> Someone wants to upgrade their old PC. They buy a brand new, powerful CPU (e.g., an Intel Core i9 - 14th Gen) and the latest DDR5 RAM. However, their motherboard is 5 years old.</p> <p class="text-gray-700 mb-2"><strong>Your Task:</strong> Explain potential compatibility issues they might face with the CPU and RAM. What would they likely need to do?</p> <textarea id="extension2Answer" class="w-full p-3 border-2 border-purple-200 rounded-lg focus:border-purple-400 focus:outline-none h-32 text-base" placeholder="Explain the compatibility issues and solutions..."></textarea> <button id="extension2Button" onclick="submitExtensionAnswer('extension2', 15)" class="mt-3 bg-purple-500 text-white px-4 py-2 rounded-md hover:bg-purple-600 text-sm">Submit & Get XP</button> </div>
+        </section>
+
+        <!-- Section 10: Achievement Gallery -->
+        <section id="section-achievements" class="bg-gradient-to-r from-yellow-100 to-amber-100 rounded-xl shadow-lg p-6 md:p-8 mb-6">
+            <h2 class="text-2xl md:text-3xl font-bold text-amber-700 mb-5">🏆 Your Achievements!</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div id="achieve-anagram-solver" class="bg-white p-4 rounded-lg text-center shadow opacity-40 transition-opacity duration-500"><span class="text-4xl">🤔</span><p class="font-bold text-sm mt-2 text-gray-700">Anagram Solver</p><p class="text-xs text-gray-500">Solved all anagrams</p></div>
+                <div id="achieve-component-investigator" class="bg-white p-4 rounded-lg text-center shadow opacity-40 transition-opacity duration-500"><span class="text-4xl">🕵️</span><p class="font-bold text-sm mt-2 text-gray-700">Comp. Investigator</p><p class="text-xs text-gray-500">Aced component quizzes</p></div>
+                <div id="achieve-function-master" class="bg-white p-4 rounded-lg text-center shadow opacity-40 transition-opacity duration-500"><span class="text-4xl">🧩</span><p class="font-bold text-sm mt-2 text-gray-700">Function Master</p><p class="text-xs text-gray-500">Matched all functions</p></div>
+                <div id="achieve-rig-architect" class="bg-white p-4 rounded-lg text-center shadow opacity-40 transition-opacity duration-500"><span class="text-4xl">🖥️</span><p class="font-bold text-sm mt-2 text-gray-700">Rig Architect</p><p class="text-xs text-gray-500">Successfully built a PC</p></div>
+                <div id="achieve-board-explorer" class="bg-white p-4 rounded-lg text-center shadow opacity-40 transition-opacity duration-500"><span class="text-4xl">🔗</span><p class="font-bold text-sm mt-2 text-gray-700">Board Explorer</p><p class="text-xs text-gray-500">Explored motherboard</p></div>
+                <div id="achieve-memory-maven" class="bg-white p-4 rounded-lg text-center shadow opacity-40 transition-opacity duration-500"><span class="text-4xl">🧠</span><p class="font-bold text-sm mt-2 text-gray-700">Memory Maven</p><p class="text-xs text-gray-500">Conquered RAM vs ROM</p></div>
+                <div id="achieve-cooling-expert" class="bg-white p-4 rounded-lg text-center shadow opacity-40 transition-opacity duration-500"><span class="text-4xl">❄️</span><p class="font-bold text-sm mt-2 text-gray-700">Cooling Expert</p><p class="text-xs text-gray-500">Mastered cooling sims</p></div>
+                <div id="achieve-extension-explorer" class="bg-white p-4 rounded-lg text-center shadow opacity-40 transition-opacity duration-500"><span class="text-4xl">🚀</span><p class="font-bold text-sm mt-2 text-gray-700">Extension Explorer</p><p class="text-xs text-gray-500">Completed extensions</p></div>
+                <div id="achieve-hardware-hero" class="bg-white p-4 rounded-lg text-center shadow opacity-40 transition-opacity duration-500"><span class="text-4xl">🦸</span><p class="font-bold text-sm mt-2 text-gray-700">Hardware Hero</p><p class="text-xs text-gray-500">Completed all tasks!</p></div>
+            </div>
+        </section>
+
+        <footer class="text-center mt-12 py-6 border-t border-gray-300"><p class="text-gray-600 text-sm">&copy; Your School Name/Your Name - Computer Science Components Lesson</p></footer>
+    </div>
+
+    <div id="messageModal" class="modal"><div class="modal-content"><span class="modal-close" onclick="closeModal('messageModal')">&times;</span><p id="modalMessageText" class="text-lg"></p><button onclick="closeModal('messageModal')" class="mt-4 bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600">OK</button></div></div>
+
+    <script>
+        // --- XP and Achievement System ---
+        let totalXP = 0;
+        const MAX_XP_PER_LEVEL = 100; 
+        let currentLevel = 1;
+        const levels = ["Hardware Novice", "Component Cadet", "Circuit Specialist", "System Savant", "Hardware Hero", "Tech Titan"];
+        let draggedItem = null; // Global for drag-drop operations
+
+        // --- Anagram Challenge Data & Logic ---
+        const anagrams = [
+            { scrambled: "UPC", answer: "CPU", hint: "The brain of the computer." },
+            { scrambled: "ARM", answer: "RAM", hint: "Temporary memory for active tasks." },
+            { scrambled: "OMR", answer: "ROM", hint: "Stores startup instructions." },
+            { scrambled: "DRABOHTREOM", answer: "MOTHERBOARD", hint: "Connects all components." },
+            { scrambled: "PUG", answer: "GPU", hint: "Handles graphics and video." },
+            { scrambled: "GEAROTS", answer: "STORAGE", hint: "Long-term file keeping (SSD/HDD)." }
+        ];
+        let anagramsSolvedCount = 0;
+        const anagramsAttemptedState = {}; 
+        let anagramChallengeXPAwarded = {}; // Tracks XP per anagram
+
+        // --- Component Investigator Data (Quiz Version) ---
+        const investigatorQuizData = [
+            { id: "cpu", name: "CPU", icon: "fa-microchip", colorFrom: "from-sky-500", colorTo: "to-blue-600", bgColor: "bg-sky-50",
+              purpose: "The 'brain'. Carries out program instructions by performing arithmetic, logical, control and I/O operations.",
+              question: "What is the primary role of the CPU?",
+              options: ["Store files long-term", "Execute program instructions", "Display graphics on screen", "Provide power to components"],
+              correctAnswer: "Execute program instructions", xp: 5 },
+            { id: "ram", name: "RAM", icon: "fa-memory", colorFrom: "from-indigo-500", colorTo: "to-purple-600", bgColor: "bg-indigo-50",
+              purpose: "Temporary storage for data and programs currently being used. Much faster than storage drives. VOLATILE (lost on power off).",
+              question: "Which characteristic best describes RAM?",
+              options: ["Non-volatile storage", "Slow access speed", "Stores startup instructions", "Volatile, temporary storage"],
+              correctAnswer: "Volatile, temporary storage", xp: 5 },
+            { id: "rom", name: "ROM", icon: "fa-sd-card", colorFrom: "from-pink-500", colorTo: "to-rose-600", bgColor: "bg-pink-50",
+              purpose: "Stores essential startup instructions (BIOS/UEFI). NON-VOLATILE (retained on power off). Generally not user-changed.",
+              question: "What is typically stored in ROM?",
+              options: ["User documents and games", "The operating system itself", "Computer startup instructions (BIOS)", "Currently open applications"],
+              correctAnswer: "Computer startup instructions (BIOS)", xp: 5 },
+            { id: "motherboard", name: "Motherboard", icon: "fa-server", colorFrom: "from-emerald-500", colorTo: "to-green-600", bgColor: "bg-emerald-50",
+              purpose: "Main circuit board. Connects all components (CPU, RAM, GPU, storage) and allows communication.",
+              question: "The motherboard's main function is to:",
+              options: ["Process graphics", "Store permanent data", "Connect and allow communication between components", "Cool the CPU"],
+              correctAnswer: "Connect and allow communication between components", xp: 5 },
+             { id: "storage", name: "Storage (HDD/SSD)", icon: "fa-hdd", colorFrom: "from-amber-500", colorTo: "to-orange-600", bgColor: "bg-amber-50",
+              purpose: "Long-term storage for OS, apps, files. Non-Volatile. HDD (magnetic, slower), SSD (flash, faster).",
+              question: "Secondary storage devices like SSDs/HDDs are used for:",
+              options: ["Executing program code directly", "Very fast, temporary data access", "Long-term data storage, even when power is off", "Connecting peripherals like keyboards"],
+              correctAnswer: "Long-term data storage, even when power is off", xp: 5 },
+             { id: "gpu", name: "GPU (Graphics Card)", icon: "fa-gamepad", colorFrom: "from-red-500", colorTo: "to-rose-600", bgColor: "bg-red-50",
+              purpose: "Specialized processor for rendering images, videos. Crucial for gaming. Has own VRAM.",
+              question: "A GPU is primarily responsible for:",
+              options: ["Running the operating system", "Storing user files", "Processing and rendering graphics", "Managing network connections"],
+              correctAnswer: "Processing and rendering graphics", xp: 5 }
+        ];
+        const investigatorQuizzesState = {}; 
+        let investigatorQuizzesCompletedCorrectly = 0;
+
+        // --- Function Match Data ---
+        const functionMatchInitialComponents = [ { name: "Graphics Card (GPU)", id: "GPU" }, { name: "Motherboard", id: "Motherboard" }, { name: "Storage (HDD/SSD)", id: "Storage" }, { name: "ROM", id: "ROM" }, { name: "CPU", id: "CPU" }, { name: "Cooling System", id: "Cooling" }, { name: "RAM", id: "RAM" }, { name: "Power Supply (PSU)", id: "PSU" } ];
+        const functionMatchDescriptions = [ { expects: "GPU", text: "Controls output to the display screen; vital for gaming." }, { expects: "Motherboard", text: "Connects all components and allows them to communicate." }, { expects: "Storage", text: "Used for long-term storage of data, OS, and applications." }, { expects: "ROM", text: "Stores boot-up (start-up) instructions for the computer." }, { expects: "CPU", text: "The \"brain\"; carries out instructions of computer programs." }, { expects: "Cooling", text: "Ventilates heat and keeps components at optimal temperature." }, { expects: "RAM", text: "Temporary storage for running programs and data (volatile)." }, { expects: "PSU", text: "Supplies power to all computer components." } ];
+        let functionMatchesCorrect = 0;
+        let functionMatchTaskXPAwarded = false; // New flag
+
+        // --- Build-A-Rig Data ---
+        const buildARigBudget = 800; 
+        let buildARigCurrentCost = 120; 
+        const buildARigSelectedComponents = { cpu: null, ram: null, gpu: null, storage: null }; 
+        const buildARigFixedPrice = 120; 
+        let buildFinalizedSuccess = false;
+        let buildARigAttemptXPAwarded = false; // New flag
+        const buildARigCpuOptions = [ { name: "Basic Quad-Core (4 Cores, 3.5GHz)", price: 150, details: "Good for basic tasks & light gaming." }, { name: "Mid-Range Hexa-Core (6 Cores, 3.8GHz)", price: 250, details: "Excellent for gaming & multitasking." } ];
+        const buildARigRamOptions = [ { name: "8GB DDR4", price: 60, details: "Minimum for modern tasks & gaming." }, { name: "16GB DDR4", price: 100, details: "Ideal for smooth gaming & multitasking." } ];
+        const buildARigGpuOptions = [ { name: "Entry-Level GPU (4GB VRAM)", price: 200, details: "Good for 1080p gaming at medium settings." }, { name: "Mid-Range GPU (6GB VRAM)", price: 300, details: "Great for 1080p gaming at high settings." } ];
+        const buildARigStorageOptions = [ { name: "500GB HDD", price: 50, details: "Lots of space, but slower." }, { name: "500GB SSD", price: 80, details: "Much faster boot & load times." }, { name: "250GB SSD + 1TB HDD", price: 120, details: "Best of both: OS on SSD, games/files on HDD." } ];
+
+        // --- Motherboard Explorer Data ---
+        const exploredHotspots = new Set(); 
+
+        // --- Memory Duel Data ---
+        const memoryDuelCharacteristics = [ "Volatile (loses data when power is off)", "Non-Volatile (keeps data when power is off)", "Stores currently running programs and data", "Stores startup instructions (BIOS/UEFI)", "Generally larger capacity (GBs)", "Generally smaller capacity (MBs)", "User can write to it easily", "Typically Read-Only by user" ];
+        const memoryDuelAnswers = { RAM: ["Volatile (loses data when power is off)", "Stores currently running programs and data", "Generally larger capacity (GBs)", "User can write to it easily"], ROM: ["Non-Volatile (keeps data when power is off)", "Stores startup instructions (BIOS/UEFI)", "Generally smaller capacity (MBs)", "Typically Read-Only by user"] };
+        let memoryDuelCorrectPairs = 0;
+        let memoryDuelTaskXPAwarded = false; // New flag
+        
+        // --- Cooling Configurator Data ---
+        let coolingSimsCompleted = 0; 
+        const coolingLogic = { scenario1: { basic_fan: 45, tower_air: 35, liquid_aio: 30 }, scenario2: { basic_fan: 75, tower_air: 60, liquid_aio: 50 }, scenario3: { basic_fan: 95, tower_air: 80, liquid_aio: 65 } };
+        const coolingFeedbackText = { good: "Excellent choice! Temperature is optimal.", ok: "Good cooling, temperature is acceptable.", warm: "It's getting a bit warm, consider better cooling for prolonged use.", hot: "Warning! Temperature is high. This could lead to throttling or damage." };
+        const coolingScenariosAttempted = new Set(); 
+
+
+        // --- Extension Activities Data ---
+        let extensionsCompletedCount = 0;
+        const extensionAnswersSubmitted = new Set();
+
+
+        // --- Achievements Object ---
+        const achievements = {
+            'anagram-solver': { unlocked: false, points: 20, condition: () => anagramsSolvedCount === anagrams.length },
+            'component-investigator': { unlocked: false, points: 30, condition: () => investigatorQuizzesCompletedCorrectly >= Math.floor(investigatorQuizData.length * 0.75) }, 
+            'function-master': { unlocked: false, points: 40, condition: () => functionMatchesCorrect >= 8 },
+            'rig-architect': { unlocked: false, points: 50, condition: () => buildFinalizedSuccess },
+            'board-explorer': { unlocked: false, points: 30, condition: () => exploredHotspots.size >= 5 },
+            'memory-maven': { unlocked: false, points: 40, condition: () => memoryDuelCorrectPairs >= 4 },
+            'cooling-expert': { unlocked: false, points: 30, condition: () => coolingSimsCompleted >= 3}, 
+            'extension-explorer': { unlocked: false, points: 40, condition: () => extensionsCompletedCount >= 2},
+            'hardware-hero': { unlocked: false, points: 100, condition: () => 
+                achievements['anagram-solver'].unlocked &&
+                achievements['component-investigator'].unlocked &&
+                achievements['function-master'].unlocked &&
+                achievements['rig-architect'].unlocked &&
+                achievements['board-explorer'].unlocked &&
+                achievements['memory-maven'].unlocked &&
+                achievements['cooling-expert'].unlocked &&
+                achievements['extension-explorer'].unlocked
+            }
+        };
+        Object.keys(achievements).forEach(key => achievements[key].name = key);
+
+        // --- Utility Functions (XP, Achievements, Modal) ---
+        function addXP(points) {
+            totalXP += points;
+            const xpPointsEl = document.getElementById('xpPoints');
+            if (xpPointsEl) xpPointsEl.textContent = totalXP;
+            
+            let xpForCurrentLevel = totalXP % MAX_XP_PER_LEVEL;
+            if (totalXP > 0 && xpForCurrentLevel === 0 && (totalXP / MAX_XP_PER_LEVEL) >= currentLevel) {
+                xpForCurrentLevel = MAX_XP_PER_LEVEL;
+            }
+            const newLevel = Math.floor(totalXP / MAX_XP_PER_LEVEL) + 1;
+            if (newLevel > currentLevel) {
+                currentLevel = newLevel;
+                showModal(`Congratulations! You've reached Level ${currentLevel}: ${levels[Math.min(currentLevel - 1, levels.length - 1)]}!`);
+            }
+            const levelDisplayEl = document.getElementById('levelDisplay');
+            if(levelDisplayEl) levelDisplayEl.textContent = `Level ${currentLevel}: ${levels[Math.min(currentLevel - 1, levels.length - 1)]}`;
+            
+            const xpBarPercentage = (xpForCurrentLevel / MAX_XP_PER_LEVEL) * 100;
+            const xpBarEl = document.getElementById('xpBar');
+            if(xpBarEl) xpBarEl.style.width = xpBarPercentage + '%';
+            
+            checkAchievements();
+        }
+
+        function checkAchievements() {
+            let allOthersUnlocked = true;
+            for (const key in achievements) {
+                if (key === 'hardware-hero') continue; 
+                const ach = achievements[key];
+                if (ach && !ach.unlocked && ach.condition && ach.condition()) {
+                    ach.unlocked = true;
+                    const achElement = document.getElementById(`achieve-${key}`);
+                    if (achElement) {
+                        achElement.classList.remove('opacity-40');
+                        achElement.classList.add('achievement-unlocked');
+                        const achNameEl = achElement.querySelector('p.font-bold');
+                        if (achNameEl) {
+                             showModal(`🏆 Achievement Unlocked: ${achNameEl.textContent}! (+${ach.points} XP)`);
+                        } else {
+                            showModal(`🏆 Achievement Unlocked! (+${ach.points} XP)`);
+                        }
+                        addXP(ach.points); 
+                    }
+                }
+                if (ach && !ach.unlocked) { 
+                    allOthersUnlocked = false;
+                }
+            }
+            
+            const hardwareHeroAch = achievements['hardware-hero'];
+            if (hardwareHeroAch && allOthersUnlocked && hardwareHeroAch.condition && !hardwareHeroAch.unlocked) {
+                 hardwareHeroAch.unlocked = true;
+                 const achElement = document.getElementById(`achieve-hardware-hero`);
+                 if (achElement) {
+                    achElement.classList.remove('opacity-40');
+                    achElement.classList.add('achievement-unlocked');
+                     const achNameEl = achElement.querySelector('p.font-bold');
+                    if (achNameEl) {
+                        showModal(`🏆 MASTER ACHIEVEMENT: ${achNameEl.textContent}! You're a true expert! (+${hardwareHeroAch.points} XP)`);
+                    } else {
+                        showModal(`🏆 MASTER ACHIEVEMENT! You're a true expert! (+${hardwareHeroAch.points} XP)`);
+                    }
+                    addXP(hardwareHeroAch.points);
+                 }
+            }
+        }
+        
+        function showModal(message) {
+            const modalTextEl = document.getElementById('modalMessageText');
+            const modalEl = document.getElementById('messageModal');
+            if (modalTextEl && modalEl) {
+                modalTextEl.textContent = message;
+                modalEl.style.display = 'block';
+            }
+        }
+
+        function closeModal(modalId) {
+            const modalEl = document.getElementById(modalId);
+            if (modalEl) {
+                modalEl.style.display = 'none';
+            }
+        }
+        window.onclick = function(event) {
+            const modal = document.getElementById('messageModal');
+            if (modal && event.target == modal) { 
+                closeModal('messageModal');
+            }
+        }
+
+        // --- Section 1: Anagram Challenge ---
+        function setupAnagramChallenge() {
+            const container = document.getElementById('anagramContainer');
+            if (!container) { console.error("Anagram container not found!"); return; }
+            container.innerHTML = ''; 
+            anagramsSolvedCount = 0; 
+            Object.keys(anagramChallengeXPAwarded).forEach(key => delete anagramChallengeXPAwarded[key]); // Reset XP awarded state
+
+            anagrams.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'bg-teal-50 p-4 rounded-lg shadow flex flex-col sm:flex-row items-center justify-between space-y-2 sm:space-y-0';
+                div.innerHTML = `
+                    <div class="text-center sm:text-left">
+                        <p class="text-lg font-semibold text-teal-700">${item.scrambled}</p>
+                        <p class="text-xs text-gray-500">Hint: ${item.hint}</p>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="text" id="anagramInput_${index}" class="p-2 border border-teal-300 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 mr-2 text-base" placeholder="Your Answer">
+                        <button id="anagramButton_${index}" onclick="checkAnagram(${index})" class="bg-teal-600 text-white px-3 py-2 rounded-md hover:bg-teal-700 text-sm">Check</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+            updateAnagramFeedback();
+        }
+
+        function checkAnagram(index) {
+            const inputElement = document.getElementById(`anagramInput_${index}`);
+            const feedbackEl = document.getElementById('anagramFeedback');
+            if (!inputElement || !feedbackEl) return;
+
+            const userAnswer = inputElement.value.trim().toUpperCase();
+            const correctAnswer = anagrams[index].answer.toUpperCase();
+
+            if (userAnswer === correctAnswer) {
+                if (!anagramChallengeXPAwarded[index]) { // Check if XP already awarded for this specific anagram
+                    addXP(10);
+                    anagramChallengeXPAwarded[index] = true; 
+                }
+                feedbackEl.innerHTML = `<span class="text-green-600 font-semibold">Correct! "${anagrams[index].answer}" is right!</span>`;
+                inputElement.disabled = true; 
+                inputElement.classList.add('bg-green-100', 'border-green-400');
+                const buttonEl = document.getElementById(`anagramButton_${index}`);
+                if (buttonEl) buttonEl.disabled = true;
+                anagramsSolvedCount++; // Still count solved, even if XP was already given (e.g. if reset and re-solved)
+            } else {
+                feedbackEl.innerHTML = `<span class="text-red-600 font-semibold">Not quite. Try again for "${anagrams[index].scrambled}".</span>`;
+                inputElement.classList.add('border-red-400');
+            }
+            updateAnagramFeedback();
+            checkAchievements();
+        }
+        function updateAnagramFeedback() {
+             const feedbackEl = document.getElementById('anagramFeedback');
+             if(feedbackEl) feedbackEl.textContent = `Solved: ${anagramsSolvedCount} / ${anagrams.length}. Keep going!`;
+        }
+        function resetAnagramChallenge() { setupAnagramChallenge(); }
+
+        // --- Section 2: Component Investigator (Quiz Version) ---
+        function setupInvestigatorQuiz() {
+            const container = document.getElementById('investigatorCardContainer');
+            const feedbackEl = document.getElementById('investigatorFeedback');
+            if(!container || !feedbackEl) { console.error("Investigator elements not found"); return; }
+            
+            container.innerHTML = '';
+            investigatorQuizzesCompletedCorrectly = 0;
+            Object.keys(investigatorQuizzesState).forEach(key => delete investigatorQuizzesState[key]);
+
+            investigatorQuizData.forEach(comp => {
+                investigatorQuizzesState[comp.id] = { answered: false, correct: false, xpAwarded: false }; // Add xpAwarded flag
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'flip-card';
+                cardDiv.id = `investigator-${comp.id}`;
+                
+                let optionsHTML = '';
+                comp.options.forEach((option, index) => {
+                    optionsHTML += `
+                        <div class="quiz-option text-sm my-1"> 
+                            <input type="radio" name="quiz_${comp.id}" id="quiz_${comp.id}_opt${index}" value="${option}">
+                            <label for="quiz_${comp.id}_opt${index}" class="block p-2.5 border rounded-md">${option}</label>
+                        </div>`;
+                });
+
+                cardDiv.innerHTML = `
+                    <div class="flip-card-inner" onclick="flipCardInvestigator(this.parentElement, '${comp.id}')">
+                        <div class="flip-card-front bg-gradient-to-br ${comp.colorFrom} ${comp.colorTo} text-white">
+                            <i class="fas ${comp.icon} text-5xl mb-3"></i>
+                            <p class="font-bold text-2xl">${comp.name}</p>
+                        </div>
+                        <div class="flip-card-back ${comp.bgColor} text-gray-800 flex flex-col justify-between p-4">
+                            <div>
+                                <p class="text-base font-semibold mb-1">Purpose:</p>
+                                <p class="text-sm px-1 mb-3">${comp.purpose}</p>
+                            </div>
+                            <div class="w-full">
+                                <p class="text-base font-semibold mt-1 mb-2">Quiz: ${comp.question}</p>
+                                <div id="quiz_options_${comp.id}" class="space-y-1.5 w-full">${optionsHTML}</div>
+                                <button id="quiz_submit_${comp.id}" onclick="event.stopPropagation(); submitInvestigatorQuizAnswer('${comp.id}')" class="mt-3 text-sm bg-sky-500 text-white px-4 py-2 rounded-md hover:bg-sky-600 w-full">Submit Answer</button>
+                            </div>
+                        </div>
+                    </div>`;
+                container.appendChild(cardDiv);
+            });
+            feedbackEl.textContent = "Flip a card and test your knowledge!";
+        }
+
+        function flipCardInvestigator(cardElement, cardId) {
+            if(cardElement) cardElement.classList.toggle('flipped');
+        }
+
+        function submitInvestigatorQuizAnswer(componentId) {
+            const state = investigatorQuizzesState[componentId];
+            if (state && state.answered) { // Check if already answered
+                showModal("You've already answered this question.");
+                return;
+            }
+
+            const selectedOption = document.querySelector(`input[name="quiz_${componentId}"]:checked`);
+            const componentData = investigatorQuizData.find(c => c.id === componentId);
+            const feedbackEl = document.getElementById('investigatorFeedback');
+
+            if (selectedOption && componentData && feedbackEl && state) {
+                state.answered = true; // Mark as answered
+                const isCorrect = selectedOption.value === componentData.correctAnswer;
+                state.correct = isCorrect;
+
+                if (isCorrect) {
+                    if (!state.xpAwarded) { // Award XP only once
+                        addXP(componentData.xp);
+                        state.xpAwarded = true;
+                    }
+                    investigatorQuizzesCompletedCorrectly++;
+                    feedbackEl.innerHTML = `<span class="text-green-600 font-semibold">Correct! ${componentData.name} - ${selectedOption.value}. (+${componentData.xp} XP)</span>`;
+                } else {
+                     if (!state.xpAwarded) { // Award attempt XP only once
+                        addXP(1); 
+                        state.xpAwarded = true;
+                    }
+                    feedbackEl.innerHTML = `<span class="text-red-600 font-semibold">Incorrect for ${componentData.name}. Correct: ${componentData.correctAnswer}. (+1 XP)</span>`;
+                }
+                document.querySelectorAll(`input[name="quiz_${componentId}"]`).forEach(radio => radio.disabled = true);
+                const submitButton = document.getElementById(`quiz_submit_${componentId}`);
+                if(submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            } else if(feedbackEl) {
+                feedbackEl.textContent = "Please select an answer before submitting.";
+            }
+            checkAchievements();
+        }
+        
+        function resetInvestigatorQuiz() { setupInvestigatorQuiz(); }
+        
+        // --- Section 3: Function Match-Up (Drag and Drop) ---
+        function setupFunctionMatch() {
+            const container = document.getElementById('draggableComponentsContainer');
+            const dropZonesContainer = document.getElementById('functionDropZonesContainer');
+            const feedbackEl = document.getElementById('functionMatchFeedback');
+
+            if(!container || !dropZonesContainer || !feedbackEl) { console.error("Function match elements missing"); return; }
+
+            container.innerHTML = '';
+            functionMatchInitialComponents.forEach(comp => {
+                const div = document.createElement('div');
+                div.className = "draggable bg-white p-3 rounded-lg shadow border border-orange-300 text-center font-medium text-orange-700 text-base";
+                div.draggable = true;
+                div.dataset.component = comp.id;
+                div.textContent = comp.name;
+                container.appendChild(div);
+            });
+
+            dropZonesContainer.innerHTML = '';
+            functionMatchDescriptions.forEach(desc => {
+                const div = document.createElement('div');
+                div.className = "drop-zone bg-white p-3 rounded-lg shadow";
+                div.dataset.expects = desc.expects;
+                div.innerHTML = `<p class="text-base text-gray-600 pointer-events-none">${desc.text}</p>`;
+                dropZonesContainer.appendChild(div);
+            });
+            
+             initializeDragDrop(
+                '#draggableComponentsContainer .draggable', 
+                '#section-function-match .drop-zone', 
+                'draggableComponentsContainer',
+                handleFunctionMatchDrop 
+            );
+            functionMatchesCorrect = 0;
+            functionMatchTaskXPAwarded = false; // Reset XP flag
+            feedbackEl.textContent = "Drag components to their functions.";
+        }
+
+        function initializeDragDrop(draggableSelector, dropZoneSelector, initialContainerId, onDropCallback) {
+            document.querySelectorAll(draggableSelector).forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    draggedItem = e.target; 
+                    if(draggedItem) {
+                        draggedItem.classList.add('dragging-active');
+                        setTimeout(() => { if(draggedItem) draggedItem.style.opacity = '0.5'; }, 0); 
+                    }
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                item.addEventListener('dragend', (e) => {
+                    if(draggedItem && draggedItem.classList.contains('dragging-active')) { 
+                        draggedItem.classList.remove('dragging-active');
+                        draggedItem.style.opacity = '1'; 
+                        const originalContainer = document.getElementById(initialContainerId);
+                        if (originalContainer && !zoneContainsItem(dropZoneSelector, draggedItem)) {
+                            if (!originalContainer.contains(draggedItem)) { 
+                                originalContainer.appendChild(draggedItem);
+                            }
+                            draggedItem.style.display = 'block'; 
+                        }
+                    }
+                    draggedItem = null; 
+                });
+            });
+
+            document.querySelectorAll(dropZoneSelector).forEach(zone => {
+                zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+                zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+                    if (draggedItem) {
+                        onDropCallback(zone, draggedItem); 
+                    }
+                });
+            });
+        }
+
+        function zoneContainsItem(dropZoneSelector, item) {
+            let found = false;
+            document.querySelectorAll(dropZoneSelector).forEach(zone => {
+                if (zone.contains(item)) {
+                    found = true;
+                }
+            });
+            return found;
+        }
+        
+        function handleFunctionMatchDrop(zone, item) {
+            const existingItem = zone.querySelector('.draggable');
+            const originalContainer = document.getElementById('draggableComponentsContainer');
+            if (existingItem && originalContainer) {
+                originalContainer.appendChild(existingItem);
+                existingItem.style.display = 'block'; 
+                existingItem.classList.remove('dragging-active');
+            }
+            zone.appendChild(item);
+            item.style.display = 'block'; 
+            item.classList.remove('dragging-active'); 
+        }
+
+        function checkFunctionMatches() { 
+            let correctCount = 0; let totalDropped = 0;
+            const feedbackEl = document.getElementById('functionMatchFeedback');
+            if(!feedbackEl) return;
+
+            document.querySelectorAll('#section-function-match .drop-zone').forEach(zone => {
+                const droppedEl = zone.querySelector('.draggable');
+                zone.classList.remove('border-green-500', 'bg-green-50', 'border-red-500', 'bg-red-50');
+                if (droppedEl) {
+                    totalDropped++;
+                    if (droppedEl.dataset.component === zone.dataset.expects) {
+                        correctCount++; zone.classList.add('border-green-500', 'bg-green-50');
+                    } else {
+                        zone.classList.add('border-red-500', 'bg-red-50');
+                    }
+                }
+            });
+            functionMatchesCorrect = correctCount; // Update for achievement condition
+
+            if (totalDropped < functionMatchInitialComponents.length) {
+                 feedbackEl.innerHTML = `Keep going! You've matched ${totalDropped} out of ${functionMatchInitialComponents.length} components.`;
+                 feedbackEl.className = 'mt-4 p-3 bg-yellow-100 rounded-lg text-yellow-800 min-h-[50px] text-center text-base'; return;
+            }
+            
+            if (!functionMatchTaskXPAwarded) { // Award XP only on first full attempt
+                const xpEarned = correctCount === functionMatchInitialComponents.length ? correctCount * 5 : correctCount * 2;
+                addXP(xpEarned);
+                functionMatchTaskXPAwarded = true;
+                feedbackEl.innerHTML = correctCount === functionMatchInitialComponents.length ? 
+                    `🎉 Excellent! All ${correctCount} functions matched correctly! (+${xpEarned} XP)` : 
+                    `Good try! ${correctCount} out of ${functionMatchInitialComponents.length} matched. (+${xpEarned} XP)`;
+            } else {
+                 feedbackEl.innerHTML = correctCount === functionMatchInitialComponents.length ? 
+                    `🎉 Excellent! All ${correctCount} functions matched correctly!` : 
+                    `Good try! ${correctCount} out of ${functionMatchInitialComponents.length} matched. You've already received XP for this attempt.`;
+            }
+            feedbackEl.className = `mt-4 p-3 rounded-lg min-h-[50px] text-center text-base ${correctCount === functionMatchInitialComponents.length ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+            checkAchievements();
+         }
+        function resetFunctionMatch() { setupFunctionMatch(); }
+
+        // --- Section 4: "Build-A-Rig" Simulator ---
+        function setupBuildARig() {
+            buildARigCurrentCost = buildARigFixedPrice;
+            Object.keys(buildARigSelectedComponents).forEach(type => buildARigSelectedComponents[type] = null);
+
+            const createOptionsHTML = (type, optionsArray, title) => {
+                let html = `<h4 class="font-semibold text-lg text-lime-800 mb-2">${title}</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-3">`;
+                optionsArray.forEach(opt => {
+                    html += `<div class="component-option border-2 border-gray-300 p-3 rounded-lg cursor-pointer" data-component-type="${type}" data-name="${opt.name}" data-price="${opt.price}" onclick="selectBuildARigComponent(this)">
+                                <p class="font-medium">${opt.name}</p>
+                                <p class="text-sm text-gray-600">${opt.details}</p>
+                                <p class="font-semibold text-lime-600">£${opt.price}</p>
+                             </div>`;
+                });
+                html += `</div><textarea id="${type}Justification" class="mt-2 w-full p-2 border border-gray-300 rounded-md text-sm" placeholder="Why this ${type.replace('build', '')}?" rows="2"></textarea>`;
+                return html;
+            };
+            const cpuContainer = document.getElementById('buildCpuOptions');
+            const ramContainer = document.getElementById('buildRamOptions');
+            const gpuContainer = document.getElementById('buildGpuOptions');
+            const storageContainer = document.getElementById('buildStorageOptions');
+
+            if(cpuContainer) cpuContainer.innerHTML = createOptionsHTML('cpu', buildARigCpuOptions, '1. CPU (Processor)');
+            if(ramContainer) ramContainer.innerHTML = createOptionsHTML('ram', buildARigRamOptions, '2. RAM (Memory)');
+            if(gpuContainer) gpuContainer.innerHTML = createOptionsHTML('gpu', buildARigGpuOptions, '3. Graphics Card (GPU)');
+            if(storageContainer) storageContainer.innerHTML = createOptionsHTML('storage', buildARigStorageOptions, '4. Storage');
+            
+            ['cpuJustification', 'ramJustification', 'gpuJustification', 'storageJustification'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.value = '';
+            });
+
+            updateBuildARigSummary();
+            const feedbackEl = document.getElementById('buildFeedback');
+            if(feedbackEl) feedbackEl.textContent = "Select components for your build.";
+            buildFinalizedSuccess = false; 
+            buildARigAttemptXPAwarded = false; // Reset XP flag
+        }
+        function updateBuildARigSummary() { 
+            buildARigCurrentCost = buildARigFixedPrice;
+            const summaryList = document.getElementById('buildSummaryList');
+            if (!summaryList) return;
+
+            Object.keys(buildARigSelectedComponents).forEach(type => {
+                const item = buildARigSelectedComponents[type];
+                const listItem = summaryList.querySelector(`li[data-type="${type}"]`);
+                if (listItem) {
+                    if (item) { listItem.textContent = `${type.toUpperCase()}: ${item.name} (£${item.price})`; buildARigCurrentCost += item.price; } 
+                    else { listItem.textContent = `${type.toUpperCase()}: Not selected`; }
+                }
+            });
+            const totalCostEl = document.getElementById('totalCostDisplay');
+            if (totalCostEl) totalCostEl.textContent = `£${buildARigCurrentCost}`;
+            
+            const budgetStatusEl = document.getElementById('budgetStatus');
+            if (budgetStatusEl) {
+                budgetStatusEl.textContent = `Remaining Budget: £${buildARigBudget - buildARigCurrentCost}`;
+                budgetStatusEl.classList.toggle('budget-warning', buildARigCurrentCost > buildARigBudget);
+                budgetStatusEl.classList.toggle('font-bold', buildARigCurrentCost > buildARigBudget);
+            }
+        }
+        function selectBuildARigComponent(element) { 
+            const type = element.dataset.componentType;
+            document.querySelectorAll(`#section-build-a-rig .component-option[data-component-type="${type}"]`).forEach(opt => {
+                opt.classList.remove('selected', 'border-lime-500'); opt.classList.add('border-gray-300');
+            });
+            element.classList.add('selected', 'border-lime-500'); element.classList.remove('border-gray-300');
+            buildARigSelectedComponents[type] = { name: element.dataset.name, price: parseInt(element.dataset.price) };
+            updateBuildARigSummary();
+        }
+        function finalizeBuild() { 
+            const feedbackEl = document.getElementById('buildFeedback');
+            if (!feedbackEl) return;
+
+            if (Object.values(buildARigSelectedComponents).some(c => c === null)) {
+                feedbackEl.innerHTML = "⚠️ Please select an option for all component categories.";
+                feedbackEl.className = 'mt-4 p-3 bg-yellow-100 rounded-lg text-yellow-800 min-h-[50px] text-center text-base'; 
+                return;
+            }
+            
+            buildFinalizedSuccess = buildARigCurrentCost <= buildARigBudget; // Set success state for achievement
+
+            if (!buildARigAttemptXPAwarded) { // Award XP only on the first finalized attempt
+                let justificationScore = ['cpu', 'ram', 'gpu', 'storage'].reduce((score, type) => {
+                    const justificationEl = document.getElementById(`${type}Justification`);
+                    return score + (justificationEl && justificationEl.value.length > 10 ? 1 : 0);
+                }, 0);
+                const xpEarned = buildFinalizedSuccess ? (30 + justificationScore * 5) : (10 + justificationScore * 2);
+                addXP(xpEarned);
+                buildARigAttemptXPAwarded = true;
+                 feedbackEl.innerHTML = buildFinalizedSuccess ? 
+                    `🎉 Congratulations! Build complete within budget at £${buildARigCurrentCost}. (+${xpEarned} XP)` : 
+                    `😬 Over budget! Your build is £${buildARigCurrentCost - buildARigBudget} too expensive. (+${xpEarned} XP for trying)`;
+            } else {
+                 feedbackEl.innerHTML = buildFinalizedSuccess ? 
+                    `🎉 Build complete within budget at £${buildARigCurrentCost}. You've already received XP for this task.` : 
+                    `😬 Over budget! Your build is £${buildARigCurrentCost - buildARigBudget}. You've already received XP for this task.`;
+            }
+            
+            feedbackEl.className = `mt-4 p-3 rounded-lg min-h-[50px] text-center text-base ${buildFinalizedSuccess ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+            checkAchievements();
+        }
+        function resetBuildARig() { setupBuildARig(); }
+
+
+        // --- Section 5: Motherboard Explorer (SVG) ---
+        function setupMotherboardSVG() { 
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.getElementById("svgMotherboard");
+            if(!svg) { console.error("SVG Motherboard element not found"); return; }
+            svg.innerHTML = ''; 
+            exploredHotspots.clear(); // Reset explored hotspots for this section
+            const elements = [
+                { type: 'rect', attrs: { x: "5", y: "5", width: "310", height: "240", class: "board-base", rx: "5", ry: "5" } },
+                { type: 'g', onclick: "showMotherboardInfo('CPU Socket', 'The CPU, or Central Processing Unit (the brain of the computer), is installed here. Different CPUs require different socket types.')", children: [
+                    { type: 'rect', attrs: { x: "120", y: "70", width: "70", height: "70", class: "cpu-socket-base", rx: "3" } }, { type: 'rect', attrs: { x: "125", y: "75", width: "60", height: "60", class: "cpu-socket-center", rx: "2" } }, { type: 'rect', attrs: { x: "115", y: "72", width: "5", height: "20", class: "cpu-socket-lever", transform: "rotate(15, 117.5, 82)" } }, { type: 'text', attrs: { x: "155", y: "105", class: "svg-hotspot-text" }, content: "CPU SOCKET" } ]},
+                { type: 'g', onclick: "showMotherboardInfo('RAM Slots', 'RAM (Random Access Memory) modules are inserted into these long slots. They provide fast, temporary storage for active programs and data.')", children: [
+                    { type: 'rect', attrs: { x: "200", y: "60", width: "18", height: "80", class: "slot", rx: "2" } }, { type: 'rect', attrs: { x: "201", y: "61", width: "16", height: "78", class: "slot-contact", rx: "1" } }, { type: 'text', attrs: { x: "209", y: "50", class: "svg-hotspot-text", "font-size": "8" }, content: "RAM" },
+                    { type: 'rect', attrs: { x: "200", y: "60", width: "2", height: "5", fill: "#a0aec0" } }, { type: 'rect', attrs: { x: "216", y: "60", width: "2", height: "5", fill: "#a0aec0" } }, { type: 'rect', attrs: { x: "200", y: "135", width: "2", height: "5", fill: "#a0aec0" } }, { type: 'rect', attrs: { x: "216", y: "135", width: "2", height: "5", fill: "#a0aec0" } },
+                    { type: 'rect', attrs: { x: "225", y: "60", width: "18", height: "80", class: "slot", rx: "2" } }, { type: 'rect', attrs: { x: "226", y: "61", width: "16", height: "78", class: "slot-contact", rx: "1" } },
+                    { type: 'rect', attrs: { x: "225", y: "60", width: "2", height: "5", fill: "#a0aec0" } }, { type: 'rect', attrs: { x: "241", y: "60", width: "2", height: "5", fill: "#a0aec0" } }, { type: 'rect', attrs: { x: "225", y: "135", width: "2", height: "5", fill: "#a0aec0" } }, { type: 'rect', attrs: { x: "241", y: "135", width: "2", height: "5", fill: "#a0aec0" } },
+                    { type: 'rect', attrs: { x: "250", y: "60", width: "18", height: "80", class: "slot", rx: "2" } }, { type: 'rect', attrs: { x: "251", y: "61", width: "16", height: "78", class: "slot-contact", rx: "1" } },
+                    { type: 'rect', attrs: { x: "250", y: "60", width: "2", height: "5", fill: "#a0aec0" } }, { type: 'rect', attrs: { x: "266", y: "60", width: "2", height: "5", fill: "#a0aec0" } }, { type: 'rect', attrs: { x: "250", y: "135", width: "2", height: "5", fill: "#a0aec0" } }, { type: 'rect', attrs: { x: "266", y: "135", width: "2", height: "5", fill: "#a0aec0" } },
+                    { type: 'rect', attrs: { x: "275", y: "60", width: "18", height: "80", class: "slot", rx: "2" } }, { type: 'rect', attrs: { x: "276", y: "61", width: "16", height: "78", class: "slot-contact", rx: "1" } },
+                    { type: 'rect', attrs: { x: "275", y: "60", width: "2", height: "5", fill: "#a0aec0" } }, { type: 'rect', attrs: { x: "291", y: "60", width: "2", height: "5", fill: "#a0aec0" } }, { type: 'rect', attrs: { x: "275", y: "135", width: "2", height: "5", fill: "#a0aec0" } }, { type: 'rect', attrs: { x: "291", y: "135", width: "2", height: "5", fill: "#a0aec0" } } ]},
+                { type: 'g', onclick: "showMotherboardInfo('PCIe x16 Slot', 'This long slot is for the Graphics Card (GPU). It provides high bandwidth for graphics data.')", children: [
+                    { type: 'rect', attrs: { x: "70", y: "160", width: "180", height: "15", class: "slot", rx: "2" } }, { type: 'rect', attrs: { x: "71", y: "161", width: "178", height: "13", class: "slot-contact", rx: "1" } }, { type: 'rect', attrs: { x: "68", y: "160", width: "2", height: "15", fill: "#a0aec0" } }, { type: 'rect', attrs: { x: "250", y: "160", width: "2", height: "15", fill: "#a0aec0" } }, { type: 'text', attrs: { x: "160", y: "153", class: "svg-hotspot-text" }, content: "GPU SLOT (PCIe x16)" } ]},
+                { type: 'g', onclick: "showMotherboardInfo('PCIe x1 Slots', 'Smaller expansion slots for other cards like Wi-Fi adapters, sound cards, or additional USB ports.')", children: [
+                    { type: 'rect', attrs: { x: "70", y: "180", width: "80", height: "10", class: "slot", rx: "2" } }, { type: 'rect', attrs: { x: "71", y: "181", width: "78", height: "8", class: "slot-contact", rx: "1" } }, { type: 'text', attrs: { x: "110", y: "195", class: "svg-hotspot-text" }, content: "PCIe x1" }, { type: 'rect', attrs: { x: "70", y: "195", width: "60", height: "10", class: "slot", rx: "2" } }, { type: 'rect', attrs: { x: "71", y: "196", width: "58", height: "8", class: "slot-contact", rx: "1" } } ]},
+                { type: 'g', onclick: "showMotherboardInfo('M.2 Slot', 'A small slot for high-speed NVMe SSDs, which are much faster than traditional SATA SSDs.')", children: [
+                    { type: 'rect', attrs: { x: "160", y: "180", width: "70", height: "8", class: "slot", fill: "#384352", rx: "1" } }, { type: 'rect', attrs: { x: "161", y: "181", width: "68", height: "6", class: "slot-contact", fill: "#b08d57", rx: "0.5" } }, { type: 'circle', attrs: { cx: "225", cy: "184", r: "2", fill: "#A0AEC0" } }, { type: 'text', attrs: { x: "195", y: "193", class: "svg-hotspot-text" }, content: "M.2 SSD" } ]},
+                { type: 'g', onclick: "showMotherboardInfo('Chipset & Heatsink', 'The chipset manages data flow between components. It\\'s often covered by a heatsink to keep it cool.')", children: [
+                    { type: 'rect', attrs: { x: "125", y: "200", width: "50", height: "30", class: "chipset-heatsink", rx: "3" } }, { type: 'line', attrs: { x1: "130", y1: "205", x2: "170", y2: "205", stroke: "#a0aec0", "stroke-width": "1.5" } }, { type: 'line', attrs: { x1: "130", y1: "210", x2: "170", y2: "210", stroke: "#a0aec0", "stroke-width": "1.5" } }, { type: 'line', attrs: { x1: "130", y1: "215", x2: "170", y2: "215", stroke: "#a0aec0", "stroke-width": "1.5" } }, { type: 'line', attrs: { x1: "130", y1: "220", x2: "170", y2: "220", stroke: "#a0aec0", "stroke-width": "1.5" } }, { type: 'text', attrs: { x: "150", y: "230", class: "svg-hotspot-text" }, content: "CHIPSET" } ]},
+                { type: 'g', onclick: "showMotherboardInfo('SATA Ports', 'Storage devices like SSDs and HDDs connect here using SATA cables.')", children: [
+                    { type: 'rect', attrs: { x: "260", y: "170", width: "10", height: "20", class: "port" } }, { type: 'rect', attrs: { x: "275", y: "170", width: "10", height: "20", class: "port" } }, { type: 'rect', attrs: { x: "260", y: "195", width: "10", height: "20", class: "port" } }, { type: 'rect', attrs: { x: "275", y: "195", width: "10", height: "20", class: "port" } }, { type: 'text', attrs: { x: "273", y: "160", class: "svg-hotspot-text" }, content: "SATA" } ]},
+                { type: 'g', onclick: "showMotherboardInfo('Main Power Connector (24-pin ATX)', 'The PSU connects here to power the motherboard and most components.')", children: [
+                    { type: 'rect', attrs: { x: "290", y: "60", width: "20", height: "50", class: "power-connector", rx: "2" } }, { type: 'text', attrs: { x: "280", y: "85", class: "svg-hotspot-text", transform: "rotate(-90 280,85)" }, content: "MB PWR" } ]},
+                { type: 'g', onclick: "showMotherboardInfo('CPU Power Connector (8-pin EPS)', 'Provides dedicated power to the CPU.')", children: [
+                    { type: 'rect', attrs: { x: "120", y: "15", width: "35", height: "15", class: "power-connector", rx: "2" } }, { type: 'text', attrs: { x: "137", y: "22", class: "svg-hotspot-text" }, content: "CPU PWR" } ]},
+                { type: 'g', onclick: "showMotherboardInfo('Rear I/O Panel', 'Ports for connecting external devices: USB, Ethernet, Audio, Display (if no dedicated GPU).')", children: [
+                    { type: 'rect', attrs: { x: "10", y: "15", width: "40", height: "220", fill: "#4a5568", rx: "2" } }, { type: 'rect', attrs: { x: "15", y: "25", width: "10", height: "10", class: "port", fill: "#3b82f6" } }, { type: 'text', attrs: { x: "20", y: "40", class: "svg-io-port-label" }, content: "USB" }, { type: 'rect', attrs: { x: "30", y: "25", width: "10", height: "10", class: "port", fill: "#3b82f6" } }, { type: 'rect', attrs: { x: "15", y: "50", width: "25", height: "15", class: "port", fill: "#555" } }, { type: 'text', attrs: { x: "27", y: "70", class: "svg-io-port-label" }, content: "LAN" }, { type: 'circle', attrs: { cx: "20", cy: "85", r: "5", class: "port", fill: "#f87171" } }, { type: 'text', attrs: { x: "20", y: "95", class: "svg-io-port-label" }, content: "Aud" }, { type: 'circle', attrs: { cx: "35", cy: "85", r: "5", class: "port", fill: "#34d399" } }, { type: 'circle', attrs: { cx: "20", cy: "105", r: "5", class: "port", fill: "#60a5fa" } }, { type: 'rect', attrs: { x: "15", y: "120", width: "25", height: "10", class: "port", fill: "#a0aec0" } }, { type: 'text', attrs: { x: "27", y: "135", class: "svg-io-port-label" }, content: "Video" }, { type: 'text', attrs: { x: "25", y: "10", class: "svg-hotspot-text", "font-size": "10" }, content: "I/O" } ]},
+                { type: 'g', onclick: "showMotherboardInfo('CMOS Battery', 'Powers the CMOS chip that stores BIOS settings and the system clock when the PC is off.')", children: [
+                    { type: 'circle', attrs: { cx: "85", cy: "220", r: "8", fill: "#c0c0c0", stroke: "#555", "stroke-width": "1" } }, { type: 'text', attrs: { x: "85", y: "233", class: "svg-hotspot-text" }, content: "CMOS" } ]}
+            ];
+            elements.forEach(elData => {
+                const el = document.createElementNS(svgNS, elData.type);
+                for (const attr in elData.attrs) {
+                    el.setAttribute(attr, elData.attrs[attr]);
+                }
+                if (elData.onclick) {
+                    el.setAttribute("onclick", elData.onclick);
+                }
+                if (elData.content) {
+                    el.textContent = elData.content;
+                }
+                if (elData.children) {
+                    elData.children.forEach(childData => {
+                        const childEl = document.createElementNS(svgNS, childData.type);
+                        for (const attr in childData.attrs) {
+                            childEl.setAttribute(attr, childData.attrs[attr]);
+                        }
+                        if (childData.content) {
+                            childEl.textContent = childData.content;
+                        }
+                        el.appendChild(childEl);
+                    });
+                }
+                svg.appendChild(el);
+            });
+        }
+        function showMotherboardInfo(title, text) { 
+            const infoBox = document.getElementById('motherboardInfoBox');
+            const titleEl = document.getElementById('motherboardInfoTitle');
+            const textEl = document.getElementById('motherboardInfoText');
+
+            if (!infoBox || !titleEl || !textEl) return;
+
+            titleEl.textContent = title;
+            textEl.textContent = text;
+            infoBox.classList.remove('opacity-0', 'translate-y-5');
+            infoBox.classList.add('opacity-100', 'transform-none');
+            if (!exploredHotspots.has(title)) {
+                exploredHotspots.add(title); addXP(5);
+                textEl.innerHTML += ` <span class="text-green-500 font-semibold">(+5 XP)</span>`;
+            }
+            checkAchievements();
+        }
+        
+        // --- Section 6: RAM vs. ROM - The Memory Duel ---
+        function setupMemoryDuel() { 
+            const container = document.getElementById('memoryCharacteristicsContainer');
+            const ramZone = document.getElementById('ramDropZone');
+            const romZone = document.getElementById('romDropZone');
+            const feedbackEl = document.getElementById('memoryDuelFeedback');
+
+            if(!container || !ramZone || !romZone || !feedbackEl) { console.error("Memory Duel elements missing"); return; }
+
+            container.innerHTML = '';
+            memoryDuelCharacteristics.forEach(char => {
+                const div = document.createElement('div');
+                div.className = "draggable bg-white p-3 rounded-lg shadow border border-purple-300 text-center text-sm";
+                div.draggable = true;
+                div.dataset.char = char;
+                div.textContent = char;
+                container.appendChild(div);
+            });
+            ramZone.innerHTML = '';
+            romZone.innerHTML = '';
+            
+            initializeDragDrop( 
+                '#memoryCharacteristicsContainer .draggable',
+                '#section-memory-duel .drop-zone',
+                'memoryCharacteristicsContainer',
+                handleMemoryDuelDrop
+            );
+            memoryDuelCorrectPairs = 0;
+            memoryDuelTaskXPAwarded = false; // Reset XP flag
+            feedbackEl.textContent = "Drag characteristics to RAM or ROM.";
+        }
+        function handleMemoryDuelDrop(zone, item) { 
+            zone.appendChild(item); item.style.display = 'block'; item.classList.remove('dragging-active');
+        }
+        function checkMemoryDuel() { 
+            let correctMatches = 0; let totalPlaced = 0;
+            const feedbackEl = document.getElementById('memoryDuelFeedback');
+            if(!feedbackEl) return;
+
+            ['ramDropZone', 'romDropZone'].forEach(zoneId => {
+                const zone = document.getElementById(zoneId);
+                if (!zone) return;
+                const memoryType = zone.dataset.memoryType;
+                zone.querySelectorAll('.draggable').forEach(item => {
+                    totalPlaced++;
+                    item.classList.remove('bg-green-200', 'border-green-400', 'bg-red-200', 'border-red-400');
+                    if (memoryDuelAnswers[memoryType] && memoryDuelAnswers[memoryType].includes(item.dataset.char)) {
+                        correctMatches++; item.classList.add('bg-green-200', 'border-green-400');
+                    } else {
+                        item.classList.add('bg-red-200', 'border-red-400');
+                    }
+                });
+            });
+            memoryDuelCorrectPairs = correctMatches / 2; 
+            if (totalPlaced < memoryDuelCharacteristics.length) {
+                 feedbackEl.innerHTML = `Keep going! You've placed ${totalPlaced} out of ${memoryDuelCharacteristics.length} characteristics.`;
+                 feedbackEl.className = 'mt-4 p-3 bg-yellow-100 rounded-lg text-yellow-800 min-h-[50px] text-center text-base'; return;
+            }
+
+            if (!memoryDuelTaskXPAwarded) { // Award XP only on first full attempt
+                const xpEarned = correctMatches === memoryDuelCharacteristics.length ? correctMatches * 3 : correctMatches;
+                addXP(xpEarned);
+                memoryDuelTaskXPAwarded = true;
+                feedbackEl.innerHTML = correctMatches === memoryDuelCharacteristics.length ? 
+                    `🏆 Perfect! All sorted correctly! (+${xpEarned} XP)` : 
+                    `🤔 Not quite! ${correctMatches} out of ${memoryDuelCharacteristics.length} correct. (+${xpEarned} XP)`;
+            } else {
+                 feedbackEl.innerHTML = correctMatches === memoryDuelCharacteristics.length ? 
+                    `🏆 Perfect! All sorted correctly! You've already received XP for this task.` : 
+                    `🤔 Not quite! ${correctMatches} out of ${memoryDuelCharacteristics.length} correct. You've already received XP for this task.`;
+            }
+            feedbackEl.className = `mt-4 p-3 rounded-lg min-h-[50px] text-center text-base ${correctMatches === memoryDuelCharacteristics.length ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+            checkAchievements();
+        }
+        function resetMemoryDuel() { setupMemoryDuel(); }
+
+        // --- Section 7: Cooling System Configurator ---
+        function simulateCooling(scenarioId, coolerType) { 
+            const temp = coolingLogic[scenarioId][coolerType];
+            const tempBar = document.getElementById(`tempBar_${scenarioId}`);
+            const tempFeedback = document.getElementById(`tempFeedback_${scenarioId}`);
+            const overallFeedbackEl = document.getElementById('coolingConfigOverallFeedback');
+
+            if(!tempBar || !tempFeedback || !overallFeedbackEl) return;
+
+            let barColorClass = 'temp-green'; let feedbackMsg = coolingFeedbackText.good;
+
+            if (temp > 85) { barColorClass = 'temp-red'; feedbackMsg = coolingFeedbackText.hot; }
+            else if (temp > 65) { barColorClass = 'temp-yellow'; feedbackMsg = coolingFeedbackText.warm; }
+            else if (temp > 50) { barColorClass = 'temp-yellow'; feedbackMsg = coolingFeedbackText.ok; }
+
+            tempBar.style.width = `${temp}%`; tempBar.className = `temp-bar ${barColorClass}`;
+            tempFeedback.textContent = `${feedbackMsg} (Simulated: ${temp}°C)`;
+            
+            if (!coolingScenariosAttempted.has(scenarioId)) { 
+                addXP(5); 
+                coolingScenariosAttempted.add(scenarioId);
+                coolingSimsCompleted = coolingScenariosAttempted.size; 
+            }
+            overallFeedbackEl.textContent = `Simulations run for unique scenarios: ${coolingSimsCompleted}/3`;
+            checkAchievements();
+        }
+        function resetCoolingConfigurator() { 
+            ['scenario1', 'scenario2', 'scenario3'].forEach(id => {
+                const selectEl = document.getElementById(`cooling${id.charAt(0).toUpperCase() + id.slice(1)}`);
+                const tempBarEl = document.getElementById(`tempBar_${id}`);
+                const tempFeedbackEl = document.getElementById(`tempFeedback_${id}`);
+
+                if(selectEl) selectEl.selectedIndex = id === 'scenario1' ? 0 : (id === 'scenario2' ? 1 : 2); 
+                if(tempBarEl) { tempBarEl.style.width = '0%'; tempBarEl.className = 'temp-bar'; }
+                if(tempFeedbackEl) tempFeedbackEl.textContent = '';
+            });
+            coolingScenariosAttempted.clear();
+            coolingSimsCompleted = 0;
+            const overallFeedbackEl = document.getElementById('coolingConfigOverallFeedback');
+            if(overallFeedbackEl) overallFeedbackEl.textContent = "Cooling configurator reset. Choose options for each scenario.";
+            
+            const scen1Select = document.getElementById('coolingScenario1');
+            const scen2Select = document.getElementById('coolingScenario2');
+            const scen3Select = document.getElementById('coolingScenario3');
+            if (scen1Select) simulateCooling('scenario1', scen1Select.value);
+            if (scen2Select) simulateCooling('scenario2', scen2Select.value);
+            if (scen3Select) simulateCooling('scenario3', scen3Select.value);
+            
+            // Crucially, reset the XP tracking for scenarios *after* initial display simulation
+            coolingScenariosAttempted.clear(); 
+            coolingSimsCompleted = 0; 
+            if(overallFeedbackEl) overallFeedbackEl.textContent = `Configure cooling for each scenario.`;
+        }
+
+        // --- Section 8: Exam Prep Zone ---
+        function toggleMarkScheme(questionId) { 
+            const markSchemeEl = document.getElementById(questionId + 'MarkScheme');
+            if(!markSchemeEl) return;
+            markSchemeEl.classList.toggle('hidden');
+            const key = questionId + '_markSchemeViewed';
+            if (!localStorage.getItem(key) && !markSchemeEl.classList.contains('hidden')) {
+                addXP(5); localStorage.setItem(key, 'true');
+                const answerEl = document.getElementById(questionId + 'Answer');
+                if(answerEl && answerEl.value.length > 10) {
+                    showModal("Mark scheme revealed! Compare with your answer. (+5 XP)");
+                } else { showModal("Mark scheme revealed. (+5 XP)"); }
+            }
+        }
+        function resetExamPrep() { 
+            ['examQ1', 'examQ2', 'examQ3'].forEach(id => {
+                const answerEl = document.getElementById(id + 'Answer');
+                const marksEl = document.getElementById(id + 'Marks');
+                const schemeEl = document.getElementById(id + 'MarkScheme');
+                if(answerEl) answerEl.value = '';
+                if(marksEl) marksEl.selectedIndex = 0;
+                if (schemeEl) schemeEl.classList.add('hidden');
+                localStorage.removeItem(id + '_markSchemeViewed'); 
+            });
+            showModal("Exam prep answers and self-assessments cleared.");
+        }
+
+        // --- Section 9: Extension Activities ---
+        function submitExtensionAnswer(extensionId, points) { 
+            const answerEl = document.getElementById(extensionId + 'Answer');
+            const buttonEl = document.getElementById(extensionId + 'Button');
+            if(!answerEl || !buttonEl) return;
+
+            const answerText = answerEl.value.trim();
+            if (answerText.length < 20) { showModal("Please provide a more detailed answer."); return; }
+            if (!extensionAnswersSubmitted.has(extensionId)) {
+                extensionAnswersSubmitted.add(extensionId); addXP(points);
+                showModal(`Great effort on the extension task! (+${points} XP)`);
+                answerEl.disabled = true;
+                buttonEl.disabled = true; 
+                extensionsCompletedCount++;
+            } else { showModal("You've already submitted this extension answer."); }
+            checkAchievements();
+        }
+        function resetExtensionActivities() { 
+            ['extension1', 'extension2'].forEach(id => {
+                const answerEl = document.getElementById(id + 'Answer');
+                const buttonEl = document.getElementById(id + 'Button');
+                if(answerEl) { answerEl.value = ''; answerEl.disabled = false; }
+                if(buttonEl) buttonEl.disabled = false; 
+                extensionAnswersSubmitted.delete(id);
+            });
+            extensionsCompletedCount = 0;
+            showModal("Extension activities reset.");
+        }
+
+        // --- DOMContentLoaded Initializations ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Setup all activities
+            setupAnagramChallenge();
+            setupInvestigatorQuiz();
+            setupFunctionMatch();
+            setupBuildARig(); 
+            setupMotherboardSVG(); 
+            setupMemoryDuel();
+            resetCoolingConfigurator(); // Sets up initial state and calls simulateCooling
+            
+            // Initial XP bar update and achievement check
+            addXP(0); 
+        });
+
+    </script>
+</body>
+</html>

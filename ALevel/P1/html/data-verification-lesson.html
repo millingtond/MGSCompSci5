@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Integrity - Lesson 2: Data Verification</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --error-color: #e74c3c;
+            --warning-color: #f39c12;
+            --background-color: #ecf0f1;
+            --text-color: #2c3e50;
+            --card-bg: #ffffff;
+            --hover-color: #34495e;
+            --font-size: 16px;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            font-size: var(--font-size);
+            position: relative;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .nav-bar {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .nav-btn:hover {
+            background-color: var(--hover-color);
+            transform: translateY(-2px);
+        }
+
+        .nav-btn.active {
+            background-color: var(--success-color);
+        }
+
+        .section {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .xp-bar {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 99;
+        }
+
+        .xp-progress {
+            width: 200px;
+            height: 20px;
+            background-color: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .xp-fill {
+            height: 100%;
+            background-color: var(--success-color);
+            transition: width 0.5s;
+            width: 0%;
+        }
+
+        .achievement-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background-color: var(--success-color);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1000;
+            animation: achievementPop 0.5s forwards;
+        }
+
+        @keyframes achievementPop {
+            to {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .button {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+
+        .button:hover {
+            background-color: var(--hover-color);
+            transform: translateY(-2px);
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #f0f0f0;
+            border: 2px solid transparent;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+        }
+
+        .quiz-option:hover {
+            background-color: #e0e0e0;
+            transform: translateX(5px);
+        }
+
+        .quiz-option.selected {
+            border-color: var(--secondary-color);
+            background-color: #e3f2fd;
+        }
+
+        .feedback-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--warning-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            z-index: 98;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .feedback-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .feedback-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .feedback-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .mark-scheme {
+            display: none;
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        .drawing-canvas {
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            cursor: crosshair;
+            display: block;
+            margin: 10px 0;
+            background-color: white;
+            touch-action: none;
+        }
+
+        .navigation-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .reset-btn {
+            background-color: var(--error-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 0;
+            transition: all 0.3s;
+        }
+
+        .reset-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .paste-warning {
+            display: none;
+            color: var(--error-color);
+            font-weight: bold;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .hint-btn {
+            background-color: var(--warning-color);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .hint-text {
+            display: none;
+            background-color: #fff3cd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            border: 1px solid #ffeeba;
+        }
+
+        .bit-display {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            text-align: center;
+            margin: 2px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .bit-display:hover {
+            background-color: #e3f2fd;
+            transform: scale(1.1);
+        }
+
+        .bit-display.parity {
+            background-color: #fff3cd;
+            border-color: var(--warning-color);
+        }
+
+        .double-entry-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 768px) {
+            .double-entry-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .checksum-display {
+            font-family: monospace;
+            font-size: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        /* Accessibility features */
+        .high-contrast {
+            background-color: black !important;
+            color: white !important;
+        }
+
+        .high-contrast .card {
+            background-color: #222 !important;
+            color: white !important;
+        }
+
+        .dyslexia-font {
+            font-family: 'OpenDyslexic', Arial, sans-serif !important;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .xp-bar {
+                position: relative;
+                top: 0;
+                right: 0;
+                margin-bottom: 10px;
+            }
+            
+            .nav-bar {
+                flex-direction: column;
+            }
+            
+            .feedback-btn {
+                bottom: 10px;
+                right: 10px;
+                padding: 8px 16px;
+            }
+        }
+
+        .visual-check-demo {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .data-display {
+            font-size: 24px;
+            font-family: monospace;
+            padding: 10px;
+            background-color: white;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Data Integrity - Lesson 2: Data Verification</h1>
+        <div class="nav-bar">
+            <button class="nav-btn active" onclick="showSection('starter')">Starter</button>
+            <button class="nav-btn" onclick="showSection('intro')">Introduction</button>
+            <button class="nav-btn" onclick="showSection('entry-verification')">Entry Verification</button>
+            <button class="nav-btn" onclick="showSection('transfer-verification')">Transfer Verification</button>
+            <button class="nav-btn" onclick="showSection('simulations')">Simulations</button>
+            <button class="nav-btn" onclick="showSection('practice')">Practice</button>
+            <button class="nav-btn" onclick="showSection('exam')">Exam Questions</button>
+            <button class="nav-btn" onclick="showSection('extension')">Extension</button>
+            <button class="nav-btn" onclick="showSection('summary')">Summary</button>
+        </div>
+    </div>
+
+    <div class="xp-bar">
+        <div>Level: <span id="level">0</span> | XP: <span id="xp">0</span>/100</div>
+        <div class="xp-progress">
+            <div class="xp-fill" id="xpFill"></div>
+        </div>
+        <div style="margin-top: 10px;">
+            <button class="button" onclick="toggleHighContrast()">High Contrast</button>
+            <button class="button" onclick="changeFontSize(2)">A+</button>
+            <button class="button" onclick="changeFontSize(-2)">A-</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Starter Section -->
+        <div class="section active" id="starter">
+            <div class="card">
+                <h2>Starter Activity: Validation vs Verification</h2>
+                <p>Let's recap what you learned about validation and explore how verification is different.</p>
+                
+                <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                    <strong>Quick Recap:</strong> Validation checks if data is reasonable and sensible. But what if someone types the wrong (but valid) data?
+                </div>
+                
+                <div id="starterActivity">
+                    <h3>Scenario: A student enters their date of birth as 15/03/2007</h3>
+                    <p>The validation checks pass because:</p>
+                    <ul>
+                        <li>✓ Format is correct (DD/MM/YYYY)</li>
+                        <li>✓ Date is valid (not 32nd day)</li>
+                        <li>✓ Age is reasonable for a student</li>
+                    </ul>
+                    <p><strong>But what if they meant to type 15/03/2008?</strong></p>
+                    
+                    <div style="margin-top: 20px;">
+                        <h4>Which method would catch this error?</h4>
+                        <button class="quiz-option" onclick="checkStarterAnswer(this, 'q1', 'c')">More validation rules</button>
+                        <button class="quiz-option" onclick="checkStarterAnswer(this, 'q1', 'a')">Double entry verification</button>
+                        <button class="quiz-option" onclick="checkStarterAnswer(this, 'q1', 'b')">Automatic correction</button>
+                        <button class="quiz-option" onclick="checkStarterAnswer(this, 'q1', 'd')">Format checking</button>
+                        <div id="q1-feedback" style="margin-top: 10px; display: none;"></div>
+                    </div>
+                </div>
+                
+                <button class="reset-btn" onclick="resetStarter()">Reset Activity</button>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" disabled>Previous</button>
+                <button class="button" onclick="showSection('intro')">Next</button>
+            </div>
+        </div>
+
+        <!-- Introduction Section -->
+        <div class="section" id="intro">
+            <div class="card">
+                <h2>Learning Outcomes</h2>
+                <ul>
+                    <li>Describe data verification methods during data entry</li>
+                    <li>Explain how visual checks and double entry protect data integrity</li>
+                    <li>Understand parity checks for data transfer verification</li>
+                    <li>Apply checksum algorithms to verify data integrity</li>
+                    <li>Compare and contrast validation vs verification</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>What is Data Verification?</h2>
+                <p>Data verification ensures that data has been accurately transferred from one source to another without errors. Unlike validation (which checks if data is reasonable), verification checks if data is <strong>correct</strong>.</p>
+                
+                <h3>Two Types of Data Verification:</h3>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
+                    <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px;">
+                        <h4>1. During Data Entry</h4>
+                        <ul>
+                            <li>Visual checks</li>
+                            <li>Double entry</li>
+                        </ul>
+                        <p>Ensures humans type data correctly</p>
+                    </div>
+                    
+                    <div style="background-color: #f3e5f5; padding: 15px; border-radius: 5px;">
+                        <h4>2. During Data Transfer</h4>
+                        <ul>
+                            <li>Parity checks</li>
+                            <li>Checksums</li>
+                        </ul>
+                        <p>Ensures data isn't corrupted during transmission</p>
+                    </div>
+                </div>
+                
+                <h3>Key Difference: Validation vs Verification</h3>
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <tr style="background-color: #f0f0f0;">
+                        <th style="padding: 10px; border: 1px solid #ddd;">Validation</th>
+                        <th style="padding: 10px; border: 1px solid #ddd;">Verification</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Checks if data is reasonable</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Checks if data is correct</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Automated process</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Can involve human checking</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Prevents invalid data</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Prevents incorrect data</td>
+                    </tr>
+                </table>
+                
+                <button class="button" onclick="addXP(10, 'Read introduction')">Mark as Complete</button>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('starter')">Previous</button>
+                <button class="button" onclick="showSection('entry-verification')">Next</button>
+            </div>
+        </div>
+
+        <!-- Entry Verification Section -->
+        <div class="section" id="entry-verification">
+            <div class="card">
+                <h2>Verification During Data Entry</h2>
+                <p>When humans enter data, mistakes can happen even if the data passes validation. Two main methods help catch these errors:</p>
+                
+                <h3>1. Visual Check</h3>
+                <div style="background-color: #f0f0f0; padding: 20px; border-radius: 5px; margin: 20px 0;">
+                    <p><strong>Definition:</strong> The user visually compares what they typed with the original source.</p>
+                    <p><strong>How it works:</strong></p>
+                    <ol>
+                        <li>User enters data</li>
+                        <li>System displays what was entered</li>
+                        <li>User checks it matches the source</li>
+                        <li>User confirms or corrects</li>
+                    </ol>
+                    
+                    <div class="visual-check-demo">
+                        <h4>Try It: Visual Check Demo</h4>
+                        <p>Original data: <strong>Manchester M20 6BX</strong></p>
+                        <input type="text" id="visualCheckInput" class="input-field" placeholder="Type the address above">
+                        <button class="button" onclick="performVisualCheck()">Submit for Visual Check</button>
+                        <div id="visualCheckResult"></div>
+                    </div>
+                </div>
+
+                <h3>2. Double Entry</h3>
+                <div style="background-color: #fff3cd; padding: 20px; border-radius: 5px; margin: 20px 0;">
+                    <p><strong>Definition:</strong> Data is entered twice (often by different people) and compared.</p>
+                    <p><strong>How it works:</strong></p>
+                    <ol>
+                        <li>First person enters data</li>
+                        <li>Second person enters same data</li>
+                        <li>System compares both entries</li>
+                        <li>If they match → data accepted</li>
+                        <li>If they differ → flag for review</li>
+                    </ol>
+                    
+                    <div class="visual-check-demo">
+                        <h4>Try It: Double Entry Demo</h4>
+                        <p>Enter this email twice: <strong>student.name@school.edu.uk</strong></p>
+                        <div class="double-entry-container">
+                            <div>
+                                <label>First Entry:</label>
+                                <input type="text" id="doubleEntry1" class="input-field" placeholder="Enter email">
+                            </div>
+                            <div>
+                                <label>Second Entry:</label>
+                                <input type="text" id="doubleEntry2" class="input-field" placeholder="Enter email again">
+                            </div>
+                        </div>
+                        <button class="button" onclick="checkDoubleEntry()">Compare Entries</button>
+                        <div id="doubleEntryResult"></div>
+                    </div>
+                </div>
+
+                <h3>Advantages and Disadvantages</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="card" style="background-color: #e8f5e9;">
+                        <h4>✓ Advantages</h4>
+                        <ul>
+                            <li>Catches human typing errors</li>
+                            <li>Very effective for critical data</li>
+                            <li>Simple to implement</li>
+                            <li>No special technology needed</li>
+                        </ul>
+                    </div>
+                    <div class="card" style="background-color: #ffebee;">
+                        <h4>✗ Disadvantages</h4>
+                        <ul>
+                            <li>Time-consuming</li>
+                            <li>Requires more staff (double entry)</li>
+                            <li>Can still miss errors if both make same mistake</li>
+                            <li>Frustrating for users</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <button class="reset-btn" onclick="resetEntryVerification()">Reset Activities</button>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('intro')">Previous</button>
+                <button class="button" onclick="showSection('transfer-verification')">Next</button>
+            </div>
+        </div>
+
+        <!-- Transfer Verification Section -->
+        <div class="section" id="transfer-verification">
+            <div class="card">
+                <h2>Verification During Data Transfer</h2>
+                <p>When data travels across networks or storage devices, it can become corrupted. Special techniques detect these errors:</p>
+                
+                <h3>1. Parity Checks</h3>
+                <div style="background-color: #e3f2fd; padding: 20px; border-radius: 5px; margin: 20px 0;">
+                    <h4>Parity Bit (Single Byte Check)</h4>
+                    <p>A parity bit is an extra bit added to ensure the total number of 1s is even (even parity) or odd (odd parity).</p>
+                    
+                    <div style="background-color: white; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                        <h5>Example with Even Parity:</h5>
+                        <p>Original data: <span class="checksum-display">1011001</span></p>
+                        <p>Count of 1s: 4 (even) → Add parity bit: <strong>0</strong></p>
+                        <p>Transmitted: <span class="checksum-display">10110010</span></p>
+                    </div>
+                    
+                    <div class="visual-check-demo">
+                        <h4>Interactive: Calculate Parity Bit</h4>
+                        <p>Click bits to toggle them, then calculate the parity bit:</p>
+                        <div id="parityBits">
+                            <span class="bit-display" onclick="toggleBit(this)">1</span>
+                            <span class="bit-display" onclick="toggleBit(this)">0</span>
+                            <span class="bit-display" onclick="toggleBit(this)">1</span>
+                            <span class="bit-display" onclick="toggleBit(this)">1</span>
+                            <span class="bit-display" onclick="toggleBit(this)">0</span>
+                            <span class="bit-display" onclick="toggleBit(this)">0</span>
+                            <span class="bit-display" onclick="toggleBit(this)">1</span>
+                            <span class="bit-display parity">?</span>
+                        </div>
+                        <button class="button" onclick="calculateParity()">Calculate Even Parity Bit</button>
+                        <div id="parityResult"></div>
+                    </div>
+                </div>
+
+                <h3>2. Block Parity Check</h3>
+                <div style="background-color: #f3e5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+                    <p>Block parity uses parity bits for both rows AND columns of data, allowing error detection AND correction.</p>
+                    
+                    <div style="background-color: white; padding: 15px; border-radius: 5px;">
+                        <h5>Example Block:</h5>
+                        <pre style="font-family: monospace; font-size: 16px;">
+Data    Parity
+1011    1
+0110    0
+1100    0
+----    -
+0001    1 (column parity)
+                        </pre>
+                        <p>If a bit flips, the error row AND column will have incorrect parity!</p>
+                    </div>
+                    
+                    <button class="hint-btn" onclick="showHint('block-parity')">Show Advantage</button>
+                    <div id="block-parity-hint" class="hint-text">
+                        Block parity can pinpoint exactly which bit is wrong by finding the intersection of the error row and column!
+                    </div>
+                </div>
+
+                <h3>3. Checksum</h3>
+                <div style="background-color: #fff3cd; padding: 20px; border-radius: 5px; margin: 20px 0;">
+                    <p>A checksum is a value calculated from a block of data used to detect errors.</p>
+                    
+                    <h4>How Checksums Work:</h4>
+                    <ol>
+                        <li>Add up all bytes in the data</li>
+                        <li>Take the remainder (modulo) of a number</li>
+                        <li>Send this checksum with the data</li>
+                        <li>Receiver recalculates and compares</li>
+                    </ol>
+                    
+                    <div class="visual-check-demo">
+                        <h4>Interactive: Calculate Checksum</h4>
+                        <p>Enter text to see its checksum:</p>
+                        <input type="text" id="checksumInput" class="input-field" placeholder="Enter some text" onkeyup="calculateChecksum()">
+                        <div id="checksumDisplay"></div>
+                        
+                        <div style="margin-top: 20px;">
+                            <p>Now change one character and see how the checksum changes!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Comparison of Methods</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background-color: #f0f0f0;">
+                        <th style="padding: 10px; border: 1px solid #ddd;">Method</th>
+                        <th style="padding: 10px; border: 1px solid #ddd;">Error Detection</th>
+                        <th style="padding: 10px; border: 1px solid #ddd;">Error Correction</th>
+                        <th style="padding: 10px; border: 1px solid #ddd;">Overhead</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Parity Bit</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Single bit errors</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">No</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">1 bit per byte</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Block Parity</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Multiple errors</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Yes (1 bit)</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">More bits needed</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Checksum</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Most errors</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">No</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Fixed size</td>
+                    </tr>
+                </table>
+                
+                <button class="reset-btn" onclick="resetTransferVerification()">Reset Activities</button>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('entry-verification')">Previous</button>
+                <button class="button" onclick="showSection('simulations')">Next</button>
+            </div>
+        </div>
+
+        <!-- Simulations Section -->
+        <div class="section" id="simulations">
+            <div class="card">
+                <h2>Data Transfer Simulation</h2>
+                <p>See how errors affect data and how verification methods detect them!</p>
+                
+                <div style="background-color: #e3f2fd; padding: 20px; border-radius: 5px;">
+                    <h3>Network Transmission Simulator</h3>
+                    <p>Send a message and watch how verification methods detect errors:</p>
+                    
+                    <div style="margin: 20px 0;">
+                        <label>Your Message:</label>
+                        <input type="text" id="simMessage" class="input-field" placeholder="Type a short message" value="HELLO">
+                        
+                        <label>Error Simulation:</label>
+                        <select id="errorType" class="input-field" style="width: auto;">
+                            <option value="none">No errors</option>
+                            <option value="single">Single bit flip</option>
+                            <option value="multiple">Multiple bit flips</option>
+                        </select>
+                        
+                        <button class="button" onclick="simulateTransmission()">Transmit Message</button>
+                    </div>
+                    
+                    <div id="transmissionSteps" style="display: none;">
+                        <div class="card" style="background-color: #f9f9f9;">
+                            <h4>Step 1: Convert to Binary</h4>
+                            <div id="binaryDisplay"></div>
+                        </div>
+                        
+                        <div class="card" style="background-color: #f9f9f9;">
+                            <h4>Step 2: Add Verification</h4>
+                            <div id="verificationDisplay"></div>
+                        </div>
+                        
+                        <div class="card" style="background-color: #f9f9f9;">
+                            <h4>Step 3: Transmission (with possible errors)</h4>
+                            <div id="transmissionDisplay"></div>
+                        </div>
+                        
+                        <div class="card" style="background-color: #f9f9f9;">
+                            <h4>Step 4: Verification Check</h4>
+                            <div id="verificationResult"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="reset-btn" onclick="resetSimulation()">Reset Simulation</button>
+            </div>
+
+            <div class="card">
+                <h3>Reflection Questions:</h3>
+                <ol>
+                    <li>Why might checksum be preferred over parity for large files?</li>
+                    <li>In what situations would double entry be more appropriate than automated verification?</li>
+                    <li>How do verification methods impact system performance?</li>
+                </ol>
+                <textarea class="input-field" rows="4" placeholder="Type your reflections here..." onkeyup="checkReflection(this)"></textarea>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('transfer-verification')">Previous</button>
+                <button class="button" onclick="showSection('practice')">Next</button>
+            </div>
+        </div>
+
+        <!-- Practice Section -->
+        <div class="section" id="practice">
+            <div class="card">
+                <h2>Real-World Practice</h2>
+                <p>Apply your knowledge to these scenarios:</p>
+                
+                <h3>Scenario 1: Medical Records System</h3>
+                <div style="background-color: #f0f0f0; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                    <p>A hospital is implementing a new patient records system. Patient ID numbers are critical and must be 100% accurate.</p>
+                    
+                    <h4>Which verification method(s) would you recommend?</h4>
+                    <div>
+                        <label><input type="checkbox" id="med1"> Visual check by staff</label><br>
+                        <label><input type="checkbox" id="med2"> Double entry of ID numbers</label><br>
+                        <label><input type="checkbox" id="med3"> Parity check on ID</label><br>
+                        <label><input type="checkbox" id="med4"> Checksum validation</label><br>
+                        <label><input type="checkbox" id="med5"> Check digit in ID number</label>
+                    </div>
+                    
+                    <button class="button" onclick="checkMedicalAnswer()">Check Answer</button>
+                    <div id="medicalResult"></div>
+                </div>
+
+                <h3>Scenario 2: File Download Service</h3>
+                <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                    <p>A software company provides large file downloads. They need to ensure files aren't corrupted during download.</p>
+                    
+                    <h4>Match the verification method to its benefit:</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <p><strong>Methods:</strong></p>
+                            <div class="drag-item" onclick="selectMethod(this, 'checksum')">MD5/SHA Checksum</div>
+                            <div class="drag-item" onclick="selectMethod(this, 'parity')">Parity Checking</div>
+                            <div class="drag-item" onclick="selectMethod(this, 'visual')">Visual Verification</div>
+                        </div>
+                        <div>
+                            <p><strong>Benefits:</strong></p>
+                            <div class="drop-zone" onclick="matchBenefit(this, 'efficient')">Most efficient for large files</div>
+                            <div class="drop-zone" onclick="matchBenefit(this, 'realtime')">Good for real-time streams</div>
+                            <div class="drop-zone" onclick="matchBenefit(this, 'human')">Best for human-readable data</div>
+                        </div>
+                    </div>
+                    <div id="downloadResult"></div>
+                </div>
+
+                <h3>Common Mistakes to Avoid:</h3>
+                <ul>
+                    <li><strong>Over-verification:</strong> Too many checks slow down systems</li>
+                    <li><strong>Wrong method:</strong> Using visual checks for binary data</li>
+                    <li><strong>Ignoring errors:</strong> Detecting but not correcting errors</li>
+                    <li><strong>Single point of failure:</strong> Relying on one verification method</li>
+                    <li><strong>Not considering data type:</strong> Different data needs different methods</li>
+                </ul>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('simulations')">Previous</button>
+                <button class="button" onclick="showSection('exam')">Next</button>
+            </div>
+        </div>
+
+        <!-- Exam Questions Section -->
+        <div class="section" id="exam">
+            <div class="card">
+                <h2>Practice Exam Questions</h2>
+                <p>Complete these exam-style questions. You must attempt each question before viewing the mark scheme.</p>
+                
+                <!-- Question 1 -->
+                <div class="card">
+                    <h3>Question 1 (6 marks)</h3>
+                    <p>A company uses double entry verification for customer email addresses.</p>
+                    <p>(a) Describe how double entry verification works. (3 marks)</p>
+                    <p>(b) Explain one advantage and one disadvantage of this method. (2 marks)</p>
+                    <p>(c) Suggest an alternative verification method for email addresses. (1 mark)</p>
+                    
+                    <textarea id="exam1" class="input-field" rows="8" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 10px;">
+                        <label>Predicted marks: <input type="number" id="marks1" min="0" max="6" style="width: 50px;"> / 6</label>
+                        <button class="button" onclick="checkExamAnswer('exam1', 'marks1', 'scheme1', 6)">Submit Answer</button>
+                    </div>
+                    
+                    <div id="scheme1" class="mark-scheme">
+                        <h4>Mark Scheme:</h4>
+                        <p><strong>Part (a) - 3 marks for description including:</strong></p>
+                        <ul>
+                            <li>Data entered twice (1)</li>
+                            <li>By same or different person (1)</li>
+                            <li>Computer compares entries (1)</li>
+                            <li>Only accepted if they match (1)</li>
+                        </ul>
+                        <p>Max 3 marks</p>
+                        <p><strong>Part (b) - 1 mark each for:</strong></p>
+                        <ul>
+                            <li>Advantage: Catches typing errors / Very accurate / Simple to implement</li>
+                            <li>Disadvantage: Time consuming / Expensive / Frustrating for users</li>
+                        </ul>
+                        <p><strong>Part (c) - 1 mark for one from:</strong></p>
+                        <ul>
+                            <li>Visual check</li>
+                            <li>Send confirmation email</li>
+                            <li>Format validation combined with verification</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Question 2 -->
+                <div class="card">
+                    <h3>Question 2 (8 marks)</h3>
+                    <p>A network uses parity bits to detect transmission errors.</p>
+                    <p>(a) Explain how even parity works with an example. (3 marks)</p>
+                    <p>(b) State one limitation of single parity bit checking. (1 mark)</p>
+                    <p>(c) Describe how block parity checking improves on single parity. (2 marks)</p>
+                    <p>(d) Explain why checksum might be preferred for large file transfers. (2 marks)</p>
+                    
+                    <textarea id="exam2" class="input-field" rows="10" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 10px;">
+                        <label>Predicted marks: <input type="number" id="marks2" min="0" max="8" style="width: 50px;"> / 8</label>
+                        <button class="button" onclick="checkExamAnswer('exam2', 'marks2', 'scheme2', 8)">Submit Answer</button>
+                    </div>
+                    
+                    <div id="scheme2" class="mark-scheme">
+                        <h4>Mark Scheme:</h4>
+                        <p><strong>Part (a) - 3 marks for explanation including:</strong></p>
+                        <ul>
+                            <li>Count number of 1s in data (1)</li>
+                            <li>Add 0 or 1 to make total even (1)</li>
+                            <li>Valid example showing calculation (1)</li>
+                        </ul>
+                        <p><strong>Part (b) - 1 mark for one from:</strong></p>
+                        <ul>
+                            <li>Cannot detect even number of errors</li>
+                            <li>Cannot correct errors</li>
+                            <li>Only detects, doesn't locate error</li>
+                        </ul>
+                        <p><strong>Part (c) - 2 marks for:</strong></p>
+                        <ul>
+                            <li>Uses row AND column parity (1)</li>
+                            <li>Can locate/correct single bit errors (1)</li>
+                        </ul>
+                        <p><strong>Part (d) - 2 marks for reasons such as:</strong></p>
+                        <ul>
+                            <li>Better error detection for multiple errors (1)</li>
+                            <li>Fixed overhead regardless of file size (1)</li>
+                            <li>Can detect more types of errors (1)</li>
+                        </ul>
+                        <p>Max 2 marks</p>
+                    </div>
+                </div>
+
+                <!-- Question 3 -->
+                <div class="card">
+                    <h3>Question 3 (4 marks)</h3>
+                    <p>Compare and contrast data validation and data verification.</p>
+                    <p>Your answer should include:</p>
+                    <ul>
+                        <li>The purpose of each</li>
+                        <li>When each is used</li>
+                        <li>An example of each</li>
+                    </ul>
+                    
+                    <textarea id="exam3" class="input-field" rows="8" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 10px;">
+                        <label>Predicted marks: <input type="number" id="marks3" min="0" max="4" style="width: 50px;"> / 4</label>
+                        <button class="button" onclick="checkExamAnswer('exam3', 'marks3', 'scheme3', 4)">Submit Answer</button>
+                    </div>
+                    
+                    <div id="scheme3" class="mark-scheme">
+                        <h4>Mark Scheme:</h4>
+                        <p><strong>4 marks for comparison including:</strong></p>
+                        <ul>
+                            <li>Validation checks if data is reasonable/sensible (1)</li>
+                            <li>Verification checks if data is correct/accurate (1)</li>
+                            <li>Validation is automated, verification can be manual (1)</li>
+                            <li>Valid example of each (1)</li>
+                        </ul>
+                        <p><strong>Example answers:</strong></p>
+                        <ul>
+                            <li>Validation: Age between 0-120</li>
+                            <li>Verification: Double entry of date of birth</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Drawing Canvas for Calculations -->
+                <div class="card">
+                    <h3>Calculation Space</h3>
+                    <p>Use this space for any calculations:</p>
+                    <canvas id="drawingCanvas" class="drawing-canvas" width="600" height="300"></canvas>
+                    <button class="button" onclick="clearCanvas()">Clear Canvas</button>
+                </div>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('practice')">Previous</button>
+                <button class="button" onclick="showSection('extension')">Next</button>
+            </div>
+        </div>
+
+        <!-- Extension Section -->
+        <div class="section" id="extension">
+            <div class="card">
+                <h2>Extension Activities</h2>
+                <p>These activities go beyond the specification to deepen your understanding.</p>
+                
+                <h3>1. Advanced Error Detection: CRC (Cyclic Redundancy Check)</h3>
+                <p>CRC is a more sophisticated error detection method used in networks and storage devices.</p>
+                
+                <div style="background-color: #f0f0f0; padding: 15px; border-radius: 5px;">
+                    <h4>How CRC Works:</h4>
+                    <ol>
+                        <li>Treat data as a large binary number</li>
+                        <li>Divide by a special polynomial</li>
+                        <li>The remainder is the CRC value</li>
+                        <li>Much better error detection than simple checksums</li>
+                    </ol>
+                    
+                    <p><strong>Research Task:</strong> Find out where CRC is used in modern technology and explain why it's preferred over simpler methods.</p>
+                    <textarea class="input-field" rows="4" placeholder="Write your research findings here..." onkeyup="checkExtension(this)"></textarea>
+                </div>
+
+                <h3>2. Hamming Codes</h3>
+                <p>Hamming codes can detect AND correct errors automatically!</p>
+                
+                <div class="card" style="background-color: #e3f2fd;">
+                    <h4>Challenge: Understanding Hamming Distance</h4>
+                    <p>The Hamming distance between two strings is the number of positions where they differ.</p>
+                    <p>Example: "HELLO" and "HALLO" have a Hamming distance of 1</p>
+                    
+                    <p><strong>Task:</strong> Calculate the Hamming distance between these binary strings:</p>
+                    <ul>
+                        <li>10110 and 10011</li>
+                        <li>11111 and 00000</li>
+                    </ul>
+                    <input type="text" class="input-field" placeholder="Enter your answers here..." onkeyup="checkHamming(this)">
+                </div>
+
+                <h3>3. Real-World Application: Blockchain</h3>
+                <p>Blockchain technology uses multiple verification methods to ensure data integrity.</p>
+                
+                <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px;">
+                    <h4>Research Questions:</h4>
+                    <ol>
+                        <li>How does blockchain use hashing for verification?</li>
+                        <li>What makes blockchain "tamper-proof"?</li>
+                        <li>How is this different from traditional verification?</li>
+                    </ol>
+                    <textarea class="input-field" rows="6" placeholder="Explain blockchain verification here..." onkeyup="checkExtension(this)"></textarea>
+                </div>
+
+                <h3>4. Design Your Own Verification System</h3>
+                <p>Create a verification system for a specific scenario:</p>
+                
+                <div class="card">
+                    <h4>Scenario: School Exam Results</h4>
+                    <p>Design a system that ensures exam scores are entered and stored correctly. Consider:</p>
+                    <ul>
+                        <li>How will scores be entered?</li>
+                        <li>What verification methods will you use?</li>
+                        <li>How will you handle errors?</li>
+                        <li>What about data transfer between systems?</li>
+                    </ul>
+                    <textarea class="input-field" rows="8" placeholder="Design your verification system here..." onkeyup="checkExtension(this)"></textarea>
+                </div>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('exam')">Previous</button>
+                <button class="button" onclick="showSection('summary')">Next</button>
+            </div>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="section" id="summary">
+            <div class="card">
+                <h2>Lesson Summary</h2>
+                <p>Let's review what you've learned about data verification and how it works with validation.</p>
+                
+                <h3>Key Takeaways:</h3>
+                <ul>
+                    <li><strong>Data Entry Verification:</strong> Visual checks and double entry catch human errors</li>
+                    <li><strong>Data Transfer Verification:</strong> Parity and checksums detect transmission errors</li>
+                    <li><strong>Validation vs Verification:</strong> Validation checks if reasonable, verification checks if correct</li>
+                    <li><strong>Parity Checks:</strong> Simple but limited; block parity can correct errors</li>
+                    <li><strong>Checksums:</strong> Better for large data; detects most corruption</li>
+                    <li><strong>Combined Approach:</strong> Best data integrity uses both validation AND verification</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>Final Assessment Quiz</h2>
+                <div id="summaryQuiz">
+                    <!-- Question 1 -->
+                    <div style="margin-bottom: 20px;">
+                        <h4>1. Which verification method involves entering data twice?</h4>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's1', 'c')">Visual check</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's1', 'd')">Parity check</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's1', 'b')">Checksum</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's1', 'a')">Double entry</button>
+                        <div id="s1-feedback" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- Question 2 -->
+                    <div style="margin-bottom: 20px;">
+                        <h4>2. What is the main advantage of block parity over single parity?</h4>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's2', 'a')">Can correct errors</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's2', 'b')">Uses less data</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's2', 'c')">Faster to calculate</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's2', 'd')">Works on text only</button>
+                        <div id="s2-feedback" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- Question 3 -->
+                    <div style="margin-bottom: 20px;">
+                        <h4>3. A file download provides an MD5 hash. This is an example of:</h4>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's3', 'b')">Parity checking</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's3', 'c')">Double entry</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's3', 'a')">Checksum verification</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's3', 'd')">Visual verification</button>
+                        <div id="s3-feedback" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- Question 4 -->
+                    <div style="margin-bottom: 20px;">
+                        <h4>4. Which statement about validation and verification is correct?</h4>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's4', 'c')">They are the same thing</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's4', 'b')">Verification replaces validation</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's4', 'd')">Validation is more accurate</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's4', 'a')">Both are needed for data integrity</button>
+                        <div id="s4-feedback" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- Question 5 -->
+                    <div style="margin-bottom: 20px;">
+                        <h4>5. True or False: Parity bits can detect all types of errors.</h4>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's5', 'b')">True</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's5', 'a')">False</button>
+                        <div id="s5-feedback" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- Question 6 -->
+                    <div style="margin-bottom: 20px;">
+                        <h4>6. When would visual verification be most appropriate?</h4>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's6', 'b')">Binary file transfer</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's6', 'c')">Network packets</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's6', 'a')">Important form data</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's6', 'd')">Automatic backups</button>
+                        <div id="s6-feedback" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- Question 7 -->
+                    <div style="margin-bottom: 20px;">
+                        <h4>7. Which method is best for detecting errors in large files?</h4>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's7', 'd')">Single parity bit</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's7', 'b')">Visual check</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's7', 'c')">Double entry</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's7', 'a')">Checksum</button>
+                        <div id="s7-feedback" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- Question 8 -->
+                    <div style="margin-bottom: 20px;">
+                        <h4>8. What happens when verification detects an error?</h4>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's8', 'b')">Data is automatically fixed</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's8', 'c')">Error is always ignored</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's8', 'a')">Request retransmission or correction</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's8', 'd')">System shuts down</button>
+                        <div id="s8-feedback" style="margin-top: 10px;"></div>
+                    </div>
+                </div>
+                
+                <button class="reset-btn" onclick="resetSummaryQuiz()">Reset Quiz</button>
+            </div>
+
+            <div class="card">
+                <h2>Complete Data Integrity Summary</h2>
+                <p>Across both lessons, you've learned how validation and verification work together:</p>
+                
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background-color: #f0f0f0;">
+                        <th style="padding: 10px; border: 1px solid #ddd;">Stage</th>
+                        <th style="padding: 10px; border: 1px solid #ddd;">Methods</th>
+                        <th style="padding: 10px; border: 1px solid #ddd;">Purpose</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;"><strong>Before Entry</strong></td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Validation Rules</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Prevent invalid data</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;"><strong>During Entry</strong></td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Visual Check, Double Entry</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Ensure accurate input</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;"><strong>During Transfer</strong></td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Parity, Checksum</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">Detect corruption</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="card">
+                <h2>Videos (Coming Soon)</h2>
+                <p>Additional video resources will be available here to support your learning.</p>
+                <div style="background-color: #f0f0f0; padding: 20px; border-radius: 5px; text-align: center;">
+                    <p>📹 Video placeholder</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>What's Next?</h2>
+                <p>You've completed the Data Integrity topic! Consider exploring:</p>
+                <ul>
+                    <li>Database integrity constraints</li>
+                    <li>Error correction codes</li>
+                    <li>Cryptographic hash functions</li>
+                    <li>Data backup and recovery strategies</li>
+                </ul>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('extension')">Previous</button>
+                <button class="button" disabled>Complete!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback Button and Modal -->
+    <button class="feedback-btn" onclick="openFeedback()">Feedback</button>
+    
+    <div id="feedbackModal" class="feedback-modal">
+        <div class="feedback-content">
+            <h3>Send Feedback</h3>
+            <p>Found a bug or have a suggestion? Let us know!</p>
+            <textarea id="feedbackText" class="input-field" rows="5" placeholder="Describe the issue or suggestion..."></textarea>
+            <button class="button" onclick="sendFeedback()">Send</button>
+            <button class="button" onclick="closeFeedback()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Achievement Popup -->
+    <div id="achievementPopup" class="achievement-popup" style="display: none;">
+        <h3 id="achievementTitle">Achievement Unlocked!</h3>
+        <p id="achievementDesc">Description</p>
+    </div>
+
+    <script>
+        // Global variables
+        let currentSection = 'starter';
+        let xp = 0;
+        let level = 0;
+        let achievements = new Set();
+        let earnedActions = new Set();
+        let selectedMethod = null;
+        let matchingPairs = {
+            'checksum': 'efficient',
+            'parity': 'realtime',
+            'visual': 'human'
+        };
+
+        // Prevent paste
+        document.addEventListener('paste', function(e) {
+            e.preventDefault();
+            showPasteWarning();
+            return false;
+        });
+
+        // Also prevent paste in input fields
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputs = document.querySelectorAll('input, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('paste', function(e) {
+                    e.preventDefault();
+                    showPasteWarning();
+                    return false;
+                });
+            });
+        });
+
+        function showPasteWarning() {
+            const warning = document.createElement('div');
+            warning.className = 'paste-warning';
+            warning.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #e74c3c; color: white; padding: 20px; border-radius: 10px; z-index: 1001; font-weight: bold;';
+            warning.textContent = '🚫 Shame on you! Pasting is not allowed. Type it yourself!';
+            document.body.appendChild(warning);
+            setTimeout(() => {
+                warning.remove();
+            }, 3000);
+        }
+
+        // XP and Achievement System
+        function addXP(amount, action) {
+            const actionKey = action.toLowerCase().replace(/\s+/g, '_');
+            if (earnedActions.has(actionKey)) {
+                return; // Already earned XP for this action
+            }
+            
+            earnedActions.add(actionKey);
+            xp += amount;
+            
+            // Check for level up
+            while (xp >= 100 && level < 5) {
+                xp -= 100;
+                level++;
+                showAchievement('Level Up!', 'You reached Level ' + level + '!');
+            }
+            
+            // Cap at level 5
+            if (level >= 5) {
+                level = 5;
+                xp = Math.min(xp, 100);
+            }
+            
+            updateXPDisplay();
+            checkAchievements();
+        }
+
+        function updateXPDisplay() {
+            document.getElementById('xp').textContent = xp;
+            document.getElementById('level').textContent = level;
+            document.getElementById('xpFill').style.width = xp + '%';
+        }
+
+        function showAchievement(title, description) {
+            const popup = document.getElementById('achievementPopup');
+            document.getElementById('achievementTitle').textContent = title;
+            document.getElementById('achievementDesc').textContent = description;
+            popup.style.display = 'block';
+            
+            setTimeout(() => {
+                popup.style.display = 'none';
+            }, 3000);
+        }
+
+        function checkAchievements() {
+            // Check for specific achievements
+            if (!achievements.has('first_verification') && earnedActions.has('completed_double_entry')) {
+                achievements.add('first_verification');
+                showAchievement('Verifier', 'Completed your first verification!');
+            }
+            
+            if (!achievements.has('error_detector') && earnedActions.has('detected_error')) {
+                achievements.add('error_detector');
+                showAchievement('Error Detective', 'Successfully detected a transmission error!');
+            }
+            
+            if (!achievements.has('integrity_master') && earnedActions.size >= 15) {
+                achievements.add('integrity_master');
+                showAchievement('Data Integrity Master', 'Mastered both validation and verification!');
+            }
+        }
+
+        // Navigation
+        function showSection(sectionId) {
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(section => section.classList.remove('active'));
+            
+            document.getElementById(sectionId).classList.add('active');
+            currentSection = sectionId;
+            
+            // Update nav buttons
+            const navBtns = document.querySelectorAll('.nav-btn');
+            navBtns.forEach(btn => btn.classList.remove('active'));
+            const activeBtn = Array.from(navBtns).find(btn => {
+                const btnText = btn.textContent.toLowerCase();
+                return btnText.includes(sectionId.toLowerCase()) ||
+                    (sectionId === 'entry-verification' && btnText.includes('entry')) ||
+                    (sectionId === 'transfer-verification' && btnText.includes('transfer')) ||
+                    (sectionId === 'simulations' && btnText.includes('simulation')) ||
+                    (sectionId === 'exam' && btnText.includes('exam'));
+            });
+            if (activeBtn) activeBtn.classList.add('active');
+            
+            // Award XP for section completion
+            addXP(5, 'visited_' + sectionId);
+        }
+
+        // Starter Quiz
+        function checkStarterAnswer(button, question, correct) {
+            const options = button.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => {
+                opt.disabled = true;
+                opt.classList.remove('selected');
+            });
+            
+            button.classList.add('selected');
+            const feedback = document.getElementById(question + '-feedback');
+            
+            if (correct === 'a') {
+                feedback.innerHTML = '<span style="color: var(--success-color);">✓ Correct! Double entry would catch this because the person would need to type it twice.</span>';
+                addXP(10, 'starter_quiz_correct');
+            } else {
+                feedback.innerHTML = '<span style="color: var(--error-color);">✗ Not quite. Validation passed because the date is valid. Only verification (like double entry) would catch the typo.</span>';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function resetStarter() {
+            const options = document.querySelectorAll('#starterActivity .quiz-option');
+            options.forEach(opt => {
+                opt.disabled = false;
+                opt.classList.remove('selected');
+            });
+            document.getElementById('q1-feedback').style.display = 'none';
+        }
+
+        // Entry Verification Activities
+        function performVisualCheck() {
+            const input = document.getElementById('visualCheckInput').value;
+            const result = document.getElementById('visualCheckResult');
+            const correct = 'Manchester M20 6BX';
+            
+            if (input === '') {
+                result.innerHTML = '<span style="color: var(--error-color);">Please enter the address</span>';
+                return;
+            }
+            
+            result.innerHTML = '<div class="card" style="background-color: #e3f2fd; margin-top: 15px;">' +
+                '<h4>Visual Verification:</h4>' +
+                '<p>You entered: <strong>' + input + '</strong></p>' +
+                '<p>Original was: <strong>' + correct + '</strong></p>';
+            
+            if (input === correct) {
+                result.innerHTML += '<p style="color: var(--success-color);">✓ Perfect match! Data verified.</p>';
+                addXP(10, 'visual_check_success');
+            } else {
+                result.innerHTML += '<p style="color: var(--error-color);">✗ Mismatch detected! Please check and correct.</p>';
+                result.innerHTML += '<p>Differences found: This is why visual checking is important!</p>';
+            }
+            result.innerHTML += '</div>';
+        }
+
+        function checkDoubleEntry() {
+            const entry1 = document.getElementById('doubleEntry1').value;
+            const entry2 = document.getElementById('doubleEntry2').value;
+            const result = document.getElementById('doubleEntryResult');
+            
+            if (entry1 === '' || entry2 === '') {
+                result.innerHTML = '<span style="color: var(--error-color);">Please complete both entries</span>';
+                return;
+            }
+            
+            if (entry1 === entry2) {
+                result.innerHTML = '<span style="color: var(--success-color);">✓ Entries match! Email verified: ' + entry1 + '</span>';
+                addXP(15, 'completed_double_entry');
+            } else {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Entries do not match! Found discrepancy:<br>' +
+                    'First entry: ' + entry1 + '<br>Second entry: ' + entry2 + '</span>';
+            }
+        }
+
+        function resetEntryVerification() {
+            document.getElementById('visualCheckInput').value = '';
+            document.getElementById('visualCheckResult').innerHTML = '';
+            document.getElementById('doubleEntry1').value = '';
+            document.getElementById('doubleEntry2').value = '';
+            document.getElementById('doubleEntryResult').innerHTML = '';
+        }
+
+        // Transfer Verification Activities
+        function toggleBit(element) {
+            element.textContent = element.textContent === '0' ? '1' : '0';
+        }
+
+        function calculateParity() {
+            const bits = document.querySelectorAll('#parityBits .bit-display:not(.parity)');
+            let count = 0;
+            
+            bits.forEach(bit => {
+                if (bit.textContent === '1') count++;
+            });
+            
+            const parityBit = count % 2 === 0 ? '0' : '1';
+            document.querySelector('.bit-display.parity').textContent = parityBit;
+            
+            const result = document.getElementById('parityResult');
+            result.innerHTML = '<span style="color: var(--success-color);">Count of 1s: ' + count + 
+                ' (' + (count % 2 === 0 ? 'even' : 'odd') + ')<br>Even parity bit: ' + parityBit + '</span>';
+            
+            addXP(10, 'calculated_parity');
+        }
+
+        function calculateChecksum() {
+            const input = document.getElementById('checksumInput').value;
+            const display = document.getElementById('checksumDisplay');
+            
+            if (input === '') {
+                display.innerHTML = '';
+                return;
+            }
+            
+            // Simple checksum: sum of character codes mod 256
+            let sum = 0;
+            for (let i = 0; i < input.length; i++) {
+                sum += input.charCodeAt(i);
+            }
+            const checksum = sum % 256;
+            
+            display.innerHTML = '<div class="checksum-display">' +
+                '<p>Text: "' + input + '"</p>' +
+                '<p>Character count: ' + input.length + '</p>' +
+                '<p>Sum of values: ' + sum + '</p>' +
+                '<p>Checksum (mod 256): <strong>' + checksum + '</strong></p>' +
+                '</div>';
+            
+            if (input.length > 5) {
+                addXP(10, 'calculated_checksum');
+            }
+        }
+
+        function resetTransferVerification() {
+            // Reset parity bits
+            const bits = document.querySelectorAll('#parityBits .bit-display:not(.parity)');
+            bits.forEach((bit, index) => {
+                bit.textContent = index % 2 === 0 ? '1' : '0';
+            });
+            document.querySelector('.bit-display.parity').textContent = '?';
+            document.getElementById('parityResult').innerHTML = '';
+            
+            // Reset checksum
+            document.getElementById('checksumInput').value = '';
+            document.getElementById('checksumDisplay').innerHTML = '';
+        }
+
+        // Simulation
+        function simulateTransmission() {
+            const message = document.getElementById('simMessage').value;
+            const errorType = document.getElementById('errorType').value;
+            
+            if (message === '') {
+                alert('Please enter a message');
+                return;
+            }
+            
+            document.getElementById('transmissionSteps').style.display = 'block';
+            
+            // Step 1: Convert to binary
+            let binary = '';
+            for (let i = 0; i < message.length; i++) {
+                let bin = message.charCodeAt(i).toString(2).padStart(8, '0');
+                binary += bin + ' ';
+            }
+            document.getElementById('binaryDisplay').innerHTML = '<code>' + binary + '</code>';
+            
+            // Step 2: Add verification (simple checksum)
+            let checksum = 0;
+            for (let i = 0; i < message.length; i++) {
+                checksum += message.charCodeAt(i);
+            }
+            checksum = checksum % 256;
+            document.getElementById('verificationDisplay').innerHTML = 
+                'Original message: "' + message + '"<br>' +
+                'Checksum added: ' + checksum;
+            
+            // Step 3: Simulate transmission with errors
+            let transmitted = message;
+            let transmittedChecksum = checksum;
+            
+            if (errorType === 'single') {
+                // Flip one character
+                const pos = Math.floor(Math.random() * transmitted.length);
+                const chars = transmitted.split('');
+                chars[pos] = String.fromCharCode(chars[pos].charCodeAt(0) + 1);
+                transmitted = chars.join('');
+                document.getElementById('transmissionDisplay').innerHTML = 
+                    '<span style="color: var(--error-color);">⚠️ Error introduced!</span><br>' +
+                    'Received: "' + transmitted + '"<br>' +
+                    'Checksum: ' + checksum;
+            } else if (errorType === 'multiple') {
+                // Flip multiple characters
+                const chars = transmitted.split('');
+                for (let i = 0; i < 2; i++) {
+                    const pos = Math.floor(Math.random() * chars.length);
+                    chars[pos] = String.fromCharCode(chars[pos].charCodeAt(0) + 1);
+                }
+                transmitted = chars.join('');
+                document.getElementById('transmissionDisplay').innerHTML = 
+                    '<span style="color: var(--error-color);">⚠️ Multiple errors introduced!</span><br>' +
+                    'Received: "' + transmitted + '"<br>' +
+                    'Checksum: ' + checksum;
+            } else {
+                document.getElementById('transmissionDisplay').innerHTML = 
+                    '<span style="color: var(--success-color);">✓ Clean transmission</span><br>' +
+                    'Received: "' + transmitted + '"<br>' +
+                    'Checksum: ' + checksum;
+            }
+            
+            // Step 4: Verify
+            let recalcChecksum = 0;
+            for (let i = 0; i < transmitted.length; i++) {
+                recalcChecksum += transmitted.charCodeAt(i);
+            }
+            recalcChecksum = recalcChecksum % 256;
+            
+            if (recalcChecksum === checksum && transmitted === message) {
+                document.getElementById('verificationResult').innerHTML = 
+                    '<span style="color: var(--success-color);">✓ Verification passed!</span><br>' +
+                    'Checksum matches: ' + recalcChecksum + ' = ' + checksum + '<br>' +
+                    'Data integrity confirmed.';
+            } else {
+                document.getElementById('verificationResult').innerHTML = 
+                    '<span style="color: var(--error-color);">✗ Verification failed!</span><br>' +
+                    'Expected checksum: ' + checksum + '<br>' +
+                    'Calculated checksum: ' + recalcChecksum + '<br>' +
+                    'Error detected - request retransmission!';
+                addXP(15, 'detected_error');
+            }
+            
+            addXP(20, 'completed_simulation');
+        }
+
+        function resetSimulation() {
+            document.getElementById('simMessage').value = 'HELLO';
+            document.getElementById('errorType').value = 'none';
+            document.getElementById('transmissionSteps').style.display = 'none';
+        }
+
+        function checkReflection(textarea) {
+            if (textarea.value.length > 50) {
+                addXP(10, 'reflection_completed');
+            }
+        }
+
+        // Practice section
+        function checkMedicalAnswer() {
+            const correct = [
+                document.getElementById('med1').checked, // Visual - good
+                document.getElementById('med2').checked, // Double entry - best
+                !document.getElementById('med3').checked, // Parity - not suitable
+                !document.getElementById('med4').checked, // Checksum - not for entry
+                document.getElementById('med5').checked  // Check digit - excellent
+            ];
+            
+            const result = document.getElementById('medicalResult');
+            
+            if (correct[1] && correct[4] && !correct[2] && !correct[3]) {
+                result.innerHTML = '<span style="color: var(--success-color);">✓ Excellent! Double entry and check digits are perfect for critical ID numbers.</span>';
+                addXP(20, 'medical_scenario_correct');
+            } else if (correct[1] || correct[4]) {
+                result.innerHTML = '<span style="color: var(--warning-color);">Partial credit. Double entry and check digits are best. Parity/checksum are for data transfer, not entry.</span>';
+                addXP(10, 'medical_scenario_partial');
+            } else {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Think about which methods work during data entry vs transfer.</span>';
+            }
+        }
+
+        function selectMethod(element, method) {
+            document.querySelectorAll('.drag-item').forEach(item => {
+                item.style.backgroundColor = 'var(--secondary-color)';
+            });
+            element.style.backgroundColor = 'var(--warning-color)';
+            selectedMethod = method;
+        }
+
+        function matchBenefit(element, benefit) {
+            if (!selectedMethod) {
+                element.innerHTML = 'Select a method first!';
+                return;
+            }
+            
+            if (matchingPairs[selectedMethod] === benefit) {
+                element.innerHTML = '✓ ' + selectedMethod.toUpperCase();
+                element.style.backgroundColor = 'var(--success-color)';
+                element.style.color = 'white';
+                addXP(10, 'matched_' + selectedMethod);
+            } else {
+                element.style.backgroundColor = 'var(--error-color)';
+                setTimeout(() => {
+                    element.style.backgroundColor = '#f9f9f9';
+                }, 1000);
+            }
+        }
+
+        // Exam questions
+        function checkExamAnswer(textareaId, marksId, schemeId, maxMarks) {
+            const textarea = document.getElementById(textareaId);
+            const marks = document.getElementById(marksId);
+            const scheme = document.getElementById(schemeId);
+            
+            // Check minimum answer length (roughly 50 words)
+            if (textarea.value.trim().split(/\s+/).length < 30) {
+                alert('Please provide a more detailed answer before viewing the mark scheme.');
+                return;
+            }
+            
+            // Check if marks predicted
+            if (!marks.value || marks.value < 0 || marks.value > maxMarks) {
+                alert('Please enter your predicted marks (0-' + maxMarks + ').');
+                return;
+            }
+            
+            scheme.style.display = 'block';
+            addXP(25, 'attempted_exam_q_' + textareaId);
+            
+            // Award bonus XP for good predictions
+            if (Math.abs(marks.value - (maxMarks * 0.7)) <= 1) {
+                addXP(10, 'accurate_prediction_' + textareaId);
+            }
+        }
+
+        // Drawing canvas
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', handleTouch);
+        canvas.addEventListener('touchmove', handleTouch);
+        canvas.addEventListener('touchend', stopDrawing);
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            ctx.beginPath();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                            e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Extension activities
+        function checkExtension(textarea) {
+            const wordCount = textarea.value.trim().split(/\s+/).length;
+            if (wordCount > 50) {
+                addXP(15, 'extension_activity_' + Math.floor(wordCount / 50));
+            }
+        }
+
+        function checkHamming(input) {
+            const answer = input.value.toLowerCase();
+            if (answer.includes('2') && answer.includes('5')) {
+                addXP(20, 'hamming_distance_correct');
+                showAchievement('Hamming Hero', 'Calculated Hamming distances correctly!');
+            }
+        }
+
+        // Summary quiz
+        function checkSummaryAnswer(button, question, correct) {
+            const options = button.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => {
+                opt.disabled = true;
+                opt.classList.remove('selected');
+            });
+            
+            button.classList.add('selected');
+            const feedback = document.getElementById(question + '-feedback');
+            const isCorrect = button.textContent === getSummaryCorrectAnswer(question, correct);
+            
+            if (isCorrect) {
+                feedback.innerHTML = '<span style="color: var(--success-color);">✓ Correct!</span>';
+                addXP(10, 'summary_q_' + question);
+            } else {
+                feedback.innerHTML = '<span style="color: var(--error-color);">✗ Incorrect. ' + getSummaryExplanation(question) + '</span>';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function getSummaryCorrectAnswer(question, correct) {
+            const answers = {
+                's1': {'a': 'Double entry', 'b': 'Checksum', 'c': 'Visual check', 'd': 'Parity check'},
+                's2': {'a': 'Can correct errors', 'b': 'Uses less data', 'c': 'Faster to calculate', 'd': 'Works on text only'},
+                's3': {'a': 'Checksum verification', 'b': 'Parity checking', 'c': 'Double entry', 'd': 'Visual verification'},
+                's4': {'a': 'Both are needed for data integrity', 'b': 'Verification replaces validation', 'c': 'They are the same thing', 'd': 'Validation is more accurate'},
+                's5': {'a': 'False', 'b': 'True'},
+                's6': {'a': 'Important form data', 'b': 'Binary file transfer', 'c': 'Network packets', 'd': 'Automatic backups'},
+                's7': {'a': 'Checksum', 'b': 'Visual check', 'c': 'Double entry', 'd': 'Single parity bit'},
+                's8': {'a': 'Request retransmission or correction', 'b': 'Data is automatically fixed', 'c': 'Error is always ignored', 'd': 'System shuts down'}
+            };
+            return answers[question][correct];
+        }
+
+        function getSummaryExplanation(question) {
+            const explanations = {
+                's1': 'Double entry requires typing data twice to catch errors.',
+                's2': 'Block parity can locate and correct single-bit errors.',
+                's3': 'MD5 is a type of checksum used to verify file integrity.',
+                's4': 'Validation and verification work together for complete data integrity.',
+                's5': 'Parity bits cannot detect even numbers of errors.',
+                's6': 'Visual verification works best with human-readable data.',
+                's7': 'Checksums are most efficient for large file verification.',
+                's8': 'Errors trigger retransmission requests or manual correction.'
+            };
+            return explanations[question];
+        }
+
+        function resetSummaryQuiz() {
+            const options = document.querySelectorAll('#summaryQuiz .quiz-option');
+            options.forEach(opt => {
+                opt.disabled = false;
+                opt.classList.remove('selected');
+            });
+            const feedbacks = document.querySelectorAll('[id^="s"][id$="-feedback"]');
+            feedbacks.forEach(feedback => feedback.style.display = 'none');
+        }
+
+        // Accessibility features
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+            addXP(5, 'used_accessibility');
+        }
+
+        function changeFontSize(change) {
+            const root = document.documentElement;
+            const currentSize = parseInt(getComputedStyle(root).getPropertyValue('--font-size'));
+            const newSize = Math.max(12, Math.min(24, currentSize + change));
+            root.style.setProperty('--font-size', newSize + 'px');
+        }
+
+        function showHint(type) {
+            const hint = document.getElementById(type + '-hint');
+            hint.style.display = 'block';
+            addXP(5, 'used_hint'); // Less XP for using hint
+        }
+
+        // Feedback system
+        function openFeedback() {
+            document.getElementById('feedbackModal').style.display = 'block';
+        }
+
+        function closeFeedback() {
+            document.getElementById('feedbackModal').style.display = 'none';
+            document.getElementById('feedbackText').value = '';
+        }
+
+        function sendFeedback() {
+            const feedback = document.getElementById('feedbackText').value;
+            if (feedback.trim() === '') {
+                alert('Please enter your feedback before sending.');
+                return;
+            }
+            
+            const emailBody = encodeURIComponent(
+                'Page: ' + currentSection + '\n\n' +
+                'Feedback: ' + feedback + '\n\n' +
+                'Browser: ' + navigator.userAgent
+            );
+            
+            window.location.href = 'mailto:millingtond@mgs.org?subject=Data Verification Lesson Feedback&body=' + emailBody;
+            
+            closeFeedback();
+            showAchievement('Feedback Sent', 'Thank you for your feedback!');
+            addXP(10, 'sent_feedback');
+        }
+
+        // Initialize
+        window.onload = function() {
+            updateXPDisplay();
+            
+            // Set up canvas
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#333';
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixels & Resolution Interactive Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #111827;
+            --primary-color: #3b82f6;
+            --glass-bg: rgba(31, 41, 55, 0.5);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-color: #f3f4f6;
+            --text-muted: #9ca3af;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+        }
+        
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .animated-gradient {
+            background: linear-gradient(-45deg, #4f46e5, #3b82f6, #14b8a6, #ef4444);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .control-btn {
+            background-color: var(--primary-color);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content, .step-content {
+            animation: fadeIn 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .step-content { display: none; }
+        .step-content.active { display: flex; }
+
+        .pixel-grid {
+            display: grid;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            background: #000;
+        }
+
+        .pixel {
+            background-color: #333;
+        }
+
+        /* Custom Slider Styles */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #374151;
+            border-radius: 5px;
+            outline: none;
+            transition: opacity .2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 4px solid #111827;
+            background: #3b82f6;
+        }
+
+        #red-slider::-webkit-slider-thumb { background: #ef4444; }
+        #green-slider::-webkit-slider-thumb { background: #22c55e; }
+
+        .quiz-option {
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+        .quiz-option:hover {
+            background-color: rgba(59, 130, 246, 0.2);
+            border-color: var(--primary-color);
+        }
+        .quiz-option.correct { background-color: #10b981 !important; color: white !important; }
+        .quiz-option.incorrect { background-color: #ef4444 !important; color: white !important; }
+
+    </style>
+</head>
+<body class="w-full h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Main Container -->
+    <div class="w-full max-w-7xl h-full flex flex-col glass-card overflow-hidden">
+        
+        <!-- Header -->
+        <header class="w-full p-4 flex justify-between items-center border-b border-gray-700 animated-gradient">
+            <h1 class="text-xl md:text-2xl font-bold text-white">Pixels & Resolution: An Interactive Guide</h1>
+            <div id="step-indicator" class="text-sm font-semibold text-white bg-black/30 px-3 py-1 rounded-full">Step 1 / 5</div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="simulation-container" class="flex-grow flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden">
+            <!-- All simulation steps will be rendered here by JavaScript -->
+        </main>
+
+        <footer class="w-full p-4 flex justify-between items-center border-t border-gray-700">
+            <button id="prev-btn" class="control-btn px-6 py-2 text-white font-semibold rounded-lg flex items-center gap-2">Prev</button>
+            <button id="next-btn" class="control-btn px-6 py-2 text-white font-semibold rounded-lg flex items-center gap-2">Next</button>
+        </footer>
+    </div>
+
+    <div id="instructions-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
+        <div class="glass-card modal-content w-11/12 max-w-2xl p-8 rounded-lg text-center">
+            <h2 class="text-2xl font-bold mb-4 text-blue-400">Welcome!</h2>
+            <p class="text-lg mb-6">This simulation will guide you through the core concepts of pixels and resolution.</p>
+            <button id="start-btn" class="control-btn px-8 py-3 text-white font-bold rounded-lg text-lg">Start Learning</button>
+        </div>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- State Management ---
+        let state = {
+            currentStep: 1,
+            totalSteps: 5,
+            rgb: { r: 59, g: 130, b: 246 },
+            resolution: 16,
+            quiz: {
+                questions: [
+                    { type: 'mcq', question: 'What is the smallest identifiable area of a digital image called?', options: ['A dot', 'A pixel', 'A molecule', 'An element'], answer: 'A pixel' },
+                    { type: 'calculation', question: 'An image has a resolution of 800x600 pixels. How many total pixels does this image contain?', answer: 480000, placeholder: 'e.g., 500000' },
+                    { type: 'mcq', question: 'If you increase the image resolution but keep the physical display size the same, what happens?', options: ['The image becomes more blurry', 'The Pixel Density (PPI) increases', 'Each pixel becomes larger', 'The number of colours decreases'], answer: 'The Pixel Density (PPI) increases' }
+                ],
+                score: 0,
+                currentIndex: 0,
+                isAnswered: false,
+            }
+        };
+
+        // --- DOM References ---
+        const dom = {
+            container: document.getElementById('simulation-container'),
+            stepIndicator: document.getElementById('step-indicator'),
+            prevBtn: document.getElementById('prev-btn'),
+            nextBtn: document.getElementById('next-btn'),
+            modal: document.getElementById('instructions-modal'),
+            startBtn: document.getElementById('start-btn'),
+        };
+
+        // --- Utility Functions ---
+        const toHex = (c) => ('0' + parseInt(c).toString(16)).slice(-2);
+        const toBinary = (c) => ('00000000' + parseInt(c).toString(2)).slice(-8);
+        const circlePattern = (size) => {
+            const pattern = [];
+            const center = size / 2;
+            const radius = size / 2 - 0.5;
+            for (let r = 0; r < size; r++) {
+                for (let c = 0; c < size; c++) {
+                    const dist = Math.sqrt(Math.pow(c - center + 0.5, 2) + Math.pow(r - center + 0.5, 2));
+                    pattern.push(dist <= radius ? 1 : 0);
+                }
+            }
+            return pattern;
+        };
+
+        // --- Main Render Function ---
+        function render() {
+            dom.stepIndicator.textContent = `Step ${state.currentStep} / ${state.totalSteps}`;
+            dom.prevBtn.style.opacity = state.currentStep === 1 ? '0.5' : '1';
+            dom.prevBtn.style.pointerEvents = state.currentStep === 1 ? 'none' : 'auto';
+            dom.nextBtn.style.opacity = state.currentStep === state.totalSteps ? '0.5' : '1';
+            dom.nextBtn.style.pointerEvents = state.currentStep === state.totalSteps ? 'none' : 'auto';
+
+            let content = '';
+            switch (state.currentStep) {
+                case 1: content = getStep1HTML(); break;
+                case 2: content = getStep2HTML(); break;
+                case 3: content = getStep3HTML(); break;
+                case 4: content = getStep4HTML(); break;
+                case 5: content = getStep5HTML(); break;
+            }
+            dom.container.innerHTML = `<div class="step-content active w-full h-full flex-col items-center justify-center gap-8">${content}</div>`;
+        }
+        
+        // --- Targeted Update Functions ---
+        function updateColorValues() {
+            const { r, g, b } = state.rgb;
+            document.getElementById('pixel-demo').style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+            document.getElementById('rgb-value').textContent = `${r}, ${g}, ${b}`;
+            document.getElementById('hex-value').textContent = `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+            document.getElementById('binary-value').innerHTML = `${toBinary(r)} <span class="text-muted">(R)</span>`;
+        }
+
+        function updateResolutionGrid() {
+            const gridContainer = document.getElementById('resolution-grid-container');
+            const label = document.getElementById('resolution-label');
+            if (!gridContainer || !label) return;
+
+            const pattern = circlePattern(state.resolution);
+            let gridHTML = '';
+            for (let i = 0; i < state.resolution * state.resolution; i++) {
+                gridHTML += `<div class="pixel" style="background-color: ${pattern[i] ? '#f3f4f6' : '#1f2937'};"></div>`;
+            }
+
+            gridContainer.innerHTML = gridHTML;
+            gridContainer.style.gridTemplateColumns = `repeat(${state.resolution}, 1fr)`;
+            gridContainer.style.gridTemplateRows = `repeat(${state.resolution}, 1fr)`;
+            label.textContent = `${state.resolution} x ${state.resolution}`;
+        }
+
+        // --- HTML Template Functions ---
+        function getStep1HTML() {
+            const { r, g, b } = state.rgb;
+            return `
+                <div class="flex flex-col items-center gap-4">
+                    <div id="pixel-demo" class="w-48 h-48 md:w-64 md:h-64 rounded-lg shadow-2xl" style="background-color: rgb(${r}, ${g}, ${b});"></div>
+                    <div class="text-center font-mono text-lg space-y-1">
+                        <p>RGB: <span id="rgb-value">${r}, ${g}, ${b}</span></p>
+                        <p>HEX: <span id="hex-value">#${toHex(r)}${toHex(g)}${toHex(b)}</span></p>
+                        <p>BIN: <span id="binary-value">${toBinary(r)}</span> <span class="text-muted">(R)</span></p>
+                    </div>
+                </div>
+                <div class="w-full max-w-md text-center md:text-left">
+                    <h2 class="text-2xl md:text-3xl font-bold mb-4 text-blue-400">Interactive Pixel Colour</h2>
+                    <p class="mb-6 leading-relaxed">Adjust the sliders to mix your own colour and see how the values change in real-time.</p>
+                    <div id="rgb-sliders" class="space-y-4">
+                        <div><label for="red-slider" class="font-semibold text-red-400">Red</label><input type="range" id="red-slider" min="0" max="255" value="${r}"></div>
+                        <div><label for="green-slider" class="font-semibold text-green-400">Green</label><input type="range" id="green-slider" min="0" max="255" value="${g}"></div>
+                        <div><label for="blue-slider" class="font-semibold text-blue-400">Blue</label><input type="range" id="blue-slider" min="0" max="255" value="${b}"></div>
+                    </div>
+                </div>`;
+        }
+
+        function getStep2HTML() {
+             return `
+                <div class="w-full text-center mb-4 max-w-3xl">
+                    <h2 class="text-2xl md:text-3xl font-bold text-blue-400">Dynamic Resolution & PPI</h2>
+                    <p class="text-base md:text-lg mt-2">Use the slider to change the resolution within the same area. Notice how higher resolutions (and thus higher PPI) result in a sharper, less "blocky" image.</p>
+                </div>
+                <div id="resolution-grid-container" class="pixel-grid w-64 h-64 md:w-80 md:h-80" style="grid-template-columns: repeat(${state.resolution}, 1fr); grid-template-rows: repeat(${state.resolution}, 1fr);">
+                    ${(() => {
+                        const pattern = circlePattern(state.resolution);
+                        let html = '';
+                        for(let i=0; i < state.resolution * state.resolution; i++) html += `<div class="pixel" style="background-color: ${pattern[i] ? '#f3f4f6' : '#1f2937'};"></div>`;
+                        return html;
+                    })()}
+                </div>
+                <div class="w-full max-w-md mt-4">
+                     <input type="range" id="resolution-slider" min="4" max="64" value="${state.resolution}" step="4">
+                     <div class="flex justify-between text-sm mt-2">
+                        <span>Low Res</span>
+                        <span id="resolution-label" class="font-bold">${state.resolution} x ${state.resolution}</span>
+                        <span>High Res</span>
+                     </div>
+                </div>`;
+        }
+        
+        function getStep3HTML() {
+            const pattern = circlePattern(40);
+            let gridHTML = '';
+            for(let i=0; i < 40*40; i++) gridHTML += `<div class="pixel" style="background-color: ${pattern[i] ? '#f3f4f6' : '#1f2937'};"></div>`;
+            return `
+                <div class="flex flex-col items-center gap-4">
+                    <div class="relative w-[384px] h-[288px] md:w-[512px] md:h-[384px] bg-black border-4 border-gray-600 rounded-lg flex items-center justify-center shadow-2xl p-4">
+                        <div class="absolute top-1 right-2 text-xs text-gray-400">Screen: 1024x768 (simulated)</div>
+                        <div class="pixel-grid w-48 h-48" style="grid-template-columns: repeat(40, 1fr); grid-template-rows: repeat(40, 1fr);">${gridHTML}</div>
+                        <div class="absolute bottom-1 right-2 text-xs text-gray-400">Image: 40x40</div>
+                    </div>
+                </div>
+                <div class="max-w-md text-center">
+                    <h2 class="text-2xl md:text-3xl font-bold mb-4 text-blue-400">Screen Resolution</h2>
+                    <p class="text-base md:text-lg">Screen resolution is the total number of pixels a display screen can show.</p>
+                </div>`;
+        }
+
+        function getStep4HTML() {
+            const q = state.quiz.questions[state.quiz.currentIndex];
+            let answerAreaHTML = '';
+             if (q.type === 'mcq') {
+                answerAreaHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">${q.options.map(o => `<button class="quiz-option p-3 rounded-lg text-left" data-answer="${o}">${o}</button>`).join('')}</div>`;
+            } else if (q.type === 'calculation') {
+                answerAreaHTML = `<form id="calc-form" class="flex flex-col items-center gap-4"><input type="number" id="calc-answer" class="w-full md:w-1/2 p-3 rounded-lg bg-gray-800 border" placeholder="${q.placeholder}"><button type="submit" class="control-btn px-5 py-2 bg-green-600 rounded-lg">Submit</button></form>`;
+            }
+            return `
+                <h2 class="text-3xl font-bold text-blue-400 mb-4">Quiz Time!</h2>
+                 <div id="quiz-container" class="w-full max-w-3xl glass-card p-6 rounded-lg">
+                    <p class="text-lg font-semibold mb-4">Q${state.quiz.currentIndex + 1}: ${q.question}</p>
+                    ${answerAreaHTML}
+                 </div>
+                 <div id="quiz-feedback" class="mt-4 text-lg h-8"></div>
+                 <button id="quiz-next-btn" class="control-btn mt-2 px-6 py-2 hidden">Next Question</button>`;
+        }
+        
+        function getStep5HTML() {
+            const { score, questions } = state.quiz;
+            const percentage = score / questions.length * 100;
+            let message = "You've made a start. It's worth restarting to solidify the concepts.";
+            if (percentage === 100) message = "Perfect score! You've mastered these concepts.";
+            else if (percentage >= 75) message = "Great job! You have a solid understanding.";
+            else if (percentage >= 50) message = "Good effort. A review might be helpful.";
+            return `
+                 <h2 class="text-4xl font-bold text-blue-400">Simulation Complete!</h2>
+                <div class="glass-card p-8 rounded-xl flex flex-col items-center gap-4">
+                    <p class="text-xl">Your Quiz Score:</p>
+                    <p id="final-score" class="text-6xl font-bold text-green-400">${score} / ${questions.length}</p>
+                    <p id="score-message" class="text-lg">${message}</p>
+                </div>
+                <button id="reset-btn" class="control-btn mt-4 px-8 py-3 bg-green-500 text-white font-bold rounded-lg text-lg">Restart</button>`;
+        }
+        
+
+        // --- Event Handlers ---
+        function handleNav(direction) {
+            const newStep = state.currentStep + direction;
+            if (newStep > 0 && newStep <= state.totalSteps) {
+                state.currentStep = newStep;
+                if (state.currentStep === 4) {
+                    state.quiz.currentIndex = 0;
+                    state.quiz.score = 0;
+                    state.quiz.isAnswered = false;
+                }
+                render();
+            }
+        }
+        
+        function handleQuizAnswer(e) {
+            e.preventDefault();
+            if (state.quiz.isAnswered) return;
+            state.quiz.isAnswered = true;
+
+            const q = state.quiz.questions[state.quiz.currentIndex];
+            let isCorrect = false;
+
+            if (e.type === 'submit') {
+                const userAnswer = parseInt(document.getElementById('calc-answer').value);
+                isCorrect = userAnswer === q.answer;
+            } else {
+                const selectedOption = e.target.closest('.quiz-option');
+                if (!selectedOption) return;
+                isCorrect = selectedOption.dataset.answer === q.answer;
+                
+                document.querySelectorAll('.quiz-option').forEach(opt => {
+                    if (opt.dataset.answer === q.answer) opt.classList.add('correct');
+                    else if (opt === selectedOption) opt.classList.add('incorrect');
+                });
+            }
+
+            if (isCorrect) state.quiz.score++;
+            
+            const feedbackEl = document.getElementById('quiz-feedback');
+            feedbackEl.textContent = isCorrect ? 'Correct!' : `Not quite. The correct answer is ${q.answer}.`;
+            feedbackEl.style.color = isCorrect ? '#10b981' : '#ef4444';
+
+            document.getElementById('quiz-next-btn').classList.remove('hidden');
+        }
+
+        function handleNextQuestion() {
+            if (state.quiz.currentIndex < state.quiz.questions.length - 1) {
+                state.quiz.currentIndex++;
+                state.quiz.isAnswered = false;
+                render();
+            } else {
+                handleNav(1);
+            }
+        }
+
+        function setupEventListeners() {
+            dom.prevBtn.addEventListener('click', () => handleNav(-1));
+            dom.nextBtn.addEventListener('click', () => handleNav(1));
+            dom.startBtn.addEventListener('click', () => dom.modal.style.display = 'none');
+            
+            dom.container.addEventListener('input', e => {
+                if (e.target.id === 'red-slider' || e.target.id === 'green-slider' || e.target.id === 'blue-slider') {
+                    state.rgb.r = document.getElementById('red-slider').value;
+                    state.rgb.g = document.getElementById('green-slider').value;
+                    state.rgb.b = document.getElementById('blue-slider').value;
+                    updateColorValues(); // Targeted update
+                } else if (e.target.id === 'resolution-slider') {
+                    state.resolution = e.target.value;
+                    updateResolutionGrid(); // Targeted update
+                }
+            });
+
+            dom.container.addEventListener('click', e => {
+                if(e.target.id === 'quiz-next-btn') handleNextQuestion();
+                else if (e.target.closest('.quiz-option')) handleQuizAnswer(e);
+                else if (e.target.id === 'reset-btn') {
+                    state.currentStep = 1;
+                    state.quiz.score = 0;
+                    state.quiz.currentIndex = 0;
+                    render();
+                }
+            });
+
+            dom.container.addEventListener('submit', e => {
+                if(e.target.id === 'calc-form') handleQuizAnswer(e);
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (dom.modal.style.display !== 'none') return;
+                if (e.key === 'ArrowRight') dom.nextBtn.click();
+                if (e.key === 'ArrowLeft') dom.prevBtn.click();
+            });
+        }
+
+        // --- Initial Load ---
+        render();
+        setupEventListeners();
+    });
+    </script>
+
+</body>
+</html>

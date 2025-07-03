@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wireless Send & Receive Process Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827;
+            color: #e5e7eb;
+        }
+        .glass-panel {
+            background: rgba(31, 41, 55, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .btn-control {
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .btn-start { background-color: #10b981; }
+        .btn-start:hover { background-color: #059669; transform: scale(1.05); }
+        .btn-next { background-color: #3b82f6; }
+        .btn-next:hover { background-color: #2563eb; transform: scale(1.05); }
+        .btn-reset { background-color: #ef4444; }
+        .btn-reset:hover { background-color: #dc2626; transform: scale(1.05); }
+        .btn-control:disabled {
+            background-color: #4b5563;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+        .process-stage {
+            border: 2px dashed #4b5563;
+            min-height: 120px;
+            transition: border-color 0.5s ease, background-color 0.5s ease, box-shadow 0.5s ease;
+        }
+        .process-stage.active {
+            border-color: #60a5fa;
+            background-color: rgba(59, 130, 246, 0.15);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+        .data-packet {
+            position: absolute;
+            top: 50%;
+            left: 20%;
+            transform: translate(-50%, -50%);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+        }
+        .quiz-option.correct {
+            background-color: #10b981;
+            border-color: #059669;
+        }
+        .quiz-option.incorrect {
+            background-color: #ef4444;
+            border-color: #dc2626;
+        }
+        .info-popup {
+            cursor: help;
+            border-bottom: 1px dotted #60a5fa;
+            color: #60a5fa;
+        }
+        .wave-glow {
+            filter: drop-shadow(0 0 5px #6ee7b7);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.7);
+            animation: fadeIn 0.3s;
+        }
+        .modal-content {
+            position: relative;
+            margin: 15% auto;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px;
+        }
+        @keyframes fadeIn {
+            from {opacity: 0;}
+            to {opacity: 1;}
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-8">
+
+        <!-- Header -->
+        <header class="text-center">
+            <h1 class="text-4xl font-bold text-white mb-2">Wireless Send & Receive Process</h1>
+            <p class="text-lg text-gray-300">Cambridge 9618 Specification</p>
+        </header>
+
+        <!-- Instructions -->
+        <div class="glass-panel p-6">
+            <h2 class="text-2xl font-semibold text-white mb-3">How to Use This Simulation</h2>
+            <ol class="list-decimal list-inside space-y-2 text-gray-300">
+                <li><strong class="text-green-400">Start:</strong> Click "Start Cycle".</li>
+                <li><strong class="text-green-400">Read:</strong> A pop-up will explain the current step. Read the explanation.</li>
+                <li><strong class="text-green-400">Continue:</strong> Click "Continue" in the pop-up to close it and see the animation for that step.</li>
+                <li><strong class="text-green-400">Step Through:</strong> Click "Next Step" to bring up the explanation for the following stage.</li>
+                <li><strong class="text-green-400">Reset:</strong> Once finished, click "Reset Simulation" to start over.</li>
+            </ol>
+        </div>
+
+        <!-- Main Simulation Area -->
+        <section class="glass-panel p-6">
+            <div class="text-center mb-6">
+                <button id="control-btn" onclick="controlCycle()" class="btn-control btn-start px-8 py-3 rounded-lg font-bold text-lg">Start Cycle</button>
+            </div>
+
+            <!-- Visual Process Flow -->
+            <div id="visual-flow" class="relative grid grid-cols-1 md:grid-cols-2 gap-px bg-gray-600 rounded-lg overflow-hidden">
+                <!-- SEND/RECEIVE STAGES HERE (HTML unchanged) -->
+                <div class="bg-gray-800 p-4">
+                    <h3 class="text-center text-xl font-bold text-white mb-4">SEND PROCESS (Device A)</h3>
+                    <div class="space-y-2">
+                        <div id="stage-encrypt" class="process-stage p-4 rounded-lg flex items-center justify-center text-center">Encrypt Data<br><span class="text-sm text-gray-400">(with <span class="info-popup" title="Temporal Key Integrity Protocol - An older, less secure encryption standard.">TKIP</span> or <span class="info-popup" title="Advanced Encryption Standard - The current, strong standard for Wi-Fi encryption.">AES</span>)</span></div>
+                        <div class="text-center text-2xl text-gray-500">&darr;</div>
+                        <div id="stage-encode" class="process-stage p-4 rounded-lg flex items-center justify-center text-center">Encode to Radio Signal</div>
+                        <div class="text-center text-2xl text-gray-500">&darr;</div>
+                        <div id="stage-listen" class="process-stage p-4 rounded-lg flex items-center justify-center text-center">Listen for other signals<br><span class="text-sm text-gray-400">(Carrier Sense)</span></div>
+                        <div class="text-center text-2xl text-gray-500">&darr;</div>
+                        <div id="stage-transmit" class="process-stage p-4 rounded-lg flex items-center justify-center text-center">Transmit when quiet</div>
+                    </div>
+                </div>
+                <div class="bg-gray-800 p-4">
+                    <h3 class="text-center text-xl font-bold text-white mb-4">RECEIVE PROCESS (Device B)</h3>
+                    <div class="space-y-2">
+                        <div id="stage-detect" class="process-stage p-4 rounded-lg flex items-center justify-center text-center">Detect & Receive Signal</div>
+                        <div class="text-center text-2xl text-gray-500">&darr;</div>
+                        <div id="stage-check" class="process-stage p-4 rounded-lg flex items-center justify-center text-center">Check if signal is for this device<br><span class="text-sm text-gray-400">(Check MAC Address)</span></div>
+                        <div class="text-center text-2xl text-gray-500">&darr;</div>
+                        <div id="stage-decode" class="process-stage p-4 rounded-lg flex items-center justify-center text-center">Decode Signal</div>
+                        <div class="text-center text-2xl text-gray-500">&darr;</div>
+                        <div id="stage-decrypt" class="process-stage p-4 rounded-lg flex items-center justify-center text-center">Decrypt Data</div>
+                    </div>
+                </div>
+
+                <!-- Animated Packet -->
+                <div id="packet" class="data-packet w-24 h-16 p-2 rounded-lg text-white text-center shadow-lg hidden">
+                    <div id="packet-content" class="w-full h-full flex items-center justify-center"></div>
+                </div>
+            </div>
+
+            <!-- Process Log -->
+            <div class="mt-6">
+                <h3 class="text-lg font-semibold text-white">Process Log:</h3>
+                <div id="log" class="mt-2 p-4 bg-gray-900 rounded-lg h-24 overflow-y-auto text-gray-300 font-mono">
+                    Awaiting instructions...
+                </div>
+            </div>
+        </section>
+
+        <!-- Quiz -->
+        <section class="glass-panel p-6">
+             <h2 class="text-2xl font-semibold text-white mb-4">Test Your Knowledge</h2>
+            <div id="quiz-container" class="space-y-6"></div>
+            <div id="quiz-results" class="hidden mt-6 text-center">
+                <p class="text-2xl font-semibold text-white">Your Score: <span id="score"></span></p>
+                <p id="feedback-message" class="mt-2 text-lg"></p>
+                <button onclick="resetQuiz()" class="mt-4 btn-secondary px-6 py-2 rounded-lg font-semibold">Try Again</button>
+            </div>
+        </section>
+    </div>
+    
+    <!-- Step Explanation Modal -->
+    <div id="step-modal" class="modal">
+        <div class="modal-content glass-panel">
+            <h3 id="modal-title" class="text-2xl font-bold text-white mb-4"></h3>
+            <p id="modal-body" class="text-gray-300 mb-6"></p>
+            <button id="modal-continue-btn" onclick="proceedWithAnimation()" class="w-full btn-control btn-next py-2 rounded-lg font-semibold">Continue</button>
+        </div>
+    </div>
+
+
+    <script>
+        const controlBtn = document.getElementById('control-btn');
+        const packet = document.getElementById('packet');
+        const packetContent = document.getElementById('packet-content');
+        const log = document.getElementById('log');
+        const visualFlow = document.getElementById('visual-flow');
+        const modal = document.getElementById('step-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+
+        let currentStep = -1;
+        const stages = [
+            'encrypt', 'encode', 'listen', 'transmit',
+            'detect', 'check', 'decode', 'decrypt'
+        ];
+        
+        const stepExplanations = [
+            { title: "Step 1: Encrypt Data", description: "First, the raw data is encrypted using a security protocol like WPA2 (with AES). This scrambles the data, so it cannot be read by unauthorized devices, even if they intercept it." },
+            { title: "Step 2: Encode to Signal", description: "The device's wireless adapter then encodes the encrypted digital data (1s and 0s) into an analogue radio wave, ready for transmission through the air." },
+            { title: "Step 3: Listen (Carrier Sense)", description: "To prevent data collisions, the device performs 'carrier sensing' (CSMA/CA). It listens to the wireless channel to ensure no other device is currently transmitting." },
+            { title: "Step 4: Transmit", description: "The channel is clear! The device's antenna now broadcasts the radio signal into the surrounding area." },
+            { title: "Step 5: Detect & Receive", description: "The receiving device's antenna is constantly scanning for signals. It detects and receives the incoming radio wave." },
+            { title: "Step 6: Check Destination", description: "The device inspects the 'frame' header of the received data. It checks the destination MAC address to see if the data is intended for it. In this case, it's a match!" },
+            { title: "Step 7: Decode Signal", description: "The device's wireless adapter decodes the analogue radio wave back into digital data (1s and 0s)." },
+            { title: "Step 8: Decrypt Data", description: "Finally, the receiving device uses the shared security key to decrypt the data, turning the scrambled information back into its original, readable format for the application to use." }
+        ];
+
+        const packetVisuals = {
+            data: `<svg class="w-10 h-10 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`,
+            encrypted: `<div class="relative"><svg class="w-10 h-10 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><svg class="absolute -top-1 -right-1 w-5 h-5 text-yellow-300" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v2H4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V10a2 2 0 00-2-2h-2V6a4 4 0 00-4-4zm-2 4V6a2 2 0 114 0v2H8z" clip-rule="evenodd"></path></svg></div>`,
+            signal: `<svg class="w-12 h-12 text-green-300 wave-glow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804m13 0A7.968 7.968 0 0118.5 4c1.255 0 2.443.29 3.5.804m-7 0a4.5 4.5 0 00-4.5 4.5v.204a4.5 4.5 0 004.5 4.5h.204a4.5 4.5 0 004.5-4.5v-.204a4.5 4.5 0 00-4.5-4.5z"></path></svg>`
+        };
+
+        function logMessage(msg) {
+            log.innerHTML = `<span class="text-green-400">&gt;</span> ${msg}<br>` + log.innerHTML;
+        }
+
+        function setActiveStage(stageId) {
+            stages.forEach(s => document.getElementById(`stage-${s}`).classList.remove('active'));
+            if (stageId) {
+                document.getElementById(`stage-${stageId}`).classList.add('active');
+            }
+        }
+        
+        function setPacketVisual(state) {
+            packet.style.background = state === 'signal' ? 'transparent' : 'rgba(31, 41, 55, 0.7)';
+            packetContent.innerHTML = packetVisuals[state] || '';
+        }
+
+        function controlCycle() {
+            if (currentStep === -1) { // Start
+                currentStep = 0;
+                log.innerHTML = '';
+                logMessage("Cycle initiated.");
+                packet.classList.remove('hidden');
+                // Set initial packet state before first explanation
+                setPacketVisual('data'); 
+                const containerRect = visualFlow.getBoundingClientRect();
+                const stageRect = document.getElementById(`stage-encrypt`).getBoundingClientRect();
+                packet.style.top = `${(stageRect.top + stageRect.height / 2) - containerRect.top}px`;
+                packet.style.left = `${(stageRect.left + stageRect.width / 2) - containerRect.left}px`;
+                packet.style.transition = 'none'; // No transition for initial placement
+                setTimeout(() => { packet.style.transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)'; }, 100);
+
+                controlBtn.innerText = 'Next Step';
+                controlBtn.className = 'btn-control btn-next px-8 py-3 rounded-lg font-bold text-lg';
+            }
+            
+            if (currentStep < stages.length) {
+                showStepExplanation();
+            } else { // Reset
+                resetSimulation();
+            }
+        }
+        
+        function showStepExplanation() {
+            controlBtn.disabled = true;
+            const explanation = stepExplanations[currentStep];
+            modalTitle.textContent = explanation.title;
+            modalBody.textContent = explanation.description;
+            modal.style.display = 'block';
+        }
+
+        function proceedWithAnimation() {
+            modal.style.display = 'none';
+            animateStep(); // Perform the animation for the current step
+            currentStep++; // Increment step for the *next* click
+
+            if (currentStep < stages.length) {
+                controlBtn.disabled = false; // Re-enable button for next step
+            } else {
+                logMessage("Cycle Complete!");
+                controlBtn.innerText = 'Reset Simulation';
+                controlBtn.className = 'btn-control btn-reset px-8 py-3 rounded-lg font-bold text-lg';
+                controlBtn.disabled = false;
+            }
+        }
+        
+        function animateStep() {
+            setActiveStage(stages[currentStep]);
+            logMessage(stepExplanations[currentStep].title);
+
+            const containerRect = visualFlow.getBoundingClientRect();
+            const stageRect = document.getElementById(`stage-${stages[currentStep]}`).getBoundingClientRect();
+            
+            packet.style.top = `${(stageRect.top + stageRect.height / 2) - containerRect.top}px`;
+            packet.style.left = `${(stageRect.left + stageRect.width / 2) - containerRect.left}px`;
+            
+            switch (currentStep) {
+                case 0: setPacketVisual('encrypted'); break;
+                case 1: setPacketVisual('signal'); break;
+                case 2: /* No visual change */ break;
+                case 3: /* No visual change */ break;
+                case 4: /* No visual change */ break;
+                case 5: /* No visual change */ break;
+                case 6: setPacketVisual('encrypted'); break;
+                case 7: setPacketVisual('data'); break;
+            }
+        }
+        
+        function resetSimulation() {
+            currentStep = -1;
+            setActiveStage(null);
+            packet.classList.add('hidden');
+            log.innerHTML = 'Awaiting instructions...';
+            controlBtn.innerText = 'Start Cycle';
+            controlBtn.className = 'btn-control btn-start px-8 py-3 rounded-lg font-bold text-lg';
+            controlBtn.disabled = false;
+        }
+
+        // --- Quiz Logic (unchanged) ---
+        const quizContainer = document.getElementById('quiz-container');
+        const quizResults = document.getElementById('quiz-results');
+        const scoreSpan = document.getElementById('score');
+        const feedbackMessage = document.getElementById('feedback-message');
+        let currentScore = 0;
+        let questionsAnswered = 0;
+
+        const quizQuestions = [
+            {
+                question: "What is the purpose of 'carrier sense' (listening) before transmitting a signal?",
+                options: ["To encrypt the data", "To find the strongest signal", "To avoid data collisions with other transmissions", "To select the correct frequency"],
+                answer: "To avoid data collisions with other transmissions"
+            },
+            {
+                question: "Which of the following is a modern, secure encryption standard used in Wi-Fi?",
+                options: ["TKIP", "AES", "WEP", "SSL"],
+                answer: "AES"
+            },
+            {
+                question: "How does a receiving device know if a packet is intended for it?",
+                options: ["By checking the IP address", "By checking the signal frequency", "By checking the destination MAC address", "By decrypting the data first"],
+                answer: "By checking the destination MAC address"
+            },
+            {
+                question: "What is the correct order of the final two steps in the receiving process?",
+                options: ["Decrypt then Decode", "Decode then Decrypt", "Check then Decode", "Receive then Decrypt"],
+                answer: "Decode then Decrypt"
+            },
+            {
+                question: "What happens immediately after data is encrypted in the sending process?",
+                options: ["It is transmitted", "It is decoded", "It is encoded into an analogue signal", "The device listens for traffic"],
+                answer: "It is encoded into an analogue signal"
+            }
+        ];
+
+        function loadQuiz() {
+            quizContainer.innerHTML = '';
+            quizQuestions.forEach((q, index) => {
+                const questionEl = document.createElement('div');
+                let optionsHTML = '';
+                q.options.forEach(option => {
+                    optionsHTML += `<button class="quiz-option w-full text-left p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition" onclick="checkAnswer(this, '${option.replace(/'/g, "\\'")}', ${index})">${option}</button>`;
+                });
+                questionEl.innerHTML = `<p class="font-semibold mb-3">${index + 1}. ${q.question}</p><div class="space-y-2" id="options-${index}">${optionsHTML}</div>`;
+                quizContainer.appendChild(questionEl);
+            });
+        }
+
+        function checkAnswer(button, selectedOption, questionIndex) {
+            const correctAnswer = quizQuestions[questionIndex].answer;
+            const optionsContainer = document.getElementById(`options-${questionIndex}`);
+            const buttons = optionsContainer.getElementsByTagName('button');
+            for (let btn of buttons) {
+                btn.disabled = true;
+                if (btn.innerText === correctAnswer) btn.classList.add('correct');
+            }
+            if (selectedOption === correctAnswer) {
+                button.classList.add('correct');
+                currentScore++;
+            } else {
+                button.classList.add('incorrect');
+            }
+            questionsAnswered++;
+            if (questionsAnswered === quizQuestions.length) showResults();
+        }
+
+        function showResults() {
+            quizResults.classList.remove('hidden');
+            scoreSpan.textContent = `${currentScore} / ${quizQuestions.length}`;
+            const percentage = (currentScore / quizQuestions.length) * 100;
+            if (percentage === 100) feedbackMessage.textContent = "Flawless execution! You've mastered the process.";
+            else if (percentage >= 80) feedbackMessage.textContent = "Excellent! You have a strong grasp of the concepts.";
+            else if (percentage >= 60) feedbackMessage.textContent = "Good job. A quick review of the simulation will help clear up any confusion.";
+            else feedbackMessage.textContent = "A good start. Step through the simulation again to see how the steps connect.";
+        }
+        
+        function resetQuiz() {
+            currentScore = 0;
+            questionsAnswered = 0;
+            quizResults.classList.add('hidden');
+            loadQuiz();
+        }
+
+        window.onload = () => {
+            loadQuiz();
+            resetSimulation();
+        };
+    </script>
+</body>
+</html>

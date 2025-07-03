@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP & MAC Addressing: Network Identity Cards</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        
+        /* Disable all text selection and copy/paste */
+        * {
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+        }
+        
+        /* Disable copy/paste in input areas too */
+        input, textarea, select {
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+        }
+        
+        .network-glow {
+            animation: networkPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes networkPulse {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(59, 130, 246, 0.8);
+            }
+        }
+        
+        .packet-move {
+            animation: packetTravel 3s linear;
+        }
+        
+        @keyframes packetTravel {
+            0% {
+                transform: translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(300px);
+                opacity: 0;
+            }
+        }
+        
+        .flip-card {
+            background-color: transparent;
+            width: 100%;
+            height: 100%;
+            perspective: 1000px;
+        }
+        
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+        
+        .flip-card-front,
+        .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .flip-card-back {
+            transform: rotateY(180deg);
+        }
+        
+        .draggable {
+            cursor: move;
+            transition: all 0.3s ease;
+        }
+        
+        .draggable:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .drop-zone {
+            min-height: 60px;
+            transition: all 0.3s ease;
+        }
+        
+        .drop-zone.drag-over {
+            background-color: #e0f2fe;
+            border-color: #0ea5e9;
+            transform: scale(1.02);
+        }
+        
+        .achievement-unlock {
+            animation: achievementPop 0.5s ease-out;
+        }
+        
+        @keyframes achievementPop {
+            0% {
+                transform: scale(0) rotate(0deg);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2) rotate(5deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+        
+        .octet-input {
+            width: 4rem;
+            text-align: center;
+            font-family: monospace;
+            font-size: 1.125rem;
+        }
+        
+        .mac-segment {
+            font-family: monospace;
+            font-size: 1.125rem;
+            letter-spacing: 0.05em;
+        }
+        
+        @keyframes dataFlow {
+            0% {
+                background-position: 0% 50%;
+            }
+            100% {
+                background-position: 100% 50%;
+            }
+        }
+        
+        .data-flow {
+            background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+            background-size: 200% 100%;
+            animation: dataFlow 2s linear infinite;
+        }
+        
+        .router-blink {
+            animation: routerBlink 1s ease-in-out infinite;
+        }
+        
+        @keyframes routerBlink {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        
+        .correct-answer {
+            animation: correctPulse 0.6s ease;
+        }
+        
+        @keyframes correctPulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        
+        @keyframes deviceMove {
+            0% {
+                transform: translateX(0);
+            }
+            50% {
+                transform: translateX(200px) scale(0.8);
+                opacity: 0.5;
+            }
+            100% {
+                transform: translateX(400px);
+            }
+        }
+        
+        .device-moving {
+            animation: deviceMove 2s ease-in-out;
+        }
+        
+        .highlight-manufacturer {
+            background-color: #fef3c7;
+            padding: 2px 4px;
+            border-radius: 4px;
+            border: 2px solid #f59e0b;
+        }
+        
+        .highlight-serial {
+            background-color: #ddd6fe;
+            padding: 2px 4px;
+            border-radius: 4px;
+            border: 2px solid #8b5cf6;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-purple-50 to-cyan-50 min-h-screen p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header with Network Animation -->
+        <header class="text-center mb-8 relative">
+            <div class="absolute inset-0 flex justify-center items-center opacity-10">
+                <div class="w-64 h-64 bg-blue-500 rounded-full network-glow"></div>
+            </div>
+            <h1 class="text-4xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mb-2 relative z-10">
+                IP & MAC Addressing 🌐
+            </h1>
+            <p class="text-gray-600 text-lg relative z-10">Welcome to the Network Detective Agency!</p>
+            
+            <!-- XP and Level Bar -->
+            <div class="mt-6 bg-white rounded-full p-2 shadow-lg max-w-md mx-auto relative z-10">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-bold text-gray-700 ml-3" id="levelDisplay">Level 1 Network Rookie</span>
+                    <span class="text-sm font-bold text-blue-600 mr-3"><span id="xpPoints">0</span> XP</span>
+                </div>
+                <div class="bg-gray-200 rounded-full h-3 mt-2">
+                    <div id="xpBar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Starter: Understanding Check -->
+        <section class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-6 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-4">
+                <span class="text-4xl">🕵️</span>
+            </div>
+            <h2 class="text-2xl md:text-3xl font-bold text-purple-600 mb-4">🚀 Starter: What Do You Already Know?</h2>
+            <p class="text-gray-700 mb-6">Before we begin our network detective journey, let's see what you might already know about network addressing!</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <label class="font-semibold block mb-2">What do you think an IP address is?</label>
+                    <textarea id="ipKnowledge" class="w-full p-3 border-2 border-blue-200 rounded-md focus:border-blue-400 focus:outline-none h-24" 
+                        placeholder="Write what you know or think... (It's okay if you're not sure!)"></textarea>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-lg">
+                    <label class="font-semibold block mb-2">What do you think a MAC address is?</label>
+                    <textarea id="macKnowledge" class="w-full p-3 border-2 border-purple-200 rounded-md focus:border-purple-400 focus:outline-none h-24" 
+                        placeholder="Write what you know or think... (It's okay if you're not sure!)"></textarea>
+                </div>
+            </div>
+            
+            <button onclick="checkInitialKnowledge()" class="mt-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all">
+                Submit My Thoughts
+            </button>
+            <div id="knowledgeFeedback" class="mt-4"></div>
+            
+            <!-- Visual Examples -->
+            <div class="mt-6 bg-gray-50 p-4 rounded-lg">
+                <h3 class="font-bold mb-3">Here's what these addresses look like:</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white p-3 rounded shadow">
+                        <p class="font-semibold text-blue-600 mb-1">IP Address Example:</p>
+                        <p class="font-mono text-lg">192.168.1.100</p>
+                        <p class="text-xs text-gray-600 mt-1">4 numbers separated by dots</p>
+                    </div>
+                    <div class="bg-white p-3 rounded shadow">
+                        <p class="font-semibold text-purple-600 mb-1">MAC Address Example:</p>
+                        <p class="font-mono text-lg">3C:22:FB:B9:5E:1A</p>
+                        <p class="text-xs text-gray-600 mt-1">6 pairs of letters/numbers</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Task 1: IP Address Academy -->
+        <section class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-6">
+            <h2 class="text-2xl md:text-3xl font-bold text-blue-600 mb-4">📍 Task 1: IP Address Academy</h2>
+            <p class="text-gray-700 mb-6">Welcome to IP Address Academy! Learn how network addresses work like a postal system.</p>
+            
+            <!-- Public vs Private IP Explanation -->
+            <div class="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-6 mb-6">
+                <h3 class="font-bold text-lg mb-4">🏠 Public vs Private IP Addresses</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h4 class="font-bold text-green-600 mb-2">🏠 Private IP Addresses</h4>
+                        <p class="text-sm text-gray-600 mb-2">Used INSIDE your home/school network</p>
+                        <ul class="text-sm space-y-1">
+                            <li>✅ Start with: 192.168.x.x</li>
+                            <li>✅ Or: 10.x.x.x</li>
+                            <li>✅ Or: 172.16.x.x</li>
+                        </ul>
+                        <p class="text-xs text-gray-500 mt-2">Like your house number on your street</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h4 class="font-bold text-blue-600 mb-2">🌍 Public IP Addresses</h4>
+                        <p class="text-sm text-gray-600 mb-2">Used on the INTERNET</p>
+                        <ul class="text-sm space-y-1">
+                            <li>✅ Any other numbers</li>
+                            <li>✅ Unique worldwide</li>
+                            <li>✅ Given by your ISP</li>
+                        </ul>
+                        <p class="text-xs text-gray-500 mt-2">Like your full postal address</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- IPv4 Constructor -->
+            <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6 mb-6">
+                <h3 class="font-bold text-lg mb-4">🔧 IPv4 Address Constructor</h3>
+                <p class="text-sm text-gray-600 mb-4">Build a valid IPv4 address! Each number (octet) must be between 0 and 255.</p>
+                
+                <div class="flex items-center justify-center gap-2 mb-4">
+                    <input type="number" id="octet1" class="octet-input border-2 border-gray-300 rounded px-2 py-1" min="0" max="255" value="192" onchange="validateOctet(this)">
+                    <span class="text-2xl font-bold text-gray-600">.</span>
+                    <input type="number" id="octet2" class="octet-input border-2 border-gray-300 rounded px-2 py-1" min="0" max="255" value="168" onchange="validateOctet(this)">
+                    <span class="text-2xl font-bold text-gray-600">.</span>
+                    <input type="number" id="octet3" class="octet-input border-2 border-gray-300 rounded px-2 py-1" min="0" max="255" value="1" onchange="validateOctet(this)">
+                    <span class="text-2xl font-bold text-gray-600">.</span>
+                    <input type="number" id="octet4" class="octet-input border-2 border-gray-300 rounded px-2 py-1" min="0" max="255" value="100" onchange="validateOctet(this)">
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <button onclick="createIPAddress('private')" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-all">
+                        Create Private IP
+                    </button>
+                    <button onclick="createIPAddress('public')" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-all">
+                        Create Public IP
+                    </button>
+                    <button onclick="checkIPAddress()" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition-all">
+                        Validate IP
+                    </button>
+                </div>
+                
+                <div id="ipConstructorFeedback" class="mt-4 p-3 rounded-lg"></div>
+            </div>
+            
+            <!-- IPv4 vs IPv6 Visual Comparison -->
+            <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6">
+                <h3 class="font-bold text-lg mb-4">🎮 IPv4 vs IPv6: The Address Evolution</h3>
+                
+                <!-- Visual Size Comparison -->
+                <div class="mb-6 bg-white p-4 rounded-lg shadow">
+                    <h4 class="font-bold text-center mb-4">Address Space Comparison</h4>
+                    <div class="relative">
+                        <!-- IPv4 Visual -->
+                        <div class="mb-4">
+                            <p class="font-semibold text-blue-600 mb-2">IPv4 Address Space</p>
+                            <div class="bg-blue-200 rounded-lg p-4 text-center">
+                                <p class="text-2xl font-bold">4.3 Billion</p>
+                                <p class="text-sm">Addresses</p>
+                                <div class="mt-2 flex justify-center space-x-1">
+                                    <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                </div>
+                                <p class="text-xs mt-2 text-gray-600">Like having 4 billion phone numbers</p>
+                            </div>
+                        </div>
+                        
+                        <!-- IPv6 Visual -->
+                        <div>
+                            <p class="font-semibold text-purple-600 mb-2">IPv6 Address Space</p>
+                            <div class="bg-purple-200 rounded-lg p-4 text-center">
+                                <p class="text-2xl font-bold">340 Undecillion!</p>
+                                <p class="text-sm">That's 340,000,000,000,000,000,000,000,000,000,000,000,000</p>
+                                <div class="mt-2 grid grid-cols-10 gap-1 max-w-xs mx-auto">
+                                    <!-- Many dots to show scale -->
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                </div>
+                                <p class="text-xs mt-2 text-gray-600">Enough for every grain of sand on Earth!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Format Comparison Game -->
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                    <h4 class="font-bold mb-3">🎯 Spot the Difference!</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white p-3 rounded shadow">
+                            <p class="font-mono text-lg text-blue-600">192.168.1.100</p>
+                            <p class="text-sm mt-1">IPv4: 4 numbers, dots</p>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow">
+                            <p class="font-mono text-sm text-purple-600">2001:0db8:85a3:0000:0000:8a2e:0370:7334</p>
+                            <p class="text-sm mt-1">IPv6: 8 groups, colons, hexadecimal</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Task 2: MAC Address Investigation Lab -->
+        <section class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-6">
+            <h2 class="text-2xl md:text-3xl font-bold text-purple-600 mb-4">🔍 Task 2: MAC Address Investigation Lab</h2>
+            <p class="text-gray-700 mb-6">Welcome detective! Time to investigate the permanent identity cards of network devices.</p>
+            
+            <!-- MAC Address Structure Explanation -->
+            <div class="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-6 mb-6">
+                <h3 class="font-bold text-lg mb-4">🔬 Understanding MAC Address Structure</h3>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <p class="text-center font-mono text-2xl mb-4">
+                        <span class="highlight-manufacturer">3C:22:FB</span>:<span class="highlight-serial">B9:5E:1A</span>
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div class="text-center">
+                            <p class="font-semibold text-yellow-600">First Half (3 pairs)</p>
+                            <p class="text-sm">Manufacturer ID</p>
+                            <p class="text-xs text-gray-600">Tells us who made the device!</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="font-semibold text-purple-600">Second Half (3 pairs)</p>
+                            <p class="text-sm">Serial Number</p>
+                            <p class="text-xs text-gray-600">Unique to each device!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Device Fingerprinting -->
+            <div class="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-6 mb-6">
+                <h3 class="font-bold text-lg mb-4">🔬 Device Fingerprinting Lab</h3>
+                <p class="text-sm text-gray-600 mb-4">Click on devices to reveal their manufacturers using the MAC address!</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-all cursor-pointer" onclick="investigateMAC(this, 'Apple', '3C:22:FB')">
+                        <div class="text-3xl text-center mb-2">📱</div>
+                        <p class="font-mono text-center text-sm mb-2">
+                            <span class="mac-manufacturer">3C:22:FB</span>:<span class="mac-serial">B9:5E:1A</span>
+                        </p>
+                        <div class="hidden investigation-result"></div>
+                    </div>
+                    
+                    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-all cursor-pointer" onclick="investigateMAC(this, 'Dell', '00:14:22')">
+                        <div class="text-3xl text-center mb-2">💻</div>
+                        <p class="font-mono text-center text-sm mb-2">
+                            <span class="mac-manufacturer">00:14:22</span>:<span class="mac-serial">FC:9A:2B</span>
+                        </p>
+                        <div class="hidden investigation-result"></div>
+                    </div>
+                    
+                    <div class="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-all cursor-pointer" onclick="investigateMAC(this, 'Cisco', '00:1B:0D')">
+                        <div class="text-3xl text-center mb-2">🔌</div>
+                        <p class="font-mono text-center text-sm mb-2">
+                            <span class="mac-manufacturer">00:1B:0D</span>:<span class="mac-serial">64:7C:8A</span>
+                        </p>
+                        <div class="hidden investigation-result"></div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 bg-blue-50 p-3 rounded">
+                    <p class="text-sm"><strong>Detective Tip:</strong> The manufacturer ID is like a company stamp - it tells us who made the device!</p>
+                </div>
+            </div>
+            
+            <!-- MAC vs IP Characteristics -->
+            <div class="bg-gradient-to-r from-orange-50 to-red-50 rounded-lg p-6 mb-6">
+                <h3 class="font-bold text-lg mb-4">🎮 MAC vs IP: Key Differences</h3>
+                <p class="text-sm text-gray-600 mb-4">Drag each characteristic to the correct address type!</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <h4 class="font-semibold mb-2">Characteristics:</h4>
+                        <div id="characteristics" class="space-y-2">
+                            <div class="draggable bg-yellow-100 p-2 rounded border-2 border-yellow-300 text-sm" draggable="true" data-type="mac">
+                                Burned into hardware
+                            </div>
+                            <div class="draggable bg-yellow-100 p-2 rounded border-2 border-yellow-300 text-sm" draggable="true" data-type="ip">
+                                Changes when you move networks
+                            </div>
+                            <div class="draggable bg-yellow-100 p-2 rounded border-2 border-yellow-300 text-sm" draggable="true" data-type="mac">
+                                Never changes
+                            </div>
+                            <div class="draggable bg-yellow-100 p-2 rounded border-2 border-yellow-300 text-sm" draggable="true" data-type="ip">
+                                Used to route across internet
+                            </div>
+                            <div class="draggable bg-yellow-100 p-2 rounded border-2 border-yellow-300 text-sm" draggable="true" data-type="mac">
+                                Like a serial number
+                            </div>
+                            <div class="draggable bg-yellow-100 p-2 rounded border-2 border-yellow-300 text-sm" draggable="true" data-type="ip">
+                                Like a postal address
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-semibold mb-2 text-purple-600">MAC Address 🔗</h4>
+                        <div id="macCharacteristics" class="drop-zone bg-purple-50 border-2 border-dashed border-purple-300 rounded-lg p-4 min-h-[200px]"></div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-semibold mb-2 text-blue-600">IP Address 🌐</h4>
+                        <div id="ipCharacteristics" class="drop-zone bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg p-4 min-h-[200px]"></div>
+                    </div>
+                </div>
+                
+                <button onclick="checkCharacteristics()" class="mt-4 bg-gradient-to-r from-purple-500 to-blue-500 text-white px-4 py-2 rounded hover:from-purple-600 hover:to-blue-600 transition-all">
+                    Check Battle Results
+                </button>
+                <div id="battleFeedback" class="mt-2"></div>
+            </div>
+            
+            <!-- Enhanced Coffee Shop Demo -->
+            <div class="bg-gradient-to-r from-green-50 to-cyan-50 rounded-lg p-6">
+                <h3 class="font-bold text-lg mb-4">☕ The Coffee Shop Journey</h3>
+                <p class="text-sm text-gray-600 mb-4">Watch what happens when you move your laptop to a coffee shop!</p>
+                
+                <div class="bg-white p-6 rounded-lg shadow relative overflow-hidden" style="height: 300px;">
+                    <!-- Home Network -->
+                    <div class="absolute left-0 top-1/2 transform -translate-y-1/2">
+                        <div class="text-center">
+                            <div class="text-4xl mb-2">🏠</div>
+                            <p class="font-semibold text-sm">Home Network</p>
+                            <div class="bg-green-100 p-2 rounded mt-2">
+                                <p class="text-xs font-mono">192.168.1.0/24</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Coffee Shop -->
+                    <div class="absolute right-0 top-1/2 transform -translate-y-1/2">
+                        <div class="text-center">
+                            <div class="text-4xl mb-2">☕</div>
+                            <p class="font-semibold text-sm">Coffee Shop WiFi</p>
+                            <div class="bg-blue-100 p-2 rounded mt-2">
+                                <p class="text-xs font-mono">10.42.0.0/24</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Laptop -->
+                    <div id="movingDevice" class="absolute left-10 top-1/2 transform -translate-y-1/2 transition-all duration-2000">
+                        <div class="text-center bg-white p-3 rounded-lg shadow-lg">
+                            <div class="text-3xl mb-2">💻</div>
+                            <p class="font-semibold text-sm">Your Laptop</p>
+                            <div class="mt-2 space-y-1">
+                                <div class="bg-purple-100 p-1 rounded">
+                                    <p class="text-xs font-mono">MAC: AA:BB:CC:DD:EE:FF</p>
+                                </div>
+                                <div id="deviceIPDisplay" class="bg-green-100 p-1 rounded">
+                                    <p class="text-xs font-mono">IP: 192.168.1.100</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Journey Path -->
+                    <div class="absolute top-1/2 left-1/4 right-1/4 transform -translate-y-1/2">
+                        <div class="border-t-2 border-dashed border-gray-400"></div>
+                    </div>
+                </div>
+                
+                <button onclick="animateDeviceMove()" class="mt-4 w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-all">
+                    🚗 Move to Coffee Shop
+                </button>
+                
+                <div id="moveExplanation" class="mt-4 p-3 bg-yellow-50 rounded hidden">
+                    <p class="font-semibold text-sm">What happened?</p>
+                    <ul class="text-sm mt-2 space-y-1">
+                        <li>✅ MAC Address stayed the same (permanent hardware ID)</li>
+                        <li>✅ IP Address changed (new network = new address)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Task 3: Router Simulator Challenge -->
+        <section class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-6">
+            <h2 class="text-2xl md:text-3xl font-bold text-green-600 mb-4">🌐 Task 3: Router Simulator Challenge</h2>
+            <p class="text-gray-700 mb-6">You're now a router! Route packets to their correct destinations using IP addresses.</p>
+            
+            <!-- Packet Delivery Service -->
+            <div class="bg-gradient-to-r from-green-50 to-yellow-50 rounded-lg p-6 mb-6">
+                <h3 class="font-bold text-lg mb-4">📦 Packet Delivery Service</h3>
+                <p class="text-sm text-gray-600 mb-4">Packets are coming in! Route them to the correct network based on their destination IP.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-semibold mb-3">Incoming Packets:</h4>
+                        <div id="packetQueue" class="space-y-2">
+                            <div class="draggable bg-yellow-100 p-3 rounded-lg border-2 border-yellow-300" draggable="true" data-destination="lan">
+                                <p class="font-semibold text-sm">📦 Packet 1</p>
+                                <p class="font-mono text-xs">To: 192.168.1.50</p>
+                            </div>
+                            <div class="draggable bg-yellow-100 p-3 rounded-lg border-2 border-yellow-300" draggable="true" data-destination="internet">
+                                <p class="font-semibold text-sm">📦 Packet 2</p>
+                                <p class="font-mono text-xs">To: 8.8.8.8</p>
+                            </div>
+                            <div class="draggable bg-yellow-100 p-3 rounded-lg border-2 border-yellow-300" draggable="true" data-destination="lan2">
+                                <p class="font-semibold text-sm">📦 Packet 3</p>
+                                <p class="font-mono text-xs">To: 10.0.1.80</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 text-center">
+                            <div class="inline-block p-4 bg-white rounded-lg shadow router-blink">
+                                <div class="text-4xl">🖥️</div>
+                                <p class="font-semibold text-sm">Router</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-semibold mb-3">Route to Network:</h4>
+                        <div class="space-y-3">
+                            <div class="drop-zone bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg p-4" data-network="lan">
+                                <p class="font-semibold text-sm">🏠 Home LAN (192.168.1.x)</p>
+                                <div class="min-h-[60px]"></div>
+                            </div>
+                            <div class="drop-zone bg-purple-50 border-2 border-dashed border-purple-300 rounded-lg p-4" data-network="internet">
+                                <p class="font-semibold text-sm">🌍 Internet (Public IPs)</p>
+                                <div class="min-h-[60px]"></div>
+                            </div>
+                            <div class="drop-zone bg-orange-50 border-2 border-dashed border-orange-300 rounded-lg p-4" data-network="lan2">
+                                <p class="font-semibold text-sm">🏢 Office LAN (10.0.1.x)</p>
+                                <div class="min-h-[60px]"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button onclick="checkRouting()" class="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-all">
+                    Verify Routing
+                </button>
+                <div id="routingFeedback" class="mt-2"></div>
+            </div>
+        </section>
+
+        <!-- Task 4: Real-World Scenarios -->
+        <section class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-6">
+            <h2 class="text-2xl md:text-3xl font-bold text-orange-600 mb-4">🏢 Task 4: Real-World Scenarios</h2>
+            <p class="text-gray-700 mb-6">Apply your knowledge to solve real network challenges!</p>
+            
+            <!-- School Network Designer -->
+            <div class="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg p-6 mb-6">
+                <h3 class="font-bold text-lg mb-4">🏫 School Network Designer</h3>
+                <p class="text-sm text-gray-600 mb-4">Design IP ranges for different departments. Remember: private IPs for internal use!</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h4 class="font-semibold mb-3">Departments to Connect:</h4>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                <span>🖥️ Computer Labs (50 devices)</span>
+                                <select id="lab-range" class="text-sm border rounded px-2 py-1">
+                                    <option value="">Select range...</option>
+                                    <option value="192.168.1.0/24">192.168.1.0/24</option>
+                                    <option value="10.0.1.0/24">10.0.1.0/24</option>
+                                    <option value="172.16.1.0/24">172.16.1.0/24</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                <span>👨‍🏫 Staff Network (30 devices)</span>
+                                <select id="staff-range" class="text-sm border rounded px-2 py-1">
+                                    <option value="">Select range...</option>
+                                    <option value="192.168.2.0/24">192.168.2.0/24</option>
+                                    <option value="10.0.2.0/24">10.0.2.0/24</option>
+                                    <option value="172.16.2.0/24">172.16.2.0/24</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                <span>📚 Library (20 devices)</span>
+                                <select id="library-range" class="text-sm border rounded px-2 py-1">
+                                    <option value="">Select range...</option>
+                                    <option value="192.168.3.0/24">192.168.3.0/24</option>
+                                    <option value="10.0.3.0/24">10.0.3.0/24</option>
+                                    <option value="172.16.3.0/24">172.16.3.0/24</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button onclick="checkNetworkDesign()" class="mt-4 w-full bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 transition-all">
+                            Validate Design
+                        </button>
+                        <div id="designFeedback" class="mt-2"></div>
+                    </div>
+                    
+                    <div class="bg-white p-4 rounded-lg shadow">
+                        <h4 class="font-semibold mb-3">Design Considerations:</h4>
+                        <ul class="text-sm text-gray-600 space-y-2">
+                            <li>✅ Use private IP ranges</li>
+                            <li>✅ Keep departments separated</li>
+                            <li>✅ Plan for future growth</li>
+                            <li>✅ Consider security requirements</li>
+                        </ul>
+                        
+                        <div class="mt-4 bg-blue-50 p-3 rounded">
+                            <p class="text-xs font-semibold">Private IP Ranges:</p>
+                            <ul class="text-xs mt-1">
+                                <li>• 10.0.0.0 - 10.255.255.255</li>
+                                <li>• 172.16.0.0 - 172.31.255.255</li>
+                                <li>• 192.168.0.0 - 192.168.255.255</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Extension Activities -->
+        <section class="bg-gradient-to-r from-indigo-100 to-purple-100 rounded-xl shadow-lg p-6 md:p-8 mb-6">
+            <h2 class="text-2xl md:text-3xl font-bold text-indigo-700 mb-4">🎮 Extension: Binary IP Converter</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="font-bold text-lg mb-4 text-indigo-600">🔢 Convert IP to Binary!</h3>
+                <p class="text-sm text-gray-600 mb-4">Can you convert 192.168.1.1 to binary? Each number becomes 8 bits!</p>
+                
+                <div class="bg-indigo-50 p-4 rounded-lg mb-4">
+                    <p class="font-mono text-lg text-center mb-3">192.168.1.1</p>
+                    <div class="grid grid-cols-4 gap-2">
+                        <input type="text" id="binary1" class="text-center font-mono border-2 border-indigo-300 rounded px-2 py-1" placeholder="11000000">
+                        <input type="text" id="binary2" class="text-center font-mono border-2 border-indigo-300 rounded px-2 py-1" placeholder="10101000">
+                        <input type="text" id="binary3" class="text-center font-mono border-2 border-indigo-300 rounded px-2 py-1" placeholder="00000001">
+                        <input type="text" id="binary4" class="text-center font-mono border-2 border-indigo-300 rounded px-2 py-1" placeholder="00000001">
+                    </div>
+                    
+                    <button onclick="checkBinaryConversion()" class="mt-4 w-full bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 transition-all">
+                        Check Binary
+                    </button>
+                    <div id="binaryFeedback" class="mt-2"></div>
+                </div>
+                
+                <div class="bg-gray-50 p-3 rounded text-xs">
+                    <p class="font-semibold mb-1">Quick Binary Guide:</p>
+                    <p>128 64 32 16 8 4 2 1</p>
+                    <p>192 = 128 + 64 = 11000000</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exam Practice Section -->
+        <section class="bg-gradient-to-r from-red-100 to-orange-100 rounded-xl shadow-lg p-6 md:p-8 mb-6">
+            <h2 class="text-2xl md:text-3xl font-bold text-red-700 mb-4">📝 Exam Practice Questions</h2>
+            <p class="text-gray-700 mb-6">Test your knowledge with these exam-style questions!</p>
+            
+            <!-- Question 1 -->
+            <div class="bg-white p-6 rounded-lg shadow mb-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">Question 1</h3>
+                    <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded text-sm font-semibold">[4 marks]</span>
+                </div>
+                <p class="text-gray-700 mb-4">Explain the difference between an IP address and a MAC address.</p>
+                
+                <textarea id="q1-answer" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-400 focus:outline-none h-32 mb-4" 
+                    placeholder="Write your answer here..."></textarea>
+                
+                <button onclick="checkExamAnswer(1)" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-all mb-4">
+                    Show Mark Scheme
+                </button>
+                
+                <div id="q1-markscheme" class="hidden bg-green-50 p-4 rounded-lg">
+                    <h4 class="font-bold text-green-700 mb-2">Mark Scheme:</h4>
+                    <ul class="text-sm space-y-2 list-disc list-inside">
+                        <li><strong>[1 mark]</strong> IP address can change / MAC address is permanent</li>
+                        <li><strong>[1 mark]</strong> IP used for routing on internet / MAC used in local network</li>
+                        <li><strong>[1 mark]</strong> IP is logical/software address / MAC is physical/hardware address</li>
+                        <li><strong>[1 mark]</strong> Format difference: IP uses dotted decimal / MAC uses hexadecimal pairs</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Achievement Gallery -->
+        <section class="bg-gradient-to-r from-yellow-100 to-orange-100 rounded-xl shadow-lg p-6 md:p-8 mb-6">
+            <h2 class="text-2xl md:text-3xl font-bold text-orange-700 mb-4">🏆 Your Network Achievements</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div id="achieve-detective" class="achievement-unlock bg-white p-4 rounded-lg text-center shadow opacity-50">
+                    <span class="text-3xl">🔍</span>
+                    <p class="font-bold text-sm mt-2">Address Detective</p>
+                    <p class="text-xs text-gray-600">Identified 10 addresses</p>
+                </div>
+                <div id="achieve-router" class="achievement-unlock bg-white p-4 rounded-lg text-center shadow opacity-50">
+                    <span class="text-3xl">🌐</span>
+                    <p class="font-bold text-sm mt-2">Router Master</p>
+                    <p class="text-xs text-gray-600">Perfect packet routing</p>
+                </div>
+                <div id="achieve-designer" class="achievement-unlock bg-white p-4 rounded-lg text-center shadow opacity-50">
+                    <span class="text-3xl">🏗️</span>
+                    <p class="font-bold text-sm mt-2">Network Architect</p>
+                    <p class="text-xs text-gray-600">Designed school network</p>
+                </div>
+                <div id="achieve-binary" class="achievement-unlock bg-white p-4 rounded-lg text-center shadow opacity-50">
+                    <span class="text-3xl">💻</span>
+                    <p class="font-bold text-sm mt-2">Binary Boss</p>
+                    <p class="text-xs text-gray-600">Converted IP to binary</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Disable copy, cut, and paste everywhere
+        document.addEventListener('DOMContentLoaded', function() {
+            // Disable copy
+            document.addEventListener('copy', function(e) {
+                e.preventDefault();
+                return false;
+            });
+            
+            // Disable cut
+            document.addEventListener('cut', function(e) {
+                e.preventDefault();
+                return false;
+            });
+            
+            // Disable paste
+            document.addEventListener('paste', function(e) {
+                e.preventDefault();
+                alert('Copy and paste is disabled. Please type your answer.');
+                return false;
+            });
+            
+            // Disable context menu everywhere
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
+            
+            // Disable keyboard shortcuts for copy/paste
+            document.addEventListener('keydown', function(e) {
+                // Disable Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                if (e.ctrlKey && (e.keyCode === 65 || e.keyCode === 67 || e.keyCode === 86 || e.keyCode === 88)) {
+                    e.preventDefault();
+                    return false;
+                }
+                // Disable Cmd+A, Cmd+C, Cmd+V, Cmd+X on Mac
+                if (e.metaKey && (e.keyCode === 65 || e.keyCode === 67 || e.keyCode === 86 || e.keyCode === 88)) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+            
+            // Initialize drag and drop
+            initializeDragAndDrop();
+        });
+
+        // XP System - Protected from manipulation
+        const xpSystem = (function() {
+            let totalXP = 0;
+            let achievements = {
+                detective: false,
+                router: false,
+                designer: false,
+                binary: false
+            };
+            
+            return {
+                addXP: function(points) {
+                    if (typeof points !== 'number' || points < 0) return;
+                    totalXP += points;
+                    document.getElementById('xpPoints').textContent = totalXP;
+                    const xpBar = document.getElementById('xpBar');
+                    const percentage = Math.min((totalXP / 500) * 100, 100);
+                    xpBar.style.width = percentage + '%';
+                    
+                    // Check for level up
+                    if (totalXP >= 100 && totalXP < 200) {
+                        this.updateLevel('Level 2 IP Investigator');
+                    } else if (totalXP >= 200 && totalXP < 350) {
+                        this.updateLevel('Level 3 MAC Master');
+                    } else if (totalXP >= 350) {
+                        this.updateLevel('Level 4 Network Detective Chief');
+                    }
+                },
+                
+                updateLevel: function(level) {
+                    const levelDisplay = document.getElementById('levelDisplay');
+                    if (levelDisplay) {
+                        levelDisplay.textContent = level;
+                    }
+                },
+                
+                unlockAchievement: function(name) {
+                    if (!achievements[name]) {
+                        achievements[name] = true;
+                        const achieveElement = document.getElementById(`achieve-${name}`);
+                        if (achieveElement) {
+                            achieveElement.classList.remove('opacity-50');
+                            achieveElement.classList.add('achievement-unlock');
+                            this.addXP(50);
+                        }
+                    }
+                }
+            };
+        })();
+        
+        // Use the protected XP system
+        function addXP(points) {
+            xpSystem.addXP(points);
+        }
+        
+        function unlockAchievement(name) {
+            xpSystem.unlockAchievement(name);
+        }
+
+        // Check initial knowledge
+        function checkInitialKnowledge() {
+            const ipKnowledge = document.getElementById('ipKnowledge').value.trim();
+            const macKnowledge = document.getElementById('macKnowledge').value.trim();
+            const feedback = document.getElementById('knowledgeFeedback');
+            
+            if (ipKnowledge.length < 10 && macKnowledge.length < 10) {
+                feedback.innerHTML = '<p class="text-orange-600">Please share your thoughts, even if you\'re not sure!</p>';
+                return;
+            }
+            
+            feedback.innerHTML = '<p class="text-green-600 font-bold">Great! Let\'s learn more about these addresses!</p>';
+            addXP(20);
+        }
+
+        // Drag and Drop functionality
+        let draggedElement = null;
+
+        function initializeDragAndDrop() {
+            setupDragDrop();
+        }
+
+        function setupDragDrop() {
+            const draggables = document.querySelectorAll('.draggable');
+            const dropZones = document.querySelectorAll('.drop-zone');
+
+            draggables.forEach(draggable => {
+                draggable.addEventListener('dragstart', function(e) {
+                    draggedElement = this;
+                    this.style.opacity = '0.5';
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                draggable.addEventListener('dragend', function(e) {
+                    this.style.opacity = '';
+                    draggedElement = null;
+                });
+            });
+
+            dropZones.forEach(zone => {
+                zone.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.classList.add('drag-over');
+                });
+
+                zone.addEventListener('dragleave', function(e) {
+                    this.classList.remove('drag-over');
+                });
+
+                zone.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('drag-over');
+                    
+                    if (draggedElement) {
+                        this.appendChild(draggedElement);
+                    }
+                });
+            });
+            
+            // Allow dragging back to characteristics container
+            const characteristics = document.getElementById('characteristics');
+            if (characteristics) {
+                characteristics.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                });
+                
+                characteristics.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    if (draggedElement && draggedElement.dataset.type) {
+                        this.appendChild(draggedElement);
+                    }
+                });
+            }
+            
+            // Allow dragging back to packet queue
+            const packetQueue = document.getElementById('packetQueue');
+            if (packetQueue) {
+                packetQueue.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                });
+                
+                packetQueue.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    if (draggedElement && draggedElement.dataset.destination) {
+                        this.appendChild(draggedElement);
+                    }
+                });
+            }
+        }
+
+        // IP Address Constructor
+        function validateOctet(input) {
+            const value = parseInt(input.value);
+            if (value < 0 || value > 255 || isNaN(value)) {
+                input.style.borderColor = '#ef4444';
+            } else {
+                input.style.borderColor = '#d1d5db';
+            }
+        }
+
+        function createIPAddress(type) {
+            const octets = [
+                document.getElementById('octet1'),
+                document.getElementById('octet2'),
+                document.getElementById('octet3'),
+                document.getElementById('octet4')
+            ];
+            
+            if (type === 'private') {
+                octets[0].value = 192;
+                octets[1].value = 168;
+                octets[2].value = Math.floor(Math.random() * 256);
+                octets[3].value = Math.floor(Math.random() * 254) + 1;
+            } else {
+                octets[0].value = Math.floor(Math.random() * 223) + 1;
+                octets[1].value = Math.floor(Math.random() * 256);
+                octets[2].value = Math.floor(Math.random() * 256);
+                octets[3].value = Math.floor(Math.random() * 254) + 1;
+            }
+            
+            octets.forEach(octet => validateOctet(octet));
+        }
+
+        function checkIPAddress() {
+            const feedback = document.getElementById('ipConstructorFeedback');
+            const octets = [
+                parseInt(document.getElementById('octet1').value),
+                parseInt(document.getElementById('octet2').value),
+                parseInt(document.getElementById('octet3').value),
+                parseInt(document.getElementById('octet4').value)
+            ];
+            
+            let valid = true;
+            let message = '';
+            
+            // Check each octet
+            octets.forEach((octet, index) => {
+                if (isNaN(octet) || octet < 0 || octet > 255) {
+                    valid = false;
+                    message = `Octet ${index + 1} is invalid! Must be 0-255.`;
+                }
+            });
+            
+            if (valid) {
+                // Check if it's private or public
+                const isPrivate = (octets[0] === 10) ||
+                                 (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+                                 (octets[0] === 192 && octets[1] === 168);
+                
+                feedback.className = 'mt-4 p-3 rounded-lg bg-green-50';
+                feedback.innerHTML = `<p class="text-green-600 font-bold">✅ Valid IP Address!</p>
+                                     <p class="text-sm mt-1">Type: ${isPrivate ? 'Private (Internal Network)' : 'Public (Internet)'} IP Address</p>`;
+                addXP(20);
+            } else {
+                feedback.className = 'mt-4 p-3 rounded-lg bg-red-50';
+                feedback.innerHTML = `<p class="text-red-600 font-bold">❌ Invalid IP Address!</p>
+                                     <p class="text-sm mt-1">${message}</p>`;
+            }
+        }
+
+        // MAC Investigation
+        function investigateMAC(element, manufacturer, manufacturerCode) {
+            const result = element.querySelector('.investigation-result');
+            const macManufacturer = element.querySelector('.mac-manufacturer');
+            const macSerial = element.querySelector('.mac-serial');
+            
+            // Highlight the parts
+            macManufacturer.classList.add('highlight-manufacturer');
+            macSerial.classList.add('highlight-serial');
+            
+            result.classList.remove('hidden');
+            result.className = 'investigation-result mt-2 p-2 bg-green-50 rounded text-sm';
+            result.innerHTML = `<strong>Manufacturer:</strong> ${manufacturer}<br>
+                               <span class="text-xs">The code ${manufacturerCode} identifies ${manufacturer} devices!</span>`;
+            element.style.backgroundColor = '#dcfce7';
+            addXP(15);
+        }
+
+        // Check characteristics sorting
+        function checkCharacteristics() {
+            const macZone = document.getElementById('macCharacteristics');
+            const ipZone = document.getElementById('ipCharacteristics');
+            const feedback = document.getElementById('battleFeedback');
+            
+            let correct = 0;
+            let total = 0;
+            
+            macZone.querySelectorAll('.draggable').forEach(item => {
+                total++;
+                if (item.dataset.type === 'mac') {
+                    item.style.backgroundColor = '#dcfce7';
+                    correct++;
+                } else {
+                    item.style.backgroundColor = '#fee2e2';
+                }
+            });
+            
+            ipZone.querySelectorAll('.draggable').forEach(item => {
+                total++;
+                if (item.dataset.type === 'ip') {
+                    item.style.backgroundColor = '#dcfce7';
+                    correct++;
+                } else {
+                    item.style.backgroundColor = '#fee2e2';
+                }
+            });
+            
+            if (correct === 6) {
+                feedback.innerHTML = '<p class="text-green-600 font-bold">🎉 Victory! You understand the key differences!</p>';
+                addXP(50);
+            } else {
+                feedback.innerHTML = `<p class="text-orange-600">Score: ${correct}/6. Remember: MAC is permanent hardware ID, IP can change!</p>`;
+            }
+        }
+
+        // Enhanced device move animation
+        let isAtCoffeeShop = false;
+        
+        function animateDeviceMove() {
+            const device = document.getElementById('movingDevice');
+            const ipDisplay = document.getElementById('deviceIPDisplay');
+            const explanation = document.getElementById('moveExplanation');
+            
+            if (!isAtCoffeeShop) {
+                // Move to coffee shop
+                device.style.transform = 'translateX(320px) translateY(-50%)';
+                
+                setTimeout(() => {
+                    ipDisplay.classList.remove('bg-green-100');
+                    ipDisplay.classList.add('bg-blue-100');
+                    ipDisplay.innerHTML = '<p class="text-xs font-mono">IP: 10.42.0.25</p>';
+                    explanation.classList.remove('hidden');
+                    isAtCoffeeShop = true;
+                }, 2000);
+                
+                addXP(30);
+            } else {
+                // Move back home
+                device.style.transform = 'translateX(0) translateY(-50%)';
+                
+                setTimeout(() => {
+                    ipDisplay.classList.remove('bg-blue-100');
+                    ipDisplay.classList.add('bg-green-100');
+                    ipDisplay.innerHTML = '<p class="text-xs font-mono">IP: 192.168.1.100</p>';
+                    explanation.classList.add('hidden');
+                    isAtCoffeeShop = false;
+                }, 2000);
+            }
+        }
+
+        // Check routing
+        function checkRouting() {
+            const feedback = document.getElementById('routingFeedback');
+            const zones = document.querySelectorAll('.drop-zone[data-network]');
+            let correct = 0;
+            
+            zones.forEach(zone => {
+                zone.querySelectorAll('.draggable').forEach(packet => {
+                    const destination = packet.dataset.destination;
+                    const network = zone.dataset.network;
+                    
+                    if ((destination === 'lan' && network === 'lan') ||
+                        (destination === 'internet' && network === 'internet') ||
+                        (destination === 'lan2' && network === 'lan2')) {
+                        packet.style.backgroundColor = '#dcfce7';
+                        correct++;
+                    } else {
+                        packet.style.backgroundColor = '#fee2e2';
+                    }
+                });
+            });
+            
+            if (correct === 3) {
+                feedback.innerHTML = '<p class="text-green-600 font-bold">🎉 Perfect routing! You\'re a natural network engineer!</p>';
+                addXP(40);
+                unlockAchievement('router');
+            } else {
+                feedback.innerHTML = `<p class="text-orange-600">${correct}/3 correct. Look at the destination IPs and match them to the right network range!</p>`;
+            }
+        }
+
+        // Check network design
+        function checkNetworkDesign() {
+            const labRange = document.getElementById('lab-range').value;
+            const staffRange = document.getElementById('staff-range').value;
+            const libraryRange = document.getElementById('library-range').value;
+            const feedback = document.getElementById('designFeedback');
+            
+            if (!labRange || !staffRange || !libraryRange) {
+                feedback.innerHTML = '<p class="text-red-600">Please select ranges for all departments!</p>';
+                return;
+            }
+            
+            // Check if all are different subnets
+            const ranges = [labRange, staffRange, libraryRange];
+            const uniqueRanges = new Set(ranges);
+            
+            if (uniqueRanges.size === 3) {
+                feedback.innerHTML = '<p class="text-green-600 font-bold">🎉 Excellent network design! Each department has its own subnet for security!</p>';
+                addXP(50);
+                unlockAchievement('designer');
+            } else {
+                feedback.innerHTML = '<p class="text-red-600">Departments must be on different subnets for security! Try again.</p>';
+            }
+        }
+
+        // Binary conversion check
+        function checkBinaryConversion() {
+            const feedback = document.getElementById('binaryFeedback');
+            const answers = ['11000000', '10101000', '00000001', '00000001'];
+            const inputs = [
+                document.getElementById('binary1').value,
+                document.getElementById('binary2').value,
+                document.getElementById('binary3').value,
+                document.getElementById('binary4').value
+            ];
+            
+            let correct = 0;
+            inputs.forEach((input, index) => {
+                if (input === answers[index]) {
+                    correct++;
+                }
+            });
+            
+            if (correct === 4) {
+                feedback.innerHTML = '<p class="text-green-600 font-bold">🎉 Perfect! You\'re a binary master!</p>';
+                addXP(60);
+                unlockAchievement('binary');
+            } else {
+                feedback.innerHTML = `<p class="text-orange-600">${correct}/4 correct. Remember: 192 = 128+64 = 11000000</p>`;
+            }
+        }
+
+        // Exam answer checking
+        function checkExamAnswer(questionNum) {
+            const answer = document.getElementById(`q${questionNum}-answer`).value.trim();
+            const markscheme = document.getElementById(`q${questionNum}-markscheme`);
+            
+            // Validation
+            if (answer.length < 30) {
+                alert('Please write a more detailed answer before viewing the mark scheme.');
+                return;
+            }
+            
+            // Show mark scheme
+            markscheme.classList.remove('hidden');
+            addXP(30);
+        }
+    </script>
+</body>
+</html>

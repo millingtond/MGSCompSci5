@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paging and Virtual Memory Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --primary-color: #38bdf8;
+            --secondary-color: #1e293b;
+            --text-color: #e2e8f0;
+            --glass-bg: rgba(30, 41, 59, 0.5);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --success-color: #4ade80;
+            --error-color: #f87171;
+            --highlight-glow: rgba(56, 189, 248, 0.5);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+        }
+
+        .glassmorphism {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .animated-gradient {
+            background: linear-gradient(-45deg, #38bdf8, #818cf8, #f472b6, #fb923c);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .sim-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 1.5rem;
+            padding: 1rem;
+            height: calc(100vh - 8rem);
+            max-height: 800px;
+        }
+
+        @media (max-width: 1024px) {
+            .sim-container {
+                grid-template-columns: 1fr;
+                height: auto;
+                max-height: none;
+            }
+        }
+        
+        .memory-area, .disk-area, .page-table-area {
+            padding: 1.5rem;
+            transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+            will-change: box-shadow;
+        }
+
+        .page, .frame {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            transition: all 0.7s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+            will-change: transform, opacity, background-color, box-shadow;
+            transform: translateZ(0);
+            cursor: pointer;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
+        }
+        
+        .page {
+            background-color: #334155;
+            border: 1px solid #475569;
+        }
+        
+        .frame {
+            background-color: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            color: #94a3b8;
+        }
+        
+        .frame.occupied {
+            color: #0f172a;
+            font-weight: 700;
+            text-shadow: 0 0 5px rgba(255,255,255,0.3);
+        }
+
+        .page-table-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            text-align: center;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+            will-change: background-color, transform;
+        }
+
+        .page-table-row:not(:first-child):hover {
+            background-color: rgba(56, 189, 248, 0.1);
+            transform: scale(1.02);
+        }
+
+        .page-table-header {
+            font-weight: 700;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            cursor: pointer;
+            border: none;
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: var(--bg-color);
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);
+        }
+        
+        .btn-primary:not(:disabled):hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-secondary:not(:disabled):hover {
+            background-color: #334155;
+            border-color: #475569;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0s 0.3s;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.3s ease, visibility 0s 0s;
+        }
+
+        .modal-content {
+            transform: scale(0.9) translateY(20px);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .modal-overlay.visible .modal-content {
+            transform: scale(1) translateY(0);
+        }
+
+        .quiz-option {
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .quiz-option:hover {
+            background-color: rgba(56, 189, 248, 0.1);
+            border-color: var(--primary-color);
+        }
+        
+        .quiz-option.selected {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: var(--bg-color);
+            font-weight: 600;
+        }
+
+        .quiz-option.correct {
+            background-color: var(--success-color);
+            border-color: var(--success-color);
+            color: var(--bg-color);
+        }
+
+        .quiz-option.incorrect {
+            background-color: var(--error-color);
+            border-color: var(--error-color);
+            color: var(--bg-color);
+        }
+
+        .feedback {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            font-weight: 500;
+        }
+
+        .feedback.correct {
+            background-color: rgba(74, 222, 128, 0.1);
+            color: #a7f3d0;
+            border: 1px solid rgba(74, 222, 128, 0.3);
+        }
+
+        .feedback.incorrect {
+            background-color: rgba(248, 113, 113, 0.1);
+            color: #fecaca;
+            border: 1px solid rgba(248, 113, 113, 0.3);
+        }
+
+        .step-content {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            position: absolute;
+            width: calc(100% - 3rem);
+        }
+
+        .step-content.active {
+            opacity: 1;
+            transform: translateY(0);
+            position: relative;
+        }
+
+        .highlight-ram { animation: pulse 1.5s infinite; --pulse-color: var(--primary-color); }
+        .highlight-disk { animation: pulse 1.5s infinite; --pulse-color: #a855f7; }
+        .highlight-table { animation: pulse 1.5s infinite; --pulse-color: #ec4899; }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(var(--pulse-color), 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(var(--pulse-color), 0); }
+            100% { box-shadow: 0 0 0 0 rgba(var(--pulse-color), 0); }
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: var(--secondary-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-bar-inner {
+            height: 100%;
+            background: var(--primary-color);
+            border-radius: 4px;
+            transition: width 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        input[type="text"] {
+            background-color: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            color: var(--text-color);
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.3);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <header class="p-4 text-white text-center animated-gradient shadow-lg">
+        <h1 class="text-3xl font-bold">Paging & Virtual Memory Interactive Simulation</h1>
+        <p class="text-lg opacity-90">Cambridge Computer Science 9618</p>
+    </header>
+
+    <main class="flex-grow container mx-auto p-4">
+        <div class="sim-container">
+            <div class="disk-area glassmorphism col-span-1 row-span-1">
+                <h2 class="text-2xl font-bold mb-4 text-center">Hard Disk (Virtual Memory)</h2>
+                <div id="disk-memory" class="grid grid-cols-4 gap-4 h-full"></div>
+            </div>
+
+            <div class="page-table-area glassmorphism col-span-1 row-span-2">
+                <h2 class="text-2xl font-bold mb-4 text-center">Page Table</h2>
+                <div id="page-table" class="text-sm">
+                    <div class="page-table-row page-table-header">
+                        <span>Page #</span>
+                        <span>Frame #</span>
+                        <span>Present Bit</span>
+                        <span>Dirty Bit</span>
+                    </div>
+                    <div id="page-table-body"></div>
+                </div>
+            </div>
+
+            <div class="memory-area glassmorphism col-span-1 row-span-1">
+                <h2 class="text-2xl font-bold mb-4 text-center">RAM (Physical Memory)</h2>
+                <div id="ram-memory" class="grid grid-cols-2 gap-4 h-full"></div>
+            </div>
+        </div>
+
+        <div id="simulation-content" class="glassmorphism p-6 mt-6 relative min-h-[300px]">
+            <!-- Step content will be injected here -->
+        </div>
+
+    </main>
+
+    <footer class="p-4 flex items-center justify-between glassmorphism m-4 mt-0">
+        <div class="w-1/4">
+            <button id="reset-btn" class="btn btn-secondary">Reset Simulation</button>
+        </div>
+        <div class="w-1/2 text-center flex items-center justify-center">
+            <button id="prev-btn" class="btn btn-secondary mr-2">← Previous</button>
+            <span id="step-indicator" class="font-semibold text-lg mx-4 whitespace-nowrap"></span>
+            <button id="next-btn" class="btn btn-primary">Next →</button>
+        </div>
+        <div class="w-1/4">
+             <div class="progress-bar">
+                <div id="progress-bar-inner" class="progress-bar-inner" style="width: 0%;"></div>
+            </div>
+        </div>
+    </footer>
+
+    <div id="modal" class="modal-overlay">
+        <div class="modal-content glassmorphism p-8 rounded-lg max-w-2xl w-full text-center">
+            <h3 id="modal-title" class="text-2xl font-bold mb-4"></h3>
+            <p id="modal-text" class="mb-6 leading-relaxed"></p>
+            <button id="modal-close-btn" class="btn btn-primary">Got it!</button>
+        </div>
+    </div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- DOM Element Caching ---
+    const dom = {
+        diskMemory: document.getElementById('disk-memory'),
+        ramMemory: document.getElementById('ram-memory'),
+        pageTableBody: document.getElementById('page-table-body'),
+        simulationContent: document.getElementById('simulation-content'),
+        stepIndicator: document.getElementById('step-indicator'),
+        progressBar: document.getElementById('progress-bar-inner'),
+        prevBtn: document.getElementById('prev-btn'),
+        nextBtn: document.getElementById('next-btn'),
+        resetBtn: document.getElementById('reset-btn'),
+        modal: document.getElementById('modal'),
+        modalTitle: document.getElementById('modal-title'),
+        modalText: document.getElementById('modal-text'),
+        modalCloseBtn: document.getElementById('modal-close-btn'),
+        diskArea: document.querySelector('.disk-area'),
+        ramArea: document.querySelector('.memory-area'),
+        pageTableArea: document.querySelector('.page-table-area'),
+    };
+
+    // --- Simulation State ---
+    let state = {};
+    const NUM_PAGES = 16;
+    const NUM_FRAMES = 4;
+    const PAGE_COLORS = [
+        '#f87171', '#fb923c', '#facc15', '#a3e635', '#4ade80', '#34d399', 
+        '#2dd4bf', '#22d3ee', '#38bdf8', '#60a5fa', '#818cf8', '#a78bfa', 
+        '#d8b4fe', '#f0abfc', '#f9a8d4', '#fda4af'
+    ];
+
+    // --- Simulation Steps Definition ---
+    const steps = [
+        { // 0: Introduction
+            title: "Welcome to Paging & Virtual Memory",
+            explanation: `
+                <p>Modern computers need to run multiple large programs, but have limited physical memory (RAM). <strong>Virtual Memory</strong> is a technique that solves this problem.</p>
+                <p class="mt-2">It creates an illusion for each program that it has a very large, private memory space (virtual address space), even if the physical RAM is much smaller. This is achieved using secondary storage (like an SSD or HDD).</p>
+                <p class="mt-4"><strong>Paging</strong> is the memory management scheme that makes virtual memory possible. Let's see how.</p>`,
+            action: () => highlightElements()
+        },
+        { // 1: Pages and Frames
+            title: "Step 1: Pages and Frames",
+            explanation: `
+                <p>The first step is to divide memory into fixed-size blocks.</p>
+                <ul class="list-disc list-inside mt-2 space-y-1">
+                    <li>The <strong>virtual address space</strong> (on the Hard Disk) is divided into blocks called <strong>Pages</strong>.</li>
+                    <li><strong>Physical Memory</strong> (RAM) is divided into blocks of the exact same size, called <strong>Frames</strong>.</li>
+                </ul>
+                <p class="mt-2">In our simulation, we have ${NUM_PAGES} pages on disk and ${NUM_FRAMES} frames in RAM. All pages and frames are the same size.</p>`,
+            action: () => highlightElements(dom.diskArea, dom.ramArea)
+        },
+        { // 2: The Page Table
+            title: "Step 2: The Page Table",
+            explanation: `
+                <p>The Operating System needs a way to translate a program's logical addresses (page numbers) into physical addresses (frame numbers). This is done using a <strong>Page Table</strong>.</p>
+                <p class="mt-2">Each process has its own page table. It stores:</p>
+                <ul class="list-disc list-inside mt-2 space-y-1">
+                    <li><strong>Frame Number:</strong> Where the page is located in RAM.</li>
+                    <li><strong>Present Bit:</strong> Is the page currently in RAM? (1 = Yes, 0 = No).</li>
+                    <li><strong>Dirty Bit:</strong> Has the page been modified since being loaded? (1 = Yes, 0 = No).</li>
+                </ul>
+                <p class="mt-2">Initially, all pages are on the disk, so the 'Present Bit' for every entry is 0.</p>`,
+            action: () => highlightElements(dom.pageTableArea)
+        },
+        { // 3: Loading a Page
+            title: "Step 3: Loading a Page",
+            explanation: `
+                <p>Let's say the CPU needs to access data in <strong>Page 5</strong>. It checks the Page Table.</p>
+                <p class="mt-2">The Page Table entry for Page 5 shows the <strong>Present Bit is 0</strong>. This means the page is not in RAM.</p>
+                <p class="mt-4">The OS finds a free frame in RAM (e.g., Frame 0), loads Page 5 from the disk into it, and updates the Page Table.</p>
+                <p class="mt-2">Now, the entry for Page 5 points to Frame 0, and its Present Bit is set to 1.</p>`,
+            action: async () => {
+                highlightElements(dom.pageTableArea);
+                await animatePageLoad(5, 0);
+            }
+        },
+        { // 4: Quiz 1
+            title: "Quick Check 1: Terminology",
+            quiz: {
+                type: 'mcq',
+                question: "What is the primary role of a Page Table in an operating system?",
+                options: [
+                    "To store the actual data of a program.",
+                    "To divide physical memory into frames.",
+                    "To translate logical addresses into physical addresses.",
+                    "To schedule which process runs next on the CPU."
+                ],
+                correctAnswer: "To translate logical addresses into physical addresses."
+            }
+        },
+        { // 5: Loading More Pages
+            title: "Step 4: Loading More Pages",
+            explanation: `
+                <p>As the program runs, it requests more pages. Let's load a few more.</p>
+                <ul class="list-disc list-inside mt-2 space-y-1">
+                    <li>CPU requests <strong>Page 11</strong> &rarr; Loaded into <strong>Frame 1</strong>.</li>
+                    <li>CPU requests <strong>Page 2</strong> &rarr; Loaded into <strong>Frame 2</strong>.</li>
+                </ul>
+                <p class="mt-2">Each time, the OS loads the page from disk and updates the Page Table accordingly. Notice how the pages are not stored contiguously in RAM.</p>`,
+            action: async () => {
+                highlightElements(dom.ramArea, dom.diskArea, dom.pageTableArea);
+                await animatePageLoad(11, 1);
+                await animatePageLoad(2, 2);
+            }
+        },
+        { // 6: Page Fault
+            title: "Step 5: Page Fault",
+            explanation: `
+                <p>Now, let's say the CPU requests <strong>Page 8</strong>. It checks the Page Table, but the <strong>Present Bit is 0</strong>. This triggers a hardware interrupt called a <strong>Page Fault</strong>.</p>
+                <p class="mt-2">A page fault is not an error! It's simply a signal to the OS that it needs to bring the required page from the disk into RAM.</p>
+                <p class="mt-4">The OS handles the page fault by loading Page 8 into the last free frame (Frame 3) and updating the Page Table.</p>`,
+            action: async () => {
+                if (state.isAnimating) return;
+                state.isAnimating = true;
+                setNavButtonsDisabled(true);
+                try {
+                    highlightPageTableEntry(8, true);
+                    showModal("Page Fault!", "The CPU requested Page 8, but it's not in RAM (Present Bit = 0). This is a Page Fault. The OS must now intervene to load the page.");
+                    await waitForModalClose();
+                    highlightPageTableEntry(8, false);
+                    await animatePageLoad(8, 3);
+                } finally {
+                    state.isAnimating = false;
+                    setNavButtonsDisabled(false);
+                }
+            }
+        },
+        { // 7: Quiz 2
+            title: "Quick Check 2: Page Faults",
+            quiz: {
+                type: 'fill-blank',
+                question: "A page fault occurs when a requested page has a Present Bit set to ___. The operating system handles this by loading the page from the ___ into RAM.",
+                answers: [
+                    ["0"], 
+                    ["disk", "hard disk", "hard drive", "secondary storage"]
+                ],
+                feedback: "A page fault happens when the Present Bit is 0, indicating the page isn't in RAM. The OS must then fetch it from secondary storage (like a hard disk)."
+            }
+        },
+        { // 8: Memory is Full - Page Replacement
+            title: "Step 6: Page Replacement",
+            explanation: `
+                <p>All frames in RAM are now full. What happens if the CPU requests a new page, like <strong>Page 14</strong>?</p>
+                <p class="mt-2">Since there are no free frames, the OS must choose a page in RAM to swap out. This is called <strong>Page Replacement</strong>. The algorithm used to pick a victim page is crucial for performance (e.g., LRU - Least Recently Used).</p>
+                <p class="mt-4">Let's say the OS decides to replace <strong>Page 5</strong> in Frame 0. It swaps Page 5 out and swaps Page 14 in.</p>`,
+            action: async () => {
+                if (state.isAnimating) return;
+                state.isAnimating = true;
+                setNavButtonsDisabled(true);
+                try {
+                    showModal("RAM is Full!", "The CPU needs Page 14, but all frames are occupied. The OS must now perform a Page Replacement to make space.");
+                    await waitForModalClose();
+                    await animatePageSwap(5, 14, 0);
+                } finally {
+                    state.isAnimating = false;
+                    setNavButtonsDisabled(false);
+                }
+            }
+        },
+        { // 9: The Dirty Bit
+            title: "Step 7: The Dirty Bit",
+            explanation: `
+                <p>Let's reconsider that last swap. Before swapping out a page, the OS must check its <strong>Dirty Bit</strong>.</p>
+                <p class="mt-2">Imagine <strong>Page 2</strong> (in Frame 2) was modified while in RAM. Its Dirty Bit would be set to 1.</p>
+                <p class="mt-2">If the OS chose to replace Page 2, it would see the Dirty Bit is <strong>1</strong>. This means the page in RAM is newer than the copy on disk. The OS <strong>must write the page back to disk</strong> to save the changes before swapping it out.</p>
+                <p class="mt-4">If the Dirty Bit is <strong>0</strong>, the page is 'clean' and can be discarded without writing it back, which is much faster.</p>`,
+            action: async () => {
+                if (state.isAnimating) return;
+                state.isAnimating = true;
+                setNavButtonsDisabled(true);
+                try {
+                    const page2TableEntry = state.pageTable.find(p => p.pageNumber === 2);
+                    if (page2TableEntry && page2TableEntry.presentBit === 1) {
+                        page2TableEntry.dirtyBit = 1;
+                        renderPageTable();
+                        highlightPageTableEntry(2, true, 'dirty');
+                        showModal("Data Modification", "Imagine the program has just written data to Page 2. The OS sets its 'Dirty Bit' to 1 to track this change.");
+                        await waitForModalClose();
+                        highlightPageTableEntry(2, false, 'dirty');
+                    }
+                    highlightElements(dom.pageTableArea);
+                } finally {
+                    state.isAnimating = false;
+                    setNavButtonsDisabled(false);
+                }
+            }
+        },
+        { // 10: Quiz 3
+            title: "Quick Check 3: The Dirty Bit",
+            quiz: {
+                type: 'mcq',
+                question: "When is it necessary for the OS to write a page back to the disk during a page swap?",
+                options: [
+                    "Always, to ensure data integrity.",
+                    "Only if the page's Present Bit is 1.",
+                    "Never, the copy in RAM can just be overwritten.",
+                    "Only if the page's Dirty Bit is 1."
+                ],
+                correctAnswer: "Only if the page's Dirty Bit is 1."
+            }
+        },
+        { // 11: Final Quiz
+            title: "Final Assessment",
+            quiz: {
+                type: 'mixed',
+                questions: [
+                    {
+                        type: 'mcq',
+                        question: "Which of these is a primary advantage of using virtual memory with paging?",
+                        options: [
+                            "It makes the computer run faster by using the hard disk.",
+                            "It allows a program's logical address space to be non-contiguous.",
+                            "It allows the logical address space to be much larger than physical memory.",
+                            "It eliminates the need for RAM entirely."
+                        ],
+                        correctAnswer: "It allows the logical address space to be much larger than physical memory."
+                    },
+                    {
+                        type: 'fill-blank',
+                        question: "The fixed-size blocks in physical memory are called ___, while the blocks of the same size in virtual memory are called ___.",
+                        answers: [["frames"], ["pages"]],
+                        feedback: "Physical memory is divided into frames; virtual memory is divided into pages. They are the same size."
+                    },
+                    {
+                        type: 'true-false',
+                        question: "A page fault always indicates a critical system error that will crash the program.",
+                        correctAnswer: "False",
+                        feedback: "A page fault is a normal event that tells the OS to load a required page from disk. It's not an error."
+                    }
+                ]
+            }
+        },
+        { // 12: Conclusion
+            title: "Simulation Complete!",
+            explanation: `
+                <p>Congratulations! You've completed the Paging and Virtual Memory simulation.</p>
+                <p class="mt-2"><strong>Key Takeaways:</strong></p>
+                <ul class="list-disc list-inside mt-2 space-y-1">
+                    <li><strong>Paging</strong> enables <strong>Virtual Memory</strong> by dividing memory into fixed-size pages and frames.</li>
+                    <li>The <strong>Page Table</strong> is essential for translating logical to physical addresses.</li>
+                    <li>A <strong>Page Fault</strong> is the mechanism for loading pages from disk into RAM on demand.</li>
+                    <li><strong>Page Replacement</strong> algorithms and the <strong>Dirty Bit</strong> are used to manage a full memory efficiently.</li>
+                </ul>
+                <p class="mt-4">Use the 'Reset' button to go through the simulation again.</p>`,
+            action: () => highlightElements()
+        }
+    ];
+
+    // --- Initialization ---
+    function setDefaultState() {
+        state = {
+            currentStep: 0,
+            pages: Array.from({ length: NUM_PAGES }, (_, i) => ({ id: `page-${i}`, number: i, inMemory: false, frame: -1, element: null })),
+            frames: Array.from({ length: NUM_FRAMES }, (_, i) => ({ id: `frame-${i}`, number: i, occupiedBy: -1, element: null })),
+            pageTable: Array.from({ length: NUM_PAGES }, (_, i) => ({ pageNumber: i, frameNumber: '-', presentBit: 0, dirtyBit: 0 })),
+            isModalOpen: false,
+            isQuizAnswered: false,
+            isAnimating: false,
+        };
+    }
+
+    function init() {
+        setDefaultState();
+        renderAll();
+        updateStep();
+        showModal(
+            "Welcome!",
+            "This is an interactive simulation to explain Paging and Virtual Memory. Use the 'Next' and 'Previous' buttons or your arrow keys to navigate. Follow the instructions at each step."
+        );
+    }
+
+    // --- Rendering Functions ---
+    function renderAll() {
+        renderDisk();
+        renderRAM();
+        renderPageTable();
+    }
+
+    function renderDisk() {
+        dom.diskMemory.innerHTML = '';
+        state.pages.forEach(page => {
+            const pageEl = document.createElement('div');
+            pageEl.id = page.id;
+            pageEl.className = 'page h-16';
+            pageEl.textContent = `P${page.number}`;
+            pageEl.style.backgroundColor = PAGE_COLORS[page.number];
+            pageEl.style.opacity = page.inMemory ? '0.3' : '1';
+            dom.diskMemory.appendChild(pageEl);
+            page.element = pageEl;
+        });
+    }
+
+    function renderRAM() {
+        dom.ramMemory.innerHTML = '';
+        state.frames.forEach(frame => {
+            const frameEl = document.createElement('div');
+            frameEl.id = frame.id;
+            if (frame.occupiedBy !== -1) {
+                frameEl.className = 'frame h-24 occupied';
+                frameEl.textContent = `Page ${frame.occupiedBy}`;
+                frameEl.style.backgroundColor = PAGE_COLORS[frame.occupiedBy];
+            } else {
+                frameEl.className = 'frame h-24';
+                frameEl.textContent = `Frame ${frame.number}`;
+            }
+            dom.ramMemory.appendChild(frameEl);
+            frame.element = frameEl;
+        });
+    }
+
+    function renderPageTable() {
+        dom.pageTableBody.innerHTML = '';
+        state.pageTable.forEach(entry => {
+            const row = document.createElement('div');
+            row.id = `pt-row-${entry.pageNumber}`;
+            row.className = 'page-table-row';
+            row.innerHTML = `
+                <span>${entry.pageNumber}</span>
+                <span class="font-mono">${entry.frameNumber}</span>
+                <span class="font-mono">${entry.presentBit}</span>
+                <span class="font-mono">${entry.dirtyBit}</span>
+            `;
+            dom.pageTableBody.appendChild(row);
+        });
+    }
+    
+    // --- Step Navigation & Content Update ---
+    function updateStep() {
+        const step = steps[state.currentStep];
+        state.isQuizAnswered = false;
+        
+        dom.simulationContent.innerHTML = '';
+        const stepContent = document.createElement('div');
+        stepContent.className = 'step-content';
+        
+        let contentHTML = `<h3 class="text-2xl font-bold mb-4 text-sky-300">${step.title}</h3>`;
+        if (step.explanation) contentHTML += `<div class="prose prose-invert max-w-none">${step.explanation}</div>`;
+        if (step.quiz) contentHTML += renderQuiz(step.quiz);
+        stepContent.innerHTML = contentHTML;
+        dom.simulationContent.appendChild(stepContent);
+
+        requestAnimationFrame(() => stepContent.classList.add('active'));
+
+        dom.stepIndicator.textContent = `Step ${state.currentStep + 1} / ${steps.length}`;
+        dom.progressBar.style.width = `${((state.currentStep + 1) / steps.length) * 100}%`;
+
+        setNavButtonsDisabled(state.isAnimating);
+        
+        const isQuizStep = !!step.quiz;
+        dom.nextBtn.textContent = isQuizStep ? 'Check Answer' : 'Next →';
+
+        if (step.action && typeof step.action === 'function') {
+            requestAnimationFrame(() => {
+                if (!state.isModalOpen) step.action();
+            });
+        } else {
+            highlightElements();
+        }
+        
+        if (isQuizStep) addQuizEventListeners(step.quiz);
+    }
+    
+    async function executeStepActionsUntil(targetStep) {
+        setDefaultState();
+        for (let i = 0; i < targetStep; i++) {
+            const step = steps[i];
+            if (step.action) {
+                if (step.title.includes("Loading a Page")) loadPage(5, 0);
+                if (step.title.includes("Loading More Pages")) { loadPage(11, 1); loadPage(2, 2); }
+                if (step.title.includes("Page Fault")) loadPage(8, 3);
+                if (step.title.includes("Page Replacement")) swapPages(5, 14, 0);
+                if (step.title.includes("The Dirty Bit")) {
+                    const page2TableEntry = state.pageTable.find(p => p.pageNumber === 2);
+                    if (page2TableEntry) page2TableEntry.dirtyBit = 1;
+                }
+            }
+        }
+        state.currentStep = targetStep;
+        renderAll();
+        updateStep();
+    }
+
+    function nextStep() {
+        if (state.currentStep >= steps.length - 1 || state.isAnimating) return;
+        
+        const step = steps[state.currentStep];
+        if (step.quiz && !state.isQuizAnswered) {
+            checkQuizAnswer(step.quiz);
+            return;
+        }
+        state.currentStep++;
+        updateStep();
+    }
+
+    function prevStep() {
+        if (state.currentStep <= 0 || state.isAnimating) return;
+        executeStepActionsUntil(state.currentStep - 1);
+    }
+    
+    // --- Animation & Logic Functions ---
+    async function animatePageLoad(pageNumber, frameNumber) {
+        const page = state.pages.find(p => p.number === pageNumber);
+        const frame = state.frames.find(f => f.number === frameNumber);
+        if (!page || !frame || !page.element || !frame.element) {
+            console.error("Animation elements not found for page/frame");
+            return;
+        }
+
+        page.element.style.transition = 'all 0.3s ease';
+        page.element.style.transform = 'scale(1.1)';
+        page.element.style.boxShadow = `0 0 20px ${varToRgba('--highlight-glow')}`;
+        await delay(500);
+
+        const pageRect = page.element.getBoundingClientRect();
+        const frameRect = frame.element.getBoundingClientRect();
+        const clone = page.element.cloneNode(true);
+        clone.style.position = 'fixed';
+        clone.style.left = `${pageRect.left}px`;
+        clone.style.top = `${pageRect.top}px`;
+        clone.style.width = `${pageRect.width}px`;
+        clone.style.height = `${pageRect.height}px`;
+        clone.style.zIndex = '500';
+        clone.style.margin = '0';
+        document.body.appendChild(clone);
+
+        page.element.style.opacity = '0.3';
+        
+        await delay(50);
+
+        clone.style.transition = 'all 0.8s cubic-bezier(0.5, 0, 0.5, 1)';
+        clone.style.left = `${frameRect.left}px`;
+        clone.style.top = `${frameRect.top}px`;
+        clone.style.width = `${frameRect.width}px`;
+        clone.style.height = `${frameRect.height}px`;
+
+        await delay(800);
+        
+        loadPage(pageNumber, frameNumber);
+        renderRAM();
+        renderPageTable();
+        
+        document.body.removeChild(clone);
+
+        highlightPageTableEntry(pageNumber, true);
+        await delay(1000);
+        highlightPageTableEntry(pageNumber, false);
+    }
+    
+    async function animatePageSwap(victimPageNum, newPageNum, frameNum) {
+        const victimPage = state.pages.find(p => p.number === victimPageNum);
+        const frame = state.frames.find(f => f.number === frameNum);
+        
+        frame.element.style.transition = 'all 0.3s ease';
+        frame.element.style.boxShadow = `0 0 20px ${varToRgba('--error-color')}`;
+        await delay(800);
+
+        const frameRect = frame.element.getBoundingClientRect();
+        const victimDiskRect = victimPage.element.getBoundingClientRect();
+        const victimClone = frame.element.cloneNode(true);
+        victimClone.style.position = 'fixed';
+        Object.assign(victimClone.style, {
+            left: `${frameRect.left}px`, top: `${frameRect.top}px`,
+            width: `${frameRect.width}px`, height: `${frameRect.height}px`,
+            zIndex: '500', margin: '0'
+        });
+        document.body.appendChild(victimClone);
+
+        frame.element.textContent = `Frame ${frame.number}`;
+        frame.element.classList.remove('occupied');
+        frame.element.style.backgroundColor = 'var(--secondary-color)';
+        frame.element.style.boxShadow = '';
+
+        await delay(50);
+
+        Object.assign(victimClone.style, {
+            transition: 'all 0.8s cubic-bezier(0.5, 0, 0.5, 1)',
+            left: `${victimDiskRect.left}px`, top: `${victimDiskRect.top}px`,
+            width: `${victimDiskRect.width}px`, height: `${victimDiskRect.height}px`,
+            opacity: '1'
+        });
+
+        await delay(800);
+        document.body.removeChild(victimClone);
+        victimPage.element.style.opacity = '1';
+
+        const victimTableEntry = state.pageTable.find(p => p.pageNumber === victimPageNum);
+        victimTableEntry.presentBit = 0;
+        victimTableEntry.frameNumber = '-';
+        victimPage.inMemory = false;
+        
+        renderPageTable();
+        highlightPageTableEntry(victimPageNum, true);
+        await delay(800);
+        highlightPageTableEntry(victimPageNum, false);
+
+        await animatePageLoad(newPageNum, frameNum);
+    }
+
+    function loadPage(pageNumber, frameNumber) {
+        const page = state.pages.find(p => p.number === pageNumber);
+        const frame = state.frames.find(f => f.number === frameNumber);
+        const tableEntry = state.pageTable.find(p => p.pageNumber === pageNumber);
+
+        page.inMemory = true;
+        page.frame = frameNumber;
+        frame.occupiedBy = pageNumber;
+        tableEntry.frameNumber = frameNumber;
+        tableEntry.presentBit = 1;
+        tableEntry.dirtyBit = 0;
+    }
+
+    function swapPages(victimPageNum, newPageNum, frameNum) {
+        const victimPage = state.pages.find(p => p.number === victimPageNum);
+        const newPage = state.pages.find(p => p.number === newPageNum);
+        const frame = state.frames.find(f => f.number === frameNum);
+        const victimTableEntry = state.pageTable.find(p => p.pageNumber === victimPageNum);
+        const newTableEntry = state.pageTable.find(p => p.pageNumber === newPageNum);
+        
+        victimPage.inMemory = false;
+        victimPage.frame = -1;
+        victimTableEntry.presentBit = 0;
+        victimTableEntry.frameNumber = '-';
+        victimTableEntry.dirtyBit = 0;
+
+        newPage.inMemory = true;
+        newPage.frame = frameNum;
+        newTableEntry.frameNumber = frameNum;
+        newTableEntry.presentBit = 1;
+        newTableEntry.dirtyBit = 0;
+
+        frame.occupiedBy = newPageNum;
+    }
+
+    function highlightPageTableEntry(pageNumber, addHighlight, type = 'present') {
+        const row = document.getElementById(`pt-row-${pageNumber}`);
+        if(row) {
+            if(addHighlight) {
+                let color = type === 'dirty' ? 'rgba(244, 114, 182, 0.4)' : 'rgba(56, 189, 248, 0.2)';
+                row.style.backgroundColor = color;
+                row.style.transform = 'scale(1.05)';
+            } else {
+                row.style.backgroundColor = '';
+                row.style.transform = '';
+            }
+        }
+    }
+
+    function highlightElements(...elements) {
+        dom.ramArea.classList.remove('highlight-ram');
+        dom.diskArea.classList.remove('highlight-disk');
+        dom.pageTableArea.classList.remove('highlight-table');
+
+        elements.forEach(el => {
+            if (el === dom.ramArea) el.classList.add('highlight-ram');
+            if (el === dom.diskArea) el.classList.add('highlight-disk');
+            if (el === dom.pageTableArea) el.classList.add('highlight-table');
+        });
+    }
+
+    // --- Quiz Logic ---
+    function renderQuiz(quizData) {
+        let quizHTML = `<div id="quiz-container" class="mt-6">`;
+        if (quizData.type === 'mixed') {
+            quizData.questions.forEach((q, index) => {
+                quizHTML += `<div class="mb-6 p-4 border border-slate-700 rounded-lg" data-question-index="${index}">`;
+                quizHTML += `<p class="font-semibold mb-3">${index + 1}. ${q.question}</p>`;
+                if (q.type === 'mcq' || q.type === 'true-false') {
+                    const options = q.type === 'mcq' ? q.options : ['True', 'False'];
+                    quizHTML += `<div class="space-y-2">` + options.map(opt => 
+                        `<div class="quiz-option" data-value="${opt}">${opt}</div>`
+                    ).join('') + `</div>`;
+                } else if (q.type === 'fill-blank') {
+                    quizHTML += q.question.replace(/__/g, `<input type="text" class="fill-blank-input mx-2 p-1 w-32 inline-block" />`);
+                }
+                quizHTML += `<div class="feedback mt-2 hidden"></div></div>`;
+            });
+        } else {
+            quizHTML += `<p class="font-semibold mb-3">${quizData.question}</p>`;
+            if (quizData.type === 'mcq') {
+                quizHTML += `<div class="space-y-2">` + quizData.options.map(opt => 
+                    `<div class="quiz-option" data-value="${opt}">${opt}</div>`
+                ).join('') + `</div>`;
+            } else if (quizData.type === 'fill-blank') {
+                quizHTML += `<div class="flex items-center gap-2 flex-wrap">` + 
+                    quizData.question.replace(/__/g, `<input type="text" class="fill-blank-input p-2 w-40" />`) + `</div>`;
+            }
+            quizHTML += `<div id="quiz-feedback" class="feedback mt-2 hidden"></div>`;
+        }
+        quizHTML += `</div>`;
+        return quizHTML;
+    }
+
+    function addQuizEventListeners(quizData) {
+        const container = document.getElementById('quiz-container');
+        if (!container) return;
+
+        container.addEventListener('click', e => {
+            if (e.target.classList.contains('quiz-option')) {
+                const parentGroup = e.target.parentElement;
+                parentGroup.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+                e.target.classList.add('selected');
+            }
+        });
+    }
+
+    function checkQuizAnswer(quizData) {
+        if (state.isQuizAnswered) return;
+        let allCorrect = true;
+
+        const checkSingleQuestion = (q, container) => {
+            const feedbackEl = container.querySelector('.feedback, #quiz-feedback');
+            let isCorrect = false;
+            let hasAnswered = true;
+
+            if (q.type === 'mcq' || q.type === 'true-false') {
+                const selected = container.querySelector('.quiz-option.selected');
+                if (!selected) {
+                    hasAnswered = false;
+                } else if (selected.dataset.value === q.correctAnswer) {
+                    isCorrect = true;
+                    selected.classList.add('correct');
+                } else {
+                    selected.classList.add('incorrect');
+                    container.querySelectorAll('.quiz-option').forEach(opt => {
+                        if (opt.dataset.value === q.correctAnswer) opt.classList.add('correct');
+                    });
+                }
+            } else if (q.type === 'fill-blank') {
+                const inputs = container.querySelectorAll('.fill-blank-input');
+                if (Array.from(inputs).some(i => i.value.trim().length === 0)) {
+                    hasAnswered = false;
+                } else {
+                    isCorrect = true;
+                    inputs.forEach((input, i) => {
+                        const userAns = input.value.trim().toLowerCase();
+                        const correctAnswers = Array.isArray(q.answers[i]) ? q.answers[i] : [q.answers[i]];
+                        
+                        if (correctAnswers.includes(userAns)) {
+                            input.style.borderColor = 'var(--success-color)';
+                        } else {
+                            input.style.borderColor = 'var(--error-color)';
+                            isCorrect = false;
+                        }
+                    });
+                }
+            }
+
+            if (!hasAnswered) return false;
+
+            if (feedbackEl) {
+                const feedbackText = q.feedback || (isCorrect ? 'Correct! Well done.' : 'Not quite. Review the explanation.');
+                feedbackEl.innerHTML = feedbackText;
+                feedbackEl.className = `feedback mt-2 ${isCorrect ? 'correct' : 'incorrect'}`;
+                feedbackEl.classList.remove('hidden');
+            }
+            return isCorrect;
+        };
+
+        if (quizData.type === 'mixed') {
+            let allAnswered = true;
+            quizData.questions.forEach((q, index) => {
+                const qContainer = document.querySelector(`[data-question-index="${index}"]`);
+                const questionResult = checkSingleQuestion(q, qContainer);
+                if (questionResult === false) allAnswered = false;
+                if (!questionResult) allCorrect = false;
+            });
+            if (!allAnswered) {
+                showModal("Incomplete Answer", "Please answer all parts of the quiz before checking.");
+                return;
+            }
+        } else {
+            const container = document.getElementById('quiz-container');
+            if (!checkSingleQuestion(quizData, container)) {
+                allCorrect = false;
+            }
+        }
+
+        if (allCorrect) {
+            state.isQuizAnswered = true;
+            dom.nextBtn.textContent = 'Next →';
+        }
+    }
+    
+    // --- Modal Logic ---
+    function showModal(title, text) {
+        if (state.isModalOpen) return;
+        state.isModalOpen = true;
+        dom.modalTitle.textContent = title;
+        dom.modalText.innerHTML = text;
+        dom.modal.classList.add('visible');
+    }
+
+    function hideModal() {
+        if (!state.isModalOpen) return;
+        state.isModalOpen = false;
+        dom.modal.classList.remove('visible');
+    }
+    
+    function waitForModalClose() {
+        return new Promise(resolve => {
+            const checkFlag = () => {
+                if (!state.isModalOpen) {
+                    resolve();
+                } else {
+                    requestAnimationFrame(checkFlag);
+                }
+            };
+            checkFlag();
+        });
+    }
+
+    // --- Utility Functions ---
+    const delay = ms => new Promise(res => setTimeout(res, ms));
+    const varToRgba = (varName) => getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    const setNavButtonsDisabled = (disabled) => {
+        dom.prevBtn.disabled = disabled || state.currentStep === 0;
+        dom.nextBtn.disabled = disabled || state.currentStep === steps.length - 1;
+        dom.resetBtn.disabled = disabled;
+    };
+
+    // --- Event Listeners ---
+    dom.nextBtn.addEventListener('click', nextStep);
+    dom.prevBtn.addEventListener('click', prevStep);
+    dom.resetBtn.addEventListener('click', init);
+    dom.modalCloseBtn.addEventListener('click', hideModal);
+    
+    window.addEventListener('keydown', e => {
+        if (document.activeElement.tagName === 'INPUT' || state.isModalOpen) return;
+        if (e.key === 'ArrowRight') dom.nextBtn.click();
+        if (e.key === 'ArrowLeft') dom.prevBtn.click();
+    });
+
+    // --- Start Simulation ---
+    init();
+});
+</script>
+
+</body>
+</html>

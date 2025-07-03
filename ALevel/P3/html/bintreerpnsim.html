@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary Trees & RPN Simulation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --primary-color: #16213e;
+            --secondary-color: #0f3460;
+            --accent-color: #e94560;
+            --text-color: #dcdcdc;
+            --highlight-color: #537895;
+            --gradient: linear-gradient(45deg, #537895 0%, #09203f 100%);
+            --success-color: #28a745;
+            --error-color: #dc3545;
+            --border-radius: 12px;
+            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            --transition-speed: 0.5s;
+            --easing: cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .simulation-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 1rem;
+            position: relative;
+        }
+
+        .simulation-header {
+            text-align: center;
+            padding: 2rem;
+            background: var(--gradient);
+            border-radius: var(--border-radius);
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .simulation-header h1 {
+            font-size: clamp(1.8rem, 5vw, 2.5rem);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .simulation-header p {
+            font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .step {
+            display: none;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            background: rgba(22, 33, 62, 0.7);
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity var(--transition-speed) var(--easing), transform var(--transition-speed) var(--easing);
+            will-change: opacity, transform;
+        }
+
+        .step.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .step h2 {
+            color: var(--accent-color);
+            margin-bottom: 1rem;
+            font-size: clamp(1.5rem, 4vw, 1.8rem);
+        }
+
+        .step-content {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+        }
+        
+        @media (max-width: 900px) {
+            .step-content {
+                flex-direction: column;
+            }
+        }
+
+        .explanation, .interactive-area {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .interactive-area {
+            background: rgba(15, 52, 96, 0.5);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            min-height: 350px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+        }
+        
+        .interactive-area h3 {
+            margin-bottom: 1rem;
+            color: var(--highlight-color);
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 2rem;
+            padding: 1rem;
+        }
+
+        .nav-btn, .reset-btn, .quiz-btn {
+            background: var(--secondary-color);
+            color: var(--text-color);
+            border: 1px solid var(--highlight-color);
+            padding: 0.8rem 1.5rem;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: background-color 0.3s var(--easing), transform 0.2s var(--easing), box-shadow 0.3s var(--easing);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .nav-btn:hover, .reset-btn:hover, .quiz-btn:hover {
+            background-color: var(--highlight-color);
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .nav-btn:disabled {
+            background-color: #333;
+            cursor: not-allowed;
+            opacity: 0.6;
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        .step-indicator {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7);
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: var(--primary-color);
+            margin: auto;
+            padding: 2rem;
+            border: 1px solid var(--highlight-color);
+            width: 90%;
+            max-width: 500px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            text-align: center;
+            animation: slideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px) scale(0.9); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        .modal-close {
+            background: var(--accent-color);
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            transition: background-color 0.3s;
+        }
+
+        .modal-close:hover {
+            background-color: #c53750;
+        }
+
+        /* Tree Styles */
+        .tree-container {
+            position: relative;
+            width: 100%;
+            height: 350px;
+        }
+
+        .tree-node {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: var(--highlight-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: 2px solid white;
+            transition: transform 0.3s var(--easing), background-color 0.3s var(--easing), box-shadow 0.3s var(--easing);
+            cursor: pointer;
+            z-index: 10;
+            will-change: transform, background-color;
+        }
+        
+        .tree-node.highlight {
+            background-color: var(--accent-color);
+            transform: scale(1.15);
+            box-shadow: 0 0 20px var(--accent-color);
+        }
+
+        .tree-line {
+            position: absolute;
+            background-color: var(--text-color);
+            height: 2px;
+            transform-origin: 0 0;
+            z-index: 5;
+        }
+        
+        /* Quiz Styles */
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+            max-width: 400px;
+            margin-top: 1rem;
+        }
+
+        .quiz-option {
+            background: var(--secondary-color);
+            padding: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s var(--easing), transform 0.2s var(--easing), border-color 0.3s var(--easing);
+            border: 2px solid transparent;
+        }
+
+        .quiz-option:hover {
+            background-color: var(--highlight-color);
+            transform: translateX(5px);
+        }
+
+        .quiz-option.correct {
+            background-color: var(--success-color);
+            border-color: white;
+            transform: scale(1.02);
+        }
+
+        .quiz-option.incorrect {
+            background-color: var(--error-color);
+            border-color: white;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+        
+        .quiz-input {
+            padding: 0.8rem;
+            border-radius: 8px;
+            border: 2px solid var(--secondary-color);
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-size: 1rem;
+            width: 100%;
+            max-width: 300px;
+            margin-top: 1rem;
+            text-align: center;
+            transition: border-color 0.3s var(--easing);
+        }
+        
+        .quiz-input:focus {
+            outline: none;
+            border-color: var(--highlight-color);
+        }
+
+        .feedback {
+            margin-top: 1rem;
+            font-weight: bold;
+            height: 24px;
+            transition: color 0.3s var(--easing);
+        }
+
+        /* Stack Visualization */
+        .stack-container {
+            width: 150px;
+            height: 300px;
+            border: 3px solid var(--highlight-color);
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            display: flex;
+            flex-direction: column-reverse;
+            padding: 5px;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .stack-item {
+            background: var(--secondary-color);
+            color: white;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            animation: pushAnimation 0.5s var(--easing);
+        }
+        
+        @keyframes pushAnimation {
+            from { transform: translateY(-30px) opacity(0); }
+            to { transform: translateY(0) opacity(1); }
+        }
+
+        .rpn-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-left: 2rem;
+            align-items: center;
+        }
+        
+        .rpn-expression span {
+            display: inline-block;
+            padding: 5px 10px;
+            background: var(--bg-color);
+            border-radius: 5px;
+            margin: 0 5px;
+            font-family: monospace;
+            font-size: 1.2rem;
+            transition: background-color 0.3s var(--easing), color 0.3s var(--easing);
+        }
+        
+        .rpn-expression span.current {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        /* Drag and Drop Task */
+        .drop-zone {
+            width: 60px;
+            height: 60px;
+            border: 2px dashed var(--highlight-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s, border-style 0.3s;
+            position: absolute;
+        }
+        
+        .drop-zone.filled {
+            border-style: solid;
+        }
+
+        .drop-zone.drag-over {
+            background-color: rgba(83, 120, 149, 0.5);
+            border-style: solid;
+        }
+        
+        .draggable-items {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .draggable {
+            width: 50px;
+            height: 50px;
+            background: var(--secondary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: grab;
+            transition: transform 0.2s var(--easing), opacity 0.2s var(--easing);
+            touch-action: none;
+            position: relative;
+            z-index: 100;
+        }
+
+        .draggable.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+            transform: scale(1.1);
+        }
+        
+        .popup {
+            position: absolute;
+            background: var(--primary-color);
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--highlight-color);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            max-width: 250px;
+            text-align: left;
+            transform: translateX(-50%);
+        }
+
+        .popup.show {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="simulation-container">
+        <header class="simulation-header">
+            <h1>Binary Trees & Reverse Polish Notation</h1>
+            <p>An interactive A-Level Computer Science simulation covering expression trees, tree traversal, and RPN evaluation, aligned with the Cambridge 9618 specification.</p>
+        </header>
+
+        <main id="simulation-body">
+            <!-- Step 1: Introduction to Binary Trees -->
+            <section class="step" data-step="1">
+                <h2>Step 1: What is a Binary Expression Tree?</h2>
+                <div class="step-content">
+                    <div class="explanation">
+                        <p>A <strong>Binary Tree</strong> is a hierarchical data structure where each node has at most two children, referred to as the left child and the right child.</p>
+                        <p>An <strong>Expression Tree</strong> is a specific kind of binary tree used to represent arithmetic expressions. Each leaf node is an operand (a value or variable), and each internal node is an operator.</p>
+                        <br>
+                        <p><strong>Key Terminology:</strong></p>
+                        <ul>
+                            <li><strong>Node:</strong> An element in the tree.</li>
+                            <li><strong>Root:</strong> The topmost node of the tree.</li>
+                            <li><strong>Edge:</strong> A link between two nodes.</li>
+                            <li><strong>Parent:</strong> A node that has a child.</li>
+                            <li><strong>Child:</strong> A node that has a parent.</li>
+                            <li><strong>Leaf:</strong> A node with no children.</li>
+                        </ul>
+                        <br>
+                        <p><strong>Instructions:</strong> Hover over the different parts of the tree diagram to see their definitions.</p>
+                    </div>
+                    <div class="interactive-area">
+                        <div id="intro-tree-container" class="tree-container"></div>
+                        <div id="intro-popup" class="popup"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 2: Building an Expression Tree -->
+            <section class="step" data-step="2">
+                <h2>Step 2: Building an Expression Tree</h2>
+                <div class="step-content">
+                    <div class="explanation">
+                        <p>Expression trees are built from infix expressions (like <code>(A + B) * C</code>). The operators become the internal nodes, and the operands become the leaf nodes.</p>
+                        <p>The structure is determined by the order of operations. Operations inside parentheses happen first, meaning they are lower down in the tree. The main operator becomes the root.</p>
+                        <br>
+                        <p><strong>Task:</strong> Build the expression tree for <strong><code>A * (B + C)</code></strong>.</p>
+                        <p>Drag the operators and operands from the bottom into the correct empty slots in the tree structure. Think about which operation needs to happen first!</p>
+                    </div>
+                    <div class="interactive-area">
+                        <div id="build-tree-task">
+                            <div class="tree-container" id="build-tree-container">
+                                <!-- Drop zones will be generated here -->
+                            </div>
+                            <div class="draggable-items" id="draggable-items-container">
+                                <!-- Draggable items will be generated here -->
+                            </div>
+                            <div class="feedback" id="build-tree-feedback"></div>
+                            <button class="reset-btn" id="reset-build-tree">Reset Task</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 3: Tree Traversal -->
+            <section class="step" data-step="3">
+                <h2>Step 3: Tree Traversal Methods</h2>
+                <div class="step-content">
+                    <div class="explanation">
+                        <p>Tree traversal is the process of visiting each node in a tree exactly once. The order in which you visit the nodes defines the traversal type. For expression trees, this can change the notation of the expression.</p>
+                        <p><strong>In-order (Left, Node, Right):</strong> Gives the original infix expression. Often requires parentheses to preserve the original order of operations.</p>
+                        <p><strong>Pre-order (Node, Left, Right):</strong> Gives the Polish Notation (prefix) expression.</p>
+                        <p><strong>Post-order (Left, Right, Node):</strong> Gives the Reverse Polish Notation (postfix) expression. This is very useful for evaluation with a stack.</p>
+                        <br>
+                        <p><strong>Instructions:</strong> Click the buttons to see an animation of each traversal method on the tree for <code>(A + B) * C</code>. Observe the order in which the nodes are highlighted.</p>
+                    </div>
+                    <div class="interactive-area">
+                        <div id="traversal-tree-container" class="tree-container"></div>
+                        <div id="traversal-controls">
+                            <button class="quiz-btn" data-traversal="in-order">In-order</button>
+                            <button class="quiz-btn" data-traversal="pre-order">Pre-order</button>
+                            <button class="quiz-btn" data-traversal="post-order">Post-order</button>
+                        </div>
+                        <p style="margin-top: 1rem; font-weight: bold;">Result: <span id="traversal-output"></span></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 4: Traversal Quiz -->
+            <section class="step" data-step="4">
+                <h2>Step 4: Traversal Quiz</h2>
+                <div class="step-content">
+                    <div class="explanation">
+                        <p>Now, let's test your understanding of tree traversals.</p>
+                        <p>Examine the expression tree shown on the right, which represents the expression <strong><code>(X - Y) / Z</code></strong>.</p>
+                        <br>
+                        <p><strong>Question:</strong> What is the <strong>Post-order (LRN)</strong> traversal of this tree?</p>
+                        <p>Type your answer in the box below. Do not use spaces.</p>
+                    </div>
+                    <div class="interactive-area">
+                        <div id="quiz-tree-container" class="tree-container"></div>
+                        <input type="text" id="traversal-quiz-input" class="quiz-input" placeholder="Enter traversal string">
+                        <button class="quiz-btn" id="submit-traversal-quiz">Check Answer</button>
+                        <div class="feedback" id="traversal-quiz-feedback"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 5: Evaluating RPN with a Stack -->
+            <section class="step" data-step="5">
+                <h2>Step 5: Evaluating RPN with a Stack</h2>
+                <div class="step-content">
+                    <div class="explanation">
+                        <p>Reverse Polish Notation (RPN), derived from post-order traversal, is efficient for computers to evaluate because it doesn't need parentheses or precedence rules. It uses a stack data structure.</p>
+                        <p><strong>The Algorithm:</strong></p>
+                        <ol>
+                            <li>Read the RPN expression from left to right.</li>
+                            <li>If the token is an <strong>operand</strong> (a number), push it onto the stack.</li>
+                            <li>If the token is an <strong>operator</strong>, pop the top two operands from the stack.</li>
+                            <li>Perform the operation on the two operands (Note: the second popped operand is the first argument, e.g., `op2 - op1`).</li>
+                            <li>Push the result back onto the stack.</li>
+                        </ol>
+                        <p>After the last token, the final result is the single value remaining on the stack.</p>
+                        <br>
+                        <p><strong>Task:</strong> Evaluate the RPN expression <strong><code>5 3 + 2 *</code></strong> step by step using the controls.</p>
+                    </div>
+                    <div class="interactive-area" style="flex-direction: row; align-items: center; justify-content: space-around;">
+                        <div class="rpn-controls">
+                            <h3>Expression:</h3>
+                            <p class="rpn-expression" id="rpn-expression-task"></p>
+                            <button class="quiz-btn" id="rpn-step-btn">Next Step</button>
+                            <button class="reset-btn" id="rpn-reset-btn">Reset</button>
+                            <div class="feedback" id="rpn-feedback"></div>
+                        </div>
+                        <div style="text-align: center;">
+                           <h3>Stack</h3>
+                           <div class="stack-container" id="stack-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 6: Final Quiz -->
+            <section class="step" data-step="6">
+                <h2>Step 6: Final Quiz</h2>
+                <div id="final-quiz-container">
+                    <!-- Quiz questions will be injected here -->
+                </div>
+                <div style="text-align: center; margin-top: 2rem;">
+                    <p>Your Score: <span id="final-score">0</span> / <span id="total-questions">0</span></p>
+                    <button class="reset-btn" id="reset-final-quiz">Try Again</button>
+                </div>
+            </section>
+
+        </main>
+
+        <footer class="navigation">
+            <button class="nav-btn" id="prev-btn" disabled>Previous Step</button>
+            <span class="step-indicator" id="step-indicator">Step 1 of 6</span>
+            <button class="nav-btn" id="next-btn">Next Step</button>
+        </footer>
+    </div>
+
+    <!-- Modal for introductions and feedback -->
+    <div id="info-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Welcome!</h2>
+            <p id="modal-text">This simulation will guide you through Binary Expression Trees and RPN. Use the 'Next' and 'Previous' buttons or the left/right arrow keys to navigate.</p>
+            <button id="modal-close-btn" class="modal-close">Start Learning</button>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- DOM Caching ---
+    const steps = document.querySelectorAll('.step');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const stepIndicator = document.getElementById('step-indicator');
+    
+    const infoModal = document.getElementById('info-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalText = document.getElementById('modal-text');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+
+    // --- State Management ---
+    let currentStep = 0;
+    const totalSteps = steps.length;
+    let isModalOpen = false;
+    let animationFrameId;
+
+    // --- Utility Functions ---
+    const updateNav = () => {
+        currentStep = Array.from(steps).findIndex(step => step.classList.contains('active'));
+        if (currentStep === -1) currentStep = 0;
+
+        stepIndicator.textContent = `Step ${currentStep + 1} of ${totalSteps}`;
+        prevBtn.disabled = currentStep === 0;
+        nextBtn.disabled = currentStep === totalSteps - 1;
+    };
+
+    const showStep = (stepIndex) => {
+        // Cancel any ongoing animations from the previous step
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+        
+        steps.forEach((step, index) => {
+            step.classList.toggle('active', index === stepIndex);
+        });
+        updateNav();
+        // Trigger step-specific setup
+        const setupFunction = window[`setupStep${stepIndex + 1}`];
+        if (typeof setupFunction === 'function') {
+            setupFunction();
+        }
+    };
+
+    const showModal = (title, text, buttonText = "Close") => {
+        isModalOpen = true;
+        modalTitle.textContent = title;
+        modalText.innerHTML = text;
+        modalCloseBtn.textContent = buttonText;
+        infoModal.style.display = 'flex';
+    };
+
+    const hideModal = () => {
+        isModalOpen = false;
+        infoModal.style.display = 'none';
+        const setupFunction = window[`setupStep${currentStep + 1}`];
+        if (typeof setupFunction === 'function') {
+            setupFunction();
+        }
+    };
+    
+    // --- Tree Drawing Utility ---
+    const drawTree = (container, treeData, nodeClickHandler = null, nodeHoverHandler = null) => {
+        container.innerHTML = '';
+        const nodeElements = new Map();
+
+        const createNodesRecursive = (node, x, y, level) => {
+            if (!node) return;
+            const nodeEl = document.createElement('div');
+            nodeEl.className = 'tree-node';
+            nodeEl.textContent = node.value;
+            nodeEl.style.left = `${x}%`;
+            nodeEl.style.top = `${y}px`;
+            nodeEl.style.transform = 'translateX(-50%)';
+            nodeEl.dataset.id = node.id;
+            nodeEl.dataset.info = node.info || '';
+            container.appendChild(nodeEl);
+            nodeElements.set(node.id, nodeEl);
+
+            if (nodeClickHandler) {
+                nodeEl.addEventListener('click', () => nodeClickHandler(node));
+            }
+            if (nodeHoverHandler) {
+                nodeEl.addEventListener('mouseover', (e) => nodeHoverHandler(e, nodeEl, true));
+                nodeEl.addEventListener('mouseout', (e) => nodeHoverHandler(e, nodeEl, false));
+            }
+
+            const horizontalSpacing = 100 / Math.pow(2, level + 2);
+            const verticalSpacing = 80;
+
+            createNodesRecursive(node.left, x - horizontalSpacing, y + verticalSpacing, level + 1);
+            createNodesRecursive(node.right, x + horizontalSpacing, y + verticalSpacing, level + 1);
+        };
+
+        const drawLinesRecursive = (node) => {
+            if (!node) return;
+            const parentEl = nodeElements.get(node.id);
+            if (!parentEl) return;
+
+            if (node.left) {
+                const childEl = nodeElements.get(node.left.id);
+                if (childEl) drawLineBetween(parentEl, childEl, container);
+                drawLinesRecursive(node.left);
+            }
+            if (node.right) {
+                const childEl = nodeElements.get(node.right.id);
+                if (childEl) drawLineBetween(parentEl, childEl, container);
+                drawLinesRecursive(node.right);
+            }
+        };
+        
+        createNodesRecursive(treeData, 50, 20, 0);
+        
+        animationFrameId = requestAnimationFrame(() => {
+            drawLinesRecursive(treeData);
+        });
+        
+        return nodeElements;
+    };
+
+    const drawLineBetween = (parentNode, childNode, container) => {
+        const containerRect = container.getBoundingClientRect();
+        const parentRect = parentNode.getBoundingClientRect();
+        const childRect = childNode.getBoundingClientRect();
+
+        const p1 = {
+            x: parentRect.left + parentRect.width / 2 - containerRect.left,
+            y: parentRect.top + parentRect.height / 2 - containerRect.top
+        };
+        const p2 = {
+            x: childRect.left + childRect.width / 2 - containerRect.left,
+            y: childRect.top + childRect.height / 2 - containerRect.top
+        };
+
+        const length = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
+
+        const line = document.createElement('div');
+        line.className = 'tree-line';
+        line.style.width = `${length}px`;
+        line.style.transform = `rotate(${angle}deg)`;
+        line.style.left = `${p1.x}px`;
+        line.style.top = `${p1.y}px`;
+        container.prepend(line);
+    };
+
+    // --- Step-specific Logic ---
+
+    // Step 1: Intro Tree
+    window.setupStep1 = () => {
+        const container = document.getElementById('intro-tree-container');
+        const popup = document.getElementById('intro-popup');
+        const treeData = {
+            id: 'root', value: '*', info: '<strong>Root Node:</strong> The top-most node of the tree. It has no parent.',
+            left: {
+                id: 'l', value: '+', info: '<strong>Internal Node:</strong> A node that has at least one child. It represents an operator.',
+                left: { id: 'll', value: 'A', info: '<strong>Leaf Node:</strong> A node with no children. It represents an operand.' },
+                right: { id: 'lr', value: 'B', info: '<strong>Leaf Node:</strong> A node with no children. It represents an operand.' }
+            },
+            right: { id: 'r', value: 'C', info: '<strong>Leaf Node:</strong> A node with no children. It represents an operand.' }
+        };
+
+        const nodeHoverHandler = (event, element, isMouseOver) => {
+            if (isMouseOver) {
+                popup.innerHTML = element.dataset.info;
+                const elRect = element.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                popup.style.left = `${elRect.left - containerRect.left + elRect.width / 2}px`;
+                popup.style.top = `${elRect.top - containerRect.top - 10}px`;
+                popup.style.transform = 'translateX(-50%) translateY(-100%)';
+                popup.classList.add('show');
+                element.classList.add('highlight');
+            } else {
+                popup.classList.remove('show');
+                element.classList.remove('highlight');
+            }
+        };
+        
+        drawTree(container, treeData, null, nodeHoverHandler);
+    };
+
+    // Step 2: Build Tree Task
+    window.setupStep2 = () => {
+        const container = document.getElementById('build-tree-container');
+        const draggablesContainer = document.getElementById('draggable-items-container');
+        const feedback = document.getElementById('build-tree-feedback');
+        const resetBtn = document.getElementById('reset-build-tree');
+        
+        const items = ['A', 'B', 'C', '*', '+'];
+        let draggedItem = null;
+        
+        function initializeTask() {
+            container.innerHTML = `
+                <div class="drop-zone" data-id="root" style="left: 50%; top: 20px; transform: translateX(-50%);"></div>
+                <div class="drop-zone" data-id="l" style="left: 25%; top: 100px; transform: translateX(-50%);"></div>
+                <div class="drop-zone" data-id="r" style="left: 75%; top: 100px; transform: translateX(-50%);"></div>
+                <div class="drop-zone" data-id="rl" style="left: 62.5%; top: 180px; transform: translateX(-50%);"></div>
+                <div class="drop-zone" data-id="rr" style="left: 87.5%; top: 180px; transform: translateX(-50%);"></div>
+            `;
+            draggablesContainer.innerHTML = items.map(item => `<div class="draggable" draggable="true">${item}</div>`).join('');
+            feedback.textContent = '';
+            
+            addDragDropListeners();
+        }
+        
+        function addDragDropListeners() {
+            // Use event delegation on the container for draggables
+            draggablesContainer.addEventListener('dragstart', (e) => {
+                if (e.target.classList.contains('draggable')) {
+                    draggedItem = e.target;
+                    setTimeout(() => {
+                        e.target.classList.add('dragging');
+                    }, 0);
+                }
+            });
+
+            draggablesContainer.addEventListener('dragend', (e) => {
+                if (e.target.classList.contains('draggable')) {
+                    e.target.classList.remove('dragging');
+                }
+            });
+
+            const dropZones = container.querySelectorAll('.drop-zone');
+            dropZones.forEach(zone => {
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    zone.classList.add('drag-over');
+                });
+
+                zone.addEventListener('dragleave', () => {
+                    zone.classList.remove('drag-over');
+                });
+
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+
+                    if (draggedItem && !zone.hasChildNodes()) {
+                        draggedItem.classList.remove('draggable', 'dragging');
+                        draggedItem.setAttribute('draggable', 'false');
+                        draggedItem.style.cursor = 'default';
+                        
+                        zone.appendChild(draggedItem);
+                        zone.classList.add('filled');
+                        
+                        draggedItem = null;
+                        checkSolution();
+                    }
+                });
+            });
+        }
+
+        function checkSolution() {
+            const dropZones = container.querySelectorAll('.drop-zone');
+            if (Array.from(dropZones).every(z => z.hasChildNodes())) {
+                let isCorrect = true;
+                const correctTreeSolution = { root: '*', l: 'A', r: '+', rl: 'B', rr: 'C' };
+                dropZones.forEach(zone => {
+                    if (zone.textContent !== correctTreeSolution[zone.dataset.id]) {
+                        isCorrect = false;
+                    }
+                });
+
+                if (isCorrect) {
+                    feedback.textContent = "Correct! You've built the tree for A * (B + C).";
+                    feedback.style.color = 'var(--success-color)';
+                    const rootEl = container.querySelector('[data-id="root"]');
+                    const lEl = container.querySelector('[data-id="l"]');
+                    const rEl = container.querySelector('[data-id="r"]');
+                    const rlEl = container.querySelector('[data-id="rl"]');
+                    const rrEl = container.querySelector('[data-id="rr"]');
+                    
+                    if (rootEl && lEl) drawLineBetween(rootEl, lEl, container);
+                    if (rootEl && rEl) drawLineBetween(rootEl, rEl, container);
+                    if (rEl && rlEl) drawLineBetween(rEl, rlEl, container);
+                    if (rEl && rrEl) drawLineBetween(rEl, rrEl, container);
+                } else {
+                    feedback.textContent = "Not quite right. Check operator precedence. Reset and try again.";
+                    feedback.style.color = 'var(--error-color)';
+                }
+            }
+        }
+
+        resetBtn.addEventListener('click', initializeTask);
+        initializeTask();
+    };
+
+    // Step 3: Traversal Animation
+    window.setupStep3 = () => {
+        const container = document.getElementById('traversal-tree-container');
+        const output = document.getElementById('traversal-output');
+        const controls = document.getElementById('traversal-controls');
+        
+        const treeData = {
+            id: 'root', value: '*',
+            left: {
+                id: 'l', value: '+',
+                left: { id: 'll', value: 'A' },
+                right: { id: 'lr', value: 'B' }
+            },
+            right: { id: 'r', value: 'C' }
+        };
+        let nodeElements;
+        let isAnimating = false;
+
+        function initialize() {
+            output.textContent = '';
+            nodeElements = drawTree(container, treeData);
+            nodeElements.forEach(node => node.classList.remove('highlight'));
+        }
+
+        function getTraversalOrder(node, type) {
+            if (!node) return [];
+            const left = getTraversalOrder(node.left, type);
+            const right = getTraversalOrder(node.right, type);
+            const self = [node.id];
+
+            switch (type) {
+                case 'in-order': return [...left, ...self, ...right];
+                case 'pre-order': return [...self, ...left, ...right];
+                case 'post-order': return [...left, ...right, ...self];
+            }
+        }
+
+        async function animateTraversal(type) {
+            if (isAnimating || isModalOpen) return;
+            isAnimating = true;
+            controls.querySelectorAll('button').forEach(b => b.disabled = true);
+            initialize();
+            
+            const order = getTraversalOrder(treeData, type);
+            let resultString = '';
+
+            for (const nodeId of order) {
+                const nodeEl = nodeElements.get(nodeId);
+                nodeEl.classList.add('highlight');
+                resultString += nodeEl.textContent;
+                output.textContent = resultString;
+                await new Promise(res => setTimeout(res, 800));
+            }
+            isAnimating = false;
+            controls.querySelectorAll('button').forEach(b => b.disabled = false);
+        }
+
+        controls.addEventListener('click', (e) => {
+            if (e.target.matches('[data-traversal]')) {
+                animateTraversal(e.target.dataset.traversal);
+            }
+        });
+
+        initialize();
+    };
+
+    // Step 4: Traversal Quiz
+    window.setupStep4 = () => {
+        const container = document.getElementById('quiz-tree-container');
+        const input = document.getElementById('traversal-quiz-input');
+        const submitBtn = document.getElementById('submit-traversal-quiz');
+        const feedback = document.getElementById('traversal-quiz-feedback');
+        
+        const treeData = {
+            id: 'root', value: '/',
+            left: {
+                id: 'l', value: '-',
+                left: { id: 'll', value: 'X' },
+                right: { id: 'lr', value: 'Y' }
+            },
+            right: { id: 'r', value: 'Z' }
+        };
+        const correctAnswer = "XY-Z/";
+
+        function initialize() {
+            drawTree(container, treeData);
+            input.value = '';
+            feedback.textContent = '';
+            input.classList.remove('correct', 'incorrect');
+        }
+
+        submitBtn.addEventListener('click', () => {
+            const userAnswer = input.value.replace(/\s+/g, '').toUpperCase();
+            if (userAnswer.length < 3) {
+                feedback.textContent = "Please provide a complete answer.";
+                feedback.style.color = 'var(--highlight-color)';
+                return;
+            }
+            if (userAnswer === correctAnswer) {
+                feedback.textContent = "Correct! Well done.";
+                feedback.style.color = 'var(--success-color)';
+                input.classList.add('correct');
+                input.classList.remove('incorrect');
+            } else {
+                feedback.textContent = "Incorrect. Remember Post-order is Left, Right, Node.";
+                feedback.style.color = 'var(--error-color)';
+                input.classList.add('incorrect');
+                input.classList.remove('correct');
+            }
+        });
+
+        initialize();
+    };
+
+    // Step 5: RPN Evaluation
+    window.setupStep5 = () => {
+        const expressionEl = document.getElementById('rpn-expression-task');
+        const stackContainer = document.getElementById('stack-container');
+        const stepBtn = document.getElementById('rpn-step-btn');
+        const resetBtn = document.getElementById('rpn-reset-btn');
+        const feedback = document.getElementById('rpn-feedback');
+        
+        const expression = ['5', '3', '+', '2', '*'];
+        let rpnStep = 0;
+        let stack = [];
+
+        function initialize() {
+            rpnStep = 0;
+            stack = [];
+            updateDisplay();
+            feedback.textContent = 'Click "Next Step" to begin.';
+            feedback.style.color = 'var(--text-color)';
+            stepBtn.disabled = false;
+        }
+
+        function updateDisplay() {
+            expressionEl.innerHTML = expression.map((token, index) => 
+                `<span class="${index === rpnStep ? 'current' : ''}">${token}</span>`
+            ).join('');
+
+            stackContainer.innerHTML = stack.map(item => `<div class="stack-item">${item}</div>`).join('');
+        }
+
+        function processStep() {
+            if (rpnStep >= expression.length) return;
+
+            const token = expression[rpnStep];
+            const isOperator = ['+', '-', '*', '/'].includes(token);
+
+            if (isOperator) {
+                if (stack.length < 2) {
+                    feedback.textContent = "Error: Not enough operands on the stack for operator.";
+                    feedback.style.color = 'var(--error-color)';
+                    stepBtn.disabled = true;
+                    return;
+                }
+                const op2 = stack.pop();
+                const op1 = stack.pop();
+                let result;
+                switch (token) {
+                    case '+': result = op1 + op2; break;
+                    case '-': result = op1 - op2; break;
+                    case '*': result = op1 * op2; break;
+                    case '/': result = op1 / op2; break;
+                }
+                stack.push(result);
+                feedback.textContent = `Popped ${op1} and ${op2}, calculated ${op1} ${token} ${op2} = ${result}, pushed ${result}.`;
+            } else {
+                stack.push(parseInt(token));
+                feedback.textContent = `Pushed operand ${token} onto the stack.`;
+            }
+
+            rpnStep++;
+            updateDisplay();
+
+            if (rpnStep >= expression.length) {
+                feedback.textContent = `Evaluation complete! Final result: ${stack[0]}`;
+                stepBtn.disabled = true;
+            }
+        }
+
+        stepBtn.addEventListener('click', processStep);
+        resetBtn.addEventListener('click', initialize);
+
+        initialize();
+    };
+    
+    // Step 6: Final Quiz
+    window.setupStep6 = () => {
+        const quizContainer = document.getElementById('final-quiz-container');
+        const scoreEl = document.getElementById('final-score');
+        const totalEl = document.getElementById('total-questions');
+        const resetBtn = document.getElementById('reset-final-quiz');
+        let score = 0;
+
+        const questions = [
+            {
+                type: 'mcq',
+                question: 'Which tree traversal results in a Reverse Polish Notation (RPN) expression?',
+                options: ['In-order', 'Pre-order', 'Post-order', 'Level-order'],
+                answer: 'Post-order'
+            },
+            {
+                type: 'input',
+                question: 'Evaluate the RPN expression: 7 2 3 * -',
+                answer: '1' // 7 - (2 * 3) = 1
+            },
+            {
+                type: 'true-false',
+                question: 'In-order traversal of an expression tree always produces the original infix expression without ambiguity.',
+                options: ['True', 'False'],
+                answer: 'False'
+            },
+            {
+                type: 'mcq',
+                question: 'In an expression tree, where are the operands located?',
+                options: ['At the root node', 'As internal nodes', 'As leaf nodes', 'Anywhere in the tree'],
+                answer: 'As leaf nodes'
+            }
+        ];
+        
+        totalEl.textContent = questions.length;
+
+        function initializeQuiz() {
+            score = 0;
+            scoreEl.textContent = score;
+            quizContainer.innerHTML = '';
+            
+            questions.forEach((q, index) => {
+                const qEl = document.createElement('div');
+                qEl.className = 'quiz-question-container';
+                qEl.style.marginBottom = '2rem';
+                
+                let content = `<h4>Question ${index + 1}: ${q.question}</h4>`;
+                
+                if (q.type === 'mcq' || q.type === 'true-false') {
+                    content += `<div class="quiz-options" data-qindex="${index}">`;
+                    q.options.forEach(opt => {
+                        content += `<div class="quiz-option" data-answer="${opt}">${opt}</div>`;
+                    });
+                    content += `</div>`;
+                } else if (q.type === 'input') {
+                    content += `
+                        <input type="text" class="quiz-input" data-qindex="${index}" placeholder="Your Answer">
+                        <button class="quiz-btn check-input-btn" data-qindex="${index}">Check</button>
+                    `;
+                }
+                content += `<div class="feedback" id="feedback-${index}"></div>`;
+                qEl.innerHTML = content;
+                quizContainer.appendChild(qEl);
+            });
+        }
+        
+        quizContainer.addEventListener('click', (e) => {
+            const target = e.target;
+            
+            if (target.classList.contains('quiz-option')) {
+                const qIndex = target.parentElement.dataset.qindex;
+                const question = questions[qIndex];
+                const feedbackEl = document.getElementById(`feedback-${qIndex}`);
+                
+                if (target.parentElement.dataset.answered) return;
+                target.parentElement.dataset.answered = "true";
+
+                if (target.dataset.answer === question.answer) {
+                    target.classList.add('correct');
+                    feedbackEl.textContent = 'Correct!';
+                    feedbackEl.style.color = 'var(--success-color)';
+                    score++;
+                } else {
+                    target.classList.add('incorrect');
+                    feedbackEl.textContent = `Incorrect. The correct answer is ${question.answer}.`;
+                    feedbackEl.style.color = 'var(--error-color)';
+                    const correctOption = target.parentElement.querySelector(`[data-answer="${question.answer}"]`);
+                    if (correctOption) correctOption.classList.add('correct');
+                }
+                scoreEl.textContent = score;
+            }
+            
+            else if (target.classList.contains('check-input-btn')) {
+                const qIndex = target.dataset.qindex;
+                const question = questions[qIndex];
+                const inputEl = quizContainer.querySelector(`input[data-qindex="${qIndex}"]`);
+                const feedbackEl = document.getElementById(`feedback-${qIndex}`);
+                
+                if (inputEl.value.trim().length === 0) {
+                    feedbackEl.textContent = 'Please enter an answer.';
+                    feedbackEl.style.color = 'var(--highlight-color)';
+                    return;
+                }
+
+                if (inputEl.value.trim() === question.answer) {
+                    inputEl.classList.add('correct');
+                    inputEl.classList.remove('incorrect');
+                    feedbackEl.textContent = 'Correct!';
+                    feedbackEl.style.color = 'var(--success-color)';
+                    if(!inputEl.dataset.answered) {
+                        score++;
+                        inputEl.dataset.answered = true;
+                        target.disabled = true;
+                    }
+                } else {
+                    inputEl.classList.add('incorrect');
+                    inputEl.classList.remove('correct');
+                    feedbackEl.textContent = `Incorrect. Try again.`;
+                    feedbackEl.style.color = 'var(--error-color)';
+                }
+                scoreEl.textContent = score;
+            }
+        });
+
+        resetBtn.addEventListener('click', initializeQuiz);
+        initializeQuiz();
+    };
+
+    // --- Global Event Listeners ---
+    prevBtn.addEventListener('click', () => {
+        if (currentStep > 0) showStep(currentStep - 1);
+    });
+
+    nextBtn.addEventListener('click', () => {
+        if (currentStep < totalSteps - 1) showStep(currentStep + 1);
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (isModalOpen || e.target.tagName === 'INPUT') return;
+        
+        if (e.key === 'ArrowRight' && !nextBtn.disabled) {
+            nextBtn.click();
+        } else if (e.key === 'ArrowLeft' && !prevBtn.disabled) {
+            prevBtn.click();
+        }
+    });
+
+    modalCloseBtn.addEventListener('click', hideModal);
+
+    // --- Initialization ---
+    showModal('Welcome to the Simulation!', 'This interactive guide will teach you about Binary Expression Trees and Reverse Polish Notation.<br><br>Use the <strong>arrow keys</strong> or the <strong>navigation buttons</strong> at the bottom to move between steps.', 'Let\'s Get Started!');
+    showStep(0);
+});
+</script>
+</body>
+</html>

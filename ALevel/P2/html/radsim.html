@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rapid Application Development (RAD) Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fffbeb; /* amber-50 */
+        }
+        /* --- Animations --- */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse-intense { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4); } 70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); } }
+        @keyframes pop-in { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes shrink-out { to { transform: scale(0); opacity: 0; } }
+
+        .rad-container {
+            position: relative;
+            width: 350px;
+            height: 350px;
+        }
+        .dev-pod {
+            position: absolute;
+            width: 120px;
+            transition: all 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        /* Positions for dev pods */
+        .dev-pod-1 { top: 0; left: 50%; transform: translate(-50%, -50%); }
+        .dev-pod-2 { top: 50%; left: 100%; transform: translate(-50%, -50%); }
+        .dev-pod-3 { top: 100%; left: 50%; transform: translate(-50%, -50%); }
+
+        .prototype-bar {
+            background: #e5e7eb;
+            height: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+            transition: border-color 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .prototype-progress {
+            background: #f59e0b; /* amber-500 */
+            width: 0%;
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s ease-in-out;
+        }
+        .feedback-icon {
+            display: none;
+            cursor: pointer;
+            animation: pop-in 0.5s ease-out;
+            transition: transform 0.2s ease;
+        }
+        .feedback-icon:hover { transform: scale(1.2); }
+        .feedback-popup {
+            position: fixed; /* <-- FIX: Changed to fixed positioning */
+            z-index: 100; /* Increased z-index to ensure it's on top */
+            transform: translate(-50%, -110%); /* Position above the icon */
+            background-color: #3b82f6;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            width: 200px;
+            text-align: center;
+            line-height: 1.4;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            white-space: normal;
+            animation: pop-in 0.3s ease-out, shrink-out 0.3s ease-in 3.2s forwards;
+            pointer-events: none; /* So it doesn't block clicks */
+        }
+        .feedback-popup::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 8px;
+            border-style: solid;
+            border-color: #3b82f6 transparent transparent transparent;
+        }
+        
+        .final-product-module {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.5s ease-out;
+        }
+        .final-product-module.visible { opacity: 1; transform: translateY(0); }
+        
+        .nav-btn:disabled {
+            background-color: #d1d5db !important;
+            color: #6b7280 !important;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        .quiz-option {
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .quiz-option:not(.disabled):hover {
+            background-color: #fef3c7; /* amber-100 */
+            transform: scale(1.02);
+        }
+        .quiz-option.disabled { cursor: not-allowed; }
+        .quiz-option.correct { background-color: #dcfce7 !important; border-color: #22c55e; }
+        .quiz-option.incorrect { background-color: #fee2e2 !important; border-color: #ef4444; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div id="main-container" class="w-full max-w-5xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+        <header class="p-4 sm:p-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white relative">
+            <div class="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.1%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-30"></div>
+            <div class="relative z-10">
+                <h1 class="text-2xl sm:text-3xl font-bold text-center">Rapid Application Development (RAD)</h1>
+                <p class="text-center text-amber-100 mt-1">Fast, Flexible, and Feedback-Driven</p>
+            </div>
+        </header>
+        
+        <main id="simulation-body" class="p-5 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <!-- Left Side: RAD Visual -->
+            <div class="flex flex-col items-center justify-center min-h-[450px]">
+                <div class="rad-container">
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 text-center">
+                        <div id="final-product" class="w-44 h-44 bg-slate-800 text-white rounded-lg shadow-2xl flex flex-col p-2 space-y-1 justify-center items-center transition-all duration-500">
+                             <p class="text-sm font-bold">Final Product</p>
+                             <div id="module-1" class="final-product-module w-full bg-slate-600 text-xs text-center rounded-sm py-1"></div>
+                             <div id="module-2" class="final-product-module w-full bg-slate-600 text-xs text-center rounded-sm py-1"></div>
+                             <div id="module-3" class="final-product-module w-full bg-slate-600 text-xs text-center rounded-sm py-1"></div>
+                        </div>
+                    </div>
+                    <div id="pod-1" class="dev-pod dev-pod-1 bg-white p-3 rounded-lg shadow-md text-center"><i class="fas fa-user-circle fa-2x text-sky-500"></i><p class="text-sm font-bold">Team A</p><p class="text-xs text-slate-500 mb-1">UI/UX</p><div class="prototype-bar"><div class="prototype-progress"></div></div><i class="fas fa-comment-dots fa-2x text-blue-500 mt-2 feedback-icon"></i></div>
+                    <div id="pod-2" class="dev-pod dev-pod-2 bg-white p-3 rounded-lg shadow-md text-center"><i class="fas fa-database fa-2x text-emerald-500"></i><p class="text-sm font-bold">Team B</p><p class="text-xs text-slate-500 mb-1">Database</p><div class="prototype-bar"><div class="prototype-progress"></div></div><i class="fas fa-comment-dots fa-2x text-blue-500 mt-2 feedback-icon"></i></div>
+                    <div id="pod-3" class="dev-pod dev-pod-3 bg-white p-3 rounded-lg shadow-md text-center"><i class="fas fa-cogs fa-2x text-purple-500"></i><p class="text-sm font-bold">Team C</p><p class="text-xs text-slate-500 mb-1">Business Logic</p><div class="prototype-bar"><div class="prototype-progress"></div></div><i class="fas fa-comment-dots fa-2x text-blue-500 mt-2 feedback-icon"></i></div>
+                </div>
+            </div>
+
+            <!-- Right Side: Content & Explanation -->
+            <div id="content-panel" class="bg-slate-50 p-6 rounded-lg shadow-inner min-h-[450px] flex flex-col">
+                 <!-- Content dynamically inserted -->
+            </div>
+        </main>
+        
+        <footer class="p-4 bg-slate-100 border-t flex justify-between items-center">
+            <button id="prev-btn" class="nav-btn font-bold py-2 px-5 rounded-lg transition-colors flex items-center bg-slate-300 text-slate-800 hover:enabled:bg-slate-400" disabled><i class="fas fa-arrow-left mr-2"></i>Previous</button>
+            <div id="step-indicator" class="text-sm font-semibold text-slate-600"></div>
+            <button id="next-btn" class="nav-btn bg-amber-500 text-white font-bold py-2 px-5 rounded-lg hover:bg-amber-600 transition-colors flex items-center">Next Step<i class="fas fa-arrow-right ml-2"></i></button>
+            <button id="reset-btn" class="nav-btn bg-red-600 text-white font-bold py-2 px-5 rounded-lg hover:bg-red-700 transition-colors flex items-center hidden"><i class="fas fa-redo mr-2"></i>Reset</button>
+        </footer>
+    </div>
+    
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- STATE MANAGEMENT ---
+    let currentStep = 0;
+    let feedbackGiven = 0;
+    let quizScore = 0;
+    let currentQuestionIndex = 0;
+    const totalSteps = 5;
+
+    // --- DOM ELEMENTS ---
+    const contentPanel = document.getElementById('content-panel');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const stepIndicator = document.getElementById('step-indicator');
+    const pods = [document.getElementById('pod-1'), document.getElementById('pod-2'), document.getElementById('pod-3')];
+    const finalProductModules = [document.getElementById('module-1'), document.getElementById('module-2'), document.getElementById('module-3')];
+
+    // --- DATA ---
+    const stepData = [
+        { title: "What is RAD?", description: "Rapid Application Development (RAD) is a model that prioritizes fast prototyping and frequent user feedback. Instead of a rigid plan, RAD uses parallel development and iterative releases to build software quickly.", actionText: "Let's begin with the initial planning.", buttonText: "Start" },
+        { title: "Step 1: Requirements Planning", description: "This phase is a short, high-level workshop to define the project's scope and requirements. Unlike Waterfall, the details are not exhaustive, allowing for flexibility later on.", actionText: "Multiple developer teams are formed to work on different modules in parallel.", buttonText: "Begin Prototyping" },
+        { title: "Step 2: Prototyping & User Feedback", description: "Teams work simultaneously on different prototypes. The goal is to quickly create something tangible for the client to interact with. Now, it's time to gather feedback.", actionText: "<b>Click the feedback icons <i class='fas fa-comment-dots text-blue-500'></i></b> on each prototype to simulate user review.", buttonText: "Awaiting Feedback..." },
+        { title: "Step 3: Construction & Refinement", description: "Based on the user's feedback, the development teams refine and rebuild their prototypes. This cycle of building, presenting, and refining continues until the modules meet the client's needs.", actionText: "The prototypes have been updated based on feedback and are now considered complete.", buttonText: "Integrate Modules" },
+        { title: "Step 4: Cutover & Finalization", description: "The completed and approved modules are integrated into the final product. This phase also includes final testing, deployment, and user training. The product is now live!", actionText: "All modules are integrated into the final application.", buttonText: "Evaluate RAD" },
+        { title: "Evaluation: Pros, Cons & Quiz", description: "RAD is powerful but not a silver bullet. Let's evaluate its strengths and weaknesses, then test your knowledge." }
+    ];
+    
+    const mockFeedbackData = {
+        "pod-1": "The color scheme is a bit dull. Can we make it more vibrant? Also, the main login button should be larger.",
+        "pod-2": "The schema looks good, but please add a 'last_login' timestamp field to the user table for tracking.",
+        "pod-3": "The password reset logic is functional, but the email it sends is very plain. It needs better formatting."
+    };
+
+    const quizData = [
+        { question: "What is a key characteristic of the RAD model?", options: ["A long, detailed initial planning phase.", "Development of modules in parallel as prototypes.", "Testing only occurs at the very end.", "User involvement is minimal after planning."], answer: 1 },
+        { question: "A major drawback of RAD is that it...", options: ["is very slow to produce a working product.", "is highly inflexible to changes.", "requires significant, continuous user involvement.", "is best suited for large, safety-critical systems."], answer: 2 },
+        { question: "RAD is most suitable for projects that are...", options: ["Time-critical and have flexible requirements.", "Low-risk with a fixed, unchangeable plan.", "Large, complex, and have no budget constraints.", "Managed by developers with no access to users."], answer: 0 }
+    ];
+
+    // --- INITIALIZATION & UI UPDATES ---
+    function updateUI() {
+        const data = stepData[currentStep];
+        contentPanel.innerHTML = `<div class="flex-grow" style="animation: fadeIn 0.5s ease-out;"><h3 class="text-2xl font-bold text-slate-800 mb-2">${data.title}</h3><p class="text-slate-600 mb-5">${data.description}</p></div><div class="bg-amber-100 p-4 rounded-lg border border-amber-200 mt-auto"><p class="text-sm font-semibold text-amber-800 tracking-wider uppercase">Action</p><p class="font-medium text-amber-900 mt-1">${data.actionText || ''}</p></div>`;
+        
+        if (data.buttonText) nextBtn.innerHTML = `${data.buttonText}<i class="fas fa-arrow-right ml-2"></i>`;
+        
+        stepIndicator.textContent = `Step ${currentStep > 0 ? currentStep : 1} of ${totalSteps}`;
+        prevBtn.disabled = currentStep === 0;
+        nextBtn.disabled = false;
+        nextBtn.classList.remove('hidden');
+        resetBtn.classList.add('hidden');
+        nextBtn.style.animation = '';
+
+        // Visual State Machine
+        switch (currentStep) {
+            case 0: resetVisuals(); break;
+            case 1: pods.forEach(pod => pod.style.opacity = '1'); break;
+            case 2:
+                pods.forEach(pod => {
+                    pod.querySelector('.prototype-progress').style.width = '100%';
+                    setTimeout(() => pod.querySelector('.feedback-icon').style.display = 'block', 1000);
+                });
+                nextBtn.disabled = true;
+                break;
+            case 3:
+                pods.forEach(pod => {
+                    pod.querySelector('.prototype-bar').classList.remove('border-blue-400');
+                    pod.querySelector('.prototype-progress').style.width = '0%';
+                    setTimeout(() => pod.querySelector('.prototype-progress').style.width = '100%', 100);
+                });
+                break;
+            case 4:
+                pods.forEach((pod, i) => {
+                    pod.style.transform = 'translate(-50%, -50%) scale(0)';
+                    pod.style.opacity = '0';
+                    setTimeout(() => {
+                        finalProductModules[i].classList.add('visible');
+                        finalProductModules[i].textContent = pod.querySelector('.text-xs').textContent;
+                    }, 600);
+                });
+                break;
+            case 5:
+                contentPanel.innerHTML = getEvaluationContent();
+                initEvaluationInteractions();
+                nextBtn.classList.add('hidden');
+                resetBtn.classList.remove('hidden');
+                stepIndicator.textContent = `Evaluation`;
+                break;
+        }
+    }
+    
+    function resetVisuals() {
+        pods.forEach((pod, i) => {
+            pod.style.opacity = '0';
+            pod.className = `dev-pod dev-pod-${i+1} bg-white p-3 rounded-lg shadow-md text-center`;
+            const feedbackIcon = pod.querySelector('.feedback-icon');
+            if (feedbackIcon) {
+                feedbackIcon.style.display = 'none';
+                feedbackIcon.style.animation = 'pop-in 0.5s ease-out';
+                feedbackIcon.style.pointerEvents = 'auto';
+            }
+            pod.querySelector('.prototype-progress').style.width = '0%';
+            pod.querySelector('.prototype-bar').classList.remove('border-blue-400');
+        });
+        finalProductModules.forEach(m => m.classList.remove('visible'));
+        feedbackGiven = 0;
+        quizScore = 0;
+        currentQuestionIndex = 0;
+    }
+
+    function getEvaluationContent() {
+        return `
+            <div style="animation: fadeIn 0.5s ease-out;">
+                <h3 class="text-2xl font-bold text-slate-800 mb-2">${stepData[5].title}</h3>
+                <p class="text-slate-600 mb-4">${stepData[5].description}</p>
+                <div class="space-y-2 mb-6">
+                    <details class="bg-green-50 p-3 rounded-lg cursor-pointer"><summary class="font-semibold text-green-800">Benefits of RAD</summary><ul class="list-disc list-inside space-y-1 mt-2 text-sm text-green-900"><li>Fast development and delivery.</li><li>High customer satisfaction due to involvement.</li><li>Flexible and easy to incorporate changes.</li><li>Early problem detection via prototyping.</li></ul></details>
+                    <details class="bg-red-50 p-3 rounded-lg cursor-pointer"><summary class="font-semibold text-red-800">Drawbacks of RAD</summary><ul class="list-disc list-inside space-y-1 mt-2 text-sm text-red-900"><li>High user involvement needed.</li><li>Not suitable for very large or complex projects.</li><li>Can be expensive due to prototyping & user time.</li><li>Risk of scope creep without firm management.</li></ul></details>
+                </div>
+                <div id="quiz-container"></div>
+            </div>
+        `;
+    }
+
+    // --- EVENT HANDLERS & INTERACTIONS ---
+    function handleNav(direction) {
+        if (direction === 'next' && currentStep < totalSteps) currentStep++;
+        else if (direction === 'prev' && currentStep > 0) currentStep--;
+        updateUI();
+    }
+    
+    function handleReset() {
+        currentStep = 0;
+        updateUI();
+    }
+
+    function handleFeedbackClick(e) {
+        const icon = e.target.closest('.feedback-icon');
+        if (currentStep !== 2 || !icon || icon.style.display === 'none' || icon.style.pointerEvents === 'none') return;
+        
+        icon.style.animation = 'shrink-out 0.3s forwards';
+        icon.style.pointerEvents = 'none';
+        
+        const pod = icon.parentElement;
+        pod.querySelector('.prototype-bar').classList.add('border-blue-400');
+        
+        const feedbackText = mockFeedbackData[pod.id] || "Feedback received!";
+        const popup = document.createElement('div');
+        popup.className = 'feedback-popup';
+        popup.textContent = feedbackText;
+        
+        // FIX: Append to body and calculate position
+        const iconRect = icon.getBoundingClientRect();
+        popup.style.left = `${iconRect.left + iconRect.width / 2}px`;
+        popup.style.top = `${iconRect.top}px`;
+        document.body.appendChild(popup);
+        
+        // Cleanup popup after animation
+        setTimeout(() => popup.remove(), 3500);
+
+        feedbackGiven++;
+
+        if (feedbackGiven === pods.length) {
+            nextBtn.disabled = false;
+            nextBtn.innerHTML = 'Refine Prototypes <i class="fas fa-arrow-right ml-2"></i>';
+            nextBtn.style.animation = 'pulse-intense 1.5s infinite';
+        }
+    }
+
+    function initEvaluationInteractions() {
+        loadQuizQuestion();
+    }
+    
+    // --- QUIZ LOGIC ---
+    function loadQuizQuestion() {
+        const quizContainer = document.getElementById('quiz-container');
+        if (!quizContainer) return;
+        
+        if (currentQuestionIndex < quizData.length) {
+            const q = quizData[currentQuestionIndex];
+            quizContainer.innerHTML = `
+                <h4 class="font-bold text-lg text-slate-700 mb-2">Knowledge Check (${currentQuestionIndex + 1}/${quizData.length})</h4>
+                <p class="font-semibold text-slate-800 mb-3">${q.question}</p>
+                <div class="space-y-2">
+                    ${q.options.map((opt, i) => `<button class="quiz-option w-full text-left p-3 rounded-lg border-2 border-slate-200" data-index="${i}">${opt}</button>`).join('')}
+                </div>
+                <div id="quiz-feedback" class="mt-3 font-medium h-6"></div>
+            `;
+            quizContainer.querySelectorAll('.quiz-option').forEach(btn => btn.addEventListener('click', selectQuizAnswer));
+        } else {
+            quizContainer.innerHTML = `
+                <div class="text-center p-4 bg-amber-100 rounded-lg">
+                    <h4 class="font-bold text-xl text-amber-800">Quiz Complete!</h4>
+                    <p class="text-amber-700 mt-1">You scored ${quizScore} out of ${quizData.length}.</p>
+                </div>
+            `;
+        }
+    }
+    
+    function selectQuizAnswer(e) {
+        const selectedBtn = e.target;
+        const selectedIndex = parseInt(selectedBtn.dataset.index);
+        const correctIndex = quizData[currentQuestionIndex].answer;
+        const feedbackEl = document.getElementById('quiz-feedback');
+        
+        document.querySelectorAll('.quiz-option').forEach((btn, i) => {
+            btn.classList.add('disabled');
+            if (i === correctIndex) btn.classList.add('correct');
+        });
+
+        if (selectedIndex === correctIndex) {
+            quizScore++;
+            feedbackEl.innerHTML = `<span class="text-green-600"><i class="fas fa-check-circle mr-2"></i>Correct!</span>`;
+        } else {
+            selectedBtn.classList.add('incorrect');
+            feedbackEl.innerHTML = `<span class="text-red-600"><i class="fas fa-times-circle mr-2"></i>Incorrect.</span>`;
+        }
+        
+        currentQuestionIndex++;
+        setTimeout(loadQuizQuestion, 2000);
+    }
+
+    // --- LISTENERS & INITIALIZATION ---
+    nextBtn.addEventListener('click', () => handleNav('next'));
+    prevBtn.addEventListener('click', () => handleNav('prev'));
+    resetBtn.addEventListener('click', handleReset);
+    document.querySelector('.rad-container').addEventListener('click', handleFeedbackClick);
+    
+    updateUI();
+});
+</script>
+</body>
+</html>

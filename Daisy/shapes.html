@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Interactive Sensory Playground</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Patrick+Hand&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        :root {
+            /* Day Mode Theme */
+            --bg-start-color: #a1c4fd; /* Light Blue */
+            --bg-end-color: #c2e9fb; /* Lighter Blue */
+            --shape-text-color: rgba(255, 255, 255, 0.95);
+            --instructions-color: rgba(0, 0, 0, 0.6);
+            --button-bg: #ff7979;
+            --button-text: white;
+            --button-active-bg: #e056fd;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Fredoka One', cursive;
+            cursor: pointer;
+            transition: background-color 0.5s ease;
+        }
+
+        body.night-mode {
+            /* Night Mode Theme */
+            --bg-start-color: #0d1b2a;
+            --bg-end-color: #1a1a2e;
+            --shape-text-color: rgba(255, 255, 255, 0.95);
+            --instructions-color: rgba(255, 255, 255, 0.7);
+            --button-bg: #7ed6df;
+            --button-text: #0d1b2a;
+            --button-active-bg: #f9ca24;
+        }
+        
+        body {
+            background: linear-gradient(to bottom, var(--bg-start-color), var(--bg-end-color));
+        }
+
+        #game-canvas {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        /* --- Base Styles for all interactive elements --- */
+        .shape, .ambient-effect, .findable-item, .firework-particle, .bubble {
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: var(--shape-text-color);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+            will-change: transform, opacity;
+            pointer-events: none;
+        }
+        
+        /* --- Game Item Styles --- */
+        .findable-item {
+            pointer-events: auto;
+            animation: gentleWiggle 2.5s infinite ease-in-out;
+            opacity: 1;
+            transform: scale(1);
+            font-size: 180px; /* Made animals very very big */
+        }
+
+        .shape { animation: floatUp 3.5s ease-out forwards; }
+        .circle { border-radius: 50%; }
+        .square { border-radius: 10%; }
+        .triangle { width: 0; height: 0; background-color: transparent !important; }
+        .star { clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+        
+        .bubble {
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            animation: floatUp 5s linear forwards, wobble 3s infinite ease-in-out;
+            pointer-events: auto;
+        }
+        
+        .firework-particle {
+            border-radius: 50%;
+            opacity: 1;
+        }
+
+        /* --- Ambient Effect Styles --- */
+        .ambient-effect { border-radius: 50%; }
+        .rain { width: 2px; height: 15px; background-color: rgba(255, 255, 255, 0.7); animation: fall 1s linear infinite; }
+        .snow { width: 10px; height: 10px; background-color: white; opacity: 0.8; animation: fall 5s linear infinite; }
+        .cloud { font-size: 80px; opacity: 0.7; animation: fadeAndDrift 20s linear forwards; }
+        .stardust { width: 5px; height: 5px; background: white; box-shadow: 0 0 10px white; animation: fadeOut 1s forwards; }
+
+        /* --- Animations --- */
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(0); opacity: 0; }
+            20% { transform: translateY(-20vh) scale(1); opacity: 1; }
+            100% { transform: translateY(-120vh) scale(0.5); opacity: 0; }
+        }
+        @keyframes fall { from { transform: translateY(-10vh); } to { transform: translateY(110vh); } }
+        @keyframes fadeOut { to { opacity: 0; transform: scale(0.5); } }
+        @keyframes fadeAndDrift { to { opacity: 0; transform: translateX(100px); } }
+        @keyframes gentleWiggle { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+        @keyframes wobble { 0%, 100% { border-radius: 45% 55% 60% 40%; } 50% { border-radius: 60% 40% 45% 55%; } }
+        @keyframes pop { to { transform: scale(1.5); opacity: 0; } }
+
+        /* --- UI Panel --- */
+        .ui-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            z-index: 1000;
+            max-width: 95%;
+        }
+
+        .ui-button {
+            padding: 10px 18px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 0.9rem;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .ui-button:active { transform: scale(0.95); }
+        .ui-button.active { background-color: var(--button-active-bg); }
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="day-mode">
+    <div id="game-canvas"></div>
+    <div id="instructions" style="position:absolute; top:20px; left:50%; transform:translateX(-50%); font-family:'Patrick Hand',cursive; font-size:1.5rem; color:var(--instructions-color); pointer-events:none; transition: color 0.5s ease;">Press a letter or tap the screen!</div>
+
+    <div class="ui-panel">
+        <button id="mode-toggle" class="ui-button">Night Mode 🌙</button>
+        <button id="fireworks-mode-toggle" class="ui-button hidden">Fireworks 🎆</button>
+        <button id="color-mode-toggle" class="ui-button">Color Mode 🎨</button>
+        <button id="bubble-mode-toggle" class="ui-button">Bubble Pop 🫧</button>
+        <button id="music-zone-mode-toggle" class="ui-button">Music Zones 🎶</button>
+        <button id="find-animal-game" class="ui-button">Find Animal 🐸</button>
+        <button id="find-shape-game" class="ui-button">Find Shape ⭐</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const gameCanvas = document.getElementById('game-canvas');
+            const instructions = document.getElementById('instructions');
+            const uiButtons = Object.fromEntries([...document.querySelectorAll('.ui-button')].map(b => [b.id.replace(/-/g, '_'), b]));
+
+            let activeModes = { night: false, color: false, findAnimal: false, findShape: false, bubble: false, fireworks: false, music: false };
+            let synths = {}, activeFindableItem = null;
+
+            const dayNotes = ['C4', 'E4', 'G4', 'A4', 'C5'];
+            const nightNotes = ['C3', 'Eb3', 'G3', 'Bb3', 'C4'];
+            const shapes = [ { name: 'circle', symbol: '●' }, { name: 'square', symbol: '■' }, { name: 'triangle', symbol: '▲' }, { name: 'star', symbol: '★' }];
+            const animals = [ 
+                { name: 'lion', emoji: '🦁', sound: 'roar' }, { name: 'duck', emoji: '🦆', sound: 'quack' }, 
+                { name: 'monkey', emoji: '🐵', sound: 'monkey' }, { name: 'frog', emoji: '�', sound: 'frog' }, 
+                { name: 'pig', emoji: '🐷', sound: 'pig' }, { name: 'cow', emoji: '🐮', sound: 'cow' }, 
+                { name: 'horse', emoji: '🐴', sound: 'horse' }, { name: 'cat', emoji: '🐱', sound: 'cat' },
+                { name: 'dog', emoji: '🐶', sound: 'dog' }, { name: 'elephant', emoji: '🐘', sound: 'elephant' },
+                { name: 'panda', emoji: '🐼', sound: 'panda' }, { name: 'sheep', emoji: '🐑', sound: 'sheep' },
+                { name: 'bee', emoji: '🐝', sound: 'bee' }, { name: 'owl', emoji: '🦉', sound: 'owl' },
+                { name: 'tiger', emoji: '🐅', sound: 'tiger' }
+            ];
+            
+            // --- AUDIO ENGINE (NOW ASYNC) ---
+            async function initializeAudio() {
+                if (Tone.context.state !== 'running') { 
+                    await Tone.start(); // Wait for the audio context to start
+                }
+                if (!synths.day) {
+                    synths.day = new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'sine' } }).toDestination();
+                    synths.night = new Tone.PolySynth(Tone.FMSynth, { harmonicity: 1.5, modulationIndex: 5 }).toDestination();
+                    synths.pop = new Tone.MembraneSynth({ pitchDecay: 0.008, octaves: 4, envelope: { attack: 0.001, decay: 0.3, sustain: 0 } }).toDestination();
+                    synths.fireworkLaunch = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0 } }).toDestination();
+                    synths.fireworkExplode = new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.05, decay: 0.8, sustain: 0.1 } }).toDestination();
+                    synths.drum = new Tone.MembraneSynth().toDestination();
+                    synths.piano = new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'triangle' } }).toDestination();
+                    synths.bell = new Tone.MetalSynth({ harmonicity: 12, modulationIndex: 20, resonance: 4000 }).toDestination();
+                    
+                    // Animal Sounds
+                    synths.roar = new Tone.NoiseSynth({noise: {type: 'brown'}, envelope: {attack: 0.2, decay: 0.5}}).toDestination();
+                    synths.quack = new Tone.Synth({oscillator: {type:'square'}, envelope:{attack:0.01, decay:0.05, release: 0.1}}).toDestination();
+                    synths.monkey = new Tone.Synth({oscillator:{type:'sawtooth'}, envelope:{attack:0.01, decay:0.1, release:0.1}}).toDestination();
+                    synths.frog = new Tone.MembraneSynth({pitchDecay: 0.01, octaves: 2}).toDestination();
+                    synths.cow = new Tone.FMSynth({harmonicity: 0.5, modulationIndex: 2, envelope:{attack: 0.1, decay: 0.3}}).toDestination();
+                    synths.pig = new Tone.Synth({oscillator:{type:'sine'}, frequency: 'C#6', envelope:{attack:0.01, decay:0.2}}).toDestination();
+                    synths.horse = new Tone.Synth({oscillator:{type:'sine'}, envelope:{attack:0.05, decay:0.4}}).toDestination();
+                    synths.cat = new Tone.Synth({oscillator:{type:'sine'}, envelope:{attack:0.02, decay:0.2}}).toDestination();
+                    synths.dog = new Tone.MembraneSynth({pitchDecay: 0.02, octaves: 5, envelope:{attack: 0.01, decay: 0.1}}).toDestination();
+                    synths.elephant = new Tone.FMSynth({harmonicity: 0.8, modulationIndex: 1.5, envelope:{attack: 0.2, decay: 0.5}}).toDestination();
+                    synths.panda = new Tone.Synth({oscillator:{type:'triangle'}, envelope:{attack:0.1, decay:0.3}}).toDestination();
+                    synths.sheep = new Tone.Synth({oscillator:{type:'sine'}, envelope:{attack:0.1, decay:0.2}}).toDestination();
+                    synths.bee = new Tone.NoiseSynth({noise:{type:'white'}, envelope:{attack:0.01, decay:0.3}}).toDestination();
+                    synths.owl = new Tone.Synth({oscillator:{type:'sine'}, envelope:{attack:0.1, decay:0.4}}).toDestination();
+                    synths.tiger = new Tone.NoiseSynth({noise: {type: 'brown'}, envelope: {attack: 0.1, decay: 0.7}}).toDestination();
+                }
+            }
+            
+            function playAnimalSound(sound) {
+                const now = Tone.now();
+                switch(sound) {
+                    case 'roar': synths.roar.triggerAttackRelease('0.5s', now); break;
+                    case 'quack': synths.quack.triggerAttackRelease('G#4', '32n', now); break;
+                    case 'monkey': synths.monkey.triggerAttackRelease('A4', '16n', now); synths.monkey.triggerAttackRelease('E5', '16n', now + 0.1); break;
+                    case 'frog': synths.frog.triggerAttackRelease('C2', '8n', now); break;
+                    case 'cow': synths.cow.triggerAttackRelease('F2', '2n', now); break;
+                    case 'pig': synths.pig.triggerAttackRelease('C#6', '16n', now); break;
+                    case 'horse': synths.horse.frequency.setValueAtTime('A3', now); synths.horse.frequency.linearRampToValueAtTime('E4', now + 0.2); synths.horse.triggerAttackRelease('0.3s', now); break;
+                    case 'cat': synths.cat.frequency.setValueAtTime('E5', now); synths.cat.frequency.linearRampToValueAtTime('A5', now + 0.1); synths.cat.triggerAttackRelease('0.2s', now); break;
+                    case 'dog': synths.dog.triggerAttackRelease('G3', '16n', now); break;
+                    case 'elephant': synths.elephant.triggerAttackRelease('C2', '1n', now); break;
+                    case 'panda': synths.panda.triggerAttackRelease('A2', '4n', now); break;
+                    case 'sheep': synths.sheep.triggerAttackRelease('A4', '8n', now); synths.sheep.triggerAttackRelease('A4', '8n', now + 0.15); break;
+                    case 'bee': synths.bee.triggerAttackRelease('0.3s', now); break;
+                    case 'owl': synths.owl.triggerAttackRelease('G4', '8n', now); synths.owl.triggerAttackRelease('G4', '8n', now + 0.2); break;
+                    case 'tiger': synths.tiger.triggerAttackRelease('0.7s', now); break;
+                }
+            }
+
+            // --- MODE MANAGEMENT ---
+            function deactivateAllModes(except = []) {
+                Object.keys(activeModes).forEach(mode => {
+                    if (!except.includes(mode)) activeModes[mode] = false;
+                });
+                Object.values(uiButtons).forEach(btn => {
+                    const modeKey = btn.id.split('-')[0];
+                    if (!except.includes(modeKey) && !['mode_toggle'].includes(btn.id)) {
+                       btn.classList.remove('active');
+                    }
+                });
+                if (activeFindableItem) {
+                    activeFindableItem.remove();
+                    activeFindableItem = null;
+                }
+                instructions.textContent = 'Press a letter or tap the screen!';
+            }
+            
+            async function toggleMode(modeName) {
+                const exclusiveModes = ['findAnimal', 'findShape', 'color', 'bubble', 'music', 'fireworks'];
+                if (exclusiveModes.includes(modeName)) {
+                    const currentState = activeModes[modeName];
+                    deactivateAllModes(['night']);
+                    activeModes[modeName] = !currentState;
+                } else {
+                    activeModes[modeName] = !activeModes[modeName];
+                }
+                
+                Object.entries(uiButtons).forEach(([key, btn]) => {
+                    const mode = key.split('_')[0];
+                    if (activeModes[mode]) btn.classList.add('active');
+                });
+                
+                if (modeName === 'night') {
+                    document.body.classList.toggle('night-mode', activeModes.night);
+                    uiButtons.mode_toggle.innerHTML = activeModes.night ? 'Day Mode ☀️' : 'Night Mode 🌙';
+                    uiButtons.fireworks_mode_toggle.classList.toggle('hidden', !activeModes.night);
+                    if (!activeModes.night && activeModes.fireworks) await toggleMode('fireworks');
+                }
+                
+                if(activeModes.findAnimal) startFindGame('animal');
+                if(activeModes.findShape) startFindGame('shape');
+            }
+
+            // --- GAME LOGIC ---
+            function startFindGame(type) {
+                const source = type === 'animal' ? animals : shapes;
+                const item = source[Math.floor(Math.random() * source.length)];
+                
+                activeFindableItem = document.createElement('div');
+                activeFindableItem.className = 'findable-item';
+                activeFindableItem.textContent = item.emoji || item.symbol;
+                if (item.symbol) activeFindableItem.style.color = `hsl(${Math.random() * 360}, 80%, 70%)`;
+                
+                activeFindableItem.style.left = `${Math.random() * (window.innerWidth - 200) + 100}px`;
+                activeFindableItem.style.top = `${Math.random() * (window.innerHeight - 250) + 100}px`;
+                
+                activeFindableItem.onclick = async (e) => {
+                    e.stopPropagation();
+                    if(item.sound) playAnimalSound(item.sound); // Play sound on click
+                    createVisual(e.clientX, e.clientY, { content: '🌟' });
+                    deactivateAllModes(['night']);
+                };
+
+                document.body.appendChild(activeFindableItem);
+                instructions.textContent = `Find the ${item.name}!`;
+            }
+
+            function createVisual(x, y, { content = ''}) {
+                const isBubble = activeModes.bubble;
+                const visual = document.createElement('div');
+                const randomShape = shapes[Math.floor(Math.random() * shapes.length)].name;
+                
+                visual.className = isBubble ? 'bubble' : 'shape ' + randomShape;
+                visual.style.left = `${x}px`;
+                visual.style.top = `${y}px`;
+
+                const size = Math.random() * 100 + 50;
+                visual.style.width = `${size}px`;
+                visual.style.height = `${size}px`;
+                
+                if (!isBubble) {
+                    const color = `hsl(${Math.random() * 360}, 80%, 70%)`;
+                    visual.style.backgroundColor = color;
+                }
+
+                if (content) {
+                    visual.innerText = content;
+                    visual.style.fontSize = `${size * 0.9}px`;
+                }
+                
+                if(isBubble) {
+                    visual.onclick = (e) => {
+                        e.stopPropagation();
+                        visual.style.animation = 'pop 0.2s ease-out forwards';
+                        synths.pop.triggerAttackRelease('C2', '8n');
+                        setTimeout(() => visual.remove(), 200);
+                    }
+                }
+                
+                document.body.appendChild(visual);
+                if (!isBubble) setTimeout(() => visual.remove(), 3500);
+            }
+
+            function launchFirework(x, y) {
+                const launchX = window.innerWidth / 2;
+                const launchY = window.innerHeight;
+                const rocket = document.createElement('div');
+                rocket.className = 'firework-particle';
+                rocket.style.width = '5px';
+                rocket.style.height = '5px';
+                rocket.style.backgroundColor = 'white';
+                rocket.style.left = `${launchX}px`;
+                rocket.style.top = `${launchY}px`;
+                rocket.style.transition = 'transform 1s cubic-bezier(0.5, 0, 1, 0.5)';
+                document.body.appendChild(rocket);
+                synths.fireworkLaunch.triggerAttackRelease('0.2s');
+
+                setTimeout(() => {
+                    rocket.style.transform = `translate(${x - launchX}px, ${y - launchY}px)`;
+                }, 10);
+                
+                setTimeout(() => {
+                    rocket.remove();
+                    synths.fireworkExplode.triggerAttackRelease('1s');
+                    const particleCount = 50;
+                    const color = `hsl(${Math.random() * 360}, 100%, 70%)`;
+                    for(let i=0; i<particleCount; i++) {
+                        const p = document.createElement('div');
+                        p.className = 'firework-particle';
+                        p.style.backgroundColor = color;
+                        p.style.width = '3px';
+                        p.style.height = '3px';
+                        p.style.left = `${x}px`;
+                        p.style.top = `${y}px`;
+                        const angle = Math.random() * Math.PI * 2;
+                        const distance = Math.random() * 150;
+                        p.style.transition = 'transform 1.5s ease-out, opacity 1.5s ease-out';
+                        document.body.appendChild(p);
+
+                        setTimeout(() => {
+                            p.style.transform = `translate(${Math.cos(angle) * distance}px, ${Math.sin(angle) * distance}px)`;
+                            p.style.opacity = '0';
+                        }, 10);
+                        setTimeout(() => p.remove(), 1510);
+                    }
+                }, 1000);
+            }
+            
+            function playMusicZone(y) {
+                const zone = y / window.innerHeight;
+                if (zone < 0.33) { // Top zone
+                    synths.bell.triggerAttackRelease('C5', '4n');
+                    createVisual(Math.random() * window.innerWidth, y, {content: '🔔'});
+                } else if (zone < 0.66) { // Middle zone
+                    synths.piano.triggerAttackRelease('E4', '8n');
+                     createVisual(Math.random() * window.innerWidth, y, {content: '🎹'});
+                } else { // Bottom zone
+                    synths.drum.triggerAttackRelease('C2', '8n');
+                     createVisual(Math.random() * window.innerWidth, y, {content: '🥁'});
+                }
+            }
+            
+            // --- REFACTORED: UNIFIED EVENT DISPATCHER ---
+            async function triggerInteraction(options) {
+                const { x, y, key = null } = options;
+
+                // Always initialize audio on any interaction
+                await initializeAudio(); 
+                
+                // If a "find" game is active, block all other interactions.
+                if (activeModes.findAnimal || activeModes.findShape) return;
+                
+                // --- Mode-specific logic ---
+                
+                if (activeModes.fireworks) {
+                    return launchFirework(x, y);
+                }
+                
+                if (activeModes.music && !key) { // Music zones only work on tap/click
+                    return playMusicZone(y);
+                }
+                
+                // --- Default and combined mode logic (Bubble, Color, Standard) ---
+
+                // Determine the sound
+                const synth = activeModes.night ? synths.night : synths.day;
+                const notes = activeModes.night ? nightNotes : dayNotes;
+                synth.triggerAttackRelease(notes[Math.floor(Math.random() * notes.length)], "8n");
+
+                // Create the visual element with a letter if a key was pressed
+                createVisual(x, y, { content: key ? key.toUpperCase() : '' });
+            }
+            
+            // --- EVENT LISTENERS ---
+            Object.values(uiButtons).forEach(btn => btn.onclick = async (e) => {
+                e.stopPropagation(); 
+                await initializeAudio(); 
+                let modeName = btn.id.replace(/-mode-toggle|-game/, '');
+                modeName = modeName.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+                await toggleMode(modeName);
+            });
+
+            window.addEventListener('keydown', (event) => {
+                if (event.repeat) return;
+                const key = event.key;
+                if (key.length === 1 && key.match(/[a-z]/i)) {
+                   triggerInteraction({
+                       x: Math.random() * (window.innerWidth - 150), 
+                       y: Math.random() * (window.innerHeight - 150), 
+                       key: key
+                    });
+                }
+            });
+            
+            gameCanvas.addEventListener('click', (e) => {
+                // Ensure clicks are only registered on the main canvas, not on game items
+                if (e.target === gameCanvas) {
+                    triggerInteraction({x: e.clientX, y: e.clientY});
+                }
+            });
+
+            gameCanvas.addEventListener('touchstart', (e) => {
+                if (e.target === gameCanvas) {
+                    e.preventDefault();
+                    for(const touch of e.touches){
+                         triggerInteraction({x: touch.clientX, y: touch.clientY});
+                    }
+                }
+            }, { passive: false });
+        });
+    </script>
+</body>
+</html>
+�

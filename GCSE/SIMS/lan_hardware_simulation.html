@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced LAN Hardware Connection Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #4CAF50;
+            --primary-dark: #388E3C;
+            --secondary: #2196F3;
+            --accent: #FF5722;
+            --warning: #FFC107;
+            --error: #F44336;
+            --success: #8BC34A;
+            --info: #00BCD4;
+            --purple: #9C27B0;
+            --bg-dark: #0a1929;
+            --bg-medium: #132f4c;
+            --bg-light: #1e3a5f;
+            --text-primary: #ffffff;
+            --text-secondary: #b0bec5;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.12);
+            --shadow-medium: 0 12px 40px rgba(0, 0, 0, 0.15);
+            --shadow-hard: 0 16px 48px rgba(0, 0, 0, 0.2);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(76, 175, 80, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(33, 150, 243, 0.1) 0%, transparent 50%),
+                linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-medium) 50%, var(--bg-light) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Enhanced Header */
+        header {
+            text-align: center;
+            padding: 40px 0;
+            animation: fadeInDown 0.8s ease;
+            position: relative;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(76, 175, 80, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: -1;
+            animation: headerPulse 4s ease-in-out infinite;
+        }
+
+        @keyframes headerPulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; }
+        }
+
+        h1 {
+            font-size: clamp(2.5em, 5vw, 4em);
+            margin-bottom: 15px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 800;
+            letter-spacing: -2px;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.4em;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            font-weight: 300;
+        }
+
+        .feature-badges {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .badge {
+            padding: 8px 16px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            font-size: 0.9em;
+            backdrop-filter: blur(10px);
+            animation: badgeFloat 3s ease-in-out infinite;
+        }
+
+        .badge:nth-child(2) { animation-delay: 0.5s; }
+        .badge:nth-child(3) { animation-delay: 1s; }
+        .badge:nth-child(4) { animation-delay: 1.5s; }
+
+        @keyframes badgeFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* Enhanced Simulation Container */
+        .simulation-container {
+            background: var(--glass);
+            border-radius: 30px;
+            padding: 50px;
+            backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-soft);
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .simulation-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), var(--secondary), var(--accent), transparent);
+        }
+
+        /* Enhanced Step Navigation */
+        .step-navigation {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+            align-items: center;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .step {
+            padding: 15px 25px;
+            background: var(--glass);
+            border: 2px solid var(--glass-border);
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+            font-size: 0.95em;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(15px);
+            user-select: none;
+            min-width: 140px;
+            text-align: center;
+        }
+
+        .step::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.6s;
+        }
+
+        .step::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 30px;
+            padding: 2px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary), var(--accent));
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: xor;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .step:hover::before {
+            left: 100%;
+        }
+
+        .step:hover::after {
+            opacity: 0.7;
+        }
+
+        .step:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .step.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+            transform: translateY(-3px);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .step.completed {
+            background: rgba(76, 175, 80, 0.2);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .step.active::after {
+            opacity: 0;
+        }
+
+        /* Navigation Controls */
+        .nav-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .nav-btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            border: none;
+            border-radius: 25px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Progress System */
+        .progress-system {
+            margin-bottom: 30px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* Enhanced Network Canvas */
+        .canvas-container {
+            position: relative;
+            margin: 30px 0;
+        }
+
+        .network-canvas {
+            width: 100%;
+            height: 600px;
+            background: 
+                radial-gradient(circle at 15% 85%, rgba(76, 175, 80, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 85% 15%, rgba(33, 150, 243, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(156, 39, 176, 0.05) 0%, transparent 60%),
+                rgba(0, 0, 0, 0.4);
+            border-radius: 25px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            box-shadow: inset 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .network-canvas::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                linear-gradient(45deg, transparent 49%, rgba(255,255,255,0.015) 50%, transparent 51%),
+                linear-gradient(-45deg, transparent 49%, rgba(255,255,255,0.015) 50%, transparent 51%);
+            background-size: 25px 25px;
+            pointer-events: none;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--glass);
+            padding: 15px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            z-index: 100;
+        }
+
+        /* Enhanced Device Styling */
+        .computer {
+            position: absolute;
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(135deg, #666 0%, #444 100%);
+            border-radius: 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 5px; /* Add padding for icon */
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 10px 20px rgba(0,0,0,0.3),
+                0 0 0 1px rgba(255,255,255,0.1);
+            border: 2px solid #555;
+            color: white;
+            user-select: none;
+            transform: translateZ(0);
+            will-change: transform;
+        }
+        
+        /* SVG Icon Styling */
+        .computer .icon-display {
+            width: 50%;
+            height: 50%;
+            margin-bottom: 5px;
+        }
+
+        .computer .icon-display svg {
+            width: 100%;
+            height: 100%;
+            fill: #ffffff;
+        }
+
+
+        .computer.connected {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-color: var(--success);
+            box-shadow: 
+                0 0 25px rgba(76, 175, 80, 0.4),
+                0 10px 20px rgba(0,0,0,0.3);
+            animation: connectedPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes connectedPulse {
+            0%, 100% { box-shadow: 0 0 25px rgba(76, 175, 80, 0.4), 0 10px 20px rgba(0,0,0,0.3); }
+            50% { box-shadow: 0 0 35px rgba(76, 175, 80, 0.6), 0 15px 30px rgba(0,0,0,0.4); }
+        }
+
+        .computer:hover {
+            transform: scale(1.08) rotate(2deg);
+            box-shadow: 
+                0 15px 30px rgba(0,0,0,0.4),
+                0 0 30px rgba(76, 175, 80, 0.3);
+        }
+
+        .computer-label {
+            font-size: 11px;
+            margin-top: 5px;
+            text-align: center;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* Enhanced Hardware Components */
+        .hardware-component {
+            position: absolute;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 8px 16px rgba(0,0,0,0.3),
+                0 0 0 1px rgba(255,255,255,0.1);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            transform: scale(0) rotate(180deg);
+            font-weight: 600;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            padding: 10px; /* Add padding for icons */
+        }
+        
+        .hardware-component .icon-display {
+            width: 50%;
+            height: 50%;
+            max-width: 48px; /* Limit icon size */
+            margin-bottom: 5px;
+        }
+        
+        .hardware-component .icon-display svg {
+            width: 100%;
+            height: 100%;
+            fill: #ffffff;
+        }
+
+        .hardware-component.visible {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+        }
+
+        .hardware-component:hover {
+            transform: scale(1.1) rotate(-2deg);
+            box-shadow: 
+                0 12px 24px rgba(0,0,0,0.4),
+                0 0 30px rgba(255,255,255,0.2);
+        }
+
+        .nic {
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+            width: 35px;
+            height: 25px;
+            border-radius: 5px;
+            font-size: 8px;
+            padding: 2px;
+        }
+
+        .switch {
+            background: linear-gradient(135deg, var(--secondary) 0%, #1976D2 100%);
+            width: 140px;
+            height: 70px;
+        }
+
+        .router {
+            background: linear-gradient(135deg, var(--accent) 0%, #D84315 100%);
+            width: 90px;
+            height: 70px;
+            border-radius: 15px;
+        }
+
+        .access-point {
+            background: linear-gradient(135deg, var(--warning) 0%, #F57C00 100%);
+            border-radius: 50%;
+            width: 70px;
+            height: 70px;
+        }
+
+        .internet-cloud {
+            background: linear-gradient(135deg, #87CEEB 0%, #4682B4 100%);
+            border-radius: 50%;
+            width: 100px;
+            height: 60px;
+        }
+
+        /* Enhanced Cables and Connections */
+        .cable {
+            position: absolute;
+            height: 6px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(76, 175, 80, 0.3) 10%, 
+                var(--primary) 50%, 
+                rgba(76, 175, 80, 0.3) 90%, 
+                transparent 100%);
+            transform-origin: left center;
+            z-index: 1;
+            border-radius: 3px;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+
+        .cable.visible {
+            opacity: 1;
+        }
+
+        .cable.active {
+            animation: dataFlow 2s linear infinite;
+            background-size: 200% 100%;
+            background: linear-gradient(90deg, 
+                var(--primary) 0%, 
+                var(--secondary) 25%, 
+                var(--warning) 50%, 
+                var(--secondary) 75%, 
+                var(--primary) 100%);
+        }
+
+        @keyframes dataFlow {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        /* Enhanced Wireless Signals */
+        .wireless-signal {
+            position: absolute;
+            border: 3px solid var(--warning);
+            border-radius: 50%;
+            opacity: 0;
+            animation: wifiPulse 2.5s infinite ease-in-out;
+            box-shadow: 0 0 15px rgba(255, 193, 7, 0.3);
+        }
+
+        @keyframes wifiPulse {
+            0% {
+                transform: scale(0.8);
+                opacity: 0.8;
+                border-color: var(--warning);
+            }
+            50% {
+                opacity: 0.4;
+                border-color: var(--info);
+            }
+            100% {
+                transform: scale(2.2);
+                opacity: 0;
+                border-color: var(--secondary);
+            }
+        }
+
+        /* Enhanced Control Panel */
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .control-btn {
+            padding: 15px 20px;
+            background: linear-gradient(135deg, var(--glass), rgba(255,255,255,0.1));
+            border: 2px solid var(--glass-border);
+            border-radius: 25px;
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(15px);
+            text-align: center;
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.6s;
+        }
+
+        .control-btn:hover::before {
+            left: 100%;
+        }
+
+        .control-btn:hover {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .control-btn:active {
+            transform: translateY(-1px);
+        }
+
+        .control-btn.primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .control-btn.danger {
+            background: linear-gradient(135deg, var(--error), #c62828);
+            color: white;
+            border-color: var(--error);
+        }
+
+        /* Enhanced Information Panel */
+        .info-panel {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+            margin: 30px 0;
+        }
+
+        .main-info {
+            background: var(--glass);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(15px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .main-info::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .component-status {
+            background: var(--glass);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+        }
+
+        .network-stats {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(33, 150, 243, 0.1));
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Component List Enhancements */
+        .component-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .component-item {
+            background: var(--glass);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--glass-border);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .component-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--primary), var(--secondary));
+            transform: scaleY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .component-item:hover::before {
+            transform: scaleY(1);
+        }
+
+        .component-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .component-item.installed {
+            border-color: var(--success);
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .component-item.installing {
+            border-color: var(--warning);
+            background: rgba(255, 193, 7, 0.1);
+            animation: installing 2s ease-in-out infinite;
+        }
+
+        @keyframes installing {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-2px); }
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+            position: relative;
+        }
+
+        .status-indicator.pending {
+            background: #666;
+        }
+
+        .status-indicator.installing {
+            background: var(--warning);
+            animation: statusPulse 1.5s ease-in-out infinite;
+        }
+
+        .status-indicator.installed {
+            background: var(--success);
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.7; }
+        }
+
+        /* Enhanced Tooltips */
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            box-shadow: var(--shadow-medium);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            max-width: 300px;
+            line-height: 1.4;
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+            transform: translateY(-5px);
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 8px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.95);
+        }
+
+        .tooltip .tooltip-header {
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .tooltip .tooltip-specs {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        /* Cost Calculator */
+        .cost-calculator {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 152, 0, 0.1));
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            margin-top: 20px;
+        }
+
+        .cost-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .cost-total {
+            font-weight: 700;
+            font-size: 1.1em;
+            color: var(--warning);
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 2px solid var(--warning);
+        }
+
+        /* Troubleshooting Panel */
+        .troubleshooting {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .issue-item {
+            padding: 10px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border-left: 4px solid var(--error);
+        }
+
+        /* Performance Metrics */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            background: var(--glass);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid var(--glass-border);
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .metric-value {
+            font-size: 1.8em;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .info-panel {
+                grid-template-columns: 1fr;
+            }
+            
+            .step-navigation {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .simulation-container {
+                padding: 25px;
+            }
+            
+            .computer {
+                width: 70px;
+                height: 70px;
+                font-size: 20px;
+            }
+            
+            .hardware-component {
+                transform: scale(0.8);
+            }
+            
+            .step {
+                padding: 10px 15px;
+                font-size: 0.9em;
+                min-width: 100px;
+            }
+            
+            .control-panel {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .network-canvas {
+                height: 450px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2.5em;
+            }
+            
+            .step-indicator {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .control-panel {
+                grid-template-columns: 1fr;
+            }
+            
+            .component-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Accessibility */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Focus states */
+        .step:focus,
+        .control-btn:focus,
+        .nav-btn:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        /* Animation Performance */
+        .hardware-accelerated {
+            transform: translateZ(0);
+            will-change: transform;
+        }
+
+        /* Loading States */
+        .loading {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        /* Animations */
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes highlight {
+            0%, 100% { 
+                box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 40px rgba(76, 175, 80, 0.8);
+                transform: scale(1.05);
+            }
+        }
+
+        .highlight {
+            animation: highlight 1.5s ease-in-out;
+        }
+
+        /* Dark mode enhancements */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --glass: rgba(255, 255, 255, 0.08);
+                --glass-border: rgba(255, 255, 255, 0.15);
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* High contrast mode */
+        @media (prefers-contrast: high) {
+            .step,
+            .control-btn,
+            .component-item {
+                border-width: 3px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Advanced LAN Hardware Simulator</h1>
+            <p class="subtitle">Interactive learning platform for network infrastructure design</p>
+            <div class="feature-badges">
+                <span class="badge">🎮 Interactive</span>
+                <span class="badge">🔧 Hands-on</span>
+                <span class="badge">📊 Real-time</span>
+                <span class="badge">💡 Educational</span>
+            </div>
+        </header>
+
+        <div class="simulation-container">
+            <div class="step-navigation">
+                <div class="nav-controls">
+                    <button class="nav-btn" id="prevBtn" disabled>⬅️ Previous</button>
+                    <button class="nav-btn" id="autoBtn">▶️ Auto Play</button>
+                </div>
+
+                <div class="step-indicator">
+                    <div class="step active" data-step="0">1. Standalone PCs</div>
+                    <div class="step" data-step="1">2. Install NICs</div>
+                    <div class="step" data-step="2">3. Add Cables</div>
+                    <div class="step" data-step="3">4. Install Switch</div>
+                    <div class="step" data-step="4">5. Add Router</div>
+                    <div class="step" data-step="5">6. Setup WiFi</div>
+                    <div class="step" data-step="6">7. Complete LAN</div>
+                </div>
+
+                <div class="nav-controls">
+                    <button class="nav-btn" id="nextBtn">Next ➡️</button>
+                    <button class="nav-btn" id="resetBtn">🔄 Reset</button>
+                </div>
+            </div>
+
+            <div class="progress-system">
+                <div class="progress-bar">
+                    <div class="progress-fill hardware-accelerated" id="progressBar"></div>
+                </div>
+                <div class="progress-text" id="progressText"></div>
+            </div>
+
+            <div class="canvas-container">
+                <div class="network-canvas hardware-accelerated" id="networkCanvas">
+                    <!-- Network components are added here dynamically -->
+                </div>
+                <div class="canvas-overlay">
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value" id="deviceCount">0</div>
+                            <div class="metric-label">Devices</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value" id="connectionCount">0</div>
+                            <div class="metric-label">Connections</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <button class="control-btn" id="testFailureBtn">⚠️ Test Failure</button>
+                <button class="control-btn" id="showTrafficBtn">📊 Show Traffic</button>
+                <button class="control-btn" id="toggleSoundBtn">🔊 Sound Effects</button>
+                <button class="control-btn" id="exportConfigBtn">💾 Export Config</button>
+                <button class="control-btn" id="showPerformanceBtn">📈 Performance</button>
+                <button class="control-btn" id="troubleshootBtn">🔧 Troubleshoot</button>
+            </div>
+
+            <div class="info-panel">
+                <div class="main-info">
+                    <h3 id="stepTitle"></h3>
+                    <div id="stepDescription"></div>
+                    <div class="component-grid" id="componentGrid"></div>
+                    <div id="stepExplanation" class="explanation"></div>
+                </div>
+
+                <div class="side-panel">
+                    <div class="network-stats">
+                        <h4>📊 Network Statistics</h4>
+                        <div class="metrics-grid">
+                            <div class="metric-card"><div class="metric-value" id="bandwidth">0</div><div class="metric-label">Mbps</div></div>
+                            <div class="metric-card"><div class="metric-value" id="latency">∞</div><div class="metric-label">ms</div></div>
+                            <div class="metric-card"><div class="metric-value" id="reliability">0%</div><div class="metric-label">Uptime</div></div>
+                        </div>
+                    </div>
+                    <div class="cost-calculator" id="costCalculator"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tooltip" id="tooltip">
+            <div class="tooltip-header"></div>
+            <div class="tooltip-content"></div>
+            <div class="tooltip-specs"></div>
+        </div>
+    </div>
+
+    <script>
+        // =================================================================================
+        // SIMULATOR CONFIGURATION
+        // =================================================================================
+        const SIM_CONFIG = {
+            maxSteps: 6,
+            computerPositions: [
+                { x: 120, y: 150, id: 'pc1', label: 'Workstation 1', type: 'desktop' },
+                { x: 400, y: 100, id: 'pc2', label: 'Laptop 2', type: 'laptop' },
+                { x: 680, y: 150, id: 'pc3', label: 'Workstation 3', type: 'desktop' },
+                { x: 250, y: 350, id: 'pc4', label: 'Server 4', type: 'server' },
+                { x: 550, y: 350, id: 'pc5', label: 'Laptop 5', type: 'laptop' }
+            ],
+            componentPositions: {
+                switch: { x: 360, y: 250 },
+                router: { x: 340, y: 120 },
+                internet: { x: 330, y: 30 },
+                accessPoint: { x: 600, y: 250 }
+            },
+            mobileDevicePositions: [
+                { x: 720, y: 180, type: 'mobile', label: 'iPhone' },
+                { x: 780, y: 280, type: 'laptop', label: 'MacBook' },
+                { x: 680, y: 360, type: 'tablet', label: 'iPad' }
+            ],
+            stepInfo: [
+                { title: "Step 1: Standalone Computer Systems", description: "We begin with five individual computer systems operating in isolation...", progressText: "Setting up standalone computers" },
+                { title: "Step 2: Network Interface Card Installation", description: "Installing Network Interface Cards (NICs) in each computer system...", progressText: "Installing Network Interface Cards" },
+                { title: "Step 3: Transmission Media Deployment", description: "Deploying Ethernet cables (Cat6) to create physical connections between computers...", progressText: "Connecting transmission media" },
+                { title: "Step 4: Network Switch Configuration", description: "Installing a managed 24-port Ethernet switch to create a star topology network...", progressText: "Installing network switch" },
+                { title: "Step 5: Router and Internet Gateway", description: "Adding an enterprise router to connect the LAN to external networks...", progressText: "Adding router for internet access" },
+                { title: "Step 6: Wireless Access Point Setup", description: "Deploying a WiFi 6 access point to extend network connectivity to wireless devices...", progressText: "Setting up wireless access point" },
+                { title: "Step 7: Complete Local Area Network", description: "Network deployment complete! The LAN now supports both wired and wireless devices...", progressText: "LAN configuration complete" }
+            ],
+            componentDetails: {
+                nic: { name: 'Network Interface Card', description: 'Hardware component that connects devices to the network', specs: 'Speed: 1 Gbps • Type: Ethernet', cost: 50 },
+                switch: { name: '24-Port Managed Switch', description: 'Intelligent device that connects multiple network devices', specs: 'Ports: 24x Gigabit', cost: 300 },
+                router: { name: 'Enterprise Router', description: 'Gateway device connecting LAN to WAN/Internet', specs: 'WAN: 1 Gbps • Firewall', cost: 500 },
+                accessPoint: { name: 'WiFi 6 Access Point', description: 'Wireless networking device for mobile connectivity', specs: 'Standard: 802.11ax • Speed: 1.2 Gbps', cost: 400 },
+                cable: { name: 'Ethernet Cable (Cat6)', description: 'Twisted pair copper cable for high-speed data transmission', specs: 'Speed: 1 Gbps • Distance: 100m', cost: 20 },
+                fiber: { name: 'Fiber Optic Cable', description: 'Light-based transmission for ultra-high speed connections', specs: 'Speed: 10+ Gbps • Distance: 40km+', cost: 0 },
+                computer: { name: 'Computer', cost: 500 }
+            },
+             // NEW: SVG icons for clearer representation
+            deviceIcons: {
+                desktop: `<svg viewBox="0 0 24 24"><path d="M20 18H4V6h16v12zM4 4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2H4zm-1 15h18v2H3v-2z"/></svg>`,
+                laptop: `<svg viewBox="0 0 24 24"><path d="M20 15H4V5h16v10zm-2-8H6v6h12V7zM22 17H2v2h20v-2z"/></svg>`,
+                server: `<svg viewBox="0 0 24 24"><path d="M20 18H4V6h16v12zM4 4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2H4zm-1 15h18v2H3v-2zM6 8h2v2H6V8zm4 0h8v2h-8V8zm0 4h8v2h-8v-2zM6 12h2v2H6v-2z"/></svg>`,
+                mobile: `<svg viewBox="0 0 24 24"><path d="M17 2H7a2 2 0 00-2 2v16a2 2 0 002 2h10a2 2 0 002-2V4a2 2 0 00-2-2zm-5 18a1 1 0 110-2 1 1 0 010 2zM16 16H8V6h8v10z"/></svg>`,
+                tablet: `<svg viewBox="0 0 24 24"><path d="M19 2H5a2 2 0 00-2 2v16a2 2 0 002 2h14a2 2 0 002-2V4a2 2 0 00-2-2zm-5 18a1 1 0 110-2 1 1 0 010 2zM18 16H6V6h12v10z"/></svg>`,
+                switch: `<svg viewBox="0 0 24 24"><path d="M22 13h-4V9h4v4zm-6 0h-4V9h4v4zm-6 0H4V9h6v4zm-1-5H3v10h18V8H5zm15-2H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2zM8 15.5h2v-2H8v2zm4 0h2v-2h-2v2zm4 0h2v-2h-2v2z"/></svg>`,
+                router: `<svg viewBox="0 0 24 24"><path d="M20.2 13.8l-4.2-4.2a.5.5 0 00-.7 0l-4.2 4.2a.5.5 0 00-.1.6.5.5 0 00.5.3h8.4a.5.5 0 00.4-.8zm-12 0l-4.2-4.2a.5.5 0 00-.7 0l-4.2 4.2a.5.5 0 00-.1.6.5.5 0 00.5.3h8.4a.5.5 0 00.4-.8zM21 16H3a1 1 0 00-1 1v4a1 1 0 001 1h18a1 1 0 001-1v-4a1 1 0 00-1-1zM5 19.5a.5.5 0 110-1 .5.5 0 010 1zm4 0a.5.5 0 110-1 .5.5 0 010 1zM2 9.4l4-4a1 1 0 011.4 0l4 4a1 1 0 01-1.4 1.4L8 8.2V13H6V8.2L4.7 9.4a1 1 0 01-1.4-1.4z"/></svg>`,
+                accessPoint: `<svg viewBox="0 0 24 24"><path d="M12 3C7.03 3 3 7.03 3 12s4.03 9 9 9 9-4.03 9-9c0-1.3-.27-2.54-.75-3.66M12 5c2.76 0 5 2.24 5 5s-2.24 5-5 5-5-2.24-5-5 2.24-5 5-5zm0 8c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/><path d="M16.95 6.05a7 7 0 00-9.9 0"/><path d="M19.07 3.93a10 10 0 00-14.14 0"/></svg>`,
+                internet: `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93s3.05-7.44 7-7.93v15.86zm2-15.86c3.95.49 7 3.85 7 7.93s-3.05 7.44-7 7.93V4.07z"/></svg>`,
+            },
+            deviceSpecs: {
+                desktop: 'CPU: Intel i7 • RAM: 16GB • Storage: 1TB SSD',
+                laptop: 'CPU: Intel i5 • RAM: 8GB • Storage: 512GB SSD',
+                server: 'CPU: Intel Xeon • RAM: 64GB • Storage: 4TB RAID',
+                mobile: 'CPU: ARM • RAM: 6GB • Storage: 128GB',
+                tablet: 'CPU: ARM • RAM: 4GB • Storage: 64GB'
+            },
+            deviceDescriptions: {
+                desktop: 'High-performance workstation',
+                laptop: 'Portable computer',
+                server: 'Dedicated server for hosting applications',
+                mobile: 'Smartphone with mobile connectivity',
+                tablet: 'Touch-screen tablet'
+            },
+            soundEffects: {
+                step: { frequency: 800, duration: 0.1 }, install: { frequency: 1000, duration: 0.15 },
+                connect: { frequency: 1200, duration: 0.2 }, wireless: { frequency: 1500, duration: 0.25 },
+                complete: { frequency: 2000, duration: 0.3 }, error: { frequency: 300, duration: 0.5 },
+                click: { frequency: 600, duration: 0.05 }, reset: { frequency: 400, duration: 0.2 },
+                export: { frequency: 1800, duration: 0.1 }
+            }
+        };
+
+        // =================================================================================
+        // Advanced LAN Simulator - Main Script
+        // =================================================================================
+        class AdvancedLANSimulator {
+            constructor(config) {
+                this.config = config;
+                this.currentStep = 0;
+                this.isTransitioning = false;
+                this.isAutoPlaying = false;
+                this.soundEnabled = true;
+                this.computers = [];
+                this.networkComponents = new Map();
+                this.connections = [];
+                this.costs = {};
+                this.metrics = {};
+                this.autoPlayInterval = null;
+                this.audioContext = null;
+                this.domElements = {};
+                this.init();
+            }
+
+            init() {
+                this.cacheDOMElements();
+                this.resetState();
+                this.setupEventListeners();
+                this.setupCanvas();
+                this.updateDisplay();
+                this.executeStep();
+            }
+            
+            cacheDOMElements() {
+                this.domElements = {
+                    networkCanvas: document.getElementById('networkCanvas'), tooltip: document.getElementById('tooltip'),
+                    prevBtn: document.getElementById('prevBtn'), nextBtn: document.getElementById('nextBtn'),
+                    autoBtn: document.getElementById('autoBtn'), resetBtn: document.getElementById('resetBtn'),
+                    progressBar: document.getElementById('progressBar'), progressText: document.getElementById('progressText'),
+                    stepTitle: document.getElementById('stepTitle'), stepDescription: document.getElementById('stepDescription'),
+                    componentGrid: document.getElementById('componentGrid'), costCalculator: document.getElementById('costCalculator'),
+                    deviceCount: document.getElementById('deviceCount'), connectionCount: document.getElementById('connectionCount'),
+                    bandwidth: document.getElementById('bandwidth'), latency: document.getElementById('latency'),
+                    reliability: document.getElementById('reliability'), stepIndicators: document.querySelectorAll('.step'),
+                    controlButtons: {
+                        testFailure: document.getElementById('testFailureBtn'), showTraffic: document.getElementById('showTrafficBtn'),
+                        toggleSound: document.getElementById('toggleSoundBtn'), exportConfig: document.getElementById('exportConfigBtn'),
+                        showPerformance: document.getElementById('showPerformanceBtn'), troubleshoot: document.getElementById('troubleshootBtn'),
+                    }
+                };
+            }
+
+            setupEventListeners() {
+                this.domElements.prevBtn.addEventListener('click', () => this.previousStep());
+                this.domElements.nextBtn.addEventListener('click', () => this.nextStep());
+                this.domElements.autoBtn.addEventListener('click', () => this.toggleAutoPlay());
+                this.domElements.resetBtn.addEventListener('click', () => this.resetSimulation());
+                
+                this.domElements.stepIndicators.forEach((step, index) => {
+                    step.addEventListener('click', () => this.goToStep(index));
+                });
+
+                this.domElements.controlButtons.testFailure.addEventListener('click', () => this.simulateFailure());
+                this.domElements.controlButtons.showTraffic.addEventListener('click', () => this.simulateTraffic());
+                this.domElements.controlButtons.toggleSound.addEventListener('click', (e) => this.toggleSound(e.target));
+                this.domElements.controlButtons.exportConfig.addEventListener('click', () => this.exportConfig());
+                this.domElements.controlButtons.showPerformance.addEventListener('click', () => this.showPerformance());
+                this.domElements.controlButtons.troubleshoot.addEventListener('click', () => this.troubleshoot());
+
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                        switch(e.key) {
+                            case 'ArrowLeft': e.preventDefault(); this.previousStep(); break;
+                            case 'ArrowRight': e.preventDefault(); this.nextStep(); break;
+                            case ' ': e.preventDefault(); this.toggleAutoPlay(); break;
+                            case 'r': e.preventDefault(); this.resetSimulation(); break;
+                        }
+                    }
+                });
+                window.addEventListener('resize', () => this.hideTooltip());
+            }
+            
+            setupCanvas() {
+                this.domElements.networkCanvas.innerHTML = '';
+                this.computers = this.config.computerPositions.map(pos => {
+                    const computer = this.createElement('div', 'computer hardware-accelerated');
+                    computer.id = pos.id;
+                    computer.style.left = pos.x + 'px';
+                    computer.style.top = pos.y + 'px';
+
+                    const iconContainer = this.createElement('div', 'icon-display');
+                    iconContainer.innerHTML = this.config.deviceIcons[pos.type] || this.config.deviceIcons.laptop;
+                    
+                    const label = this.createElement('div', 'computer-label');
+                    label.textContent = pos.label;
+                    
+                    computer.append(iconContainer, label);
+                    computer.addEventListener('click', () => this.handleComputerClick(computer));
+                    computer.addEventListener('mouseenter', (e) => this.showTooltip(e, pos));
+                    computer.addEventListener('mouseleave', () => this.hideTooltip());
+                    this.domElements.networkCanvas.appendChild(computer);
+                    return { element: computer, ...pos, hasNIC: false, connected: false };
+                });
+            }
+
+            nextStep() { this.goToStep(this.currentStep + 1); }
+            previousStep() { this.goToStep(this.currentStep - 1); }
+
+            goToStep(stepNumber) {
+                if (this.isTransitioning || stepNumber < 0 || stepNumber > this.config.maxSteps) return;
+                this.isTransitioning = true;
+                this.currentStep = stepNumber;
+                this.updateDisplay();
+                this.executeStep();
+                this.playSound('step');
+                setTimeout(() => {
+                    this.isTransitioning = false;
+                    this.updateNavigationButtons();
+                }, 2000);
+            }
+
+            executeStep() {
+                this.clearStepComponents();
+                this.resetState();
+                for (let i = 0; i <= this.currentStep; i++) {
+                    const stepFunctions = [
+                        this.stepStandaloneComputers, this.stepInstallNICs, this.stepInstallCables,
+                        this.stepInstallSwitch, this.stepInstallRouter, this.stepInstallAccessPoint, this.stepCompleteLAN
+                    ];
+                    stepFunctions[i].call(this);
+                }
+                this.updateMetrics();
+                this.updateCosts();
+            }
+
+            stepStandaloneComputers() {
+                this.metrics.connections = 0;
+                this.costs.computer = this.config.componentDetails.computer.cost * this.computers.length;
+            }
+
+            stepInstallNICs() {
+                this.computers.forEach((comp, index) => {
+                    const nic = this.createHardwareComponent('nic', {
+                        left: (comp.x + 70) + 'px',
+                        top: (comp.y + 35) + 'px'
+                    });
+                    setTimeout(() => {
+                        nic.classList.add('visible');
+                        this.playSound('install');
+                    }, index * 200);
+                    comp.hasNIC = true;
+                });
+                this.costs.nic = this.config.componentDetails.nic.cost * this.computers.length;
+            }
+
+            stepInstallCables() {
+                [[0, 1], [1, 2], [0, 3], [3, 4], [2, 4]].forEach((conn, index) => {
+                    setTimeout(() => this.createCable(this.computers[conn[0]], {
+                        x: this.computers[conn[1]].x,
+                        y: this.computers[conn[1]].y
+                    }, `cable-${index}`), index * 300);
+                });
+                Object.assign(this.metrics, {
+                    bandwidth: 10,
+                    latency: 5,
+                    reliability: 60
+                });
+                this.costs.cable = this.config.componentDetails.cable.cost;
+            }
+
+            stepInstallSwitch() {
+                const switchPos = this.config.componentPositions.switch;
+                const switchElement = this.createHardwareComponent('switch', {
+                    left: switchPos.x + 'px',
+                    top: switchPos.y + 'px'
+                });
+                setTimeout(() => {
+                    switchElement.classList.add('visible');
+                    setTimeout(() => {
+                        this.computers.forEach((comp, index) => {
+                            setTimeout(() => {
+                                this.createCable(comp, {
+                                    x: switchPos.x + 60,
+                                    y: switchPos.y + 35
+                                }, `switch-cable-${index}`);
+                                comp.element.classList.add('connected');
+                                comp.connected = true;
+                                this.playSound('connect');
+                            }, index * 150);
+                        });
+                    }, 500);
+                }, 300);
+                Object.assign(this.metrics, {
+                    bandwidth: 100,
+                    latency: 2,
+                    reliability: 85,
+                    connections: 5
+                });
+                this.costs.switch = this.config.componentDetails.switch.cost;
+            }
+
+            stepInstallRouter() {
+                const {
+                    router: routerPos,
+                    internet: internetPos,
+                    switch: switchPos
+                } = this.config.componentPositions;
+                const router = this.createHardwareComponent('router', {
+                    left: routerPos.x + 'px',
+                    top: routerPos.y + 'px'
+                });
+                const internet = this.createHardwareComponent('internet', {
+                    left: internetPos.x + 'px',
+                    top: internetPos.y + 'px'
+                });
+                setTimeout(() => {
+                    router.classList.add('visible');
+                    setTimeout(() => {
+                        internet.classList.add('visible');
+                        this.createCable({
+                            x: routerPos.x + 45,
+                            y: routerPos.y
+                        }, {
+                            x: internetPos.x + 45,
+                            y: internetPos.y + 60
+                        }, 'internet-cable', 'fiber');
+                        this.createCable({
+                            x: routerPos.x + 45,
+                            y: routerPos.y + 70
+                        }, {
+                            x: switchPos.x + 45,
+                            y: switchPos.y
+                        }, 'router-switch-cable');
+                        this.playSound('connect');
+                    }, 300);
+                }, 300);
+                Object.assign(this.metrics, {
+                    bandwidth: 1000,
+                    latency: 15,
+                    reliability: 95
+                });
+                this.costs.router = this.config.componentDetails.router.cost;
+            }
+
+            stepInstallAccessPoint() {
+                const {
+                    accessPoint: apPos,
+                    switch: switchPos
+                } = this.config.componentPositions;
+                const accessPoint = this.createHardwareComponent('accessPoint', {
+                    left: apPos.x + 'px',
+                    top: apPos.y + 'px'
+                });
+                setTimeout(() => {
+                    accessPoint.classList.add('visible');
+                    setTimeout(() => {
+                        this.createCable({
+                            x: apPos.x,
+                            y: apPos.y + 35
+                        }, {
+                            x: switchPos.x + 140,
+                            y: switchPos.y + 35
+                        }, 'ap-cable');
+                        this.createWirelessSignals(apPos.x + 35, apPos.y + 35);
+                        this.addMobileDevices();
+                        this.playSound('wireless');
+                    }, 300);
+                }, 300);
+                this.metrics.devices += this.config.mobileDevicePositions.length;
+                this.costs.accessPoint = this.config.componentDetails.accessPoint.cost;
+            }
+
+            stepCompleteLAN() {
+                this.simulateTraffic();
+                Object.assign(this.metrics, {
+                    latency: 10,
+                    reliability: 99,
+                    connections: this.metrics.devices
+                });
+            }
+
+            createElement(tag, className) {
+                const el = document.createElement(tag);
+                if (className) el.className = className;
+                return el;
+            }
+
+            createHardwareComponent(type, styles) {
+                const data = this.config.componentDetails[type];
+                const el = this.createElement('div', `hardware-component ${type} hardware-accelerated`);
+                Object.assign(el.style, styles);
+                
+                const iconContainer = this.createElement('div', 'icon-display');
+                iconContainer.innerHTML = this.config.deviceIcons[type] || '';
+                
+                const label = this.createElement('div', 'component-label');
+                label.textContent = data.name.replace('Enterprise ', '').replace('24-Port Managed ', '');
+                
+                el.append(iconContainer, label);
+                
+                el.addEventListener('mouseenter', (e) => this.showComponentTooltip(e, type));
+                el.addEventListener('mouseleave', () => this.hideTooltip());
+                this.domElements.networkCanvas.appendChild(el);
+                this.networkComponents.set(type, el);
+                return el;
+            }
+
+            createCable(from, to, id, type = 'cable') {
+                const cable = this.createElement('div', 'cable hardware-accelerated');
+                const fromX = from.x + 45,
+                    fromY = from.y + 45,
+                    toX = to.x,
+                    toY = to.y;
+                const length = Math.hypot(toX - fromX, toY - fromY);
+                const angle = Math.atan2(toY - fromY, toX - fromX) * 180 / Math.PI;
+                Object.assign(cable.style, {
+                    width: length + 'px',
+                    left: fromX + 'px',
+                    top: fromY + 'px',
+                    transform: `rotate(${angle}deg)`
+                });
+                if (type === 'fiber') cable.style.background = 'linear-gradient(90deg, transparent, var(--warning), transparent)';
+                cable.addEventListener('mouseenter', (e) => this.showCableTooltip(e, type));
+                cable.addEventListener('mouseleave', () => this.hideTooltip());
+                this.domElements.networkCanvas.appendChild(cable);
+                this.connections.push({
+                    element: cable,
+                    from,
+                    to,
+                    type
+                });
+                requestAnimationFrame(() => cable.classList.add('visible'));
+            }
+
+            createWirelessSignals(x, y) {
+                for (let i = 1; i <= 4; i++) {
+                    const signal = this.createElement('div', 'wireless-signal hardware-accelerated');
+                    Object.assign(signal.style, {
+                        left: (x - i * 20) + 'px',
+                        top: (y - i * 20) + 'px',
+                        width: (i * 40) + 'px',
+                        height: (i * 40) + 'px',
+                        animationDelay: (i * 0.3) + 's'
+                    });
+                    this.domElements.networkCanvas.appendChild(signal);
+                }
+            }
+
+            addMobileDevices() {
+                this.config.mobileDevicePositions.forEach((device, index) => {
+                    setTimeout(() => {
+                        const mobile = this.createElement('div', 'computer connected hardware-accelerated');
+                        Object.assign(mobile.style, {
+                            left: device.x + 'px',
+                            top: device.y + 'px',
+                            width: '70px',
+                            height: '70px',
+                        });
+
+                        const iconContainer = this.createElement('div', 'icon-display');
+                        iconContainer.innerHTML = this.config.deviceIcons[device.type] || this.config.deviceIcons.laptop;
+
+                        const label = this.createElement('div', 'computer-label');
+                        label.textContent = device.label;
+
+                        mobile.append(iconContainer, label);
+                        mobile.addEventListener('mouseenter', (e) => this.showDeviceTooltip(e, device));
+                        mobile.addEventListener('mouseleave', () => this.hideTooltip());
+                        this.domElements.networkCanvas.appendChild(mobile);
+                        requestAnimationFrame(() => mobile.classList.add('highlight'));
+                    }, index * 300);
+                });
+            }
+
+            updateDisplay() {
+                this.updateStepIndicators();
+                this.updateProgressBar();
+                this.updateNavigationButtons();
+                this.updateContent();
+                this.updateComponentList();
+            }
+
+            updateStepIndicators() {
+                this.domElements.stepIndicators.forEach((step, index) => {
+                    step.classList.toggle('active', index === this.currentStep);
+                    step.classList.toggle('completed', index < this.currentStep);
+                });
+            }
+
+            updateProgressBar() {
+                const progress = ((this.currentStep + 1) / (this.config.maxSteps + 1)) * 100;
+                this.domElements.progressBar.style.width = progress + '%';
+                this.domElements.progressText.textContent = `Step ${this.currentStep + 1} - ${this.config.stepInfo[this.currentStep].progressText}`;
+            }
+
+            updateNavigationButtons() {
+                this.domElements.prevBtn.disabled = this.currentStep === 0 || this.isTransitioning;
+                this.domElements.nextBtn.disabled = this.currentStep === this.config.maxSteps || this.isTransitioning;
+                this.domElements.nextBtn.textContent = this.currentStep === this.config.maxSteps ? '✅ Complete!' : 'Next ➡️';
+            }
+
+            updateContent() {
+                const {
+                    title,
+                    description
+                } = this.config.stepInfo[this.currentStep];
+                this.domElements.stepTitle.textContent = title;
+                this.domElements.stepDescription.innerHTML = `<p>${description}</p>`;
+                if (this.currentStep === this.config.maxSteps) this.showNetworkStatsSummary();
+            }
+
+            updateComponentList() { /* Logic for component grid can be added here if needed */ }
+
+            updateMetrics() {
+                this.domElements.deviceCount.textContent = this.metrics.devices;
+                this.domElements.connectionCount.textContent = this.metrics.connections;
+                this.domElements.bandwidth.textContent = this.metrics.bandwidth;
+                this.domElements.latency.textContent = this.metrics.latency === Infinity ? '∞' : this.metrics.latency;
+                this.domElements.reliability.textContent = this.metrics.reliability + '%';
+            }
+
+            updateCosts() {
+                const total = Object.values(this.costs).reduce((sum, cost) => sum + cost, 0);
+                const costItemsHTML = Object.entries(this.costs).map(([key, value]) => {
+                    const details = this.config.componentDetails[key];
+                    if (!details) {
+                        console.error(`Cost details not found for key: ${key}`);
+                        return '';
+                    }
+                    const name = details.name;
+                    return `<div class="cost-item"><span>${name}</span><span>$${value.toLocaleString()}</span></div>`;
+                }).join('');
+
+                this.domElements.costCalculator.innerHTML = `<h4>💰 Cost Estimate</h4>${costItemsHTML}<div class="cost-total">Total: <span>$${total.toLocaleString()}</span></div>`;
+            }
+
+            showNetworkStatsSummary() {
+                document.getElementById('stepExplanation').innerHTML = `<div class="tooltip-header">🎉 LAN Complete!</div><p style="margin-top: 15px;">The network is fully operational.</p>`;
+            }
+
+            showTooltip(event, data) {
+                this.updateTooltipContent(data.label, this.config.deviceDescriptions[data.type], this.config.deviceSpecs[data.type]);
+                this.positionTooltip(event.target);
+            }
+            showComponentTooltip(event, type) {
+                const data = this.config.componentDetails[type];
+                this.updateTooltipContent(data.name, data.description, data.specs);
+                this.positionTooltip(event.target);
+            }
+            showCableTooltip(event, type) {
+                const data = this.config.componentDetails[type];
+                this.updateTooltipContent(data.name, data.description, data.specs);
+                this.positionTooltip(event.target);
+            }
+            showDeviceTooltip(event, device) {
+                this.updateTooltipContent(device.label, `${device.type} via WiFi`, 'Connection: WiFi 6');
+                this.positionTooltip(event.target);
+            }
+            updateTooltipContent(header, content, specs) {
+                const tooltip = this.domElements.tooltip;
+                tooltip.querySelector('.tooltip-header').textContent = header;
+                tooltip.querySelector('.tooltip-content').textContent = content;
+                tooltip.querySelector('.tooltip-specs').textContent = specs;
+                tooltip.classList.add('visible');
+            }
+            positionTooltip(target) {
+                const rect = target.getBoundingClientRect();
+                this.domElements.tooltip.style.left = (rect.left + window.scrollX + rect.width / 2 - this.domElements.tooltip.offsetWidth / 2) + 'px';
+                this.domElements.tooltip.style.top = (rect.top + window.scrollY - this.domElements.tooltip.offsetHeight - 10) + 'px';
+            }
+            hideTooltip() {
+                this.domElements.tooltip.classList.remove('visible');
+            }
+
+            toggleAutoPlay() {
+                this.isAutoPlaying = !this.isAutoPlaying;
+                this.domElements.autoBtn.textContent = this.isAutoPlaying ? '⏸️ Pause' : '▶️ Auto Play';
+                if (this.isAutoPlaying) {
+                    if (this.currentStep >= this.config.maxSteps) this.goToStep(0);
+                    this.autoPlayInterval = setInterval(() => {
+                        this.nextStep();
+                        if (this.currentStep >= this.config.maxSteps) this.toggleAutoPlay();
+                    }, 4000);
+                } else {
+                    clearInterval(this.autoPlayInterval);
+                }
+            }
+            resetSimulation() {
+                if (this.isAutoPlaying) this.toggleAutoPlay();
+                this.goToStep(0);
+                this.playSound('reset');
+            }
+            simulateFailure() {
+                const comps = Array.from(this.networkComponents.values());
+                if (comps.length === 0) return;
+                comps[Math.floor(Math.random() * comps.length)].style.background = 'var(--error)';
+                this.playSound('error');
+                setTimeout(() => this.executeStep(), 3000);
+            }
+            simulateTraffic() {
+                document.querySelectorAll('.cable.visible').forEach(c => c.classList.add('active'));
+                setTimeout(() => document.querySelectorAll('.cable.active').forEach(c => c.classList.remove('active')), 5000);
+            }
+            toggleSound(button) {
+                this.soundEnabled = !this.soundEnabled;
+                button.textContent = this.soundEnabled ? '🔊 Sound Effects' : '🔇 Sound Off';
+            }
+            exportConfig() {
+                const data = {
+                    step: this.currentStep,
+                    metrics: this.metrics,
+                    costs: this.costs,
+                    timestamp: new Date().toISOString()
+                };
+                const link = this.createElement('a');
+                link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {
+                    type: 'application/json'
+                }));
+                link.download = 'lan-config.json';
+                link.click();
+                this.playSound('export');
+            }
+            showPerformance() {
+                alert(`Metrics:\n${Object.entries(this.metrics).map(([k, v]) => `${k}: ${v}`).join('\n')}`);
+            }
+            troubleshoot() {
+                const issues = [];
+                if (this.currentStep < 1) issues.push("No NICs installed.");
+                if (this.currentStep < 2) issues.push("No transmission media (cables).");
+                if (this.currentStep < 3) issues.push("No central switch for efficient networking.");
+                if (this.currentStep < 4) issues.push("No router for internet access.");
+                if (this.currentStep < 5) issues.push("No wireless access point for WiFi.");
+                alert(issues.length === 0 ? "✅ All systems operational!" : `🔧 Issues Found:\n\n- ${issues.join('\n- ')}`);
+            }
+
+            resetState() {
+                this.costs = {};
+                this.metrics = {
+                    bandwidth: 0,
+                    latency: Infinity,
+                    reliability: 0,
+                    devices: this.config.computerPositions.length,
+                    connections: 0
+                };
+            }
+            clearStepComponents() {
+                this.domElements.networkCanvas.querySelectorAll('.hardware-component, .cable, .wireless-signal').forEach(el => !el.classList.contains('computer') && el.remove());
+                this.connections = [];
+                this.networkComponents.clear();
+                this.computers.forEach(c => c.element.classList.remove('connected'));
+            }
+            handleComputerClick(computer) {
+                computer.classList.add('highlight');
+                setTimeout(() => computer.classList.remove('highlight'), 1500);
+                this.playSound('click');
+            }
+            playSound(type) {
+                if (!this.soundEnabled) return;
+                try {
+                    if (!this.audioContext) this.audioContext = new(window.AudioContext || window.webkitAudioContext)();
+                    const audioCtx = this.audioContext,
+                        osc = audioCtx.createOscillator(),
+                        gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    const sound = this.config.soundEffects[type];
+                    if (!sound) return;
+                    osc.frequency.setValueAtTime(sound.frequency, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + sound.duration);
+                    osc.start(audioCtx.currentTime);
+                    osc.stop(audioCtx.currentTime + sound.duration);
+                } catch (e) {
+                    this.soundEnabled = false;
+                }
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            window.simulator = new AdvancedLANSimulator(SIM_CONFIG);
+        });
+    </script>
+</body>
+</html>

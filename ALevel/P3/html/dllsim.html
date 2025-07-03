@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Link Libraries (DLL) Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base Styles & Variables */
+        :root {
+            --bg-color: #1a1a2e;
+            --primary-color: #16213e;
+            --secondary-color: #0f3460;
+            --accent-color: #e94560;
+            --text-color: #dcdcdc;
+            --highlight-color: #53bf9d;
+            --code-bg: #2d2d44;
+            --border-radius: 12px;
+            --font-family: 'Inter', sans-serif;
+            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            --transition-speed: 0.5s;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            perspective: 1000px;
+        }
+
+        /* Main Container */
+        .simulation-container {
+            width: 95%;
+            max-width: 1200px;
+            height: 90vh;
+            max-height: 800px;
+            background: var(--primary-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Header */
+        .sim-header {
+            padding: 15px 25px;
+            background: rgba(22, 33, 62, 0.8);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            z-index: 10;
+        }
+        .sim-header h1 {
+            font-size: 1.5rem;
+            color: white;
+            text-shadow: 0 0 5px var(--accent-color);
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            background-color: var(--secondary-color);
+            height: 5px;
+        }
+        #progress-indicator {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--highlight-color), var(--accent-color));
+            transition: width var(--transition-speed) cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+
+        /* Main Content Area */
+        .sim-content {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Step Styling */
+        .step {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            padding: 20px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(100px) rotateY(-10deg);
+            transition: opacity var(--transition-speed) ease-in-out, transform var(--transition-speed) ease-in-out, visibility var(--transition-speed);
+            will-change: transform, opacity;
+        }
+        .step.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0) rotateY(0deg);
+        }
+        .step.inactive-left {
+            transform: translateX(-100px) rotateY(10deg);
+        }
+
+        /* Visualisation Area */
+        .visualisation {
+            width: 100%;
+            height: 50%;
+            background: rgba(0,0,0,0.2);
+            border-radius: var(--border-radius);
+            margin-bottom: 20px;
+            position: relative;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 20px;
+            overflow: hidden;
+        }
+        
+        .memory-space {
+            border: 2px dashed var(--highlight-color);
+            border-radius: var(--border-radius);
+            padding: 10px;
+            position: relative;
+            width: 45%;
+            height: 90%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        .memory-space::before {
+            content: 'Main Memory';
+            position: absolute;
+            top: -25px;
+            left: 10px;
+            color: var(--highlight-color);
+            font-size: 0.9rem;
+        }
+
+        .program, .dll, .shared-dll {
+            background: var(--secondary-color);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            text-align: center;
+            border: 1px solid var(--accent-color);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all var(--transition-speed) ease-out;
+            cursor: pointer;
+        }
+
+        .program.visible, .dll.visible, .shared-dll.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .program { width: 80%; }
+        .dll { width: 60%; background: var(--highlight-color); border-color: white; }
+        .shared-dll { width: 70%; background: #6a0dad; border-color: #c792ea; }
+
+        .linker-icon {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            z-index: 6;
+            opacity: 0;
+            transition: all 1s ease-in-out;
+        }
+        
+        .connection-line {
+            position: absolute;
+            height: 2px;
+            background: var(--accent-color);
+            transform-origin: 0 0;
+            opacity: 0;
+            z-index: 5;
+            transition: opacity 0.3s;
+        }
+        
+        .connection-line.visible {
+            opacity: 1;
+            animation: dash 5s linear infinite;
+        }
+
+        @keyframes dash { to { stroke-dashoffset: 1000; } }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        /* Explanation Text */
+        .explanation {
+            width: 100%;
+            text-align: center;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        .explanation h2 {
+            color: white;
+            margin-bottom: 15px;
+        }
+        .explanation code {
+            background-color: var(--code-bg);
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            color: var(--accent-color);
+        }
+
+        /* Navigation */
+        .sim-nav {
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .nav-btn {
+            background: var(--secondary-color);
+            color: white;
+            border: 1px solid var(--accent-color);
+            padding: 10px 20px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .nav-btn:hover {
+            background: var(--accent-color);
+            border-color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(233, 69, 96, 0.5);
+        }
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .nav-btn.reset-btn {
+            background: var(--highlight-color);
+            border-color: white;
+        }
+        .nav-btn.reset-btn:hover {
+            background: #45a085;
+        }
+
+        /* Modals (Popups) */
+        .modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: var(--primary-color);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 700px;
+            border: 1px solid var(--accent-color);
+            box-shadow: var(--shadow);
+            transform: scale(0.7);
+            transition: transform 0.3s ease;
+        }
+        .modal.visible .modal-content {
+            transform: scale(1);
+        }
+        .modal h3 {
+            margin-bottom: 20px;
+            color: white;
+            font-size: 1.5rem;
+        }
+        .modal p {
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }
+        .modal-close-btn {
+            display: block;
+            margin: 20px auto 0;
+            padding: 12px 25px;
+        }
+        
+        /* Comparison Table */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .comparison-table th, .comparison-table td {
+            border: 1px solid var(--secondary-color);
+            padding: 12px;
+            text-align: left;
+        }
+        .comparison-table th {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        .comparison-table td {
+            background-color: var(--code-bg);
+        }
+
+        /* Quiz Styles */
+        #step-9 { /* Updated step number for quiz */
+            justify-content: flex-start;
+            overflow-y: auto;
+            padding-top: 20px;
+            padding-bottom: 80px;
+        }
+
+        #step-9::-webkit-scrollbar { width: 8px; }
+        #step-9::-webkit-scrollbar-track { background: var(--secondary-color); }
+        #step-9::-webkit-scrollbar-thumb { background-color: var(--accent-color); border-radius: 10px; border: 2px solid var(--secondary-color); }
+
+        .quiz-container { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 25px; }
+        .quiz-question-wrapper { width: 100%; display: flex; flex-direction: column; align-items: center; }
+        .quiz-question { font-size: 1.2rem; font-weight: 600; color: white; margin-bottom: 10px; width: 90%; max-width: 600px; }
+        .quiz-options { display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 600px; }
+        .quiz-option { background: var(--secondary-color); border: 1px solid transparent; padding: 15px; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; }
+        .quiz-option:hover { border-color: var(--accent-color); transform: translateX(5px); }
+        .quiz-option.selected { background: var(--accent-color); color: white; }
+        .quiz-option.correct { background: var(--highlight-color); border-color: white; }
+        .quiz-option.incorrect { background: #c0392b; border-color: white; }
+        .text-input { background: var(--code-bg); border: 1px solid var(--secondary-color); color: var(--text-color); padding: 12px; border-radius: 8px; width: 90%; max-width: 600px; font-size: 1rem; }
+        .text-input:focus { outline: none; border-color: var(--accent-color); }
+        .feedback { margin-top: 15px; font-weight: 600; padding: 10px; border-radius: 8px; width: 90%; max-width: 600px; }
+        .feedback.correct { background-color: rgba(83, 191, 157, 0.3); }
+        .feedback.incorrect { background-color: rgba(233, 69, 96, 0.3); }
+
+        /* Drag and Drop Quiz */
+        .dnd-container { display: flex; justify-content: space-around; width: 100%; gap: 20px; align-items: flex-start; }
+        .dnd-source, .dnd-target { width: 45%; min-height: 250px; padding: 15px; border-radius: var(--border-radius); background: rgba(0,0,0,0.2); border: 2px dashed var(--secondary-color); }
+        .dnd-target.over { border-color: var(--accent-color); background: rgba(233, 69, 96, 0.1); }
+        .dnd-item { background: var(--secondary-color); color: white; padding: 10px; border-radius: 8px; margin-bottom: 10px; cursor: grab; border: 1px solid var(--accent-color); transition: opacity 0.3s; }
+        .dnd-item.dragging { opacity: 0.5; }
+        .dnd-target h3, .dnd-source h3 { text-align: center; margin-bottom: 15px; color: white; }
+        
+    </style>
+</head>
+<body>
+
+    <div class="simulation-container">
+        <div class="sim-header">
+            <h1>Dynamic Link Libraries (DLL) Simulation</h1>
+            <div class="progress-bar">
+                <div id="progress-indicator"></div>
+            </div>
+        </div>
+
+        <div class="sim-content">
+            <!-- Step 0: Welcome -->
+            <div class="step active" id="step-0">
+                <div class="explanation">
+                    <h2>Welcome to the DLL Simulation!</h2>
+                    <p>This interactive guide will walk you through how Dynamic Link Libraries (DLLs) work, their benefits, and their drawbacks.</p>
+                    <p>Use the <strong>Next</strong> and <strong>Previous</strong> buttons or your <strong>keyboard's arrow keys</strong> to navigate.</p>
+                </div>
+            </div>
+
+            <!-- Step 1: Static Libraries -->
+            <div class="step" id="step-1">
+                <div class="visualisation">
+                    <div class="program visible" id="static-exe">
+                        MainProgram.exe (10MB)<br>
+                        <small>(Includes Library Code)</small>
+                    </div>
+                </div>
+                <div class="explanation">
+                    <h2>The Problem: Static Linking</h2>
+                    <p>Traditionally, programs were built with <strong>static libraries</strong>. All the necessary code, including common functions, was compiled directly into the final executable file (<code>.EXE</code>). This made programs large and inefficient.</p>
+                </div>
+            </div>
+
+            <!-- Step 2: Introducing DLLs -->
+            <div class="step" id="step-2">
+                <div class="visualisation" id="viz-2">
+                    <div class="program" id="dll-exe">MainProgram.exe (2MB)</div>
+                    <div class="shared-dll" id="dll-file">SharedLibrary.dll (8MB)</div>
+                </div>
+                <div class="explanation">
+                    <h2>The Solution: Dynamic Link Libraries (DLLs)</h2>
+                    <p>A DLL is a <strong>shared library</strong> file containing code and data that can be used by multiple programs at the same time. The code is kept separate from the main <code>.EXE</code> file.</p>
+                </div>
+            </div>
+
+            <!-- Step 3: How DLLs Work -->
+            <div class="step" id="step-3">
+                <div class="visualisation" id="viz-3">
+                    <div class="memory-space">
+                         <div class="program" id="runtime-exe">MainProgram.exe</div>
+                    </div>
+                    <div id="dll-load-target" style="width: 45%; height: 90%;"></div>
+                    <div class="linker-icon" id="linker-icon">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.117 17.883a5.002 5.002 0 01-7.072 0l-2.12-2.12a5 5 0 010-7.072l.707-.707a5 5 0 017.072 0L14.117 9.4a1 1 0 11-1.414-1.414l-1.414-1.414a7 7 0 00-9.9 9.9l2.122 2.121a7 7 0 009.9 0l1.414-1.414a1 1 0 111.414 1.414l-1.414 1.414z" fill="var(--highlight-color)"/><path d="M9.883 6.117a5.002 5.002 0 017.072 0l2.12 2.12a5 5 0 010 7.072l-.707.707a5 5 0 01-7.072 0L9.883 14.6a1 1 0 111.414 1.414l1.414 1.414a7 7 0 009.9-9.9l-2.122-2.121a7 7 0 00-9.9 0l-1.414 1.414a1 1 0 11-1.414-1.414l1.414-1.414z" fill="var(--highlight-color)"/></svg>
+                    </div>
+                    <svg id="connection-svg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                        <line id="connection-line" x1="0" y1="0" x2="0" y2="0" stroke="var(--accent-color)" stroke-width="3" stroke-dasharray="5,5" style="opacity:0; transition: opacity 0.5s;"/>
+                    </svg>
+                </div>
+                <div class="explanation">
+                    <h2>Run-time Linking</h2>
+                    <p>When a program runs and needs a function from a DLL, the OS uses a <strong>linker</strong> to find the DLL, load it into memory, and connect the program to the shared code.</p>
+                    <button class="nav-btn" id="run-sim-btn">▷ Run Linking Animation</button>
+                </div>
+            </div>
+            
+            <!-- Step 4: Sharing DLLs -->
+            <div class="step" id="step-4">
+                 <div class="visualisation" id="viz-4">
+                    <div class="memory-space">
+                         <div class="program visible" id="program-a">Spreadsheet.exe</div>
+                         <div class="program visible" id="program-b">WordProcessor.exe</div>
+                    </div>
+                    <div class="memory-space">
+                         <div class="shared-dll visible" id="shared-dll-4">Printing.dll</div>
+                    </div>
+                     <svg id="connection-svg-4" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                        <line id="connection-line-4a" x1="0" y1="0" x2="0" y2="0" stroke="var(--accent-color)" stroke-width="3" style="opacity:0;"/>
+                        <line id="connection-line-4b" x1="0" y1="0" x2="0" y2="0" stroke="var(--highlight-color)" stroke-width="3" style="opacity:0;"/>
+                    </svg>
+                </div>
+                 <div class="explanation">
+                    <h2>Sharing is Efficient</h2>
+                    <p>A single copy of a DLL can be loaded into memory and shared by multiple applications. This saves a significant amount of RAM, as the library code isn't duplicated for each program.</p>
+                </div>
+            </div>
+
+            <!-- Step 5: Benefits Quiz -->
+            <div class="step" id="step-5">
+                <div class="explanation">
+                    <h2>Benefits of DLLs</h2>
+                    <p>Drag the statements from the left and drop them into the 'Benefits' box on the right.</p>
+                </div>
+                <div class="dnd-container">
+                    <div class="dnd-source" id="benefits-source">
+                        <h3>Statements</h3>
+                        <div class="dnd-item" draggable="true" data-type="benefit">Executable file is smaller.</div>
+                        <div class="dnd-item" draggable="true" data-type="drawback">The program is not self-contained.</div>
+                        <div class="dnd-item" draggable="true" data-type="benefit">DLLs are only loaded into memory when required.</div>
+                        <div class="dnd-item" draggable="true" data-type="benefit">A single DLL can be used by several applications.</div>
+                        <div class="dnd-item" draggable="true" data-type="drawback">Errors can occur if the DLL is missing.</div>
+                        <div class="dnd-item" draggable="true" data-type="benefit">Updates to the DLL don't require recompiling the main program.</div>
+                    </div>
+                    <div class="dnd-target" id="benefits-target" data-target-type="benefit">
+                        <h3>Benefits</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 6: Drawbacks Quiz -->
+            <div class="step" id="step-6">
+                 <div class="explanation">
+                    <h2>Drawbacks of DLLs</h2>
+                    <p>Now, find the drawbacks. Drag the statements from the left and drop them into the 'Drawbacks' box.</p>
+                </div>
+                <div class="dnd-container">
+                    <div class="dnd-source" id="drawbacks-source">
+                        <h3>Statements</h3>
+                        <div class="dnd-item" draggable="true" data-type="drawback">Executable code is not self-contained.</div>
+                        <div class="dnd-item" draggable="true" data-type="benefit">Saves space in memory.</div>
+                        <div class="dnd-item" draggable="true" data-type="drawback">Linking software must be available at run-time.</div>
+                        <div class="dnd-item" draggable="true" data-type="drawback">Missing or corrupted DLLs cause run-time errors.</div>
+                        <div class="dnd-item" draggable="true" data-type="benefit">Executable file is smaller.</div>
+                        <div class="dnd-item" draggable="true" data-type="drawback">Malicious changes to a DLL can install a virus.</div>
+                    </div>
+                    <div class="dnd-target" id="drawbacks-target" data-target-type="drawback">
+                        <h3>Drawbacks</h3>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 7: DLL Hell (Missing) -->
+            <div class="step" id="step-7">
+                <div class="visualisation" id="viz-7">
+                     <div class="program visible" id="hell-exe">ImportantApp.exe</div>
+                     <div class="dll" id="hell-dll" style="border-style: dashed; border-color: red; color: red;">Missing.dll ?</div>
+                </div>
+                <div class="explanation">
+                    <h2>"DLL Hell" Part 1: Missing Files</h2>
+                    <p>Because DLLs are separate files, they can cause problems. What happens if a required DLL is deleted or corrupted?</p>
+                    <button class="nav-btn" id="run-hell-sim-btn">▷ Simulate Missing DLL</button>
+                </div>
+            </div>
+            
+            <!-- Step 8: DLL Hell (Versioning) -->
+            <div class="step" id="step-8">
+                <div class="visualisation" id="viz-8">
+                     <div class="program visible" id="version-app-a">PhotoApp.exe</div>
+                     <div class="shared-dll visible" id="version-dll">Graphics.dll v1.0</div>
+                </div>
+                <div class="explanation">
+                    <h2>"DLL Hell" Part 2: Version Conflicts</h2>
+                    <p>Another common issue is versioning. <code>PhotoApp.exe</code> requires version 1.0 of a shared DLL. What happens when another program installs a new, incompatible version?</p>
+                    <button class="nav-btn" id="install-game-btn">▷ Install New Game</button>
+                </div>
+            </div>
+
+            <!-- Step 9: Final Quiz -->
+            <div class="step" id="step-9">
+                <div class="quiz-container" id="final-quiz-container">
+                    <!-- Questions will be injected here by JS -->
+                </div>
+                <button class="nav-btn" id="submit-quiz-btn" style="margin-top: 20px;">Mark Quiz</button>
+            </div>
+            
+            <!-- Step 10: Summary -->
+            <div class="step" id="step-10">
+                <div class="explanation">
+                    <h2>Simulation Complete!</h2>
+                    <p>You've explored how Dynamic Link Libraries work. Here's a quick summary:</p>
+                    <ul style="text-align: left; max-width: 600px; margin: 20px auto; list-style-type: '⚡ '; padding-left: 20px;">
+                        <li>DLLs are <strong>shared libraries</strong> loaded at <strong>run-time</strong>.</li>
+                        <li>They reduce executable size and save memory.</li>
+                        <li>They can be updated <strong>independently</strong> of the main application.</li>
+                        <li>They introduce dependencies, leading to issues like <strong>"DLL Hell"</strong>.</li>
+                    </ul>
+                    <p>Your final quiz score is: <strong id="final-score">N/A</strong></p>
+                    <button class="nav-btn" id="compare-btn" style="margin-top:20px;">Compare Linking Types</button>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="sim-nav">
+            <button class="nav-btn" id="prev-btn" disabled>← Previous Step</button>
+            <button class="nav-btn reset-btn" id="reset-btn" style="display: none;">Reset Simulation</button>
+            <button class="nav-btn" id="next-btn">Next Step →</button>
+        </div>
+    </div>
+    
+    <!-- Modal for instructions and popups -->
+    <div class="modal" id="info-modal">
+        <div class="modal-content" id="modal-content-main">
+            <h3 id="modal-title">Modal Title</h3>
+            <p id="modal-text">Modal content goes here.</p>
+            <div id="comparison-content" style="display:none;"></div>
+            <button class="nav-btn modal-close-btn" id="modal-close">Got it!</button>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Caching ---
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const steps = document.querySelectorAll('.step');
+        const progressIndicator = document.getElementById('progress-indicator');
+        const finalScoreEl = document.getElementById('final-score');
+        const infoModal = document.getElementById('info-modal');
+        const modalContent = document.getElementById('modal-content-main');
+        const modalTitle = document.getElementById('modal-title');
+        const modalText = document.getElementById('modal-text');
+        const modalCloseBtn = document.getElementById('modal-close');
+        const comparisonContent = document.getElementById('comparison-content');
+
+        // --- State Management ---
+        let currentStep = 0;
+        let quizAnswers = {};
+        let animationLock = false; 
+        let benefitsSourceHTML = '';
+        let drawbacksSourceHTML = '';
+
+        // --- Quiz Questions ---
+        const quizData = [
+            {
+                type: 'mcq',
+                question: "What is the primary purpose of a DLL?",
+                options: ["To make programs run faster", "To store program data and settings", "To allow code to be shared between multiple programs", "To compile source code into an executable"],
+                answer: "To allow code to be shared between multiple programs",
+                explanation: "DLLs are shared libraries, designed specifically so that multiple applications can use the same code without duplicating it."
+            },
+            {
+                type: 'true_false',
+                question: "True or False: Once a program is compiled with a DLL, it will work even if the DLL file is deleted.",
+                answer: "False",
+                explanation: "This is false. The program depends on the external DLL file at run-time. If it's missing, the program will fail to start."
+            },
+            {
+                type: 'scenario',
+                question: "A user installs a new game, and suddenly their photo-editing software stops working with a 'function not found' error. Based on this simulation, what is the most likely cause?",
+                options: [
+                    "The new game corrupted the operating system.", 
+                    "The game's installation overwrote a shared DLL with an incompatible version.", 
+                    "The photo-editing software's executable file was deleted.", 
+                    "The computer ran out of RAM."
+                ],
+                answer: "The game's installation overwrote a shared DLL with an incompatible version.",
+                explanation: "This is a classic 'DLL Hell' versioning problem. The photo editor depended on an older version of a DLL, which the new game replaced."
+            },
+            {
+                type: 'fib',
+                question: "DLL files are loaded into main memory only when required at ____-time.",
+                answer: "run",
+                explanation: "The 'Dynamic' in DLL means the linking happens dynamically as the program runs, not when it is compiled."
+            }
+        ];
+
+        // --- Functions ---
+        
+        const updateUI = () => {
+            steps.forEach((step, index) => {
+                step.classList.remove('active', 'inactive-left');
+                if (index === currentStep) {
+                    step.classList.add('active');
+                } else if (index < currentStep) {
+                    step.classList.add('inactive-left');
+                }
+            });
+
+            progressIndicator.style.width = `${(currentStep / (steps.length - 1)) * 100}%`;
+
+            prevBtn.disabled = currentStep === 0;
+            nextBtn.disabled = currentStep === steps.length - 1;
+            resetBtn.style.display = currentStep === steps.length - 1 ? 'inline-block' : 'none';
+            nextBtn.style.display = currentStep === steps.length - 1 ? 'none' : 'inline-block';
+
+            handleStepLogic(currentStep);
+        };
+
+        const handleStepLogic = (stepIndex) => {
+            resetStepAnimations();
+            
+            if (stepIndex === 2) { 
+                document.getElementById('dll-exe').classList.add('visible');
+                setTimeout(() => document.getElementById('dll-file').classList.add('visible'), 500);
+            }
+            if (stepIndex === 3) { 
+                document.getElementById('runtime-exe').classList.add('visible');
+            }
+            if (stepIndex === 4) { 
+                drawConnectionLines(4);
+            }
+            if (stepIndex === 9) { // Updated step for quiz
+                const quizContainer = document.getElementById('final-quiz-container');
+                if (quizContainer.children.length <= 1) {
+                     buildQuiz();
+                }
+            }
+        };
+
+        const resetStepAnimations = () => {
+            const runtimeDll = document.getElementById('runtime-dll');
+            if(runtimeDll) runtimeDll.remove();
+            document.getElementById('connection-line').style.opacity = '0';
+            document.getElementById('linker-icon').style.opacity = '0';
+            
+            document.getElementById('hell-exe').style.animation = 'none';
+            
+            const versionDll = document.getElementById('version-dll');
+            versionDll.textContent = 'Graphics.dll v1.0';
+            versionDll.style.borderColor = 'white';
+            document.getElementById('version-app-a').style.animation = 'none';
+            document.getElementById('install-game-btn').disabled = false;
+        };
+
+        const showModal = (title, text) => {
+            return new Promise(resolve => {
+                animationLock = true;
+                modalTitle.textContent = title;
+                modalText.innerHTML = text;
+                modalText.style.display = 'block';
+                comparisonContent.style.display = 'none';
+                infoModal.classList.add('visible');
+                
+                const closeHandler = () => {
+                    infoModal.classList.remove('visible');
+                    animationLock = false;
+                    modalCloseBtn.removeEventListener('click', closeHandler);
+                    resolve();
+                };
+                modalCloseBtn.addEventListener('click', closeHandler);
+            });
+        };
+        
+        const showComparisonModal = () => {
+            modalTitle.textContent = 'Static vs. Dynamic Linking';
+            modalText.style.display = 'none';
+            comparisonContent.style.display = 'block';
+            comparisonContent.innerHTML = `
+                <table class="comparison-table">
+                    <tr>
+                        <th>Feature</th>
+                        <th>Static Linking</th>
+                        <th>Dynamic Linking (DLL)</th>
+                    </tr>
+                    <tr>
+                        <td>File Size</td>
+                        <td>Large (all code in one .EXE)</td>
+                        <td>Smaller .EXE, requires separate DLL files</td>
+                    </tr>
+                    <tr>
+                        <td>Memory Usage</td>
+                        <td>Higher (code duplicated in memory for each app)</td>
+                        <td>Lower (one copy of DLL shared in memory)</td>
+                    </tr>
+                    <tr>
+                        <td>Updating</td>
+                        <td>Requires recompiling the entire application</td>
+                        <td>Can update DLL without recompiling the app</td>
+                    </tr>
+                    <tr>
+                        <td>Dependencies</td>
+                        <td>Self-contained, no external files needed</td>
+                        <td>Dependent on external DLL files being present</td>
+                    </tr>
+                </table>
+            `;
+            infoModal.classList.add('visible');
+        };
+
+        const next = () => {
+            if (animationLock) return;
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                updateUI();
+            }
+        };
+
+        const prev = () => {
+            if (animationLock) return;
+            if (currentStep > 0) {
+                currentStep--;
+                updateUI();
+            }
+        };
+        
+        const reset = () => {
+            currentStep = 0;
+            quizAnswers = {};
+            animationLock = false;
+
+            document.getElementById('final-quiz-container').innerHTML = '';
+            document.getElementById('submit-quiz-btn').disabled = false;
+
+            document.getElementById('benefits-source').innerHTML = benefitsSourceHTML;
+            document.getElementById('drawbacks-source').innerHTML = drawbacksSourceHTML;
+            document.getElementById('benefits-target').innerHTML = '<h3>Benefits</h3>';
+            document.getElementById('drawbacks-target').innerHTML = '<h3>Drawbacks</h3>';
+            
+            updateUI();
+        };
+
+        // --- Animation Logic ---
+        const runLinkingAnimation = async () => {
+            if (animationLock) return;
+            animationLock = true;
+            
+            await showModal("Step 1: Program Request", "The <code>MainProgram.exe</code> needs a function. The OS checks if the required DLL is in memory.");
+            
+            const dllLoadTarget = document.getElementById('dll-load-target');
+            dllLoadTarget.innerHTML = `<div class="shared-dll" id="runtime-dll">SharedLibrary.dll</div>`;
+            const runtimeDll = document.getElementById('runtime-dll');
+            
+            await showModal("Step 2: Load DLL", "The DLL is not in memory, so the OS loads <code>SharedLibrary.dll</code> from the disk.");
+            runtimeDll.classList.add('visible');
+            
+            await new Promise(res => setTimeout(res, 500));
+            
+            await showModal("Step 3: Dynamic Linking", "The OS linker now connects the program to the function inside the DLL.");
+            
+            // Animate linker icon
+            const linker = document.getElementById('linker-icon');
+            const exe = document.getElementById('runtime-exe');
+            const viz = document.getElementById('viz-3');
+            const r1 = exe.getBoundingClientRect();
+            const r2 = runtimeDll.getBoundingClientRect();
+            const vizRect = viz.getBoundingClientRect();
+
+            const startX = r1.right - vizRect.left - 15;
+            const startY = r1.top + r1.height / 2 - vizRect.top - 15;
+            const endX = r2.left - vizRect.left - 15;
+            const endY = r2.top + r2.height / 2 - vizRect.top - 15;
+            
+            linker.style.transform = `translate(${startX}px, ${startY}px)`;
+            linker.style.opacity = '1';
+            
+            await new Promise(res => setTimeout(res, 100)); // allow paint
+            
+            linker.style.transform = `translate(${endX}px, ${endY}px)`;
+            
+            await new Promise(res => setTimeout(res, 1000)); // wait for linker animation
+            linker.style.opacity = '0';
+            
+            drawConnectionLines(3);
+            
+            animationLock = false;
+        };
+
+        const runHellAnimation = async () => {
+            if (animationLock) return;
+            animationLock = true;
+            
+            const hellExe = document.getElementById('hell-exe');
+            hellExe.style.animation = 'shake 0.5s ease-in-out';
+            
+            await showModal(
+                "Error: DLL Not Found",
+                "The program cannot start because <code>Missing.dll</code> was not found. Reinstalling the program may fix this problem."
+            );
+
+            hellExe.style.animation = 'none';
+            animationLock = false;
+        };
+        
+        const runVersioningAnimation = async () => {
+            if (animationLock) return;
+            animationLock = true;
+            document.getElementById('install-game-btn').disabled = true;
+
+            await showModal("Installing New Game...", "The new game also uses <code>Graphics.dll</code>, but it requires a newer version. The installer overwrites the old DLL file.");
+
+            const versionDll = document.getElementById('version-dll');
+            versionDll.style.opacity = 0;
+            await new Promise(res => setTimeout(res, 500));
+            versionDll.textContent = 'Graphics.dll v2.0';
+            versionDll.style.borderColor = 'var(--accent-color)';
+            versionDll.style.opacity = 1;
+
+            await showModal("Update Complete", "<code>Graphics.dll</code> has been updated to v2.0. Now let's try to run the original photo app again.");
+
+            const photoApp = document.getElementById('version-app-a');
+            photoApp.style.animation = 'shake 0.5s ease-in-out';
+            
+            await showModal("Error: Incompatible Version", "PhotoApp.exe failed to start! It was designed for v1.0, but it found v2.0, which has changed and is no longer compatible.");
+            
+            photoApp.style.animation = 'none';
+            animationLock = false;
+        };
+
+        const drawConnectionLines = (step) => {
+            if (step === 3) {
+                 const exe = document.getElementById('runtime-exe');
+                 const dll = document.getElementById('runtime-dll');
+                 const line = document.getElementById('connection-line');
+                 if (!exe || !dll) return;
+                 
+                 const viz = document.getElementById('viz-3');
+                 const r1 = exe.getBoundingClientRect();
+                 const r2 = dll.getBoundingClientRect();
+                 const vizRect = viz.getBoundingClientRect();
+
+                 line.setAttribute('x1', r1.right - vizRect.left);
+                 line.setAttribute('y1', r1.top + r1.height / 2 - vizRect.top);
+                 line.setAttribute('x2', r2.left - vizRect.left);
+                 line.setAttribute('y2', r2.top + r2.height / 2 - vizRect.top);
+                 setTimeout(() => line.style.opacity = '1', 100);
+            } else if (step === 4) {
+                const pA = document.getElementById('program-a');
+                const pB = document.getElementById('program-b');
+                const dll = document.getElementById('shared-dll-4');
+                const lineA = document.getElementById('connection-line-4a');
+                const lineB = document.getElementById('connection-line-4b');
+                if(!pA || !pB || !dll) return;
+
+                const viz = document.getElementById('viz-4');
+                const rA = pA.getBoundingClientRect();
+                const rB = pB.getBoundingClientRect();
+                const rDll = dll.getBoundingClientRect();
+                const vizRect = viz.getBoundingClientRect();
+
+                lineA.setAttribute('x1', rA.right - vizRect.left);
+                lineA.setAttribute('y1', rA.top + rA.height / 2 - vizRect.top);
+                lineA.setAttribute('x2', rDll.left - vizRect.left);
+                lineA.setAttribute('y2', rDll.top + rDll.height / 3 - vizRect.top);
+                
+                lineB.setAttribute('x1', rB.right - vizRect.left);
+                lineB.setAttribute('y1', rB.top + rB.height / 2 - vizRect.top);
+                lineB.setAttribute('x2', rDll.left - vizRect.left);
+                lineB.setAttribute('y2', rDll.top + (rDll.height * 2/3) - vizRect.top);
+
+                setTimeout(() => {
+                    lineA.style.opacity = '1';
+                    lineB.style.opacity = '1';
+                }, 500);
+            }
+        };
+
+        // --- Quiz Logic ---
+        const buildQuiz = () => {
+            const container = document.getElementById('final-quiz-container');
+            container.innerHTML = '<h2>Final Quiz</h2>';
+            quizData.forEach((q, index) => {
+                const questionEl = document.createElement('div');
+                questionEl.className = 'quiz-question-wrapper';
+
+                const questionP = document.createElement('p');
+                questionP.className = 'quiz-question';
+                questionP.textContent = `${index + 1}. ${q.question}`;
+                questionEl.appendChild(questionP);
+
+                if (q.type === 'mcq' || q.type === 'scenario' || q.type === 'true_false') {
+                    const optionsEl = document.createElement('div');
+                    optionsEl.className = 'quiz-options';
+                    optionsEl.dataset.qIndex = index;
+                    const options = q.type === 'true_false' ? ['True', 'False'] : q.options;
+                    options.forEach(opt => {
+                        const optionDiv = document.createElement('div');
+                        optionDiv.className = 'quiz-option';
+                        optionDiv.dataset.value = opt;
+                        optionDiv.textContent = opt;
+                        optionsEl.appendChild(optionDiv);
+                    });
+                    questionEl.appendChild(optionsEl);
+                } else if (q.type === 'fib') {
+                    const inputEl = document.createElement('input');
+                    inputEl.type = 'text';
+                    inputEl.className = 'text-input';
+                    inputEl.dataset.qIndex = index;
+                    inputEl.placeholder = 'Type your answer here';
+                    questionEl.appendChild(inputEl);
+                }
+
+                const feedbackEl = document.createElement('div');
+                feedbackEl.className = 'feedback';
+                feedbackEl.id = `feedback-${index}`;
+                feedbackEl.style.display = 'none';
+                questionEl.appendChild(feedbackEl);
+
+                container.appendChild(questionEl);
+            });
+        };
+
+        const markQuiz = () => {
+            let score = 0;
+            quizData.forEach((q, index) => {
+                const feedbackEl = document.getElementById(`feedback-${index}`);
+                if (!feedbackEl) {
+                    console.error(`markQuiz Error: Could not find feedback element with ID 'feedback-${index}'.`);
+                    return; 
+                }
+                
+                let isCorrect = false;
+                let userAnswer;
+
+                if (q.type === 'mcq' || q.type === 'scenario' || q.type === 'true_false') {
+                    userAnswer = quizAnswers[index];
+                    isCorrect = userAnswer === q.answer;
+                    const options = document.querySelectorAll(`.quiz-options[data-q-index='${index}'] .quiz-option`);
+                    options.forEach(opt => {
+                        opt.classList.remove('selected', 'correct', 'incorrect');
+                        if (opt.dataset.value === q.answer) {
+                            opt.classList.add('correct');
+                        } else if (opt.dataset.value === userAnswer) {
+                            opt.classList.add('incorrect');
+                        }
+                    });
+                } else if (q.type === 'fib') {
+                    const input = document.querySelector(`.text-input[data-q-index='${index}']`);
+                    userAnswer = input.value.trim().toLowerCase();
+                    isCorrect = q.answer.toLowerCase() === userAnswer;
+                    input.style.borderColor = isCorrect ? 'var(--highlight-color)' : 'var(--accent-color)';
+                }
+
+                if (isCorrect) {
+                    score++;
+                    feedbackEl.textContent = 'Correct!';
+                    feedbackEl.className = 'feedback correct';
+                } else {
+                    feedbackEl.innerHTML = `<strong>Incorrect.</strong> ${q.explanation}`;
+                    feedbackEl.className = 'feedback incorrect';
+                }
+                feedbackEl.style.display = 'block';
+            });
+            finalScoreEl.textContent = `${score} / ${quizData.length}`;
+            showModal("Quiz Marked!", `You scored ${score} out of ${quizData.length}. Check the feedback for each question.`);
+            document.getElementById('submit-quiz-btn').disabled = true;
+        };
+        
+        // --- Drag and Drop Logic ---
+        const initDnd = (type) => {
+            const sourceContainer = document.getElementById(`${type}-source`);
+            const targetContainer = document.getElementById(`${type}-target`);
+
+            sourceContainer.addEventListener('dragstart', e => {
+                if (e.target.classList.contains('dnd-item')) {
+                    e.target.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', e.target.id);
+                }
+            });
+            
+            sourceContainer.addEventListener('dragend', e => {
+                if (e.target.classList.contains('dnd-item')) {
+                    e.target.classList.remove('dragging');
+                }
+            });
+
+            sourceContainer.querySelectorAll('.dnd-item').forEach((item, i) => {
+                if (!item.id) {
+                    item.id = `${type}-item-${i}`;
+                }
+            });
+
+            targetContainer.addEventListener('dragover', e => { e.preventDefault(); targetContainer.classList.add('over'); });
+            targetContainer.addEventListener('dragleave', () => { targetContainer.classList.remove('over'); });
+
+            targetContainer.addEventListener('drop', e => {
+                e.preventDefault();
+                targetContainer.classList.remove('over');
+                const id = e.dataTransfer.getData('text');
+                const draggable = document.getElementById(id);
+                
+                if (draggable && draggable.dataset.type === targetContainer.dataset.targetType) {
+                    targetContainer.appendChild(draggable);
+                    draggable.style.borderColor = 'var(--highlight-color)';
+                } else if (draggable) {
+                    draggable.style.borderColor = 'red';
+                    setTimeout(() => { draggable.style.borderColor = 'var(--accent-color)'; }, 1000);
+                }
+            });
+        };
+        
+        // --- Event Delegation ---
+        document.body.addEventListener('click', (e) => {
+            if (e.target.matches('.quiz-option')) {
+                const wrapper = e.target.parentElement;
+                const qIndex = wrapper.dataset.qIndex;
+                quizAnswers[qIndex] = e.target.dataset.value;
+                wrapper.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+                e.target.classList.add('selected');
+            }
+        });
+
+        // --- Event Listeners ---
+        nextBtn.addEventListener('click', next);
+        prevBtn.addEventListener('click', prev);
+        resetBtn.addEventListener('click', reset);
+        
+        document.getElementById('run-sim-btn').addEventListener('click', runLinkingAnimation);
+        document.getElementById('run-hell-sim-btn').addEventListener('click', runHellAnimation);
+        document.getElementById('install-game-btn').addEventListener('click', runVersioningAnimation);
+        document.getElementById('submit-quiz-btn').addEventListener('click', markQuiz);
+        document.getElementById('compare-btn').addEventListener('click', showComparisonModal);
+        modalCloseBtn.addEventListener('click', () => infoModal.classList.remove('visible'));
+
+        window.addEventListener('keydown', (e) => {
+            if (e.target.tagName.toLowerCase() === 'input') return;
+            if (e.key === 'ArrowRight') next();
+            if (e.key === 'ArrowLeft') prev();
+        });
+
+        // --- Initialization ---
+        benefitsSourceHTML = document.getElementById('benefits-source').innerHTML;
+        drawbacksSourceHTML = document.getElementById('drawbacks-source').innerHTML;
+
+        initDnd('benefits');
+        initDnd('drawbacks');
+        updateUI();
+        showModal(
+            "Welcome!",
+            "This simulation explains Dynamic Link Libraries (DLLs). Use the <strong>arrow buttons</strong> or your <strong>keyboard's arrow keys</strong> to navigate through the steps."
+        );
+    });
+    </script>
+</body>
+</html>

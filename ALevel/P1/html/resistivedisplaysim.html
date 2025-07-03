@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Resistive Touchscreen Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --primary-color: #3b82f6;
+            --text-color: #e2e8f0;
+            --glass-bg: rgba(30, 41, 59, 0.6);
+            --border-color: rgba(255, 255, 255, 0.15);
+            --highlight-color: #60a5fa;
+            --green-glow: #34d399;
+            --red-glow: #f87171;
+            --pink-glow: #ec4899;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+        }
+        
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            box-shadow: 0 0 40px rgba(0,0,0,0.2), 0 0 0 1px var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .animated-gradient {
+            background: linear-gradient(-45deg, #2563eb, #3b82f6, #60a5fa, #3b82f6);
+            background-size: 400% 400%;
+            animation: gradient-animation 10s ease infinite;
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform: translateZ(0);
+            border: 1px solid transparent;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:active {
+            transform: translateY(-1px) scale(0.98);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        /* Section transitions */
+        .sim-section {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            will-change: opacity;
+        }
+        
+        .sim-section.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Simulation Diagram Styles */
+        #sim-diagram {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            height: 300px;
+            margin: 2rem auto;
+        }
+        
+        .sim-layer {
+            position: absolute;
+            left: 0;
+            right: 0;
+            border-radius: 8px;
+            transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform-origin: center;
+            opacity: 0;
+            transform: translateY(20px);
+            will-change: transform, opacity;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        #layer-glass { background-color: rgba(153, 204, 255, 0.5); height: 60px; bottom: 20px; }
+        #layer-bottom-conductive { background-color: rgba(167, 243, 208, 0.6); height: 30px; bottom: 80px; }
+        #layer-spacers { bottom: 110px; height: 20px; display: flex; justify-content: space-around; background: transparent !important; border: none !important; }
+        .spacer-dot { background-color: #fbbf24; width: 20px; height: 20px; border-radius: 50%;}
+        #layer-top-conductive { background-color: rgba(167, 243, 208, 0.6); height: 30px; bottom: 130px; }
+        #layer-top-film { background-color: rgba(209, 213, 219, 0.5); height: 40px; bottom: 160px; }
+
+        .layer-label {
+            position: absolute;
+            background: rgba(0,0,0,0.7);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.5s ease 0.3s;
+            pointer-events: none;
+        }
+
+        #sim-diagram.animated .layer-label { opacity: 1; }
+
+        #sim-diagram-2 {
+            cursor: none;
+        }
+
+        #finger {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: var(--pink-glow);
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.7);
+            top: 100px;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            filter: drop-shadow(0 5px 8px rgba(0,0,0,0.4));
+            will-change: transform, opacity;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #sim-diagram-2.pressing #finger {
+            transform: translate(-50%, -50%) scale(0.9);
+            filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));
+        }
+
+        #voltage-flow {
+            position: absolute;
+            bottom: 80px;
+            left: 0;
+            width: 0%;
+            height: 30px;
+            background: repeating-linear-gradient(-45deg, var(--red-glow), var(--red-glow) 10px, #ef4444 10px, #ef4444 20px);
+            border-radius: 8px;
+            opacity: 0;
+            transition: width 0.5s ease-out, opacity 0.3s;
+        }
+
+        .quiz-option {
+            border: 2px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        .quiz-option:not(:disabled):hover {
+            border-color: var(--highlight-color);
+            background-color: var(--primary-color);
+            transform: scale(1.02);
+        }
+        .quiz-option.correct {
+            background-color: var(--green-glow);
+            border-color: #059669;
+            color: #fff;
+            box-shadow: 0 0 15px var(--green-glow);
+        }
+        .quiz-option.incorrect {
+            background-color: var(--red-glow);
+            border-color: #dc2626;
+            color: #fff;
+            box-shadow: 0 0 15px var(--red-glow);
+        }
+
+        #modal { display: none; /* ... */ }
+        #modal.active { display: flex; /* ... */ }
+
+        .reflection-area {
+            background-color: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--border-color);
+            transition: border-color 0.3s ease;
+        }
+        .reflection-area:focus {
+            border-color: var(--highlight-color);
+            outline: none;
+            box-shadow: 0 0 0 2px var(--primary-color);
+        }
+
+        #path-top-film, #path-top-conductive {
+            transition: d 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            will-change: d;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <canvas id="particle-canvas"></canvas>
+
+    <div id="simulation-container" class="w-full max-w-4xl mx-auto p-4 md:p-8">
+
+        <header class="text-center mb-4">
+            <h1 class="text-3xl md:text-4xl font-bold animated-gradient text-transparent bg-clip-text">Resistive Touchscreen Simulation</h1>
+            <p class="text-gray-400">Cambridge 9618 A-Level Computer Science</p>
+        </header>
+        
+        <div class="w-full bg-gray-700 rounded-full h-2.5 mb-4">
+            <div id="progress-bar" class="bg-blue-500 h-2.5 rounded-full transition-all duration-500 ease-out"></div>
+        </div>
+
+        <main id="main-content" class="glass-card p-6 md:p-8 min-h-[500px] flex flex-col justify-between">
+            <!-- Start Screen -->
+            <section id="step-0" class="sim-section active text-center">
+                <h2 class="text-2xl font-bold mb-4 text-blue-300">Welcome!</h2>
+                <p class="mb-6">This interactive simulation will guide you through how a resistive touchscreen works. <br> You'll learn about its components, how it detects touches, and its pros and cons.</p>
+                <p class="mb-8 text-sm text-gray-400">Use the 'Next' and 'Previous' buttons or your keyboard's arrow keys to navigate.</p>
+                <button onclick="startSimulation()" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg">Start Simulation</button>
+            </section>
+
+            <!-- Step 1: Anatomy -->
+            <section id="step-1" class="sim-section">
+                <h2 class="text-2xl font-bold mb-2 text-blue-300">Step 1: Anatomy of a Screen</h2>
+                <p class="mb-4 text-gray-300">A resistive screen has multiple layers. Click "Animate" to see them assemble.</p>
+                 <div class="text-center mb-4"><button id="animate-anatomy-btn" onclick="animateAnatomy()" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Animate</button></div>
+                <div id="sim-diagram">
+                    <div id="layer-glass" class="sim-layer"><span class="layer-label" style="bottom: 15px; left: 50%; transform: translateX(-50%);">1. Rigid Glass Layer</span></div>
+                    <div id="layer-bottom-conductive" class="sim-layer"><span class="layer-label" style="bottom: 5px; left: 50%; transform: translateX(-50%);">2. Bottom Conductive Layer</span></div>
+                    <div id="layer-spacers" class="sim-layer"><div class="spacer-dot"></div><div class="spacer-dot"></div><div class="spacer-dot"></div><span class="layer-label" style="bottom: -20px; left: 50%; transform: translateX(-50%);">3. Spacer Dots</span></div>
+                    <div id="layer-top-conductive" class="sim-layer"><span class="layer-label" style="bottom: 5px; left: 50%; transform: translateX(-50%);">4. Top Conductive Layer</span></div>
+                    <div id="layer-top-film" class="sim-layer"><span class="layer-label" style="top: 10px; left: 50%; transform: translateX(-50%);">5. Flexible Film Layer</span></div>
+                </div>
+            </section>
+
+            <!-- Step 2: Touch Detection -->
+            <section id="step-2" class="sim-section">
+                 <h2 class="text-2xl font-bold mb-2 text-blue-300">Step 2: Detecting a Touch</h2>
+                <p class="mb-4 text-gray-300">Move your mouse over the screen and click to see how a touch is registered.</p>
+                <div id="sim-diagram-2" class="relative w-full max-w-xl h-[300px] mx-auto">
+                    <!-- Static Layers -->
+                    <div class="absolute inset-x-0 bg-opacity-50 bg-[#99ccff] h-[60px] bottom-[20px] rounded-lg"></div>
+                    <div id="voltage-flow" class="absolute bottom-[80px] left-0 h-[30px] rounded-lg"></div>
+                    <div class="absolute inset-x-0 bg-opacity-60 bg-[#a7f3d0] h-[30px] bottom-[80px] rounded-lg"></div>
+                    <div class="absolute inset-x-0 bottom-[110px] h-[20px] flex justify-around"><div class="bg-[#fbbf24] w-5 h-5 rounded-full"></div><div class="bg-[#fbbf24] w-5 h-5 rounded-full"></div><div class="bg-[#fbbf24] w-5 h-5 rounded-full"></div></div>
+                    
+                    <!-- Animated SVG Layers -->
+                    <svg class="absolute inset-x-0 bottom-[120px] h-[40px] w-full" viewBox="0 0 100 8" preserveAspectRatio="none">
+                        <path id="path-top-conductive" fill="rgba(167, 243, 208, 0.6)"></path>
+                    </svg>
+                    <svg class="absolute inset-x-0 bottom-[150px] h-[40px] w-full" viewBox="0 0 100 8" preserveAspectRatio="none">
+                        <path id="path-top-film" fill="rgba(209, 213, 219, 0.5)"></path>
+                    </svg>
+
+                    <div id="finger"></div>
+                </div>
+            </section>
+            
+            <!-- Step 3: Position Calculation -->
+            <section id="step-3" class="sim-section">
+                <h2 class="text-2xl font-bold mb-2 text-blue-300">Step 3: Calculating Position</h2>
+                <p class="mb-4 text-gray-300">The controller measures the voltage change to find the touch location, first for the X-axis, then the Y-axis.</p>
+                <div class="flex flex-col md:flex-row items-center gap-8">
+                    <div class="w-full md:w-1/2 h-64 relative bg-gray-800 rounded-lg border-2 border-gray-600" id="coord-plane">
+                        <div id="coord-touch-point" class="absolute w-4 h-4 bg-red-500 rounded-full hidden" style="left: 50%; top: 50%; transform: translate(-50%, -50%);"></div>
+                        <div id="voltage-line-x" class="absolute left-0 h-full w-0.5 bg-blue-400 opacity-0"></div>
+                        <div id="voltage-line-y" class="absolute top-0 w-full h-0.5 bg-green-400 opacity-0"></div>
+                    </div>
+                    <div class="w-full md:w-1/2">
+                        <button id="animate-calc-btn" onclick="animateCalculation()" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg mb-4">Calculate Position</button>
+                        <div id="coord-output" class="glass-card p-4 h-48 flex flex-col justify-center items-center text-lg">
+                            <p id="x-coord-text">X-Coordinate: <span class="font-bold text-blue-300">---</span></p>
+                            <p id="y-coord-text">Y-Coordinate: <span class="font-bold text-green-300">---</span></p>
+                            <p id="calc-status" class="text-sm text-gray-400 mt-4"></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 4: Reflection -->
+            <section id="step-4" class="sim-section">
+                <h2 class="text-2xl font-bold mb-4 text-blue-300">Step 4: Your Turn to Reflect</h2>
+                <p class="mb-6 text-gray-300">Based on what you've learned about how these screens are built and work, what do you think are their main benefits and drawbacks?</p>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-3 text-green-400">Potential Benefits?</h3>
+                        <textarea id="benefits-reflection" class="reflection-area w-full h-40 p-3 rounded-lg text-base" placeholder="Enter potential benefits..."></textarea>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold mb-3 text-red-400">Potential Drawbacks?</h3>
+                        <textarea id="drawbacks-reflection" class="reflection-area w-full h-40 p-3 rounded-lg text-base" placeholder="Enter potential drawbacks..."></textarea>
+                    </div>
+                </div>
+                <div class="text-center mt-6">
+                    <p class="text-sm text-gray-400">There's no wrong answer here! Just reflect, then click 'Next' to see the official list.</p>
+                </div>
+            </section>
+            
+            <!-- Step 5: Pros and Cons -->
+            <section id="step-5" class="sim-section">
+                <h2 class="text-2xl font-bold mb-4 text-blue-300">Benefits and Drawbacks</h2>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="glass-card p-6 border-l-4 border-green-500">
+                        <h3 class="text-xl font-semibold mb-3 text-green-400">Benefits</h3>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><strong>Inexpensive:</strong> Relatively cheap technology to manufacture.</li>
+                            <li><strong>Versatile Input:</strong> Works with bare fingers, gloved fingers, or a stylus.</li>
+                            <li><strong>Durable:</strong> Resistant to surface contaminants like dust and water.</li>
+                        </ul>
+                    </div>
+                    <div class="glass-card p-6 border-l-4 border-red-500">
+                        <h3 class="text-xl font-semibold mb-3 text-red-400">Drawbacks</h3>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><strong>Poor Visibility:</strong> Multiple layers reduce screen clarity and brightness.</li>
+                            <li><strong>No Multi-Touch:</strong> Cannot register multiple touch points simultaneously.</li>
+                            <li><strong>Pressure Required:</strong> Requires physical pressure, unlike capacitive screens.</li>
+                            <li><strong>Wear and Tear:</strong> The flexible top layer can be scratched or worn out.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 6: Quiz -->
+            <section id="step-6" class="sim-section">
+                <h2 class="text-2xl font-bold mb-4 text-blue-300">Quiz: Test Your Knowledge!</h2>
+                <div id="quiz-content"></div>
+                <div id="quiz-feedback" class="mt-4 text-center font-bold h-6"></div>
+                <div id="quiz-results" class="hidden text-center mt-6">
+                    <h3 class="text-2xl font-bold">Quiz Complete!</h3>
+                    <p class="text-xl mt-2">Your score: <span id="quiz-score" class="font-bold text-green-400"></span></p>
+                    <button onclick="resetSimulation()" class="btn mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg">Restart Simulation</button>
+                </div>
+            </section>
+
+        </main>
+
+        <footer class="flex justify-between items-center mt-4">
+            <button id="prev-btn" onclick="prevStep()" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-5 rounded-lg invisible">Previous</button>
+            <div id="step-indicator" class="text-gray-400"></div>
+            <button id="next-btn" onclick="nextStep()" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg invisible">Next</button>
+        </footer>
+    </div>
+
+    <div id="modal" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 z-50 flex justify-center items-center">
+        <div id="modal-content" class="glass-card p-8 rounded-lg max-w-md w-full text-center">
+            <h3 id="modal-title" class="text-xl font-bold mb-4"></h3>
+            <p id="modal-text" class="mb-6"></p>
+            <button onclick="closeModal()" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg">Close</button>
+        </div>
+    </div>
+
+<script>
+    // DOM Caching
+    const sections = document.querySelectorAll('.sim-section');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const stepIndicator = document.getElementById('step-indicator');
+    const progressBar = document.getElementById('progress-bar');
+    const modal = document.getElementById('modal');
+    const particleCanvas = document.getElementById('particle-canvas');
+    const ctx = particleCanvas.getContext('2d');
+    const pathFilm = document.getElementById('path-top-film');
+    const pathConductive = document.getElementById('path-top-conductive');
+    const finger = document.getElementById('finger');
+    const simDiagram2 = document.getElementById('sim-diagram-2');
+
+    let currentStep = 0;
+    const totalSteps = sections.length - 1; 
+    let isModalOpen = false;
+
+    // --- SVG Path Definitions ---
+    const getBentPath = (x, depth) => {
+        const influence = 15;
+        const start = Math.max(0, x - influence);
+        const end = Math.min(100, x + influence);
+        return `M 0 0 L ${start} 0 C ${x - influence/2} ${depth}, ${x + influence/2} ${depth}, ${end} 0 L 100 0`;
+    }
+
+    // --- Particle System ---
+    let particles = [];
+    particleCanvas.width = window.innerWidth;
+    particleCanvas.height = window.innerHeight;
+    
+    function createParticles(x, y, color) { /* ... same as before ... */ }
+    function animateParticles() { /* ... same as before ... */ }
+    animateParticles();
+    window.addEventListener('resize', () => { /* ... same as before ... */ });
+
+    // --- Quiz Data and State ---
+    const quizData = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+
+    // --- Core Simulation Logic ---
+    function updateNav() { /* ... same as before ... */ }
+    
+    function showStep(stepIndex) {
+        if (isModalOpen) return;
+        
+        cleanupStep(currentStep);
+        sections.forEach((section, index) => section.classList.toggle('active', index === stepIndex));
+        currentStep = stepIndex;
+        updateNav();
+        setupStep(currentStep);
+    }
+    
+    function nextStep() { if (currentStep < totalSteps) showStep(currentStep + 1); }
+    function prevStep() { if (currentStep > 0) showStep(currentStep - 1); }
+    function startSimulation() { showStep(1); }
+
+    function resetSimulation() {
+        currentQuestionIndex = 0;
+        score = 0;
+        document.getElementById('quiz-results').classList.add('hidden');
+        document.getElementById('quiz-feedback').innerHTML = '';
+        document.getElementById('benefits-reflection').value = '';
+        document.getElementById('drawbacks-reflection').value = '';
+        showStep(0);
+    }
+
+    // --- Step Setup and Cleanup ---
+    function setupStep(stepIndex) {
+        if (stepIndex === 1) document.getElementById('animate-anatomy-btn').disabled = false;
+        if (stepIndex === 2) {
+            resetTouchAnimation();
+            simDiagram2.addEventListener('mouseenter', handleMouseEnter);
+            simDiagram2.addEventListener('mouseleave', handleMouseLeave);
+            simDiagram2.addEventListener('mousemove', handleMouseMove);
+            simDiagram2.addEventListener('mousedown', handleMouseDown);
+            simDiagram2.addEventListener('mouseup', handleMouseUp);
+        }
+        if (stepIndex === 3) { resetCalculationAnimation(); }
+        if (stepIndex === totalSteps) loadQuestion();
+    }
+
+    function cleanupStep(stepIndex) {
+        if (stepIndex === 2) {
+            simDiagram2.removeEventListener('mouseenter', handleMouseEnter);
+            simDiagram2.removeEventListener('mouseleave', handleMouseLeave);
+            simDiagram2.removeEventListener('mousemove', handleMouseMove);
+            simDiagram2.removeEventListener('mousedown', handleMouseDown);
+            simDiagram2.removeEventListener('mouseup', handleMouseUp);
+        }
+    }
+
+    // --- Step-specific Animations & Logic ---
+    function animateAnatomy() { /* ... same as before ... */ }
+    function resetAnatomy() { /* ... same as before ... */ }
+
+    // NEW INTERACTIVE TOUCH LOGIC
+    function handleMouseEnter(e) { finger.style.opacity = '1'; }
+    function handleMouseLeave(e) { finger.style.opacity = '0'; handleMouseUp(e); }
+    function handleMouseMove(e) {
+        const rect = simDiagram2.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        finger.style.left = `${x}px`;
+        finger.style.top = '110px'; 
+    }
+    function handleMouseDown(e) {
+        simDiagram2.classList.add('pressing');
+        const rect = simDiagram2.getBoundingClientRect();
+        const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+        pathFilm.setAttribute('d', `${getBentPath(xPercent, 5)} L 100 8 L 0 8 Z`);
+        pathConductive.setAttribute('d', `${getBentPath(xPercent, 5)} L 100 6 L 0 6 Z`);
+        const voltageFlow = document.getElementById('voltage-flow');
+        voltageFlow.style.opacity = '0.7';
+        voltageFlow.style.width = '100%';
+    }
+    function handleMouseUp(e) {
+        simDiagram2.classList.remove('pressing');
+        pathFilm.setAttribute('d', 'M 0 0 L 100 0 L 100 8 L 0 8 Z');
+        pathConductive.setAttribute('d', 'M 0 0 L 100 0 L 100 6 L 0 6 Z');
+        const voltageFlow = document.getElementById('voltage-flow');
+        voltageFlow.style.opacity = '0';
+        voltageFlow.style.width = '0%';
+    }
+    function resetTouchAnimation() { handleMouseUp(); }
+    
+    function animateCalculation() { /* ... same as before ... */ }
+    function resetCalculationAnimation() { /* ... same as before ... */ }
+    function loadQuestion() { /* ... same as before ... */ }
+    function addQuizListeners() { /* ... same as before ... */ }
+    function handleMCQAnswer(e) { /* ... same as before ... */ }
+    function handleTextAnswer() { /* ... same as before ... */ }
+    function showFeedback(text, color) { /* ... same as before ... */ }
+    function showModal(title, text) { /* ... same as before ... */ }
+    function closeModal() { /* ... same as before ... */ }
+
+    // --- Event Listeners ---
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isModalOpen) closeModal();
+        if (isModalOpen) return;
+        if (e.key === 'ArrowRight') nextStep();
+        if (e.key === 'ArrowLeft') prevStep();
+    });
+
+    window.onload = () => { 
+        const quizDataFromPrev = [
+            { question: "What is the primary purpose of the 'spacer dots' in a resistive touchscreen?", type: "mcq", options: ["To conduct electricity between layers.", "To keep the conductive layers apart until a touch occurs.", "To improve screen brightness.", "To calculate the Y-coordinate of a touch."], answer: "To keep the conductive layers apart until a touch occurs." },
+            { question: "How does a resistive touchscreen register a touch?", type: "mcq", options: ["By measuring a change in capacitance.", "By detecting a break in an infrared light beam.", "By completing a circuit when two conductive layers make contact.", "By using sound waves to detect pressure."], answer: "By completing a circuit when two conductive layers make contact." },
+            { question: "Which of the following is a major DRAWBACK of resistive touchscreens?", type: "mcq", options: ["High manufacturing cost.", "Requires a special conductive stylus.", "Inability to register multi-touch gestures.", "Extremely high durability."], answer: "Inability to register multi-touch gestures." },
+            { question: "Describe the process of calculating the coordinates of a touch.", type: "text", answerKeywords: ["voltage", "resistance", "controller", "x-axis", "y-axis", "measure"] }
+        ];
+        quizData.push(...quizDataFromPrev);
+        showStep(0); 
+    };
+
+    // --- Polyfill/Helper functions from previous versions to ensure completeness ---
+    function createParticles(x, y, color) { for (let i = 0; i < 30; i++) { particles.push({ x, y, color, radius: Math.random() * 2 + 1, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, life: 60 }); } }
+    function animateParticles() { ctx.clearRect(0, 0, particleCanvas.width, particleCanvas.height); for (let i = particles.length - 1; i >= 0; i--) { let p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.life--; if (p.life <= 0) { particles.splice(i, 1); } else { ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2, false); ctx.fillStyle = p.color; ctx.globalAlpha = p.life / 60; ctx.fill(); ctx.globalAlpha = 1; } } requestAnimationFrame(animateParticles); }
+    function updateNav() { const progress = currentStep > 0 ? (currentStep / totalSteps) * 100 : 0; progressBar.style.width = `${progress}%`; stepIndicator.textContent = currentStep > 0 ? `Step ${currentStep} of ${totalSteps}` : ''; prevBtn.classList.toggle('invisible', currentStep <= 0); nextBtn.classList.toggle('invisible', currentStep >= totalSteps); if(currentStep === 0) { prevBtn.style.visibility = 'hidden'; nextBtn.style.visibility = 'hidden'; } else { prevBtn.style.visibility = 'visible'; nextBtn.style.visibility = currentStep === totalSteps ? 'hidden' : 'visible'; } }
+    function animateAnatomy() { if (isModalOpen) return; document.getElementById('animate-anatomy-btn').disabled = true; const diagram = document.getElementById('sim-diagram'); diagram.classList.add('animated'); const layers = document.querySelectorAll('#sim-diagram .sim-layer'); layers.forEach((layer, index) => { setTimeout(() => { layer.style.opacity = '1'; layer.style.transform = 'translateY(0)'; }, index * 300); }); setTimeout(() => showModal( 'Layers Assembled!', 'These layers work together. The top film is flexible, and the bottom glass is rigid. The conductive coatings face each other, separated by tiny, non-conductive spacer dots.' ), layers.length * 300 + 200); }
+    function resetAnatomy() { document.getElementById('sim-diagram').classList.remove('animated'); document.querySelectorAll('#sim-diagram .sim-layer').forEach(layer => { layer.style.opacity = '0'; layer.style.transform = 'translateY(20px)'; }); }
+    function resetCalculationAnimation() { document.getElementById('animate-calc-btn').disabled = false; document.getElementById('calc-status').textContent = ''; document.querySelector('#x-coord-text span').textContent = '---'; document.querySelector('#y-coord-text span').textContent = '---'; const lineX = document.getElementById('voltage-line-x'); const lineY = document.getElementById('voltage-line-y'); lineX.style.transition = 'none'; lineY.style.transition = 'none'; lineX.style.opacity = '0'; lineX.style.left = '0'; lineY.style.opacity = '0'; lineY.style.top = '0'; document.getElementById('coord-touch-point').classList.add('hidden'); }
+    function animateCalculation() { if (isModalOpen) return; document.getElementById('animate-calc-btn').disabled = true; resetCalculationAnimation(); const status = document.getElementById('calc-status'); const xText = document.querySelector('#x-coord-text span'); const yText = document.querySelector('#y-coord-text span'); const lineX = document.getElementById('voltage-line-x'); const lineY = document.getElementById('voltage-line-y'); const touchPoint = document.getElementById('coord-touch-point'); const randomX = Math.floor(Math.random() * 60) + 20; const randomY = Math.floor(Math.random() * 60) + 20; touchPoint.style.left = `${randomX}%`; touchPoint.style.top = `${randomY}%`; touchPoint.classList.remove('hidden'); setTimeout(() => { status.textContent = 'Applying voltage on X-axis...'; lineX.style.opacity = '1'; lineX.style.transition = 'left 1s ease-in-out'; lineX.style.left = `${randomX}%`; }, 500); setTimeout(() => { xText.textContent = `${(randomX * 10.24).toFixed(0)}`; }, 1600); setTimeout(() => { status.textContent = 'Applying voltage on Y-axis...'; lineY.style.opacity = '1'; lineY.style.transition = 'top 1s ease-in-out'; lineY.style.top = `${randomY}%`; }, 2100); setTimeout(() => { yText.textContent = `${(randomY * 7.68).toFixed(0)}`; }, 3200); setTimeout(() => { status.textContent = 'Coordinates Calculated!'; showModal( 'Position Determined', 'The controller applies a voltage across one layer. When touched, the second layer acts as a voltage probe. The measured voltage is proportional to the position. This is repeated for the other axis.' ); }, 3700); }
+    function loadQuestion() { const quizContent = document.getElementById('quiz-content'); const feedback = document.getElementById('quiz-feedback'); feedback.innerHTML = ''; if (currentQuestionIndex >= quizData.length) { document.getElementById('quiz-content').innerHTML = ''; document.getElementById('quiz-results').classList.remove('hidden'); document.getElementById('quiz-score').textContent = `${score} / ${quizData.length}`; createParticles(window.innerWidth / 2, window.innerHeight / 2, '#34d399'); return; } const q = quizData[currentQuestionIndex]; let html = `<h3 class="text-xl font-semibold mb-4">${q.question}</h3>`; if (q.type === 'mcq') { html += `<div id="quiz-options" class="grid grid-cols-1 md:grid-cols-2 gap-4">`; q.options.forEach(option => { html += `<button class="quiz-option p-4 rounded-lg text-left">${option}</button>`; }); html += `</div>`; } else if (q.type === 'text') { html += ` <textarea id="text-answer" class="reflection-area w-full h-32 p-2 rounded-lg" placeholder="Type your answer here..."></textarea> <button id="submit-text-answer" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg mt-4">Submit Answer</button> `; } quizContent.innerHTML = html; addQuizListeners(); }
+    function addQuizListeners() { const optionsContainer = document.getElementById('quiz-options'); if(optionsContainer) optionsContainer.addEventListener('click', handleMCQAnswer, {once: true}); const submitTextBtn = document.getElementById('submit-text-answer'); if(submitTextBtn) submitTextBtn.addEventListener('click', handleTextAnswer, {once: true}); }
+    function handleMCQAnswer(e) { if (e.target.tagName !== 'BUTTON') return; const selectedOption = e.target; const isCorrect = selectedOption.textContent === quizData[currentQuestionIndex].answer; Array.from(e.currentTarget.children).forEach(button => { button.disabled = true; if(button.textContent === quizData[currentQuestionIndex].answer) button.classList.add('correct'); }); if (isCorrect) { score++; showFeedback('Correct!', '#34d399'); createParticles(e.clientX, e.clientY, '#34d399'); } else { selectedOption.classList.add('incorrect'); showFeedback('Incorrect.', '#f87171'); } setTimeout(() => { currentQuestionIndex++; loadQuestion(); }, 2000); }
+    function handleTextAnswer() { const textarea = document.getElementById('text-answer'); const answerText = textarea.value.toLowerCase(); const keywords = quizData[currentQuestionIndex].answerKeywords; if (answerText.length < 20) { showFeedback('Please provide a more detailed answer.', '#fbbf24'); document.getElementById('submit-text-answer').addEventListener('click', handleTextAnswer, {once: true}); return; } let foundKeywords = 0; keywords.forEach(kw => { if (answerText.includes(kw)) foundKeywords++; }); const isCorrect = (foundKeywords / keywords.length) >= 0.7; textarea.disabled = true; if (isCorrect) { score++; showFeedback('Correct! Your answer covers the key points.', '#34d399'); textarea.style.borderColor = '#34d399'; createParticles(window.innerWidth / 2, window.innerHeight / 2, '#34d399'); } else { showFeedback('Not quite. A good answer mentions measuring voltage on both X and Y axes.', '#f87171'); textarea.style.borderColor = '#f87171'; } setTimeout(() => { currentQuestionIndex++; loadQuestion(); }, 3000); }
+    function showFeedback(text, color) { const feedbackEl = document.getElementById('quiz-feedback'); feedbackEl.textContent = text; feedbackEl.style.color = color; }
+    function showModal(title, text) { isModalOpen = true; document.getElementById('modal-title').textContent = title; document.getElementById('modal-text').textContent = text; modal.style.display = 'flex'; setTimeout(() => modal.style.opacity = '1', 10); createParticles(window.innerWidth / 2, window.innerHeight / 2, 'rgba(60, 130, 246, 0.7)'); }
+    function closeModal() { modal.style.opacity = '0'; setTimeout(() => { modal.style.display = 'none'; isModalOpen = false; }, 300); }
+
+</script>
+</body>
+</html>

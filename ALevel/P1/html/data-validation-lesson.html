@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Integrity - Lesson 1: Data Validation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --error-color: #e74c3c;
+            --warning-color: #f39c12;
+            --background-color: #ecf0f1;
+            --text-color: #2c3e50;
+            --card-bg: #ffffff;
+            --hover-color: #34495e;
+            --font-size: 16px;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            font-size: var(--font-size);
+            position: relative;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .nav-bar {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .nav-btn:hover {
+            background-color: var(--hover-color);
+            transform: translateY(-2px);
+        }
+
+        .nav-btn.active {
+            background-color: var(--success-color);
+        }
+
+        .section {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .xp-bar {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 99;
+        }
+
+        .xp-progress {
+            width: 200px;
+            height: 20px;
+            background-color: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .xp-fill {
+            height: 100%;
+            background-color: var(--success-color);
+            transition: width 0.5s;
+            width: 0%;
+        }
+
+        .achievement-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background-color: var(--success-color);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1000;
+            animation: achievementPop 0.5s forwards;
+        }
+
+        @keyframes achievementPop {
+            to {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .button {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+
+        .button:hover {
+            background-color: var(--hover-color);
+            transform: translateY(-2px);
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+
+        .drag-item {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 10px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+
+        .drag-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .drop-zone {
+            min-height: 50px;
+            border: 2px dashed #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #f9f9f9;
+            transition: all 0.3s;
+        }
+
+        .drop-zone.highlight {
+            background-color: #e3f2fd;
+            border-color: var(--secondary-color);
+        }
+
+        .correct {
+            background-color: var(--success-color) !important;
+        }
+
+        .incorrect {
+            background-color: var(--error-color) !important;
+        }
+
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #f0f0f0;
+            border: 2px solid transparent;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+        }
+
+        .quiz-option:hover {
+            background-color: #e0e0e0;
+            transform: translateX(5px);
+        }
+
+        .quiz-option.selected {
+            border-color: var(--secondary-color);
+            background-color: #e3f2fd;
+        }
+
+        .feedback-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--warning-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            z-index: 98;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .feedback-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .feedback-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .feedback-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .mark-scheme {
+            display: none;
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        .drawing-canvas {
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            cursor: crosshair;
+            display: block;
+            margin: 10px 0;
+            background-color: white;
+            touch-action: none;
+        }
+
+        .navigation-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .reset-btn {
+            background-color: var(--error-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 0;
+            transition: all 0.3s;
+        }
+
+        .reset-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .paste-warning {
+            display: none;
+            color: var(--error-color);
+            font-weight: bold;
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .hint-btn {
+            background-color: var(--warning-color);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .hint-text {
+            display: none;
+            background-color: #fff3cd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            border: 1px solid #ffeeba;
+        }
+
+        /* Accessibility features */
+        .high-contrast {
+            background-color: black !important;
+            color: white !important;
+        }
+
+        .high-contrast .card {
+            background-color: #222 !important;
+            color: white !important;
+        }
+
+        .dyslexia-font {
+            font-family: 'OpenDyslexic', Arial, sans-serif !important;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .xp-bar {
+                position: relative;
+                top: 0;
+                right: 0;
+                margin-bottom: 10px;
+            }
+            
+            .nav-bar {
+                flex-direction: column;
+            }
+            
+            .feedback-btn {
+                bottom: 10px;
+                right: 10px;
+                padding: 8px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Data Integrity - Lesson 1: Data Validation</h1>
+        <div class="nav-bar">
+            <button class="nav-btn active" onclick="showSection('starter')">Starter</button>
+            <button class="nav-btn" onclick="showSection('intro')">Introduction</button>
+            <button class="nav-btn" onclick="showSection('validation')">Validation Methods</button>
+            <button class="nav-btn" onclick="showSection('simulation')">Simulation</button>
+            <button class="nav-btn" onclick="showSection('practice')">Practice</button>
+            <button class="nav-btn" onclick="showSection('exam')">Exam Questions</button>
+            <button class="nav-btn" onclick="showSection('extension')">Extension</button>
+            <button class="nav-btn" onclick="showSection('summary')">Summary</button>
+        </div>
+    </div>
+
+    <div class="xp-bar">
+        <div>Level: <span id="level">0</span> | XP: <span id="xp">0</span>/100</div>
+        <div class="xp-progress">
+            <div class="xp-fill" id="xpFill"></div>
+        </div>
+        <div style="margin-top: 10px;">
+            <button class="button" onclick="toggleHighContrast()">High Contrast</button>
+            <button class="button" onclick="changeFontSize(2)">A+</button>
+            <button class="button" onclick="changeFontSize(-2)">A-</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Starter Section -->
+        <div class="section active" id="starter">
+            <div class="card">
+                <h2>Starter Activity: What Do You Already Know?</h2>
+                <p>Let's assess your current understanding of data integrity and validation.</p>
+                
+                <div id="starterQuiz">
+                    <h3>Question 1: What is the main purpose of data validation?</h3>
+                    <button class="quiz-option" onclick="checkStarterAnswer(this, 'q1', 'b')">To make data entry faster</button>
+                    <button class="quiz-option" onclick="checkStarterAnswer(this, 'q1', 'c')">To increase storage capacity</button>
+                    <button class="quiz-option" onclick="checkStarterAnswer(this, 'q1', 'a')">To ensure data is reasonable and sensible</button>
+                    <button class="quiz-option" onclick="checkStarterAnswer(this, 'q1', 'd')">To encrypt sensitive information</button>
+                    
+                    <div id="q1-feedback" style="margin-top: 10px; display: none;"></div>
+                </div>
+                
+                <button class="reset-btn" onclick="resetStarter()">Reset Activity</button>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" disabled>Previous</button>
+                <button class="button" onclick="showSection('intro')">Next</button>
+            </div>
+        </div>
+
+        <!-- Introduction Section -->
+        <div class="section" id="intro">
+            <div class="card">
+                <h2>Learning Outcomes</h2>
+                <ul>
+                    <li>Explain how data validation helps protect data integrity</li>
+                    <li>Identify and describe seven types of validation checks</li>
+                    <li>Apply validation techniques to real-world scenarios</li>
+                    <li>Create validation rules for different data types</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>What is Data Integrity?</h2>
+                <p>Data integrity refers to the accuracy, consistency, and reliability of data throughout its lifecycle. When data has integrity, it means the data is:</p>
+                <ul>
+                    <li><strong>Accurate</strong> - The data correctly represents what it's supposed to</li>
+                    <li><strong>Complete</strong> - All required data is present</li>
+                    <li><strong>Consistent</strong> - The data doesn't contradict itself</li>
+                    <li><strong>Valid</strong> - The data meets defined rules and constraints</li>
+                </ul>
+                
+                <h3>Why is Data Validation Important?</h3>
+                <p>Data validation is the first line of defense in maintaining data integrity. It checks whether data is reasonable and sensible before it's accepted into a system.</p>
+                
+                <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                    <strong>Real-World Example:</strong> Imagine an online shopping website. Without validation:
+                    <ul>
+                        <li>Someone could enter a negative quantity (-5 items)</li>
+                        <li>An age field might accept "ABC" instead of a number</li>
+                        <li>A phone number field might accept just 3 digits</li>
+                    </ul>
+                    These errors would cause serious problems for the business!
+                </div>
+                
+                <button class="button" onclick="addXP(10, 'Read introduction')">Mark as Complete</button>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('starter')">Previous</button>
+                <button class="button" onclick="showSection('validation')">Next</button>
+            </div>
+        </div>
+
+        <!-- Validation Methods Section -->
+        <div class="section" id="validation">
+            <div class="card">
+                <h2>The Seven Validation Methods</h2>
+                <p>Click on each validation method to learn more about it:</p>
+                
+                <div id="validationMethods">
+                    <!-- Range Check -->
+                    <div class="card" style="cursor: pointer; margin: 10px 0;" onclick="toggleMethod('range')">
+                        <h3>1. Range Check ▼</h3>
+                        <div id="range-details" style="display: none; margin-top: 10px;">
+                            <p><strong>Definition:</strong> Ensures data falls within a specified minimum and maximum value.</p>
+                            <p><strong>Example:</strong> Age must be between 0 and 120</p>
+                            <p><strong>Use cases:</strong> Temperature readings, exam scores, age fields</p>
+                            
+                            <h4>Try it yourself:</h4>
+                            <label>Enter an exam score (0-100):</label>
+                            <input type="text" id="rangeInput" class="input-field" placeholder="Enter a score">
+                            <button class="button" onclick="validateRange()">Validate</button>
+                            <div id="rangeResult"></div>
+                        </div>
+                    </div>
+
+                    <!-- Format Check -->
+                    <div class="card" style="cursor: pointer; margin: 10px 0;" onclick="toggleMethod('format')">
+                        <h3>2. Format Check ▼</h3>
+                        <div id="format-details" style="display: none; margin-top: 10px;">
+                            <p><strong>Definition:</strong> Ensures data matches a specific pattern or structure.</p>
+                            <p><strong>Example:</strong> Email must contain @ and domain</p>
+                            <p><strong>Use cases:</strong> Email addresses, postcodes, product codes</p>
+                            
+                            <h4>Try it yourself:</h4>
+                            <label>Enter a UK postcode (e.g., M1 5GD):</label>
+                            <input type="text" id="formatInput" class="input-field" placeholder="Enter a postcode">
+                            <button class="button" onclick="validateFormat()">Validate</button>
+                            <div id="formatResult"></div>
+                        </div>
+                    </div>
+
+                    <!-- Length Check -->
+                    <div class="card" style="cursor: pointer; margin: 10px 0;" onclick="toggleMethod('length')">
+                        <h3>3. Length Check ▼</h3>
+                        <div id="length-details" style="display: none; margin-top: 10px;">
+                            <p><strong>Definition:</strong> Ensures data has the correct number of characters.</p>
+                            <p><strong>Example:</strong> Password must be at least 8 characters</p>
+                            <p><strong>Use cases:</strong> Passwords, phone numbers, account numbers</p>
+                            
+                            <h4>Try it yourself:</h4>
+                            <label>Enter a password (8-20 characters):</label>
+                            <input type="text" id="lengthInput" class="input-field" placeholder="Enter a password">
+                            <button class="button" onclick="validateLength()">Validate</button>
+                            <div id="lengthResult"></div>
+                        </div>
+                    </div>
+
+                    <!-- Presence Check -->
+                    <div class="card" style="cursor: pointer; margin: 10px 0;" onclick="toggleMethod('presence')">
+                        <h3>4. Presence Check ▼</h3>
+                        <div id="presence-details" style="display: none; margin-top: 10px;">
+                            <p><strong>Definition:</strong> Ensures required fields are not left empty.</p>
+                            <p><strong>Example:</strong> Name field cannot be blank</p>
+                            <p><strong>Use cases:</strong> Required form fields, mandatory information</p>
+                            
+                            <h4>Try it yourself:</h4>
+                            <label>Enter your name (required):</label>
+                            <input type="text" id="presenceInput" class="input-field" placeholder="This field is required">
+                            <button class="button" onclick="validatePresence()">Validate</button>
+                            <div id="presenceResult"></div>
+                        </div>
+                    </div>
+
+                    <!-- Existence Check -->
+                    <div class="card" style="cursor: pointer; margin: 10px 0;" onclick="toggleMethod('existence')">
+                        <h3>5. Existence Check (Lookup Check) ▼</h3>
+                        <div id="existence-details" style="display: none; margin-top: 10px;">
+                            <p><strong>Definition:</strong> Ensures data exists in a predefined list or database.</p>
+                            <p><strong>Example:</strong> Product code must exist in inventory</p>
+                            <p><strong>Use cases:</strong> Product codes, country codes, department names</p>
+                            
+                            <h4>Try it yourself:</h4>
+                            <label>Enter a country code (GB, US, FR, DE, ES):</label>
+                            <input type="text" id="existenceInput" class="input-field" placeholder="Enter a country code">
+                            <button class="button" onclick="validateExistence()">Validate</button>
+                            <div id="existenceResult"></div>
+                        </div>
+                    </div>
+
+                    <!-- Limit Check -->
+                    <div class="card" style="cursor: pointer; margin: 10px 0;" onclick="toggleMethod('limit')">
+                        <h3>6. Limit Check ▼</h3>
+                        <div id="limit-details" style="display: none; margin-top: 10px;">
+                            <p><strong>Definition:</strong> Ensures data doesn't exceed a single boundary (upper or lower).</p>
+                            <p><strong>Example:</strong> Order quantity must not exceed 100</p>
+                            <p><strong>Use cases:</strong> Maximum order quantities, minimum age requirements</p>
+                            
+                            <h4>Try it yourself:</h4>
+                            <label>Enter order quantity (maximum 50):</label>
+                            <input type="text" id="limitInput" class="input-field" placeholder="Enter quantity">
+                            <button class="button" onclick="validateLimit()">Validate</button>
+                            <div id="limitResult"></div>
+                        </div>
+                    </div>
+
+                    <!-- Check Digit -->
+                    <div class="card" style="cursor: pointer; margin: 10px 0;" onclick="toggleMethod('checkdigit')">
+                        <h3>7. Check Digit ▼</h3>
+                        <div id="checkdigit-details" style="display: none; margin-top: 10px;">
+                            <p><strong>Definition:</strong> Uses a mathematical algorithm to verify number accuracy.</p>
+                            <p><strong>Example:</strong> ISBN numbers, credit card numbers</p>
+                            <p><strong>Use cases:</strong> Barcodes, account numbers, identification numbers</p>
+                            
+                            <h4>Try it yourself:</h4>
+                            <label>Enter a simple ID (4 digits + 1 check digit):</label>
+                            <input type="text" id="checkdigitInput" class="input-field" placeholder="e.g., 12345">
+                            <button class="button" onclick="validateCheckDigit()">Validate</button>
+                            <button class="hint-btn" onclick="showHint('checkdigit')">Hint</button>
+                            <div id="checkdigit-hint" class="hint-text">The check digit is calculated by summing all digits and taking modulo 10</div>
+                            <div id="checkdigitResult"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="reset-btn" onclick="resetValidation()">Reset All Inputs</button>
+            </div>
+
+            <!-- Matching Exercise -->
+            <div class="card">
+                <h2>Quick Check: Match the Validation Type</h2>
+                <p>Click a scenario, then click the matching validation type:</p>
+                
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 250px;">
+                        <h4>Scenarios:</h4>
+                        <div class="drag-item" onclick="selectScenario(this, 'scenario1')">Phone number must be 11 digits</div>
+                        <div class="drag-item" onclick="selectScenario(this, 'scenario2')">Temperature between -50°C and 50°C</div>
+                        <div class="drag-item" onclick="selectScenario(this, 'scenario3')">Email contains @ symbol</div>
+                        <div class="drag-item" onclick="selectScenario(this, 'scenario4')">Credit card verification</div>
+                    </div>
+                    
+                    <div style="flex: 1; min-width: 250px;">
+                        <h4>Validation Types:</h4>
+                        <div class="drag-item" onclick="matchValidation(this, 'format')">Format Check</div>
+                        <div class="drag-item" onclick="matchValidation(this, 'checkdigit')">Check Digit</div>
+                        <div class="drag-item" onclick="matchValidation(this, 'length')">Length Check</div>
+                        <div class="drag-item" onclick="matchValidation(this, 'range')">Range Check</div>
+                    </div>
+                </div>
+                
+                <div id="matchResult" style="margin-top: 20px;"></div>
+                <button class="reset-btn" onclick="resetMatching()">Reset Matching</button>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('intro')">Previous</button>
+                <button class="button" onclick="showSection('simulation')">Next</button>
+            </div>
+        </div>
+
+        <!-- Simulation Section -->
+        <div class="section" id="simulation">
+            <div class="card">
+                <h2>Validation Rule Builder Simulation</h2>
+                <p>Create validation rules for a student registration system. Each field needs appropriate validation.</p>
+                
+                <div id="simulationArea">
+                    <h3>Field: Student Age</h3>
+                    <div style="background-color: #f0f0f0; padding: 20px; border-radius: 5px;">
+                        <label>Select validation types needed:</label>
+                        <div style="margin: 10px 0;">
+                            <label><input type="checkbox" id="sim-range"> Range Check</label><br>
+                            <label><input type="checkbox" id="sim-format"> Format Check</label><br>
+                            <label><input type="checkbox" id="sim-presence"> Presence Check</label><br>
+                            <label><input type="checkbox" id="sim-length"> Length Check</label>
+                        </div>
+                        
+                        <div id="simConfig" style="margin-top: 20px;">
+                            <button class="button" onclick="configureValidation()">Configure Selected Validations</button>
+                        </div>
+                        
+                        <div id="simTest" style="display: none; margin-top: 20px;">
+                            <h4>Test Your Rules:</h4>
+                            <input type="text" id="simInput" class="input-field" placeholder="Enter test value">
+                            <button class="button" onclick="testSimulation()">Test</button>
+                            <div id="simResult"></div>
+                        </div>
+                    </div>
+                    
+                    <button class="reset-btn" onclick="resetSimulation()">Reset Simulation</button>
+                </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <h3>Reflection Questions:</h3>
+                    <ol>
+                        <li>Why might you use multiple validation types on a single field?</li>
+                        <li>What could happen if validation rules are too strict?</li>
+                        <li>How do validation rules improve user experience?</li>
+                    </ol>
+                    <textarea class="input-field" rows="4" placeholder="Type your reflections here..." onkeyup="checkReflection(this)"></textarea>
+                </div>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('validation')">Previous</button>
+                <button class="button" onclick="showSection('practice')">Next</button>
+            </div>
+        </div>
+
+        <!-- Practice Section -->
+        <div class="section" id="practice">
+            <div class="card">
+                <h2>Real-World Practice</h2>
+                <p>Apply your knowledge to these real-world scenarios:</p>
+                
+                <div id="practiceQuestions">
+                    <h3>Scenario 1: Online Banking System</h3>
+                    <p>A bank needs validation for a money transfer form. What validation would you apply to the "Amount" field?</p>
+                    
+                    <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                        <p>Select all that apply:</p>
+                        <label><input type="checkbox" id="bank1"> Presence check (required field)</label><br>
+                        <label><input type="checkbox" id="bank2"> Format check (numeric with 2 decimal places)</label><br>
+                        <label><input type="checkbox" id="bank3"> Range check (positive values only)</label><br>
+                        <label><input type="checkbox" id="bank4"> Limit check (maximum transfer limit)</label><br>
+                        <label><input type="checkbox" id="bank5"> Length check (exactly 10 characters)</label><br>
+                        
+                        <button class="button" onclick="checkBankAnswer()">Check Answer</button>
+                        <div id="bankResult"></div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <h3>Common Mistakes to Avoid:</h3>
+                    <ul>
+                        <li><strong>Over-validation:</strong> Too many rules can frustrate users</li>
+                        <li><strong>Unclear error messages:</strong> Users need to know what went wrong</li>
+                        <li><strong>Wrong validation type:</strong> Using format check when range check is needed</li>
+                        <li><strong>Missing edge cases:</strong> What about zero? Negative numbers?</li>
+                        <li><strong>Cultural assumptions:</strong> Not all phone numbers have the same format worldwide</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('simulation')">Previous</button>
+                <button class="button" onclick="showSection('exam')">Next</button>
+            </div>
+        </div>
+
+        <!-- Exam Questions Section -->
+        <div class="section" id="exam">
+            <div class="card">
+                <h2>Practice Exam Questions</h2>
+                <p>Complete these exam-style questions. You must attempt each question before viewing the mark scheme.</p>
+                
+                <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                    <strong>Tip:</strong> Read each question carefully and ensure you answer all parts.
+                </div>
+                
+                <!-- Question 1 -->
+                <div class="card">
+                    <h3>Question 1 (4 marks)</h3>
+                    <p>A school database stores student records. The age field needs validation.</p>
+                    <p>(a) Describe TWO validation methods that would be appropriate for the age field. (2 marks)</p>
+                    <p>(b) For each method, explain why it is suitable. (2 marks)</p>
+                    
+                    <textarea id="exam1" class="input-field" rows="6" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 10px;">
+                        <label>Predicted marks: <input type="number" id="marks1" min="0" max="4" style="width: 50px;"> / 4</label>
+                        <button class="button" onclick="checkExamAnswer('exam1', 'marks1', 'scheme1', 4)">Submit Answer</button>
+                    </div>
+                    
+                    <div id="scheme1" class="mark-scheme">
+                        <h4>Mark Scheme:</h4>
+                        <p><strong>Part (a) - 1 mark each for two from:</strong></p>
+                        <ul>
+                            <li>Range check</li>
+                            <li>Presence check</li>
+                            <li>Format/Type check</li>
+                            <li>Limit check</li>
+                        </ul>
+                        <p><strong>Part (b) - 1 mark each for appropriate explanation:</strong></p>
+                        <ul>
+                            <li>Range check - ensures age is between reasonable values (e.g., 11-19 for school)</li>
+                            <li>Presence check - ensures age field is not left empty</li>
+                            <li>Format check - ensures only numeric values are entered</li>
+                            <li>Limit check - ensures age doesn't exceed maximum (e.g., 19)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Question 2 -->
+                <div class="card">
+                    <h3>Question 2 (6 marks)</h3>
+                    <p>An e-commerce website uses validation to maintain data integrity.</p>
+                    <p>(a) Define what is meant by 'data integrity'. (2 marks)</p>
+                    <p>(b) Explain how check digits help maintain data integrity when entering product codes. (2 marks)</p>
+                    <p>(c) Describe one advantage and one disadvantage of using strict validation rules. (2 marks)</p>
+                    
+                    <textarea id="exam2" class="input-field" rows="8" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 10px;">
+                        <label>Predicted marks: <input type="number" id="marks2" min="0" max="6" style="width: 50px;"> / 6</label>
+                        <button class="button" onclick="checkExamAnswer('exam2', 'marks2', 'scheme2', 6)">Submit Answer</button>
+                    </div>
+                    
+                    <div id="scheme2" class="mark-scheme">
+                        <h4>Mark Scheme:</h4>
+                        <p><strong>Part (a) - 2 marks for definition including:</strong></p>
+                        <ul>
+                            <li>Data is accurate/correct (1)</li>
+                            <li>Data is consistent/reliable/complete (1)</li>
+                        </ul>
+                        <p><strong>Part (b) - 2 marks for explanation including:</strong></p>
+                        <ul>
+                            <li>Check digit calculated using algorithm/formula (1)</li>
+                            <li>Detects errors in data entry/transcription (1)</li>
+                        </ul>
+                        <p><strong>Part (c) - 1 mark each for:</strong></p>
+                        <ul>
+                            <li>Advantage: Reduces errors/improves data quality/prevents invalid data</li>
+                            <li>Disadvantage: Can frustrate users/slow down data entry/reject valid edge cases</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Drawing Canvas for Calculations -->
+                <div class="card">
+                    <h3>Calculation Space</h3>
+                    <p>Use this space for any calculations:</p>
+                    <canvas id="drawingCanvas" class="drawing-canvas" width="600" height="300"></canvas>
+                    <button class="button" onclick="clearCanvas()">Clear Canvas</button>
+                </div>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('practice')">Previous</button>
+                <button class="button" onclick="showSection('extension')">Next</button>
+            </div>
+        </div>
+
+        <!-- Extension Section -->
+        <div class="section" id="extension">
+            <div class="card">
+                <h2>Extension Activities</h2>
+                <p>These activities go beyond the specification to deepen your understanding.</p>
+                
+                <h3>1. Regular Expressions (Regex)</h3>
+                <p>Regular expressions are powerful tools for format validation. They define patterns that text must match.</p>
+                
+                <div style="background-color: #f0f0f0; padding: 15px; border-radius: 5px;">
+                    <p><strong>Example:</strong> Email validation regex</p>
+                    <code>^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$</code>
+                    <p>This pattern ensures:</p>
+                    <ul>
+                        <li>Characters before @ symbol</li>
+                        <li>@ symbol present</li>
+                        <li>Domain name after @</li>
+                        <li>Dot and extension (2+ letters)</li>
+                    </ul>
+                </div>
+
+                <h3>2. Custom Validation Functions</h3>
+                <p>Sometimes standard validation isn't enough. Consider this challenge:</p>
+                
+                <div class="card" style="background-color: #fff3cd;">
+                    <h4>Challenge: Luhn Algorithm</h4>
+                    <p>The Luhn algorithm is used to validate credit card numbers. Research how it works and explain the process.</p>
+                    <textarea class="input-field" rows="4" placeholder="Explain the Luhn algorithm here..." onkeyup="checkExtension(this)"></textarea>
+                </div>
+
+                <h3>3. International Considerations</h3>
+                <p>How would you adapt validation for international users? Consider:</p>
+                <ul>
+                    <li>Different date formats (DD/MM/YYYY vs MM/DD/YYYY)</li>
+                    <li>Various phone number formats</li>
+                    <li>Postal code variations</li>
+                    <li>Name formats (some cultures use single names)</li>
+                </ul>
+                
+                <textarea class="input-field" rows="4" placeholder="Describe your approach to international validation..." onkeyup="checkExtension(this)"></textarea>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('exam')">Previous</button>
+                <button class="button" onclick="showSection('summary')">Next</button>
+            </div>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="section" id="summary">
+            <div class="card">
+                <h2>Lesson Summary</h2>
+                <p>Let's review what you've learned about data validation.</p>
+                
+                <h3>Key Takeaways:</h3>
+                <ul>
+                    <li>Data validation ensures data is reasonable and sensible before acceptance</li>
+                    <li>Seven main validation types: Range, Format, Length, Presence, Existence, Limit, Check Digit</li>
+                    <li>Multiple validation methods can be combined for better data integrity</li>
+                    <li>Good validation improves user experience and data quality</li>
+                    <li>Balance is needed - too much validation can frustrate users</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>Quick Review Quiz</h2>
+                <div id="summaryQuiz">
+                    <!-- Question 1 -->
+                    <div style="margin-bottom: 20px;">
+                        <h4>1. Which validation method would you use to ensure a password has at least 8 characters?</h4>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's1', 'b')">Range check</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's1', 'a')">Length check</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's1', 'c')">Format check</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's1', 'd')">Presence check</button>
+                        <div id="s1-feedback" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- Question 2 -->
+                    <div style="margin-bottom: 20px;">
+                        <h4>2. What is the main purpose of a check digit?</h4>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's2', 'a')">To detect errors in data entry</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's2', 'b')">To encrypt sensitive data</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's2', 'c')">To compress data size</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's2', 'd')">To speed up processing</button>
+                        <div id="s2-feedback" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- Question 3 -->
+                    <div style="margin-bottom: 20px;">
+                        <h4>3. Which validation ensures data exists in a predefined list?</h4>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's3', 'b')">Presence check</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's3', 'c')">Format check</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's3', 'd')">Range check</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's3', 'a')">Existence check</button>
+                        <div id="s3-feedback" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- Question 4 -->
+                    <div style="margin-bottom: 20px;">
+                        <h4>4. A temperature sensor reading must be between -50°C and 100°C. This requires:</h4>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's4', 'c')">Limit check</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's4', 'a')">Range check</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's4', 'b')">Format check</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's4', 'd')">Length check</button>
+                        <div id="s4-feedback" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- Question 5 -->
+                    <div style="margin-bottom: 20px;">
+                        <h4>5. True or False: Validation can guarantee that data is accurate.</h4>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's5', 'b')">True</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's5', 'a')">False</button>
+                        <div id="s5-feedback" style="margin-top: 10px;"></div>
+                    </div>
+
+                    <!-- Question 6 -->
+                    <div style="margin-bottom: 20px;">
+                        <h4>6. Which is NOT a benefit of data validation?</h4>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's6', 'b')">Reduces data entry errors</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's6', 'a')">Guarantees data is correct</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's6', 'c')">Improves data consistency</button>
+                        <button class="quiz-option" onclick="checkSummaryAnswer(this, 's6', 'd')">Helps maintain data integrity</button>
+                        <div id="s6-feedback" style="margin-top: 10px;"></div>
+                    </div>
+                </div>
+                
+                <button class="reset-btn" onclick="resetSummaryQuiz()">Reset Quiz</button>
+            </div>
+
+            <div class="card">
+                <h2>Videos (Coming Soon)</h2>
+                <p>Additional video resources will be available here to support your learning.</p>
+                <div style="background-color: #f0f0f0; padding: 20px; border-radius: 5px; text-align: center;">
+                    <p>📹 Video placeholder</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Next Lesson Preview</h2>
+                <p>In the next lesson, we'll explore <strong>Data Verification</strong> methods including:</p>
+                <ul>
+                    <li>Visual checks and double entry</li>
+                    <li>Parity checks for data transfer</li>
+                    <li>Checksums for data integrity</li>
+                </ul>
+            </div>
+            
+            <div class="navigation-buttons">
+                <button class="button" onclick="showSection('extension')">Previous</button>
+                <button class="button" disabled>Next Lesson</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback Button and Modal -->
+    <button class="feedback-btn" onclick="openFeedback()">Feedback</button>
+    
+    <div id="feedbackModal" class="feedback-modal">
+        <div class="feedback-content">
+            <h3>Send Feedback</h3>
+            <p>Found a bug or have a suggestion? Let us know!</p>
+            <textarea id="feedbackText" class="input-field" rows="5" placeholder="Describe the issue or suggestion..."></textarea>
+            <button class="button" onclick="sendFeedback()">Send</button>
+            <button class="button" onclick="closeFeedback()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Achievement Popup -->
+    <div id="achievementPopup" class="achievement-popup" style="display: none;">
+        <h3 id="achievementTitle">Achievement Unlocked!</h3>
+        <p id="achievementDesc">Description</p>
+    </div>
+
+    <script>
+        // Global variables
+        let currentSection = 'starter';
+        let xp = 0;
+        let level = 0;
+        let achievements = new Set();
+        let selectedScenario = null;
+        let matchingPairs = {
+            'scenario1': 'length',
+            'scenario2': 'range',
+            'scenario3': 'format',
+            'scenario4': 'checkdigit'
+        };
+        let earnedActions = new Set();
+
+        // Prevent paste
+        document.addEventListener('paste', function(e) {
+            e.preventDefault();
+            showPasteWarning();
+            return false;
+        });
+
+        // Also prevent paste in input fields
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputs = document.querySelectorAll('input, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('paste', function(e) {
+                    e.preventDefault();
+                    showPasteWarning();
+                    return false;
+                });
+            });
+        });
+
+        function showPasteWarning() {
+            const warnings = document.querySelectorAll('.paste-warning');
+            warnings.forEach(warning => {
+                warning.style.display = 'block';
+                warning.textContent = '🚫 Shame on you! Pasting is not allowed. Type it yourself!';
+                setTimeout(() => {
+                    warning.style.display = 'none';
+                }, 3000);
+            });
+            
+            // Create warning if none exists
+            if (warnings.length === 0) {
+                const warning = document.createElement('div');
+                warning.className = 'paste-warning';
+                warning.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #e74c3c; color: white; padding: 20px; border-radius: 10px; z-index: 1001; font-weight: bold;';
+                warning.textContent = '🚫 Shame on you! Pasting is not allowed. Type it yourself!';
+                document.body.appendChild(warning);
+                setTimeout(() => {
+                    warning.remove();
+                }, 3000);
+            }
+        }
+
+        // XP and Achievement System
+        function addXP(amount, action) {
+            const actionKey = action.toLowerCase().replace(/\s+/g, '_');
+            if (earnedActions.has(actionKey)) {
+                return; // Already earned XP for this action
+            }
+            
+            earnedActions.add(actionKey);
+            xp += amount;
+            
+            // Check for level up
+            while (xp >= 100 && level < 5) {
+                xp -= 100;
+                level++;
+                showAchievement('Level Up!', 'You reached Level ' + level + '!');
+            }
+            
+            // Cap at level 5
+            if (level >= 5) {
+                level = 5;
+                xp = Math.min(xp, 100);
+            }
+            
+            updateXPDisplay();
+            checkAchievements();
+        }
+
+        function updateXPDisplay() {
+            document.getElementById('xp').textContent = xp;
+            document.getElementById('level').textContent = level;
+            document.getElementById('xpFill').style.width = xp + '%';
+        }
+
+        function showAchievement(title, description) {
+            const popup = document.getElementById('achievementPopup');
+            document.getElementById('achievementTitle').textContent = title;
+            document.getElementById('achievementDesc').textContent = description;
+            popup.style.display = 'block';
+            
+            setTimeout(() => {
+                popup.style.display = 'none';
+            }, 3000);
+        }
+
+        function checkAchievements() {
+            // Check for specific achievements
+            if (!achievements.has('first_validation') && earnedActions.has('completed_validation')) {
+                achievements.add('first_validation');
+                showAchievement('Validator', 'Completed your first validation!');
+            }
+            
+            if (!achievements.has('all_methods') && earnedActions.size >= 7) {
+                achievements.add('all_methods');
+                showAchievement('Master Validator', 'Learned all validation methods!');
+            }
+        }
+
+        // Navigation
+        function showSection(sectionId) {
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(section => section.classList.remove('active'));
+            
+            document.getElementById(sectionId).classList.add('active');
+            currentSection = sectionId;
+            
+            // Update nav buttons
+            const navBtns = document.querySelectorAll('.nav-btn');
+            navBtns.forEach(btn => btn.classList.remove('active'));
+            const activeBtn = Array.from(navBtns).find(btn => 
+                btn.textContent.toLowerCase().includes(sectionId.toLowerCase()) ||
+                (sectionId === 'validation' && btn.textContent.includes('Validation Methods')) ||
+                (sectionId === 'exam' && btn.textContent.includes('Exam'))
+            );
+            if (activeBtn) activeBtn.classList.add('active');
+            
+            // Award XP for section completion
+            addXP(5, 'visited_' + sectionId);
+        }
+
+        // Starter Quiz
+        function checkStarterAnswer(button, question, correct) {
+            const options = button.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => {
+                opt.disabled = true;
+                opt.classList.remove('selected');
+            });
+            
+            button.classList.add('selected');
+            const feedback = document.getElementById(question + '-feedback');
+            
+            if (button.textContent.includes(getCorrectAnswer(question, correct))) {
+                feedback.innerHTML = '<span style="color: var(--success-color);">✓ Correct! Data validation ensures data is reasonable and sensible.</span>';
+                addXP(10, 'starter_quiz_correct');
+            } else {
+                feedback.innerHTML = '<span style="color: var(--error-color);">✗ Not quite. Data validation checks if data is reasonable before accepting it.</span>';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function getCorrectAnswer(question, correct) {
+            const answers = {
+                'q1': {
+                    'a': 'To ensure data is reasonable and sensible',
+                    'b': 'To make data entry faster',
+                    'c': 'To increase storage capacity',
+                    'd': 'To encrypt sensitive information'
+                }
+            };
+            return answers[question][correct];
+        }
+
+        function resetStarter() {
+            const options = document.querySelectorAll('#starterQuiz .quiz-option');
+            options.forEach(opt => {
+                opt.disabled = false;
+                opt.classList.remove('selected');
+            });
+            document.getElementById('q1-feedback').style.display = 'none';
+        }
+
+        // Validation Methods
+        function toggleMethod(method) {
+            const details = document.getElementById(method + '-details');
+            details.style.display = details.style.display === 'none' ? 'block' : 'none';
+            if (details.style.display === 'block') {
+                addXP(5, 'explored_' + method);
+            }
+        }
+
+        // Validation functions
+        function validateRange() {
+            const input = document.getElementById('rangeInput').value;
+            const result = document.getElementById('rangeResult');
+            
+            if (input === '') {
+                result.innerHTML = '<span style="color: var(--error-color);">Please enter a value</span>';
+                return;
+            }
+            
+            const score = parseInt(input);
+            if (isNaN(score)) {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Invalid: Must be a number</span>';
+            } else if (score < 0 || score > 100) {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Invalid: Score must be between 0 and 100</span>';
+            } else {
+                result.innerHTML = '<span style="color: var(--success-color);">✓ Valid: Score is within range</span>';
+                addXP(10, 'completed_range_validation');
+            }
+        }
+
+        function validateFormat() {
+            const input = document.getElementById('formatInput').value.toUpperCase();
+            const result = document.getElementById('formatResult');
+            
+            // Simple UK postcode pattern
+            const pattern = /^[A-Z]{1,2}\d{1,2}\s?\d[A-Z]{2}$/;
+            
+            if (pattern.test(input)) {
+                result.innerHTML = '<span style="color: var(--success-color);">✓ Valid: Correct UK postcode format</span>';
+                addXP(10, 'completed_format_validation');
+            } else {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Invalid: Not a valid UK postcode format (e.g., M1 5GD)</span>';
+            }
+        }
+
+        function validateLength() {
+            const input = document.getElementById('lengthInput').value;
+            const result = document.getElementById('lengthResult');
+            
+            if (input.length < 8) {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Invalid: Password too short (minimum 8 characters)</span>';
+            } else if (input.length > 20) {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Invalid: Password too long (maximum 20 characters)</span>';
+            } else {
+                result.innerHTML = '<span style="color: var(--success-color);">✓ Valid: Password length is acceptable</span>';
+                addXP(10, 'completed_length_validation');
+            }
+        }
+
+        function validatePresence() {
+            const input = document.getElementById('presenceInput').value.trim();
+            const result = document.getElementById('presenceResult');
+            
+            if (input === '') {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Invalid: This field is required</span>';
+            } else {
+                result.innerHTML = '<span style="color: var(--success-color);">✓ Valid: Field contains data</span>';
+                addXP(10, 'completed_presence_validation');
+            }
+        }
+
+        function validateExistence() {
+            const input = document.getElementById('existenceInput').value.toUpperCase();
+            const result = document.getElementById('existenceResult');
+            const validCodes = ['GB', 'US', 'FR', 'DE', 'ES'];
+            
+            if (validCodes.includes(input)) {
+                result.innerHTML = '<span style="color: var(--success-color);">✓ Valid: Country code exists in the system</span>';
+                addXP(10, 'completed_existence_validation');
+            } else {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Invalid: Country code not found (valid codes: GB, US, FR, DE, ES)</span>';
+            }
+        }
+
+        function validateLimit() {
+            const input = document.getElementById('limitInput').value;
+            const result = document.getElementById('limitResult');
+            
+            const quantity = parseInt(input);
+            if (isNaN(quantity)) {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Invalid: Must be a number</span>';
+            } else if (quantity > 50) {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Invalid: Quantity exceeds maximum limit of 50</span>';
+            } else if (quantity < 1) {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Invalid: Quantity must be at least 1</span>';
+            } else {
+                result.innerHTML = '<span style="color: var(--success-color);">✓ Valid: Quantity is within limit</span>';
+                addXP(10, 'completed_limit_validation');
+            }
+        }
+
+        function validateCheckDigit() {
+            const input = document.getElementById('checkdigitInput').value;
+            const result = document.getElementById('checkdigitResult');
+            
+            if (input.length !== 5) {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Invalid: Must be exactly 5 digits</span>';
+                return;
+            }
+            
+            // Simple check digit algorithm: sum of first 4 digits mod 10
+            const digits = input.split('').map(Number);
+            const sum = digits[0] + digits[1] + digits[2] + digits[3];
+            const checkDigit = sum % 10;
+            
+            if (digits[4] === checkDigit) {
+                result.innerHTML = '<span style="color: var(--success-color);">✓ Valid: Check digit is correct</span>';
+                addXP(15, 'completed_checkdigit_validation');
+            } else {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Invalid: Check digit should be ' + checkDigit + '</span>';
+            }
+        }
+
+        function showHint(type) {
+            const hint = document.getElementById(type + '-hint');
+            hint.style.display = 'block';
+            addXP(5, 'used_hint'); // Less XP for using hint
+        }
+
+        function resetValidation() {
+            const inputs = document.querySelectorAll('#validationMethods input[type="text"]');
+            inputs.forEach(input => input.value = '');
+            const results = document.querySelectorAll('[id$="Result"]');
+            results.forEach(result => result.innerHTML = '');
+        }
+
+        // Matching exercise
+        function selectScenario(element, scenario) {
+            // Remove previous selection
+            document.querySelectorAll('.drag-item').forEach(item => {
+                item.style.backgroundColor = 'var(--secondary-color)';
+            });
+            
+            element.style.backgroundColor = 'var(--warning-color)';
+            selectedScenario = scenario;
+        }
+
+        function matchValidation(element, validationType) {
+            if (!selectedScenario) {
+                document.getElementById('matchResult').innerHTML = 
+                    '<span style="color: var(--error-color);">Please select a scenario first!</span>';
+                return;
+            }
+            
+            const result = document.getElementById('matchResult');
+            if (matchingPairs[selectedScenario] === validationType) {
+                result.innerHTML = '<span style="color: var(--success-color);">✓ Correct match!</span>';
+                element.classList.add('correct');
+                addXP(10, 'correct_match_' + selectedScenario);
+            } else {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Incorrect match. Try again!</span>';
+                element.classList.add('incorrect');
+                setTimeout(() => {
+                    element.classList.remove('incorrect');
+                }, 1000);
+            }
+        }
+
+        function resetMatching() {
+            selectedScenario = null;
+            document.querySelectorAll('.drag-item').forEach(item => {
+                item.style.backgroundColor = 'var(--secondary-color)';
+                item.classList.remove('correct', 'incorrect');
+            });
+            document.getElementById('matchResult').innerHTML = '';
+        }
+
+        // Simulation
+        function configureValidation() {
+            const simTest = document.getElementById('simTest');
+            const checks = {
+                range: document.getElementById('sim-range').checked,
+                format: document.getElementById('sim-format').checked,
+                presence: document.getElementById('sim-presence').checked,
+                length: document.getElementById('sim-length').checked
+            };
+            
+            if (!checks.range && !checks.format && !checks.presence && !checks.length) {
+                alert('Please select at least one validation type!');
+                return;
+            }
+            
+            simTest.style.display = 'block';
+            addXP(10, 'configured_simulation');
+        }
+
+        function testSimulation() {
+            const input = document.getElementById('simInput').value;
+            const result = document.getElementById('simResult');
+            let errors = [];
+            
+            // Check selected validations
+            if (document.getElementById('sim-range').checked) {
+                const age = parseInt(input);
+                if (isNaN(age) || age < 11 || age > 19) {
+                    errors.push('Range check failed: Age must be 11-19');
+                }
+            }
+            
+            if (document.getElementById('sim-format').checked) {
+                if (!/^\d+$/.test(input)) {
+                    errors.push('Format check failed: Must be numeric');
+                }
+            }
+            
+            if (document.getElementById('sim-presence').checked) {
+                if (input.trim() === '') {
+                    errors.push('Presence check failed: Field is required');
+                }
+            }
+            
+            if (document.getElementById('sim-length').checked) {
+                if (input.length > 2) {
+                    errors.push('Length check failed: Maximum 2 digits');
+                }
+            }
+            
+            if (errors.length === 0) {
+                result.innerHTML = '<span style="color: var(--success-color);">✓ All validations passed!</span>';
+                addXP(15, 'simulation_success');
+            } else {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Validation errors:<br>' + 
+                    errors.join('<br>') + '</span>';
+            }
+        }
+
+        function resetSimulation() {
+            document.getElementById('sim-range').checked = false;
+            document.getElementById('sim-format').checked = false;
+            document.getElementById('sim-presence').checked = false;
+            document.getElementById('sim-length').checked = false;
+            document.getElementById('simTest').style.display = 'none';
+            document.getElementById('simInput').value = '';
+            document.getElementById('simResult').innerHTML = '';
+        }
+
+        function checkReflection(textarea) {
+            if (textarea.value.length > 50) {
+                addXP(10, 'reflection_completed');
+            }
+        }
+
+        // Practice section
+        function checkBankAnswer() {
+            const correct = [
+                document.getElementById('bank1').checked, // Presence - correct
+                document.getElementById('bank2').checked, // Format - correct
+                document.getElementById('bank3').checked, // Range - correct
+                document.getElementById('bank4').checked, // Limit - correct
+                !document.getElementById('bank5').checked  // Length - incorrect
+            ];
+            
+            const allCorrect = correct.every(c => c === true);
+            const result = document.getElementById('bankResult');
+            
+            if (allCorrect) {
+                result.innerHTML = '<span style="color: var(--success-color);">✓ Excellent! You correctly identified all appropriate validations.</span>';
+                addXP(20, 'bank_scenario_correct');
+            } else {
+                result.innerHTML = '<span style="color: var(--error-color);">✗ Not quite. Remember: amounts need presence, format (numbers), range (positive), and limit checks. Length check is not appropriate for amounts.</span>';
+            }
+        }
+
+        // Exam questions
+        function checkExamAnswer(textareaId, marksId, schemeId, maxMarks) {
+            const textarea = document.getElementById(textareaId);
+            const marks = document.getElementById(marksId);
+            const scheme = document.getElementById(schemeId);
+            
+            // Check minimum answer length (roughly 50 words)
+            if (textarea.value.trim().split(/\s+/).length < 30) {
+                alert('Please provide a more detailed answer before viewing the mark scheme.');
+                return;
+            }
+            
+            // Check if marks predicted
+            if (!marks.value || marks.value < 0 || marks.value > maxMarks) {
+                alert('Please enter your predicted marks (0-' + maxMarks + ').');
+                return;
+            }
+            
+            scheme.style.display = 'block';
+            addXP(25, 'attempted_exam_q_' + textareaId);
+            
+            // Award bonus XP for good predictions
+            if (Math.abs(marks.value - (maxMarks * 0.7)) <= 1) {
+                addXP(10, 'accurate_prediction_' + textareaId);
+            }
+        }
+
+        // Drawing canvas
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', handleTouch);
+        canvas.addEventListener('touchmove', handleTouch);
+        canvas.addEventListener('touchend', stopDrawing);
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            ctx.beginPath();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                            e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Extension activities
+        function checkExtension(textarea) {
+            const wordCount = textarea.value.trim().split(/\s+/).length;
+            if (wordCount > 50) {
+                addXP(15, 'extension_activity_' + Math.floor(wordCount / 50));
+            }
+        }
+
+        // Summary quiz
+        function checkSummaryAnswer(button, question, correct) {
+            const options = button.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => {
+                opt.disabled = true;
+                opt.classList.remove('selected');
+            });
+            
+            button.classList.add('selected');
+            const feedback = document.getElementById(question + '-feedback');
+            const isCorrect = button.textContent === getSummaryCorrectAnswer(question, correct);
+            
+            if (isCorrect) {
+                feedback.innerHTML = '<span style="color: var(--success-color);">✓ Correct!</span>';
+                addXP(10, 'summary_q_' + question);
+            } else {
+                feedback.innerHTML = '<span style="color: var(--error-color);">✗ Incorrect. ' + getSummaryExplanation(question) + '</span>';
+            }
+            feedback.style.display = 'block';
+        }
+
+        function getSummaryCorrectAnswer(question, correct) {
+            const answers = {
+                's1': {'a': 'Length check', 'b': 'Range check', 'c': 'Format check', 'd': 'Presence check'},
+                's2': {'a': 'To detect errors in data entry', 'b': 'To encrypt sensitive data', 'c': 'To compress data size', 'd': 'To speed up processing'},
+                's3': {'a': 'Existence check', 'b': 'Presence check', 'c': 'Format check', 'd': 'Range check'},
+                's4': {'a': 'Range check', 'b': 'Format check', 'c': 'Limit check', 'd': 'Length check'},
+                's5': {'a': 'False', 'b': 'True'},
+                's6': {'a': 'Guarantees data is correct', 'b': 'Reduces data entry errors', 'c': 'Improves data consistency', 'd': 'Helps maintain data integrity'}
+            };
+            return answers[question][correct];
+        }
+
+        function getSummaryExplanation(question) {
+            const explanations = {
+                's1': 'Length check ensures a minimum/maximum number of characters.',
+                's2': 'Check digits detect transcription errors using mathematical algorithms.',
+                's3': 'Existence check (or lookup check) verifies data against a list.',
+                's4': 'Range check ensures values fall between minimum and maximum.',
+                's5': 'Validation checks if data is reasonable, not if it\'s accurate.',
+                's6': 'Validation cannot guarantee correctness, only reasonableness.'
+            };
+            return explanations[question];
+        }
+
+        function resetSummaryQuiz() {
+            const options = document.querySelectorAll('#summaryQuiz .quiz-option');
+            options.forEach(opt => {
+                opt.disabled = false;
+                opt.classList.remove('selected');
+            });
+            const feedbacks = document.querySelectorAll('[id^="s"][id$="-feedback"]');
+            feedbacks.forEach(feedback => feedback.style.display = 'none');
+        }
+
+        // Accessibility features
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+            addXP(5, 'used_accessibility');
+        }
+
+        function changeFontSize(change) {
+            const root = document.documentElement;
+            const currentSize = parseInt(getComputedStyle(root).getPropertyValue('--font-size'));
+            const newSize = Math.max(12, Math.min(24, currentSize + change));
+            root.style.setProperty('--font-size', newSize + 'px');
+        }
+
+        // Feedback system
+        function openFeedback() {
+            document.getElementById('feedbackModal').style.display = 'block';
+        }
+
+        function closeFeedback() {
+            document.getElementById('feedbackModal').style.display = 'none';
+            document.getElementById('feedbackText').value = '';
+        }
+
+        function sendFeedback() {
+            const feedback = document.getElementById('feedbackText').value;
+            if (feedback.trim() === '') {
+                alert('Please enter your feedback before sending.');
+                return;
+            }
+            
+            const emailBody = encodeURIComponent(
+                'Page: ' + currentSection + '\n\n' +
+                'Feedback: ' + feedback + '\n\n' +
+                'Browser: ' + navigator.userAgent
+            );
+            
+            window.location.href = 'mailto:millingtond@mgs.org?subject=Data Validation Lesson Feedback&body=' + emailBody;
+            
+            closeFeedback();
+            showAchievement('Feedback Sent', 'Thank you for your feedback!');
+            addXP(10, 'sent_feedback');
+        }
+
+        // Initialize
+        window.onload = function() {
+            updateXPDisplay();
+            
+            // Set up canvas
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#333';
+        };
+    </script>
+</body>
+</html>

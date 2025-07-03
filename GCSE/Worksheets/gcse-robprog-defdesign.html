@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCSE CS: Defensive Design</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=OpenDyslexic:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* General Styles */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background: #f0f2f5; overflow-x: hidden; transition: all 0.3s ease; }
+
+        /* Shame Mode */
+        body.shame-mode { background: #ffdddd; }
+        .shame-popup { position: fixed; top: 0; left: 0; width: 100%; background: red; color: white; text-align: center; padding: 1rem; z-index: 9999; font-size: 1.2rem; font-weight: bold; display: none; }
+        body.shame-mode .shame-popup { display: block; }
+
+        /* Accessibility */
+        .accessibility-controls { position: fixed; top: 20px; right: 20px; background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 5px 20px rgba(0,0,0,0.1); z-index: 2001; display: none; }
+        .accessibility-controls.show { display: block; }
+        .accessibility-btn { position: fixed; top: 20px; right: 20px; background: #667eea; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 1.5rem; cursor: pointer; z-index: 2000; transition: all 0.3s; }
+        .accessibility-btn:hover { transform: scale(1.1); background: #5a60d8; }
+        .skip-nav { position: absolute; top: -40px; left: 0; background: #667eea; color: white; padding: 0.5rem 1rem; text-decoration: none; border-radius: 0 0 10px 0; transition: top 0.3s; }
+        .skip-nav:focus { top: 0; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
+        body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+        *:focus { outline: 3px solid #ff9800; outline-offset: 2px; }
+        
+        /* Font & Contrast Styles */
+        body.font-small { font-size: 14px; }
+        body.font-medium { font-size: 16px; }
+        body.font-large { font-size: 20px; }
+        body.font-xlarge { font-size: 24px; }
+        body.dyslexia-font { font-family: 'OpenDyslexic', 'Comic Sans MS', cursive; }
+        body.high-contrast { background: #000; color: #fff; }
+        body.high-contrast .header, body.high-contrast .section, body.high-contrast .card, body.high-contrast .simulator { background: #000; border: 2px solid #fff; color: #fff;}
+        body.high-contrast .btn, body.high-contrast .nav-link { background: #fff; color: #000; border: 2px solid #fff; }
+        body.high-contrast .nav-link.active { background: #ff0; color: #000; }
+        body.high-contrast .drop-zone, body.high-contrast .quiz-option { background: #111; border: 2px solid #fff; }
+
+        /* Layout & Navigation */
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem; position: fixed; top: 0; width: 100%; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .nav-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .nav-links { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .nav-link { background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.5rem 1rem; border-radius: 20px; cursor: pointer; transition: all 0.3s; font-size: 0.9rem; }
+        .nav-link:hover { background: rgba(255,255,255,0.3); }
+        .nav-link.active { background: white; color: #667eea; }
+        .main-content { margin-top: 80px; padding: 2rem; max-width: 1200px; margin-left: auto; margin-right: auto; }
+        .section { display: none; background: white; border-radius: 15px; padding: 2rem; box-shadow: 0 5px 20px rgba(0,0,0,0.1); animation: fadeIn 0.5s ease; }
+        .section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .section-nav { display: flex; justify-content: space-between; margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #eee; }
+        .nav-btn { background: #667eea; color: white; border: none; padding: 0.8rem 2rem; border-radius: 25px; cursor: pointer; font-size: 1rem; transition: all 0.3s; }
+        .nav-btn:hover { background: #5a60d8; transform: translateY(-2px); }
+        .nav-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+        
+        /* XP & Achievements */
+        .xp-container { display: flex; align-items: center; gap: 1rem; background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 25px; }
+        .xp-bar { width: 150px; height: 20px; background: rgba(255,255,255,0.2); border-radius: 10px; overflow: hidden; position: relative; }
+        .xp-fill { height: 100%; background: linear-gradient(90deg, #4caf50, #8bc34a); width: 0%; transition: width 0.5s ease; }
+        .achievement-popup { position: fixed; top: 100px; right: 20px; background: white; border-radius: 15px; padding: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.2); transform: translateX(400px); transition: transform 0.5s ease; z-index: 2000; max-width: 300px; }
+        .achievement-popup.show { transform: translateX(0); }
+        .achievement-icon { font-size: 3rem; text-align: center; margin-bottom: 0.5rem; }
+
+        /* Common Components */
+        h1, h2, h3 { color: #667eea; margin-bottom: 1rem; }
+        h1 { font-size: 2.5rem; } h2 { font-size: 1.8rem; } h3 { font-size: 1.4rem; }
+        .btn { background: #667eea; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: all 0.3s; margin: 0.5rem; }
+        .btn:hover:not(:disabled) { background: #5a60d8; transform: translateY(-2px); }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .card { background: #f9f9f9; border-radius: 10px; padding: 1.5rem; margin: 1rem 0; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .simulator { background: #263238; color: #aed581; border-radius: 10px; padding: 1.5rem; font-family: 'Courier New', monospace; margin: 1rem 0; }
+        .code-line { margin: 0.5rem 0; padding: 0.5rem; border-radius: 5px; transition: all 0.3s; }
+        .quiz-option { background: #f0f0f0; border: 2px solid transparent; border-radius: 10px; padding: 1rem; margin: 0.5rem 0; cursor: pointer; transition: all 0.3s; }
+        .quiz-option:hover { background: #e0e0e0; border-color: #667eea; }
+        .quiz-option.selected { background: #e3f2fd; border-color: #2196f3; }
+        .quiz-option.correct { background: #e8f5e9; border-color: #4caf50; }
+        .quiz-option.incorrect { background: #ffebee; border-color: #f44336; }
+        textarea { width: 100%; min-height: 100px; padding: 1rem; border: 2px solid #ddd; border-radius: 10px; font-family: inherit; font-size: 1rem; resize: vertical; transition: border-color 0.3s; }
+        textarea:focus { outline: none; border-color: #667eea; }
+        .exam-question { background: #f8f9fa; border-left: 4px solid #667eea; padding: 1.5rem; margin: 1.5rem 0; border-radius: 0 10px 10px 0; }
+        .marks-input { display: flex; align-items: center; gap: 1rem; margin: 1rem 0; }
+        .marks-input input { width: 80px; padding: 0.5rem; border: 2px solid #667eea; border-radius: 5px; }
+        .mark-scheme { background: #e8f5e9; border: 2px solid #4caf50; border-radius: 10px; padding: 1.5rem; margin: 1rem 0; display: none; }
+        .mark-scheme.show { display: block; }
+        .extension-activity { background: linear-gradient(135deg, #667eea15, #764ba215); border: 2px solid #667eea; border-radius: 15px; padding: 2rem; margin: 2rem 0; }
+
+        /* Drag and Drop */
+        .drag-drop-container { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0; }
+        .drag-item { background: #e3f2fd; border: 2px solid #2196f3; border-radius: 10px; padding: 1rem; margin: 0.5rem 0; cursor: grab; }
+        .drag-item.dragging { opacity: 0.5; }
+        .drop-zone { min-height: 200px; background: #f5f5f5; border: 3px dashed #ccc; border-radius: 10px; padding: 1rem; }
+        .drop-zone.drag-over { background: #e8f5e9; border-color: #4caf50; }
+        .drop-zone h3 { text-align: center; margin-bottom: 1rem; }
+
+        /* Canvas */
+        .canvas-container { border: 2px solid #667eea; border-radius: 10px; margin: 1rem 0; position: relative; background: white; display: none; }
+        #drawingCanvas { cursor: crosshair; display: block; border-radius: 8px; touch-action: none; }
+        .canvas-controls { display: flex; gap: 0.5rem; padding: 0.5rem; background: #f5f5f5; border-radius: 0 0 8px 8px; }
+
+        /* Particles */
+        .particle { position: absolute; background-color: var(--color); width: 10px; height: 10px; border-radius: 50%; animation: pop 1s ease-out forwards; }
+        @keyframes pop { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(0) translate(var(--x), var(--y)); opacity: 0; } }
+        .easter-egg { position: absolute; bottom: 5px; right: 5px; width: 5px; height: 5px; background: #333; cursor: pointer; border-radius: 50%; }
+
+    </style>
+</head>
+<body class="font-medium">
+    <div class="shame-popup" id="shame-popup">Pasting is not learning!</div>
+    <a href="#main-content" class="skip-nav">Skip to main content</a>
+    <button class="accessibility-btn" id="accessibility-btn" aria-label="Accessibility options" title="Accessibility options">♿</button>
+    <div class="accessibility-controls" id="accessibility-panel">
+        <h3>Accessibility Options</h3>
+        <div style="margin: 1rem 0;">
+            <label for="font-size-select">Font Size:</label>
+            <select id="font-size-select" style="width: 100%; padding: 0.5rem;">
+                <option value="small">Small</option> <option value="medium" selected>Medium</option> <option value="large">Large</option> <option value="xlarge">Extra Large</option>
+            </select>
+        </div>
+        <div style="margin: 1rem 0;"><label><input type="checkbox" id="high-contrast-toggle"> High Contrast Mode</label></div>
+        <div style="margin: 1rem 0;"><label><input type="checkbox" id="dyslexia-font-toggle"> Dyslexia-Friendly Font</label></div>
+        <div style="margin: 1rem 0;"><label><input type="checkbox" id="reduce-motion-toggle"> Reduce Motion</label></div>
+        <button class="btn" id="reset-accessibility-btn">Reset</button>
+    </div>
+
+    <header class="header" role="banner">
+        <div class="nav-container">
+            <nav class="nav-links" role="navigation" aria-label="Section navigation">
+                <button class="nav-link active" data-section="0">Start</button>
+                <button class="nav-link" data-section="1">Starter</button>
+                <button class="nav-link" data-section="2">Outcomes</button>
+                <button class="nav-link" data-section="3">V vs V</button>
+                <button class="nav-link" data-section="4">Toolkit</button>
+                <button class="nav-link" data-section="5">Auth</button>
+                <button class="nav-link" data-section="6">Maintain</button>
+                <button class="nav-link" data-section="7">Threats</button>
+                <button class="nav-link" data-section="8">Mistakes</button>
+                <button class="nav-link" data-section="9">Exam Qs</button>
+                <button class="nav-link" data-section="10">Extension</button>
+                <button class="nav-link" data-section="11">Summary</button>
+                <button class="nav-link" data-section="12">Videos</button>
+            </nav>
+            <div class="xp-container" role="status" aria-live="polite">
+                <span class="xp-text">XP: <span id="xp-count">0</span></span>
+                <div class="xp-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                    <div class="xp-fill" id="xp-fill"></div>
+                </div>
+                <span>Level <span id="level">1</span></span>
+            </div>
+        </div>
+    </header>
+
+    <div class="achievement-popup" id="achievement-popup" role="alert" aria-live="assertive">
+        <div class="achievement-icon" id="achievement-icon">🏆</div>
+        <h3 id="achievement-title">Achievement Unlocked!</h3>
+        <p id="achievement-desc">Description</p>
+    </div>
+
+    <main class="main-content" id="main-content" role="main">
+        </main>
+
+    <script src="gcse-robprog-defdes.js"></script>
+</body>
+</html>

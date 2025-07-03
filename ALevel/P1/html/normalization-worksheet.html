@@ -1,0 +1,3371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Database Normalization - Interactive Worksheet</title>
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary-color: #8b5cf6;
+            --secondary-dark: #7c3aed;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --warning-color: #f59e0b;
+            --bg-light: #f8fafc;
+            --bg-dark: #0f172a;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            --font-size: 16px;
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-success: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            --gradient-danger: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            --gradient-dark: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: var(--font-size);
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: var(--bg-light);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .high-contrast {
+            --bg-light: #000;
+            --bg-dark: #fff;
+            --text-primary: #fff;
+            --text-secondary: #ccc;
+            --border-color: #fff;
+        }
+
+        .dyslexia-font {
+            font-family: 'Comic Sans MS', 'OpenDyslexic', sans-serif;
+        }
+
+        /* Loading Animation */
+        .loader {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            display: none;
+            z-index: 9999;
+        }
+
+        .loader::after {
+            content: '';
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--border-color);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Navigation */
+        .nav-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            transform: translateZ(0);
+            will-change: transform;
+        }
+
+        .nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .nav-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-stats {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .stat-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 2rem;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stat-container:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .xp-display, .level-display {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .xp-bar {
+            width: 100px;
+            height: 8px;
+            background: rgba(226, 232, 240, 0.5);
+            border-radius: 1rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: var(--gradient-primary);
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .xp-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.75rem 2rem;
+            overflow-x: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-color) transparent;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .nav-menu::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .nav-menu::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .nav-menu::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 2px;
+        }
+
+        .nav-item {
+            padding: 0.5rem 1.25rem;
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid transparent;
+            border-radius: 2rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            font-size: 0.875rem;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--gradient-primary);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: -1;
+        }
+
+        .nav-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+            border-color: var(--primary-color);
+        }
+
+        .nav-item:hover::before {
+            opacity: 0.1;
+        }
+
+        .nav-item.active {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        /* Main Content */
+        .main-container {
+            margin-top: 130px;
+            padding: 2rem;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+            position: relative;
+        }
+
+        .section {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        .section.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @keyframes fadeInUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(20px);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0);
+            }
+        }
+
+        .section-header {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+            backdrop-filter: blur(10px);
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
+            opacity: 0.05;
+            animation: rotate 30s linear infinite;
+        }
+
+        @keyframes rotate {
+            to { transform: rotate(360deg); }
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .learning-outcomes {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            border-left: 4px solid var(--primary-color);
+            position: relative;
+        }
+
+        .learning-outcomes h3 {
+            color: var(--primary-dark);
+            margin-bottom: 0.75rem;
+            font-size: 1.25rem;
+        }
+
+        .learning-outcomes ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .learning-outcomes li {
+            padding-left: 1.5rem;
+            position: relative;
+            margin-bottom: 0.5rem;
+            animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            opacity: 0;
+        }
+
+        .learning-outcomes li:nth-child(1) { animation-delay: 0.1s; }
+        .learning-outcomes li:nth-child(2) { animation-delay: 0.2s; }
+        .learning-outcomes li:nth-child(3) { animation-delay: 0.3s; }
+        .learning-outcomes li:nth-child(4) { animation-delay: 0.4s; }
+        .learning-outcomes li:nth-child(5) { animation-delay: 0.5s; }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .learning-outcomes li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--success-color);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        /* Task Cards */
+        .task-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
+            backdrop-filter: blur(10px);
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .task-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .task-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-primary);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .task-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .task-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .task-points {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 0.5rem 1.25rem;
+            border-radius: 2rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            box-shadow: var(--shadow);
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Form Elements */
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        .text-input, .textarea, select {
+            width: 100%;
+            padding: 0.875rem 1.25rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .text-input:focus, .textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, var(--secondary-dark) 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+        }
+
+        .btn-success {
+            background: var(--gradient-success);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-danger {
+            background: var(--gradient-danger);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        /* Quiz Elements */
+        .quiz-container {
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.8) 0%, rgba(241, 245, 249, 0.8) 100%);
+            padding: 2rem;
+            border-radius: 1rem;
+            margin-bottom: 1.5rem;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+            position: relative;
+        }
+
+        .quiz-question {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .quiz-option {
+            padding: 1.25rem 1.5rem;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            font-weight: 500;
+        }
+
+        .quiz-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .quiz-option:hover {
+            border-color: var(--primary-color);
+            transform: translateX(10px);
+            box-shadow: var(--shadow);
+        }
+
+        .quiz-option:hover::before {
+            left: 100%;
+        }
+
+        .quiz-option.selected {
+            border-color: var(--primary-color);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            font-weight: 600;
+        }
+
+        .quiz-option.correct {
+            border-color: var(--success-color);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(34, 197, 94, 0.1) 100%);
+            animation: correctAnswer 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes correctAnswer {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .quiz-option.incorrect {
+            border-color: var(--error-color);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(245, 92, 67, 0.1) 100%);
+            animation: shake 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        /* Matching Container */
+        .matching-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .matching-column {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .matching-column h5 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .matching-item {
+            padding: 1rem 1.5rem;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.9) 100%);
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            font-weight: 500;
+        }
+
+        .matching-item:hover {
+            border-color: var(--primary-color);
+            transform: scale(1.05);
+            box-shadow: var(--shadow);
+        }
+
+        .matching-item.selected {
+            border-color: var(--secondary-color);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(124, 58, 237, 0.2) 100%);
+            animation: pulse 1s infinite;
+        }
+
+        .matching-item.matched {
+            border-color: var(--success-color);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(34, 197, 94, 0.2) 100%);
+            cursor: default;
+            animation: matchSuccess 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes matchSuccess {
+            0% { transform: scale(1) rotate(0); }
+            50% { transform: scale(1.1) rotate(2deg); }
+            100% { transform: scale(1) rotate(0); }
+        }
+
+        /* Simulation Container */
+        .simulation-container {
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(241, 245, 249, 0.9) 100%);
+            padding: 2.5rem;
+            border-radius: 1rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+        }
+
+        .simulation-step {
+            display: none;
+            opacity: 0;
+            transform: translateX(20px);
+        }
+
+        .simulation-step.active {
+            display: block;
+            animation: slideInStep 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes slideInStep {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.3) 100%);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(251, 191, 36, 0.2);
+        }
+
+        /* Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-bottom: 1.5rem;
+            background: white;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .data-table th, .data-table td {
+            padding: 1rem 1.5rem;
+            text-align: left;
+        }
+
+        .data-table th {
+            background: var(--gradient-primary);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+            letter-spacing: 0.05em;
+        }
+
+        .data-table tr {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(59, 130, 246, 0.05);
+            transform: scale(1.02);
+        }
+
+        .data-table tbody tr:not(:last-child) td {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .primary-key {
+            text-decoration: underline;
+            text-decoration-color: var(--primary-color);
+            text-decoration-thickness: 2px;
+            font-weight: 700;
+        }
+
+        .foreign-key {
+            font-style: italic;
+            color: var(--secondary-color);
+            font-weight: 600;
+        }
+
+        /* Achievement Popup */
+        .achievement-popup {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+            backdrop-filter: blur(20px);
+            padding: 2rem;
+            border-radius: 1.5rem;
+            box-shadow: var(--shadow-xl);
+            display: none;
+            z-index: 2000;
+            max-width: 400px;
+            border: 2px solid var(--primary-color);
+            overflow: hidden;
+        }
+
+        .achievement-popup.show {
+            display: block;
+            animation: achievementSlide 0.5s cubic-bezier(0.4, 0, 0.2, 1), achievementBounce 0.5s 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes achievementSlide {
+            from { transform: translateX(400px); }
+            to { transform: translateX(0); }
+        }
+
+        @keyframes achievementBounce {
+            0%, 100% { transform: scale(1) rotate(0); }
+            25% { transform: scale(1.05) rotate(1deg); }
+            75% { transform: scale(0.95) rotate(-1deg); }
+        }
+
+        .achievement-icon {
+            font-size: 4rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            animation: iconSpin 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes iconSpin {
+            from { transform: rotate(0) scale(0); }
+            to { transform: rotate(360deg) scale(1); }
+        }
+
+        .achievement-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .achievement-desc {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        /* Particle Effect Container */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1999;
+        }
+
+        .particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            animation: particleFloat 3s ease-out forwards;
+        }
+
+        @keyframes particleFloat {
+            to {
+                transform: translateY(-100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* Drawing Canvas */
+        .canvas-container {
+            border: 3px solid var(--border-color);
+            border-radius: 1rem;
+            margin-bottom: 1rem;
+            position: relative;
+            background: white;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+
+        #drawingCanvas {
+            cursor: crosshair;
+            touch-action: none;
+            display: block;
+        }
+
+        .canvas-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        /* Feedback Button */
+        .feedback-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 999;
+        }
+
+        .feedback-btn:hover {
+            transform: scale(1.1) rotate(10deg);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .feedback-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Feedback Modal */
+        .feedback-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2001;
+            opacity: 0;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .feedback-modal.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .feedback-content {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+            backdrop-filter: blur(20px);
+            padding: 3rem;
+            border-radius: 1.5rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: var(--shadow-xl);
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .feedback-modal.show .feedback-content {
+            transform: scale(1);
+        }
+
+        /* Paste Shame Message */
+        .paste-shame {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: var(--gradient-danger);
+            color: white;
+            padding: 2rem 3rem;
+            border-radius: 1rem;
+            font-size: 1.75rem;
+            font-weight: 700;
+            display: none;
+            z-index: 3000;
+            box-shadow: var(--shadow-xl);
+            text-align: center;
+        }
+
+        .paste-shame.show {
+            display: block;
+            animation: shamePopup 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes shamePopup {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(0); }
+            50% { transform: translate(-50%, -50%) scale(1.2) rotate(10deg); }
+            100% { transform: translate(-50%, -50%) scale(1) rotate(0); }
+        }
+
+        /* Navigation Buttons */
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 2px solid var(--border-color);
+            gap: 1rem;
+        }
+
+        /* Accessibility Controls */
+        .accessibility-controls {
+            position: fixed;
+            top: 150px;
+            right: -300px;
+            width: 280px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+            backdrop-filter: blur(20px);
+            padding: 1.5rem;
+            border-radius: 1rem 0 0 1rem;
+            box-shadow: var(--shadow-xl);
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 998;
+        }
+
+        .accessibility-controls.show {
+            right: 0;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .control-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .font-size-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .nav-header {
+                padding: 0.75rem 1rem;
+            }
+
+            .nav-stats {
+                gap: 0.5rem;
+                font-size: 0.75rem;
+            }
+
+            .stat-container {
+                padding: 0.375rem 0.75rem;
+            }
+
+            .xp-bar {
+                width: 60px;
+            }
+
+            .nav-title {
+                font-size: 1.25rem;
+            }
+
+            .main-container {
+                padding: 1rem;
+                margin-top: 110px;
+            }
+
+            .section-header {
+                padding: 1.5rem;
+            }
+
+            .section-title {
+                font-size: 1.75rem;
+            }
+
+            .task-card {
+                padding: 1.5rem;
+            }
+
+            .matching-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .btn {
+                padding: 0.75rem 1.5rem;
+                font-size: 0.875rem;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .nav-buttons {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .achievement-popup {
+                right: 1rem;
+                left: 1rem;
+                max-width: none;
+            }
+
+            .feedback-btn {
+                bottom: 1rem;
+                right: 1rem;
+                width: 50px;
+                height: 50px;
+                font-size: 1.5rem;
+            }
+
+            #drawingCanvas {
+                max-width: 100%;
+                height: auto;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            .nav-container, .feedback-btn, .accessibility-controls, .loader {
+                display: none !important;
+            }
+
+            .main-container {
+                margin-top: 0;
+            }
+
+            .section {
+                display: block !important;
+                opacity: 1 !important;
+                transform: none !important;
+                page-break-after: always;
+            }
+
+            .task-card {
+                box-shadow: none;
+                border: 1px solid #000;
+            }
+        }
+
+        /* Performance Optimizations */
+        .will-change-transform {
+            will-change: transform;
+        }
+
+        .gpu-accelerated {
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+        }
+    </style>
+</head>
+<body>
+    <!-- Loader -->
+    <div class="loader" id="loader"></div>
+
+    <!-- Particles Container -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Navigation -->
+    <nav class="nav-container gpu-accelerated" role="navigation" aria-label="Main navigation">
+        <div class="nav-header">
+            <h1 class="nav-title">Database Normalization</h1>
+            <div class="nav-stats">
+                <div class="stat-container">
+                    <span class="xp-display">XP:</span>
+                    <span id="xpCount">0</span>
+                    <div class="xp-bar">
+                        <div class="xp-fill" id="xpBar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="stat-container">
+                    <span class="level-display">Level:</span>
+                    <span id="levelCount">0</span>
+                </div>
+                <button class="btn btn-secondary" onclick="toggleAccessibility()" aria-label="Accessibility options">
+                    ⚙️
+                </button>
+            </div>
+        </div>
+        <div class="nav-menu">
+            <div class="nav-item active" onclick="navigateToSection('starter')" tabindex="0" role="button" aria-label="Starter Activity">Starter</div>
+            <div class="nav-item" onclick="navigateToSection('intro')" tabindex="0" role="button" aria-label="Introduction">Introduction</div>
+            <div class="nav-item" onclick="navigateToSection('referential')" tabindex="0" role="button" aria-label="Referential Integrity">Referential Integrity</div>
+            <div class="nav-item" onclick="navigateToSection('1nf')" tabindex="0" role="button" aria-label="First Normal Form">First Normal Form</div>
+            <div class="nav-item" onclick="navigateToSection('2nf')" tabindex="0" role="button" aria-label="Second Normal Form">Second Normal Form</div>
+            <div class="nav-item" onclick="navigateToSection('3nf')" tabindex="0" role="button" aria-label="Third Normal Form">Third Normal Form</div>
+            <div class="nav-item" onclick="navigateToSection('importance')" tabindex="0" role="button" aria-label="Importance">Importance</div>
+            <div class="nav-item" onclick="navigateToSection('exam')" tabindex="0" role="button" aria-label="Exam Practice">Exam Practice</div>
+            <div class="nav-item" onclick="navigateToSection('summary')" tabindex="0" role="button" aria-label="Summary Quiz">Summary</div>
+            <div class="nav-item" onclick="navigateToSection('extension')" tabindex="0" role="button" aria-label="Extension Activities">Extension</div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- Starter Section -->
+        <section id="starter" class="section active">
+            <div class="section-header">
+                <h2 class="section-title">Starter Activity</h2>
+                <p>Let's warm up with some quick questions about databases!</p>
+            </div>
+
+            <div class="task-card will-change-transform">
+                <div class="task-header">
+                    <h3 class="task-title">Quick Knowledge Check</h3>
+                    <span class="task-points">5 XP each</span>
+                </div>
+
+                <div class="quiz-container">
+                    <div class="quiz-question">1. What is the primary purpose of a primary key in a database table?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkStarterAnswer(this, 'q1', 'b')">
+                            a) To store the most important data in the table
+                        </div>
+                        <div class="quiz-option" onclick="checkStarterAnswer(this, 'q1', 'b')">
+                            b) To uniquely identify each record in a table
+                        </div>
+                        <div class="quiz-option" onclick="checkStarterAnswer(this, 'q1', 'b')">
+                            c) To encrypt sensitive information
+                        </div>
+                        <div class="quiz-option" onclick="checkStarterAnswer(this, 'q1', 'b')">
+                            d) To speed up data entry processes
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quiz-container">
+                    <div class="quiz-question">2. Which of these is NOT typically a problem with poorly designed databases?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkStarterAnswer(this, 'q2', 'c')">
+                            a) Data redundancy and duplication
+                        </div>
+                        <div class="quiz-option" onclick="checkStarterAnswer(this, 'q2', 'c')">
+                            b) Update anomalies and inconsistencies
+                        </div>
+                        <div class="quiz-option" onclick="checkStarterAnswer(this, 'q2', 'c')">
+                            c) Faster query execution times
+                        </div>
+                        <div class="quiz-option" onclick="checkStarterAnswer(this, 'q2', 'c')">
+                            d) Insertion and deletion anomalies
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quiz-container">
+                    <div class="quiz-question">3. What does SQL stand for in database contexts?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkStarterAnswer(this, 'q3', 'd')">
+                            a) System Query Language
+                        </div>
+                        <div class="quiz-option" onclick="checkStarterAnswer(this, 'q3', 'd')">
+                            b) Simple Question Language
+                        </div>
+                        <div class="quiz-option" onclick="checkStarterAnswer(this, 'q3', 'd')">
+                            c) Sequential Query Logic
+                        </div>
+                        <div class="quiz-option" onclick="checkStarterAnswer(this, 'q3', 'd')">
+                            d) Structured Query Language
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-danger" onclick="resetStarter()">🔄 Reset Activity</button>
+            </div>
+
+            <div class="nav-buttons">
+                <div></div>
+                <button class="btn btn-primary" onclick="navigateToSection('intro')">
+                    Next: Introduction →
+                </button>
+            </div>
+        </section>
+
+        <!-- Introduction Section -->
+        <section id="intro" class="section">
+            <div class="section-header">
+                <h2 class="section-title">Introduction to Database Normalization</h2>
+                <div class="learning-outcomes">
+                    <h3>Learning Outcomes</h3>
+                    <ul>
+                        <li>Understand what normalization is and why it's important</li>
+                        <li>Identify problems in unnormalized databases</li>
+                        <li>Recognize the benefits of a well-designed database</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="task-card will-change-transform">
+                <div class="task-header">
+                    <h3 class="task-title">What is Normalization?</h3>
+                    <span class="task-points">10 XP</span>
+                </div>
+                
+                <p style="font-size: 1.1rem; line-height: 1.8; margin-bottom: 1.5rem;">
+                    Database normalization is a <span class="highlight">systematic process</span> used to organize data in a database efficiently. The main goals are to:
+                </p>
+                <ul style="margin: 1rem 0 2rem 0; padding-left: 2rem; line-height: 2;">
+                    <li>🚫 Eliminate redundant data</li>
+                    <li>✅ Ensure data dependencies make sense</li>
+                    <li>🛡️ Protect data integrity</li>
+                </ul>
+
+                <div class="simulation-container">
+                    <h4 style="margin-bottom: 1.5rem; color: var(--primary-dark);">🎮 Interactive Simulation: The Problem with Unnormalized Data</h4>
+                    <div class="simulation-step active" id="sim-step-1">
+                        <p style="margin-bottom: 1rem;">Here's a poorly designed database table for a school library:</p>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>StudentID</th>
+                                    <th>StudentName</th>
+                                    <th>Books</th>
+                                    <th>Authors</th>
+                                    <th>DueDates</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>101</td>
+                                    <td>John Smith</td>
+                                    <td>Harry Potter, 1984</td>
+                                    <td>J.K. Rowling, George Orwell</td>
+                                    <td>2024-01-15, 2024-01-20</td>
+                                </tr>
+                                <tr>
+                                    <td>102</td>
+                                    <td>Emma Wilson</td>
+                                    <td>1984</td>
+                                    <td>George Orwell</td>
+                                    <td>2024-01-18</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p style="margin-top: 1.5rem; font-size: 1.1rem;"><strong>🤔 Can you spot the problems?</strong> Click Next to see!</p>
+                        <button class="btn btn-primary" onclick="nextSimStep()">Next Step →</button>
+                    </div>
+
+                    <div class="simulation-step" id="sim-step-2">
+                        <h5 style="color: var(--error-color); margin-bottom: 1rem;">Problem 1: <span class="highlight">Repeating Groups</span></h5>
+                        <p>Student 101 has borrowed multiple books, causing multiple values in single cells. This violates the principle of <strong>atomicity</strong>.</p>
+                        <p style="margin: 1rem 0;">What happens if we need to:</p>
+                        <ul style="margin: 0.5rem 0 1.5rem 0; padding-left: 2rem;">
+                            <li>🔍 Search for all students who borrowed "1984"?</li>
+                            <li>📅 Update the due date for just one book?</li>
+                            <li>➕ Add a third book for John Smith?</li>
+                        </ul>
+                        <button class="btn btn-secondary" onclick="prevSimStep()">← Previous</button>
+                        <button class="btn btn-primary" onclick="nextSimStep()">Next Step →</button>
+                    </div>
+
+                    <div class="simulation-step" id="sim-step-3">
+                        <h5 style="color: var(--error-color); margin-bottom: 1rem;">Problem 2: <span class="highlight">Data Redundancy</span></h5>
+                        <p>Notice how "1984" and "George Orwell" appear twice? This causes:</p>
+                        <ul style="margin: 0.5rem 0 1.5rem 0; padding-left: 2rem;">
+                            <li>💾 Wasted storage space</li>
+                            <li>⚠️ Risk of inconsistency (what if we spell "George Orwell" differently?)</li>
+                            <li>🔄 Update anomalies (need to update multiple places)</li>
+                        </ul>
+                        <button class="btn btn-secondary" onclick="prevSimStep()">← Previous</button>
+                        <button class="btn btn-primary" onclick="completeIntroSim()">✅ Complete Simulation</button>
+                    </div>
+                </div>
+
+                <div class="input-group" style="margin-top: 2rem;">
+                    <label class="input-label">💭 Reflection: Describe one problem you might face with the unnormalized table above</label>
+                    <textarea class="textarea" id="introReflection" placeholder="Think about what would happen if a student changes their name..."></textarea>
+                    <button class="btn btn-success" onclick="submitIntroReflection()">Submit Reflection (15 XP)</button>
+                </div>
+
+                <button class="btn btn-danger" onclick="resetIntro()">🔄 Reset Activity</button>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="navigateToSection('starter')">
+                    ← Previous: Starter
+                </button>
+                <button class="btn btn-primary" onclick="navigateToSection('referential')">
+                    Next: Referential Integrity →
+                </button>
+            </div>
+        </section>
+
+        <!-- Referential Integrity Section -->
+        <section id="referential" class="section">
+            <div class="section-header">
+                <h2 class="section-title">Referential Integrity</h2>
+                <p>Ensuring relationships between tables remain consistent</p>
+            </div>
+
+            <div class="task-card will-change-transform">
+                <div class="task-header">
+                    <h3 class="task-title">Understanding Referential Integrity</h3>
+                    <span class="task-points">20 XP</span>
+                </div>
+
+                <p style="font-size: 1.1rem; margin-bottom: 1.5rem;">
+                    <strong>Referential Integrity</strong> ensures that relationships between tables remain consistent. It prevents:
+                </p>
+                <ul style="margin: 1rem 0 2rem 0; padding-left: 2rem; line-height: 2;">
+                    <li>❌ Adding records that reference non-existent data</li>
+                    <li>🗑️ Deleting records that other records depend on</li>
+                    <li>👻 Creating orphaned records</li>
+                </ul>
+
+                <div class="simulation-container">
+                    <h4 style="color: var(--primary-dark); margin-bottom: 1.5rem;">🔗 Interactive Demo: Foreign Keys and Cascading Operations</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <h5 style="color: var(--primary-color);">Students Table (Primary)</h5>
+                            <table class="data-table" id="studentsTable">
+                                <thead>
+                                    <tr>
+                                        <th><span class="primary-key">StudentID</span></th>
+                                        <th>Name</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr id="student1">
+                                        <td>101</td>
+                                        <td>Alice Brown</td>
+                                    </tr>
+                                    <tr id="student2">
+                                        <td>102</td>
+                                        <td>Bob Jones</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div>
+                            <h5 style="color: var(--secondary-color);">Enrollments Table (Foreign)</h5>
+                            <table class="data-table" id="enrollmentsTable">
+                                <thead>
+                                    <tr>
+                                        <th>EnrollmentID</th>
+                                        <th><span class="foreign-key">StudentID</span></th>
+                                        <th>Course</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="enrollment-101">
+                                        <td>1</td>
+                                        <td>101</td>
+                                        <td>Computer Science</td>
+                                    </tr>
+                                    <tr class="enrollment-101">
+                                        <td>2</td>
+                                        <td>101</td>
+                                        <td>Mathematics</td>
+                                    </tr>
+                                    <tr class="enrollment-102">
+                                        <td>3</td>
+                                        <td>102</td>
+                                        <td>Physics</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 2rem;">
+                        <p style="font-size: 1.1rem; margin-bottom: 1rem;"><strong>🎯 Try these operations:</strong></p>
+                        <button class="btn btn-primary" onclick="tryAddInvalidEnrollment()">❌ Try to Add Enrollment for Non-existent Student</button>
+                        <button class="btn btn-danger" onclick="tryCascadeDelete()">🗑️ Delete Student 101 (Cascade)</button>
+                        <button class="btn btn-secondary" onclick="resetReferentialDemo()">🔄 Reset Demo</button>
+                    </div>
+
+                    <div id="refIntegrityMessage" style="margin-top: 1rem; padding: 1.5rem; border-radius: 1rem; display: none; font-size: 1.05rem;"></div>
+                </div>
+
+                <div class="quiz-container" style="margin-top: 2rem;">
+                    <div class="quiz-question">Which statement about referential integrity is TRUE?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkRefAnswer(this, 'a')">
+                            a) It allows you to add any data to any table at any time
+                        </div>
+                        <div class="quiz-option" onclick="checkRefAnswer(this, 'a')">
+                            b) It only applies to primary keys, not foreign keys
+                        </div>
+                        <div class="quiz-option" onclick="checkRefAnswer(this, 'a')">
+                            c) It ensures foreign keys reference existing primary keys
+                        </div>
+                        <div class="quiz-option" onclick="checkRefAnswer(this, 'a')">
+                            d) It automatically creates new records when needed
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-danger" onclick="resetReferential()">🔄 Reset Section</button>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="navigateToSection('intro')">
+                    ← Previous: Introduction
+                </button>
+                <button class="btn btn-primary" onclick="navigateToSection('1nf')">
+                    Next: First Normal Form →
+                </button>
+            </div>
+        </section>
+
+        <!-- First Normal Form Section -->
+        <section id="1nf" class="section">
+            <div class="section-header">
+                <h2 class="section-title">First Normal Form (1NF)</h2>
+                <p>The foundation of database normalization</p>
+            </div>
+
+            <div class="task-card will-change-transform">
+                <div class="task-header">
+                    <h3 class="task-title">Rules for First Normal Form</h3>
+                    <span class="task-points">25 XP</span>
+                </div>
+
+                <p style="font-size: 1.1rem; margin-bottom: 1.5rem;">
+                    A table is in <strong>First Normal Form (1NF)</strong> when it meets these criteria:
+                </p>
+                <ol style="margin: 1rem 0 2rem 0; padding-left: 2rem; line-height: 2;">
+                    <li><span class="highlight">No repeating groups</span> of attributes</li>
+                    <li><span class="highlight">No duplicate rows</span></li>
+                    <li>All attributes must be <span class="highlight">atomic</span> (single values only)</li>
+                </ol>
+
+                <div class="task-card" style="background: linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(241, 245, 249, 0.9) 100%);">
+                    <h4 style="color: var(--primary-dark); margin-bottom: 1.5rem;">🔍 Exercise: Identify 1NF Violations</h4>
+                    <p>Look at this ShopSales table and identify why it's NOT in 1NF:</p>
+                    
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>SalesPersonID</th>
+                                <th>FirstName</th>
+                                <th>Shop</th>
+                                <th>Products</th>
+                                <th>Quantities</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>SP001</td>
+                                <td>Sarah</td>
+                                <td>London</td>
+                                <td>Laptop, Mouse, Keyboard</td>
+                                <td>2, 5, 3</td>
+                            </tr>
+                            <tr>
+                                <td>SP002</td>
+                                <td>James</td>
+                                <td>Manchester</td>
+                                <td>Monitor</td>
+                                <td>1</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="matching-container" style="margin-top: 2rem;">
+                        <div class="matching-column">
+                            <h5>Click the violations:</h5>
+                            <div class="matching-item" onclick="check1NFViolation(this, 'repeating')">
+                                Repeating groups in Products column
+                            </div>
+                            <div class="matching-item" onclick="check1NFViolation(this, 'wrong')">
+                                No primary key defined
+                            </div>
+                            <div class="matching-item" onclick="check1NFViolation(this, 'multiple')">
+                                Multiple values in single cells
+                            </div>
+                            <div class="matching-item" onclick="check1NFViolation(this, 'wrong')">
+                                Too many columns
+                            </div>
+                            <div class="matching-item" onclick="check1NFViolation(this, 'atomic')">
+                                Non-atomic data (Products, Quantities)
+                            </div>
+                        </div>
+                        <div class="matching-column">
+                            <h5>Your findings:</h5>
+                            <div id="1nf-findings" style="padding: 1.5rem; background: white; border: 2px dashed var(--border-color); border-radius: 1rem; min-height: 200px;">
+                                <p style="color: var(--text-secondary);">Click violations to add them here...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="margin-top: 2rem;">
+                    <label class="input-label">✏️ Now convert the table to 1NF. What changes would you make?</label>
+                    <textarea class="textarea" id="1nfSolution" placeholder="Describe how you would restructure the table..."></textarea>
+                    <button class="btn btn-success" onclick="submit1NFSolution()">Submit Solution (30 XP)</button>
+                </div>
+
+                <button class="btn btn-danger" onclick="reset1NF()">🔄 Reset Activity</button>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="navigateToSection('referential')">
+                    ← Previous: Referential Integrity
+                </button>
+                <button class="btn btn-primary" onclick="navigateToSection('2nf')">
+                    Next: Second Normal Form →
+                </button>
+            </div>
+        </section>
+
+        <!-- Second Normal Form Section -->
+        <section id="2nf" class="section">
+            <div class="section-header">
+                <h2 class="section-title">Second Normal Form (2NF)</h2>
+                <p>Eliminating partial dependencies</p>
+            </div>
+
+            <div class="task-card will-change-transform">
+                <div class="task-header">
+                    <h3 class="task-title">Understanding 2NF</h3>
+                    <span class="task-points">30 XP</span>
+                </div>
+
+                <p style="font-size: 1.1rem; margin-bottom: 1.5rem;">
+                    A table is in <strong>Second Normal Form (2NF)</strong> when:
+                </p>
+                <ol style="margin: 1rem 0 2rem 0; padding-left: 2rem; line-height: 2;">
+                    <li>It is already in <span class="highlight">First Normal Form</span></li>
+                    <li>It contains <span class="highlight">no partial dependencies</span></li>
+                </ol>
+
+                <p style="margin-top: 1.5rem; padding: 1rem; background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%); border-radius: 0.75rem;">
+                    <strong>⚡ Partial Dependency:</strong> When a non-key attribute depends on only part of a composite primary key.
+                </p>
+
+                <div class="simulation-container">
+                    <h4 style="color: var(--primary-dark); margin-bottom: 1.5rem;">🎯 Interactive Example: Finding Partial Dependencies</h4>
+                    
+                    <p>Consider this table with a composite primary key:</p>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th><span class="primary-key">StudentID</span></th>
+                                <th><span class="primary-key">CourseID</span></th>
+                                <th>StudentName</th>
+                                <th>CourseName</th>
+                                <th>Grade</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>101</td>
+                                <td>CS101</td>
+                                <td>Alice Brown</td>
+                                <td>Intro to Programming</td>
+                                <td>A</td>
+                            </tr>
+                            <tr>
+                                <td>101</td>
+                                <td>CS102</td>
+                                <td>Alice Brown</td>
+                                <td>Data Structures</td>
+                                <td>B+</td>
+                            </tr>
+                            <tr>
+                                <td>102</td>
+                                <td>CS101</td>
+                                <td>Bob Jones</td>
+                                <td>Intro to Programming</td>
+                                <td>B</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div style="margin-top: 2rem;">
+                        <p style="font-size: 1.1rem; margin-bottom: 1rem;"><strong>📊 Analyze the dependencies:</strong></p>
+                        <div class="quiz-container">
+                            <div class="quiz-question">Which attribute depends on the ENTIRE primary key?</div>
+                            <div class="quiz-options">
+                                <div class="quiz-option" onclick="check2NFDependency(this, 'grade')">Grade</div>
+                                <div class="quiz-option" onclick="check2NFDependency(this, 'wrong')">StudentName</div>
+                                <div class="quiz-option" onclick="check2NFDependency(this, 'wrong')">CourseName</div>
+                            </div>
+                        </div>
+
+                        <div class="quiz-container">
+                            <div class="quiz-question">StudentName depends only on StudentID. This is a:</div>
+                            <div class="quiz-options">
+                                <div class="quiz-option" onclick="check2NFType(this, 'partial')">Partial dependency</div>
+                                <div class="quiz-option" onclick="check2NFType(this, 'wrong')">Full dependency</div>
+                                <div class="quiz-option" onclick="check2NFType(this, 'wrong')">Transitive dependency</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="task-card" style="background: linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(241, 245, 249, 0.9) 100%); margin-top: 2rem;">
+                    <h4 style="color: var(--primary-dark);">✏️ Practice: Convert to 2NF</h4>
+                    <p>To convert the above table to 2NF, we need to separate it into multiple tables. Fill in the blanks:</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1.5rem;">
+                        <div>
+                            <h5 style="color: var(--primary-color);">Students Table</h5>
+                            <select class="text-input" id="2nf-students-pk">
+                                <option value="">Primary Key?</option>
+                                <option value="StudentID">StudentID</option>
+                                <option value="CourseID">CourseID</option>
+                                <option value="StudentName">StudentName</option>
+                            </select>
+                            <input type="text" class="text-input" style="margin-top: 0.5rem;" placeholder="Other columns?" id="2nf-students-cols">
+                        </div>
+                        <div>
+                            <h5 style="color: var(--primary-color);">Courses Table</h5>
+                            <select class="text-input" id="2nf-courses-pk">
+                                <option value="">Primary Key?</option>
+                                <option value="StudentID">StudentID</option>
+                                <option value="CourseID">CourseID</option>
+                                <option value="CourseName">CourseName</option>
+                            </select>
+                            <input type="text" class="text-input" style="margin-top: 0.5rem;" placeholder="Other columns?" id="2nf-courses-cols">
+                        </div>
+                        <div>
+                            <h5 style="color: var(--primary-color);">Enrollments Table</h5>
+                            <input type="text" class="text-input" placeholder="Composite primary key?" id="2nf-enrollments-pk">
+                            <input type="text" class="text-input" style="margin-top: 0.5rem;" placeholder="Other columns?" id="2nf-enrollments-cols">
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-success" style="margin-top: 1.5rem;" onclick="check2NFConversion()">✅ Check Answer (35 XP)</button>
+                </div>
+
+                <button class="btn btn-danger" onclick="reset2NF()">🔄 Reset Section</button>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="navigateToSection('1nf')">
+                    ← Previous: First Normal Form
+                </button>
+                <button class="btn btn-primary" onclick="navigateToSection('3nf')">
+                    Next: Third Normal Form →
+                </button>
+            </div>
+        </section>
+
+        <!-- Third Normal Form Section -->
+        <section id="3nf" class="section">
+            <div class="section-header">
+                <h2 class="section-title">Third Normal Form (3NF)</h2>
+                <p>Eliminating transitive dependencies</p>
+            </div>
+
+            <div class="task-card will-change-transform">
+                <div class="task-header">
+                    <h3 class="task-title">Understanding 3NF</h3>
+                    <span class="task-points">35 XP</span>
+                </div>
+
+                <p style="font-size: 1.1rem; margin-bottom: 1.5rem;">
+                    A table is in <strong>Third Normal Form (3NF)</strong> when:
+                </p>
+                <ol style="margin: 1rem 0 2rem 0; padding-left: 2rem; line-height: 2;">
+                    <li>It is already in <span class="highlight">Second Normal Form</span></li>
+                    <li>It contains <span class="highlight">no non-key dependencies</span> (transitive dependencies)</li>
+                </ol>
+
+                <p style="margin-top: 1.5rem; padding: 1rem; background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(245, 92, 67, 0.1) 100%); border-radius: 0.75rem;">
+                    <strong>🔄 Non-key Dependency:</strong> When a non-key attribute depends on another non-key attribute.
+                </p>
+
+                <div class="task-card" style="background: linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(241, 245, 249, 0.9) 100%);">
+                    <h4 style="color: var(--primary-dark);">📱 Example: SalesProducts Table</h4>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th><span class="primary-key">ProductID</span></th>
+                                <th>ProductName</th>
+                                <th>Manufacturer</th>
+                                <th>ManufacturerCountry</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>P001</td>
+                                <td>iPhone 15</td>
+                                <td>Apple</td>
+                                <td>USA</td>
+                            </tr>
+                            <tr>
+                                <td>P002</td>
+                                <td>Galaxy S24</td>
+                                <td>Samsung</td>
+                                <td>South Korea</td>
+                            </tr>
+                            <tr>
+                                <td>P003</td>
+                                <td>MacBook Pro</td>
+                                <td>Apple</td>
+                                <td>USA</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(245, 92, 67, 0.05) 100%); border-radius: 0.75rem;">
+                        <p><strong>❌ Why is this NOT in 3NF?</strong></p>
+                        <p>ManufacturerCountry depends on Manufacturer, which is NOT the primary key!</p>
+                        <p>This creates a <span class="highlight">transitive dependency</span>: ProductID → Manufacturer → ManufacturerCountry</p>
+                    </div>
+                </div>
+
+                <div class="matching-container" style="margin-top: 2rem;">
+                    <div class="matching-column">
+                        <h5>🔗 Identify the Dependencies</h5>
+                        <p style="font-size: 0.875rem; margin-bottom: 1rem;">Click to match each attribute with what it depends on:</p>
+                        <div class="matching-item" onclick="match3NFDependency(this, 'ProductName')">ProductName depends on...</div>
+                        <div class="matching-item" onclick="match3NFDependency(this, 'Manufacturer')">Manufacturer depends on...</div>
+                        <div class="matching-item" onclick="match3NFDependency(this, 'ManufacturerCountry')">ManufacturerCountry depends on...</div>
+                    </div>
+                    <div class="matching-column">
+                        <h5>Dependencies</h5>
+                        <div class="matching-item" onclick="match3NFTarget(this, 'ProductID')">ProductID (Primary Key)</div>
+                        <div class="matching-item" onclick="match3NFTarget(this, 'Manufacturer')">Manufacturer (Non-key)</div>
+                        <div class="matching-item" onclick="match3NFTarget(this, 'Nothing')">Nothing (Independent)</div>
+                    </div>
+                </div>
+
+                <div class="input-group" style="margin-top: 2rem;">
+                    <label class="input-label">💡 How would you fix this 3NF violation? Describe your solution:</label>
+                    <textarea class="textarea" id="3nfSolution" placeholder="Hint: Think about creating separate tables..."></textarea>
+                    <button class="btn btn-success" onclick="submit3NFSolution()">Submit Solution (40 XP)</button>
+                </div>
+
+                <button class="btn btn-danger" onclick="reset3NF()">🔄 Reset Section</button>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="navigateToSection('2nf')">
+                    ← Previous: Second Normal Form
+                </button>
+                <button class="btn btn-primary" onclick="navigateToSection('importance')">
+                    Next: Importance of Normalization →
+                </button>
+            </div>
+        </section>
+
+        <!-- Importance Section -->
+        <section id="importance" class="section">
+            <div class="section-header">
+                <h2 class="section-title">Importance of Normalization</h2>
+                <p>Why go through all this trouble?</p>
+            </div>
+
+            <div class="task-card will-change-transform">
+                <div class="task-header">
+                    <h3 class="task-title">Benefits of Normalization</h3>
+                    <span class="task-points">20 XP</span>
+                </div>
+
+                <div class="simulation-container">
+                    <h4 style="color: var(--primary-dark); margin-bottom: 1.5rem;">⚖️ Interactive Comparison: Normalized vs Unnormalized</h4>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div style="padding: 1.5rem; background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(245, 92, 67, 0.1) 100%); border-radius: 1rem;">
+                            <h5 style="color: var(--error-color); margin-bottom: 1rem;">❌ Unnormalized Database</h5>
+                            <ul style="margin-top: 1rem; line-height: 2;">
+                                <li>📚 Redundant data everywhere</li>
+                                <li>🔄 Update one thing = update many places</li>
+                                <li>⚠️ Risk of inconsistencies</li>
+                                <li>💾 Wasted storage space</li>
+                                <li>🐌 Complex queries difficult</li>
+                            </ul>
+                        </div>
+                        <div style="padding: 1.5rem; background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(34, 197, 94, 0.1) 100%); border-radius: 1rem;">
+                            <h5 style="color: var(--success-color); margin-bottom: 1rem;">✓ Normalized Database</h5>
+                            <ul style="margin-top: 1rem; line-height: 2;">
+                                <li>🎯 No unnecessary duplication</li>
+                                <li>📍 Single point of update</li>
+                                <li>🛡️ Data integrity maintained</li>
+                                <li>💎 Efficient storage</li>
+                                <li>🚀 Flexible querying</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 2rem;">
+                        <h5 style="margin-bottom: 1rem;">🎮 Try it yourself:</h5>
+                        <button class="btn btn-primary" onclick="simulateUpdate('unnormalized')">📝 Update Address (Unnormalized)</button>
+                        <button class="btn btn-success" onclick="simulateUpdate('normalized')">✅ Update Address (Normalized)</button>
+                        <div id="updateResult" style="margin-top: 1rem; padding: 1.5rem; border-radius: 1rem; display: none;"></div>
+                    </div>
+                </div>
+
+                <div class="task-card" style="background: linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(241, 245, 249, 0.9) 100%); margin-top: 2rem;">
+                    <h4 style="color: var(--primary-dark);">🏫 Real-World Case Study</h4>
+                    <p>A university database stores student information, courses, and grades. Without normalization:</p>
+                    <ul style="margin: 1rem 0; padding-left: 2rem; line-height: 2;">
+                        <li>📝 Changing a course name requires updating hundreds of records</li>
+                        <li>✏️ A typo in a professor's name appears inconsistently</li>
+                        <li>🗑️ Deleting a student might accidentally delete course information</li>
+                    </ul>
+
+                    <div class="quiz-container" style="margin-top: 1.5rem;">
+                        <div class="quiz-question">Which normalization benefit would help MOST with the typo problem?</div>
+                        <div class="quiz-options">
+                            <div class="quiz-option" onclick="checkImportanceAnswer(this, 'integrity')">
+                                Data integrity through single storage
+                            </div>
+                            <div class="quiz-option" onclick="checkImportanceAnswer(this, 'wrong')">
+                                Faster query execution
+                            </div>
+                            <div class="quiz-option" onclick="checkImportanceAnswer(this, 'wrong')">
+                                Reduced storage requirements
+                            </div>
+                            <div class="quiz-option" onclick="checkImportanceAnswer(this, 'wrong')">
+                                Better security features
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-danger" onclick="resetImportance()">🔄 Reset Section</button>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="navigateToSection('3nf')">
+                    ← Previous: Third Normal Form
+                </button>
+                <button class="btn btn-primary" onclick="navigateToSection('exam')">
+                    Next: Exam Practice →
+                </button>
+            </div>
+        </section>
+
+        <!-- Exam Practice Section -->
+        <section id="exam" class="section">
+            <div class="section-header">
+                <h2 class="section-title">Practice Exam Questions</h2>
+                <p>Test your understanding with A-level style questions</p>
+            </div>
+
+            <div class="task-card will-change-transform">
+                <div class="task-header">
+                    <h3 class="task-title">Question 1</h3>
+                    <span class="task-points">6 marks</span>
+                </div>
+
+                <p style="font-size: 1.1rem; margin-bottom: 1rem;"><strong>A library database has the following table structure:</strong></p>
+                <pre style="background: linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(241, 245, 249, 0.9) 100%); padding: 1.5rem; border-radius: 1rem; margin: 1rem 0; font-family: 'Consolas', 'Monaco', monospace;">
+Books(BookID, Title, Author, AuthorNationality, ISBN, PublisherName, PublisherAddress)</pre>
+
+                <p>(a) Identify which normal form this table violates and explain why. [2 marks]</p>
+                <p>(b) Describe the process of normalizing this table to 3NF. [4 marks]</p>
+
+                <div class="input-group">
+                    <label class="input-label">📝 Your answer:</label>
+                    <textarea class="textarea" id="examQ1" style="min-height: 200px;" placeholder="Part (a): The table violates..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label class="input-label">Predicted marks (be honest!):</label>
+                        <input type="number" class="text-input" id="examQ1Marks" min="0" max="6" style="width: 100px;">
+                        <button class="btn btn-primary" onclick="checkExamQ1()">📋 Check Mark Scheme</button>
+                    </div>
+                </div>
+
+                <div id="examQ1Scheme" style="display: none; margin-top: 1.5rem; padding: 2rem; background: linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(241, 245, 249, 0.9) 100%); border-radius: 1rem;">
+                    <h5 style="color: var(--primary-dark); margin-bottom: 1rem;">📋 Mark Scheme:</h5>
+                    <p><strong>Part (a) - 2 marks:</strong></p>
+                    <ul style="margin: 0.5rem 0 1rem 0; padding-left: 2rem;">
+                        <li>Violates 3NF [1 mark]</li>
+                        <li>Because AuthorNationality depends on Author (non-key dependency) and PublisherAddress depends on PublisherName (transitive dependency) [1 mark]</li>
+                    </ul>
+                    <p><strong>Part (b) - 4 marks:</strong></p>
+                    <ul style="margin: 0.5rem 0; padding-left: 2rem;">
+                        <li>Create separate Authors table with Author and AuthorNationality [1 mark]</li>
+                        <li>Create separate Publishers table with PublisherName and PublisherAddress [1 mark]</li>
+                        <li>Keep Books table with BookID, Title, ISBN, and foreign keys to Authors and Publishers [1 mark]</li>
+                        <li>Establish relationships using foreign keys [1 mark]</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="task-card will-change-transform">
+                <div class="task-header">
+                    <h3 class="task-title">Question 2</h3>
+                    <span class="task-points">4 marks</span>
+                </div>
+
+                <p style="font-size: 1.1rem;"><strong>Explain the importance of referential integrity in a normalized database, including one example of a cascading operation. [4 marks]</strong></p>
+
+                <div class="input-group">
+                    <label class="input-label">📝 Your answer:</label>
+                    <textarea class="textarea" id="examQ2" style="min-height: 150px;"></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label class="input-label">Predicted marks:</label>
+                        <input type="number" class="text-input" id="examQ2Marks" min="0" max="4" style="width: 100px;">
+                        <button class="btn btn-primary" onclick="checkExamQ2()">📋 Check Mark Scheme</button>
+                    </div>
+                </div>
+
+                <div id="examQ2Scheme" style="display: none; margin-top: 1.5rem; padding: 2rem; background: linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(241, 245, 249, 0.9) 100%); border-radius: 1rem;">
+                    <h5 style="color: var(--primary-dark); margin-bottom: 1rem;">📋 Mark Scheme:</h5>
+                    <ul style="padding-left: 2rem;">
+                        <li>Definition: Ensures relationships between tables remain consistent [1 mark]</li>
+                        <li>Prevents orphaned records / maintains data integrity [1 mark]</li>
+                        <li>Example of cascading delete OR update [1 mark]</li>
+                        <li>Explanation of how the cascade works (e.g., deleting a customer deletes all their orders) [1 mark]</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="navigateToSection('importance')">
+                    ← Previous: Importance
+                </button>
+                <button class="btn btn-primary" onclick="navigateToSection('summary')">
+                    Next: Summary Quiz →
+                </button>
+            </div>
+        </section>
+
+        <!-- Summary Section -->
+        <section id="summary" class="section">
+            <div class="section-header">
+                <h2 class="section-title">Summary Quiz</h2>
+                <p>Test your overall understanding of database normalization</p>
+            </div>
+
+            <div class="task-card will-change-transform" id="summaryQuiz">
+                <div class="task-header">
+                    <h3 class="task-title">Final Assessment</h3>
+                    <span class="task-points">10 XP per question</span>
+                </div>
+
+                <!-- Question 1 -->
+                <div class="quiz-container">
+                    <div class="quiz-question">1. Which of the following is NOT a goal of database normalization?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 1, 'd')">
+                            a) Eliminate redundant data
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 1, 'd')">
+                            b) Ensure data dependencies make sense
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 1, 'd')">
+                            c) Protect data integrity
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 1, 'd')">
+                            d) Increase query processing time
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 2 -->
+                <div class="quiz-container">
+                    <div class="quiz-question">2. A table with the structure Student(StudentID, Name, Subjects) where Subjects contains "Math, Science, English" violates which normal form?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 2, 'a')">
+                            a) First Normal Form
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 2, 'a')">
+                            b) Second Normal Form only
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 2, 'a')">
+                            c) Third Normal Form only
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 2, 'a')">
+                            d) It doesn't violate any normal form
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 3 -->
+                <div class="quiz-container">
+                    <div class="quiz-question">3. In a table with a composite primary key (A, B), if attribute C depends only on A, this is called:</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 3, 'b')">
+                            a) Full functional dependency
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 3, 'b')">
+                            b) Partial dependency
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 3, 'b')">
+                            c) Transitive dependency
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 3, 'b')">
+                            d) Recursive dependency
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 4 -->
+                <div class="quiz-container">
+                    <div class="quiz-question">4. True or False: A table in 3NF is automatically in 2NF and 1NF.</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 4, 'true')">
+                            True
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 4, 'true')">
+                            False
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 5 -->
+                <div class="quiz-container">
+                    <div class="quiz-question">5. What happens when you try to insert a record with a foreign key value that doesn't exist in the referenced table?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 5, 'c')">
+                            a) The record is inserted with a NULL foreign key
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 5, 'c')">
+                            b) A new record is automatically created in the referenced table
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 5, 'c')">
+                            c) The insertion fails due to referential integrity
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 5, 'c')">
+                            d) The database creates a warning but allows insertion
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 6 -->
+                <div class="quiz-container">
+                    <div class="quiz-question">6. Which statement about cascading delete is correct?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 6, 'b')">
+                            a) It prevents any record deletion
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 6, 'b')">
+                            b) It automatically deletes related records in other tables
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 6, 'b')">
+                            c) It only works with primary keys
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 6, 'b')">
+                            d) It copies records before deletion
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 7 -->
+                <div class="quiz-container">
+                    <div class="quiz-question">7. In the context of normalization, what does "atomic" mean?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 7, 'c')">
+                            a) Data that cannot be deleted
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 7, 'c')">
+                            b) Encrypted data values
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 7, 'c')">
+                            c) Data that cannot be divided into smaller meaningful parts
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 7, 'c')">
+                            d) Very small data values
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question 8 -->
+                <div class="quiz-container">
+                    <div class="quiz-question">8. Which of these is a benefit of a properly normalized database?</div>
+                    <div class="quiz-options">
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 8, 'all')">
+                            a) Easier maintenance and updates
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 8, 'all')">
+                            b) Reduced data redundancy
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 8, 'all')">
+                            c) Better data integrity
+                        </div>
+                        <div class="quiz-option" onclick="checkSummaryAnswer(this, 8, 'all')">
+                            d) All of the above
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 2rem; padding: 2rem; background: linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(241, 245, 249, 0.9) 100%); border-radius: 1rem;">
+                    <h4 style="color: var(--primary-dark);">Your Score: <span id="summaryScore">0</span>/8</h4>
+                    <p id="summaryFeedback" style="margin-top: 1rem; font-size: 1.1rem;"></p>
+                </div>
+
+                <button class="btn btn-danger" onclick="resetSummary()">🔄 Reset Quiz</button>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="navigateToSection('exam')">
+                    ← Previous: Exam Practice
+                </button>
+                <button class="btn btn-primary" onclick="navigateToSection('extension')">
+                    Next: Extension Activities →
+                </button>
+            </div>
+        </section>
+
+        <!-- Extension Section -->
+        <section id="extension" class="section">
+            <div class="section-header">
+                <h2 class="section-title">Extension Activities</h2>
+                <p>Going beyond the specification</p>
+            </div>
+
+            <div class="task-card will-change-transform">
+                <div class="task-header">
+                    <h3 class="task-title">Advanced Normalization Concepts</h3>
+                    <span class="task-points">50 XP</span>
+                </div>
+
+                <h4 style="color: var(--primary-dark); margin-bottom: 1rem;">📚 Boyce-Codd Normal Form (BCNF)</h4>
+                <p style="margin-bottom: 1.5rem;">A stronger version of 3NF where every determinant must be a candidate key.</p>
+
+                <h4 style="color: var(--primary-dark); margin-bottom: 1rem;">📊 Fourth Normal Form (4NF)</h4>
+                <p style="margin-bottom: 2rem;">Deals with multi-valued dependencies. A table is in 4NF if it's in BCNF and contains no multi-valued dependencies.</p>
+
+                <div class="task-card" style="background: linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(241, 245, 249, 0.9) 100%); margin-top: 2rem;">
+                    <h4 style="color: var(--primary-dark);">🔍 Research Task</h4>
+                    <p>Research a real-world database disaster caused by poor normalization. Consider cases like:</p>
+                    <ul style="margin: 1rem 0; padding-left: 2rem; line-height: 2;">
+                        <li>🏥 Healthcare systems with duplicate patient records</li>
+                        <li>💰 Financial systems with inconsistent transaction data</li>
+                        <li>🛒 E-commerce platforms with inventory discrepancies</li>
+                    </ul>
+
+                    <div class="input-group">
+                        <label class="input-label">✍️ Write a brief case study (200-300 words):</label>
+                        <textarea class="textarea" id="extensionResearch" style="min-height: 200px;" placeholder="Describe the situation, what went wrong, and how proper normalization could have prevented it..."></textarea>
+                        <button class="btn btn-success" onclick="submitExtension()">Submit Research (50 XP)</button>
+                    </div>
+                </div>
+
+                <div class="task-card" style="background: linear-gradient(135deg, rgba(248, 250, 252, 0.9) 0%, rgba(241, 245, 249, 0.9) 100%); margin-top: 2rem;">
+                    <h4 style="color: var(--primary-dark);">🎨 Practical Challenge</h4>
+                    <p>Design a normalized database schema for a school management system that tracks:</p>
+                    <ul style="margin: 1rem 0; padding-left: 2rem; line-height: 2;">
+                        <li>👨‍🎓 Students and their personal information</li>
+                        <li>👩‍🏫 Teachers and their subjects</li>
+                        <li>📚 Classes, timetables, and room assignments</li>
+                        <li>📊 Grades and assessments</li>
+                        <li>🏃 Extracurricular activities and participation</li>
+                    </ul>
+
+                    <div class="canvas-container" style="margin-top: 1.5rem;">
+                        <canvas id="drawingCanvas" width="800" height="400"></canvas>
+                    </div>
+                    <div class="canvas-controls">
+                        <button class="btn btn-secondary" onclick="clearCanvas()">🗑️ Clear Canvas</button>
+                        <button class="btn btn-primary" onclick="saveCanvas()">💾 Save Design</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="task-card will-change-transform">
+                <div class="task-header">
+                    <h3 class="task-title">Videos and Additional Resources</h3>
+                </div>
+                <p style="font-size: 1.1rem; margin-bottom: 1rem;">📺 <strong>Recommended Videos:</strong></p>
+                <ul style="margin: 1rem 0; padding-left: 2rem; line-height: 2;">
+                    <li>🎥 Database Normalization Explained (Placeholder)</li>
+                    <li>🎬 Real-world Examples of Database Design (Placeholder)</li>
+                    <li>📹 Advanced Normal Forms: BCNF and Beyond (Placeholder)</li>
+                </ul>
+                <p style="margin-top: 1.5rem; color: var(--text-secondary); font-style: italic;">
+                    Note: Video links will be provided by your teacher
+                </p>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="navigateToSection('summary')">
+                    ← Previous: Summary
+                </button>
+                <div></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Achievement Popup -->
+    <div id="achievementPopup" class="achievement-popup">
+        <div class="achievement-icon" id="achievementIcon">🏆</div>
+        <div class="achievement-title" id="achievementTitle">Achievement Unlocked!</div>
+        <div class="achievement-desc" id="achievementDesc">You've earned your first points!</div>
+    </div>
+
+    <!-- Feedback Button -->
+    <button class="feedback-btn" onclick="openFeedback()" aria-label="Send feedback">
+        💬
+    </button>
+
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="feedback-modal">
+        <div class="feedback-content">
+            <h3 style="color: var(--primary-dark); margin-bottom: 1rem;">Send Feedback</h3>
+            <p style="margin-bottom: 1.5rem;">Found a bug or have a suggestion? Let us know!</p>
+            <div class="input-group">
+                <label class="input-label">Your feedback:</label>
+                <textarea class="textarea" id="feedbackText" placeholder="Describe the issue or suggestion..."></textarea>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeFeedback()">Cancel</button>
+                <button class="btn btn-primary" onclick="sendFeedback()">Send Feedback</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paste Shame Message -->
+    <div id="pasteShame" class="paste-shame">
+        🚫 No pasting allowed! Type it yourself! 🚫
+    </div>
+
+    <!-- Accessibility Controls -->
+    <div id="accessibilityControls" class="accessibility-controls">
+        <h4 style="color: var(--primary-dark); margin-bottom: 1.5rem;">Accessibility Options</h4>
+        <div class="control-group">
+            <label>
+                <input type="checkbox" onchange="toggleHighContrast(this)">
+                High Contrast Mode
+            </label>
+        </div>
+        <div class="control-group">
+            <label>
+                <input type="checkbox" onchange="toggleDyslexiaFont(this)">
+                Dyslexia-Friendly Font
+            </label>
+        </div>
+        <div class="control-group">
+            <label style="display: block; margin-bottom: 0.5rem;">Font Size</label>
+            <div class="font-size-controls">
+                <button class="btn btn-secondary" onclick="changeFontSize(-2)">A-</button>
+                <button class="btn btn-secondary" onclick="changeFontSize(0)">Reset</button>
+                <button class="btn btn-secondary" onclick="changeFontSize(2)">A+</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Performance optimizations - cache DOM queries
+        const DOM = {
+            xpCount: null,
+            xpBar: null,
+            levelCount: null,
+            particles: null,
+            loader: null,
+            achievementPopup: null,
+            feedbackModal: null,
+            pasteShame: null,
+            accessibilityControls: null
+        };
+
+        // Initialize DOM cache
+        function initDOMCache() {
+            DOM.xpCount = document.getElementById('xpCount');
+            DOM.xpBar = document.getElementById('xpBar');
+            DOM.levelCount = document.getElementById('levelCount');
+            DOM.particles = document.getElementById('particles');
+            DOM.loader = document.getElementById('loader');
+            DOM.achievementPopup = document.getElementById('achievementPopup');
+            DOM.feedbackModal = document.getElementById('feedbackModal');
+            DOM.pasteShame = document.getElementById('pasteShame');
+            DOM.accessibilityControls = document.getElementById('accessibilityControls');
+        }
+
+        // State Management
+        let gameState = {
+            xp: 0,
+            level: 0,
+            currentSection: 'starter',
+            completedTasks: new Set(),
+            achievements: new Set(),
+            summaryAnswers: {},
+            summaryScore: 0,
+            matchingState: {
+                selected: null,
+                matches: new Set()
+            },
+            currentSimStep: 1
+        };
+
+        // XP thresholds for levels
+        const XP_PER_LEVEL = [0, 100, 250, 450, 700, 1000];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initDOMCache();
+            initializeGame();
+            setupPasteProtection();
+            setupKeyboardNavigation();
+            setupCanvas();
+            setupModalClosing();
+            setupTouchSupport();
+        });
+
+        function initializeGame() {
+            updateXPDisplay();
+            updateLevelDisplay();
+        }
+
+        // Debounce function for performance
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // XP and Achievement System
+        function awardXP(amount, taskId) {
+            if (gameState.completedTasks.has(taskId)) {
+                return; // Already completed
+            }
+            
+            gameState.completedTasks.add(taskId);
+            gameState.xp += amount;
+            updateXPDisplay();
+            checkLevelUp();
+            
+            // Show achievement for first XP
+            if (gameState.xp === amount && amount > 0) {
+                showAchievement('First Steps', '🎯', 'Earned your first XP!');
+                createParticles();
+            }
+        }
+
+        function updateXPDisplay() {
+            DOM.xpCount.textContent = gameState.xp;
+            const currentLevelXP = XP_PER_LEVEL[gameState.level];
+            const nextLevelXP = XP_PER_LEVEL[gameState.level + 1] || XP_PER_LEVEL[5];
+            const progress = ((gameState.xp - currentLevelXP) / (nextLevelXP - currentLevelXP)) * 100;
+            DOM.xpBar.style.width = progress + '%';
+        }
+
+        function updateLevelDisplay() {
+            DOM.levelCount.textContent = gameState.level;
+        }
+
+        function checkLevelUp() {
+            let newLevel = 0;
+            for (let i = XP_PER_LEVEL.length - 1; i >= 0; i--) {
+                if (gameState.xp >= XP_PER_LEVEL[i]) {
+                    newLevel = i;
+                    break;
+                }
+            }
+            
+            if (newLevel > gameState.level) {
+                gameState.level = newLevel;
+                updateLevelDisplay();
+                showAchievement(`Level ${newLevel}!`, '⭐', `You've reached level ${newLevel}!`);
+                createParticles();
+            }
+        }
+
+        function showAchievement(title, icon, description) {
+            DOM.achievementPopup.querySelector('#achievementTitle').textContent = title;
+            DOM.achievementPopup.querySelector('#achievementIcon').textContent = icon;
+            DOM.achievementPopup.querySelector('#achievementDesc').textContent = description;
+            
+            DOM.achievementPopup.classList.add('show');
+            
+            setTimeout(() => {
+                DOM.achievementPopup.classList.remove('show');
+            }, 4000);
+        }
+
+        function createParticles() {
+            const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b'];
+            const particleCount = 20;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * window.innerWidth + 'px';
+                particle.style.top = window.innerHeight + 'px';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.width = particle.style.height = (Math.random() * 10 + 5) + 'px';
+                particle.style.animationDelay = Math.random() * 0.5 + 's';
+                
+                DOM.particles.appendChild(particle);
+                
+                setTimeout(() => particle.remove(), 3000);
+            }
+        }
+
+        // Navigation with loading state
+        function navigateToSection(sectionId) {
+            // Update nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.textContent.toLowerCase().includes(sectionId.toLowerCase()) || 
+                    (sectionId === 'starter' && item.textContent === 'Starter') ||
+                    (sectionId === 'intro' && item.textContent === 'Introduction') ||
+                    (sectionId === 'referential' && item.textContent === 'Referential Integrity') ||
+                    (sectionId === '1nf' && item.textContent === 'First Normal Form') ||
+                    (sectionId === '2nf' && item.textContent === 'Second Normal Form') ||
+                    (sectionId === '3nf' && item.textContent === 'Third Normal Form') ||
+                    (sectionId === 'importance' && item.textContent === 'Importance') ||
+                    (sectionId === 'exam' && item.textContent === 'Exam Practice') ||
+                    (sectionId === 'summary' && item.textContent === 'Summary') ||
+                    (sectionId === 'extension' && item.textContent === 'Extension')) {
+                    item.classList.add('active');
+                }
+            });
+            
+            // Show loader briefly for smooth transition
+            DOM.loader.style.display = 'block';
+            
+            setTimeout(() => {
+                // Hide all sections
+                document.querySelectorAll('.section').forEach(section => {
+                    section.classList.remove('active');
+                });
+                
+                // Show selected section
+                const targetSection = document.getElementById(sectionId);
+                if (targetSection) {
+                    targetSection.classList.add('active');
+                    gameState.currentSection = sectionId;
+                }
+                
+                DOM.loader.style.display = 'none';
+                
+                // Smooth scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 200);
+        }
+
+        // Starter Activity Functions
+        function checkStarterAnswer(element, questionId, correctAnswer) {
+            const parent = element.parentElement;
+            const options = parent.querySelectorAll('.quiz-option');
+            
+            // Remove previous selections
+            options.forEach(opt => {
+                opt.classList.remove('selected', 'correct', 'incorrect');
+            });
+            
+            // Check answer
+            const userAnswer = element.textContent.trim().charAt(0);
+            element.classList.add('selected');
+            
+            if (userAnswer === correctAnswer) {
+                element.classList.add('correct');
+                awardXP(5, `starter-${questionId}`);
+            } else {
+                element.classList.add('incorrect');
+                // Find and highlight correct answer
+                options.forEach(opt => {
+                    if (opt.textContent.trim().charAt(0) === correctAnswer) {
+                        opt.classList.add('correct');
+                    }
+                });
+            }
+        }
+
+        function resetStarter() {
+            document.querySelectorAll('#starter .quiz-option').forEach(opt => {
+                opt.classList.remove('selected', 'correct', 'incorrect');
+            });
+        }
+
+        // Introduction Section Functions
+        function nextSimStep() {
+            const currentStep = document.getElementById(`sim-step-${gameState.currentSimStep}`);
+            const nextStep = document.getElementById(`sim-step-${gameState.currentSimStep + 1}`);
+            
+            if (currentStep && nextStep) {
+                currentStep.classList.remove('active');
+                nextStep.classList.add('active');
+                gameState.currentSimStep++;
+            }
+        }
+
+        function prevSimStep() {
+            const currentStep = document.getElementById(`sim-step-${gameState.currentSimStep}`);
+            const prevStep = document.getElementById(`sim-step-${gameState.currentSimStep - 1}`);
+            
+            if (currentStep && prevStep) {
+                currentStep.classList.remove('active');
+                prevStep.classList.add('active');
+                gameState.currentSimStep--;
+            }
+        }
+
+        function completeIntroSim() {
+            awardXP(10, 'intro-simulation');
+            const currentStep = document.getElementById(`sim-step-${gameState.currentSimStep}`);
+            currentStep.innerHTML += '<p style="color: var(--success-color); margin-top: 1rem; font-weight: 600;">✅ Simulation completed!</p>';
+        }
+
+        function submitIntroReflection() {
+            const reflection = document.getElementById('introReflection').value.trim();
+            if (reflection.length < 30) {
+                alert('Please write a more detailed reflection (at least 30 characters).');
+                return;
+            }
+            
+            awardXP(15, 'intro-reflection');
+            document.getElementById('introReflection').disabled = true;
+            showAchievement('Deep Thinker', '💭', 'Completed your first reflection!');
+        }
+
+        function resetIntro() {
+            gameState.currentSimStep = 1;
+            document.querySelectorAll('.simulation-step').forEach((step, index) => {
+                step.classList.toggle('active', index === 0);
+            });
+            document.getElementById('introReflection').value = '';
+            document.getElementById('introReflection').disabled = false;
+        }
+
+        // Referential Integrity Functions
+        function tryAddInvalidEnrollment() {
+            const message = document.getElementById('refIntegrityMessage');
+            message.style.display = 'block';
+            message.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(245, 92, 67, 0.1) 100%)';
+            message.style.border = '2px solid var(--error-color)';
+            message.innerHTML = '<strong>❌ Error:</strong> Cannot add enrollment for StudentID 103 - no such student exists! This violates referential integrity.';
+            awardXP(10, 'ref-invalid-attempt');
+        }
+
+        function tryCascadeDelete() {
+            const message = document.getElementById('refIntegrityMessage');
+            const enrollments = document.querySelectorAll('.enrollment-101');
+            const student = document.getElementById('student1');
+            
+            // Animate deletion
+            student.style.transition = 'all 0.5s';
+            student.style.opacity = '0.3';
+            student.style.textDecoration = 'line-through';
+            
+            enrollments.forEach(row => {
+                row.style.transition = 'all 0.5s';
+                row.style.opacity = '0.3';
+                row.style.textDecoration = 'line-through';
+            });
+            
+            message.style.display = 'block';
+            message.style.background = 'linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%)';
+            message.style.border = '2px solid var(--warning-color)';
+            message.innerHTML = '<strong>⚠️ Cascade Delete:</strong> Deleting Student 101 also deleted all their enrollments (2 records) to maintain referential integrity!';
+            
+            awardXP(10, 'ref-cascade-demo');
+        }
+
+        function resetReferentialDemo() {
+            document.getElementById('student1').style.opacity = '1';
+            document.getElementById('student1').style.textDecoration = 'none';
+            document.querySelectorAll('.enrollment-101').forEach(row => {
+                row.style.opacity = '1';
+                row.style.textDecoration = 'none';
+            });
+            document.getElementById('refIntegrityMessage').style.display = 'none';
+        }
+
+        function checkRefAnswer(element, correctAnswer) {
+            const options = element.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.classList.remove('selected', 'correct', 'incorrect'));
+            
+            element.classList.add('selected');
+            if (element.textContent.includes('ensures foreign keys reference existing primary keys')) {
+                element.classList.add('correct');
+                awardXP(10, 'ref-quiz');
+            } else {
+                element.classList.add('incorrect');
+                options[2].classList.add('correct');
+            }
+        }
+
+        function resetReferential() {
+            resetReferentialDemo();
+            document.querySelectorAll('#referential .quiz-option').forEach(opt => {
+                opt.classList.remove('selected', 'correct', 'incorrect');
+            });
+        }
+
+        // First Normal Form Functions
+        let violations1NF = [];
+
+        function check1NFViolation(element, type) {
+            if (element.classList.contains('matched')) return;
+            
+            const validViolations = ['repeating', 'multiple', 'atomic'];
+            const findingsDiv = document.getElementById('1nf-findings');
+            
+            if (validViolations.includes(type)) {
+                element.classList.add('matched');
+                violations1NF.push(element.textContent);
+                
+                if (violations1NF.length === 1) {
+                    findingsDiv.innerHTML = '<h5>Violations found:</h5><ul style="margin-top: 0.5rem; padding-left: 1.5rem;">';
+                }
+                findingsDiv.innerHTML += `<li>${element.textContent}</li>`;
+                
+                if (violations1NF.length === 3) {
+                    findingsDiv.innerHTML += '</ul><p style="color: var(--success-color); margin-top: 1rem; font-weight: 600;">✅ All violations identified!</p>';
+                    awardXP(15, '1nf-violations');
+                    createParticles();
+                }
+            } else {
+                element.style.background = 'rgba(239, 68, 68, 0.2)';
+                setTimeout(() => {
+                    element.style.background = '';
+                }, 1000);
+            }
+        }
+
+        function submit1NFSolution() {
+            const solution = document.getElementById('1nfSolution').value.trim();
+            const keywords = ['separate', 'table', 'atomic', 'single', 'row', 'product'];
+            const foundKeywords = keywords.filter(keyword => 
+                solution.toLowerCase().includes(keyword)
+            );
+            
+            if (solution.length < 50) {
+                alert('Please provide a more detailed solution.');
+                return;
+            }
+            
+            const xpAwarded = Math.min(30, 10 + foundKeywords.length * 4);
+            awardXP(xpAwarded, '1nf-solution');
+            document.getElementById('1nfSolution').disabled = true;
+            
+            if (foundKeywords.length >= 4) {
+                showAchievement('Normalization Expert', '🎓', 'Excellent understanding of 1NF!');
+            }
+        }
+
+        function reset1NF() {
+            violations1NF = [];
+            document.getElementById('1nf-findings').innerHTML = '<p style="color: var(--text-secondary);">Click violations to add them here...</p>';
+            document.querySelectorAll('#1nf .matching-item').forEach(item => {
+                item.classList.remove('matched');
+                item.style.background = '';
+            });
+            document.getElementById('1nfSolution').value = '';
+            document.getElementById('1nfSolution').disabled = false;
+        }
+
+        // Second Normal Form Functions
+        function check2NFDependency(element, answer) {
+            const options = element.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.classList.remove('selected', 'correct', 'incorrect'));
+            
+            element.classList.add('selected');
+            if (answer === 'grade') {
+                element.classList.add('correct');
+                awardXP(10, '2nf-dependency');
+            } else {
+                element.classList.add('incorrect');
+                options[0].classList.add('correct');
+            }
+        }
+
+        function check2NFType(element, answer) {
+            const options = element.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.classList.remove('selected', 'correct', 'incorrect'));
+            
+            element.classList.add('selected');
+            if (answer === 'partial') {
+                element.classList.add('correct');
+                awardXP(10, '2nf-type');
+            } else {
+                element.classList.add('incorrect');
+                options[0].classList.add('correct');
+            }
+        }
+
+        function check2NFConversion() {
+            const studentsPK = document.getElementById('2nf-students-pk').value;
+            const studentsCols = document.getElementById('2nf-students-cols').value.toLowerCase();
+            const coursesPK = document.getElementById('2nf-courses-pk').value;
+            const coursesCols = document.getElementById('2nf-courses-cols').value.toLowerCase();
+            const enrollmentsPK = document.getElementById('2nf-enrollments-pk').value.toLowerCase();
+            const enrollmentsCols = document.getElementById('2nf-enrollments-cols').value.toLowerCase();
+            
+            let correct = 0;
+            
+            if (studentsPK === 'StudentID') correct++;
+            if (studentsCols.includes('name') || studentsCols.includes('studentname')) correct++;
+            if (coursesPK === 'CourseID') correct++;
+            if (coursesCols.includes('name') || coursesCols.includes('coursename')) correct++;
+            if (enrollmentsPK.includes('student') && enrollmentsPK.includes('course')) correct++;
+            if (enrollmentsCols.includes('grade')) correct++;
+            
+            const xpAwarded = correct * 6;
+            awardXP(xpAwarded, '2nf-conversion');
+            
+            if (correct === 6) {
+                showAchievement('2NF Master', '📊', 'Perfect conversion to Second Normal Form!');
+                createParticles();
+            } else {
+                alert(`You got ${correct}/6 parts correct. Keep trying!`);
+            }
+        }
+
+        function reset2NF() {
+            document.querySelectorAll('#2nf .quiz-option').forEach(opt => {
+                opt.classList.remove('selected', 'correct', 'incorrect');
+            });
+            document.querySelectorAll('#2nf input, #2nf select').forEach(input => {
+                input.value = '';
+            });
+        }
+
+        // Third Normal Form Functions
+        let matching3NF = { source: null, matches: {} };
+
+        function match3NFDependency(element, attribute) {
+            if (matching3NF.source) {
+                matching3NF.source.classList.remove('selected');
+            }
+            element.classList.add('selected');
+            matching3NF.source = element;
+            matching3NF.currentAttribute = attribute;
+        }
+
+        function match3NFTarget(element, target) {
+            if (!matching3NF.source) {
+                alert('Please select a dependency first!');
+                return;
+            }
+            
+            const attribute = matching3NF.currentAttribute;
+            const correct = {
+                'ProductName': 'ProductID',
+                'Manufacturer': 'ProductID',
+                'ManufacturerCountry': 'Manufacturer'
+            };
+            
+            if (correct[attribute] === target) {
+                matching3NF.source.classList.add('matched');
+                element.classList.add('matched');
+                matching3NF.matches[attribute] = target;
+                awardXP(10, `3nf-match-${attribute}`);
+                
+                if (Object.keys(matching3NF.matches).length === 3) {
+                    showAchievement('Dependency Detective', '🔍', 'Identified all dependencies correctly!');
+                    createParticles();
+                }
+            } else {
+                matching3NF.source.classList.add('incorrect');
+                element.classList.add('incorrect');
+                setTimeout(() => {
+                    matching3NF.source.classList.remove('incorrect');
+                    element.classList.remove('incorrect');
+                }, 1000);
+            }
+            
+            matching3NF.source.classList.remove('selected');
+            matching3NF.source = null;
+        }
+
+        function submit3NFSolution() {
+            const solution = document.getElementById('3nfSolution').value.trim();
+            const keywords = ['separate', 'manufacturer', 'table', 'foreign', 'key', 'product'];
+            const foundKeywords = keywords.filter(keyword => 
+                solution.toLowerCase().includes(keyword)
+            );
+            
+            if (solution.length < 50) {
+                alert('Please provide a more detailed solution.');
+                return;
+            }
+            
+            const xpAwarded = Math.min(40, 15 + foundKeywords.length * 5);
+            awardXP(xpAwarded, '3nf-solution');
+            document.getElementById('3nfSolution').disabled = true;
+        }
+
+        function reset3NF() {
+            matching3NF = { source: null, matches: {} };
+            document.querySelectorAll('#3nf .matching-item').forEach(item => {
+                item.classList.remove('selected', 'matched', 'incorrect');
+            });
+            document.getElementById('3nfSolution').value = '';
+            document.getElementById('3nfSolution').disabled = false;
+        }
+
+        // Importance Section Functions
+        function simulateUpdate(type) {
+            const result = document.getElementById('updateResult');
+            result.style.display = 'block';
+            
+            if (type === 'unnormalized') {
+                result.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(245, 92, 67, 0.1) 100%)';
+                result.style.border = '2px solid var(--error-color)';
+                result.innerHTML = `
+                    <strong>❌ Unnormalized Update:</strong><br>
+                    Updating John Smith's address requires:<br>
+                    • Finding ALL records with his name<br>
+                    • Updating each one individually<br>
+                    • Risk of missing some records<br>
+                    • Risk of typos causing inconsistency<br>
+                    <em style="color: var(--error-color);">Total updates needed: 5 records</em>
+                `;
+            } else {
+                result.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(34, 197, 94, 0.1) 100%)';
+                result.style.border = '2px solid var(--success-color)';
+                result.innerHTML = `
+                    <strong>✅ Normalized Update:</strong><br>
+                    Updating John Smith's address requires:<br>
+                    • Update ONE record in Students table<br>
+                    • All related records automatically show new address<br>
+                    • No risk of inconsistency<br>
+                    <em style="color: var(--success-color);">Total updates needed: 1 record</em>
+                `;
+                awardXP(10, 'importance-simulation');
+            }
+        }
+
+        function checkImportanceAnswer(element, answer) {
+            const options = element.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.classList.remove('selected', 'correct', 'incorrect'));
+            
+            element.classList.add('selected');
+            if (answer === 'integrity') {
+                element.classList.add('correct');
+                awardXP(10, 'importance-quiz');
+            } else {
+                element.classList.add('incorrect');
+                options[0].classList.add('correct');
+            }
+        }
+
+        function resetImportance() {
+            document.getElementById('updateResult').style.display = 'none';
+            document.querySelectorAll('#importance .quiz-option').forEach(opt => {
+                opt.classList.remove('selected', 'correct', 'incorrect');
+            });
+        }
+
+        // Exam Practice Functions
+        function checkExamQ1() {
+            const answer = document.getElementById('examQ1').value.trim();
+            const marks = parseInt(document.getElementById('examQ1Marks').value) || 0;
+            
+            if (answer.length < 100) {
+                alert('Please attempt a fuller answer before checking the mark scheme.');
+                return;
+            }
+            
+            document.getElementById('examQ1Scheme').style.display = 'block';
+            awardXP(marks * 5, 'exam-q1');
+        }
+
+        function checkExamQ2() {
+            const answer = document.getElementById('examQ2').value.trim();
+            const marks = parseInt(document.getElementById('examQ2Marks').value) || 0;
+            
+            if (answer.length < 50) {
+                alert('Please attempt a fuller answer before checking the mark scheme.');
+                return;
+            }
+            
+            document.getElementById('examQ2Scheme').style.display = 'block';
+            awardXP(marks * 5, 'exam-q2');
+        }
+
+        // Summary Quiz Functions
+        function checkSummaryAnswer(element, question, answer) {
+            if (gameState.summaryAnswers[question]) return; // Already answered
+            
+            const options = element.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.classList.remove('selected', 'correct', 'incorrect'));
+            
+            element.classList.add('selected');
+            
+            const correctAnswers = {
+                1: 'd',
+                2: 'a',
+                3: 'b',
+                4: 'true',
+                5: 'c',
+                6: 'b',
+                7: 'c',
+                8: 'all'
+            };
+            
+            let isCorrect = false;
+            if (question === 4) {
+                isCorrect = element.textContent.trim().toLowerCase() === answer;
+            } else if (question === 8 && answer === 'all') {
+                isCorrect = element.textContent.includes('All of the above');
+            } else {
+                isCorrect = element.textContent.trim().charAt(0).toLowerCase() === answer;
+            }
+            
+            gameState.summaryAnswers[question] = isCorrect;
+            
+            if (isCorrect) {
+                element.classList.add('correct');
+                gameState.summaryScore++;
+                awardXP(10, `summary-q${question}`);
+            } else {
+                element.classList.add('incorrect');
+                // Show correct answer
+                options.forEach(opt => {
+                    const optionLetter = opt.textContent.trim().charAt(0).toLowerCase();
+                    if ((question === 4 && opt.textContent.trim() === 'True') ||
+                        (question === 8 && opt.textContent.includes('All of the above')) ||
+                        (question !== 4 && question !== 8 && optionLetter === correctAnswers[question])) {
+                        opt.classList.add('correct');
+                    }
+                });
+            }
+            
+            updateSummaryScore();
+        }
+
+        function updateSummaryScore() {
+            document.getElementById('summaryScore').textContent = gameState.summaryScore;
+            
+            const answeredCount = Object.keys(gameState.summaryAnswers).length;
+            if (answeredCount === 8) {
+                const feedback = document.getElementById('summaryFeedback');
+                if (gameState.summaryScore === 8) {
+                    feedback.textContent = '🎉 Perfect score! You have mastered database normalization!';
+                    feedback.style.color = 'var(--success-color)';
+                    feedback.style.fontWeight = '600';
+                    showAchievement('Normalization Master', '🏅', 'Perfect score on the summary quiz!');
+                    createParticles();
+                } else if (gameState.summaryScore >= 6) {
+                    feedback.textContent = '👏 Great job! You have a solid understanding of normalization.';
+                    feedback.style.color = 'var(--success-color)';
+                } else if (gameState.summaryScore >= 4) {
+                    feedback.textContent = '💪 Good effort! Review the sections you found challenging.';
+                    feedback.style.color = 'var(--warning-color)';
+                } else {
+                    feedback.textContent = '📚 Keep practicing! Consider reviewing the lesson material.';
+                    feedback.style.color = 'var(--error-color)';
+                }
+            }
+        }
+
+        function resetSummary() {
+            gameState.summaryAnswers = {};
+            gameState.summaryScore = 0;
+            document.getElementById('summaryScore').textContent = '0';
+            document.getElementById('summaryFeedback').textContent = '';
+            document.querySelectorAll('#summary .quiz-option').forEach(opt => {
+                opt.classList.remove('selected', 'correct', 'incorrect');
+            });
+        }
+
+        // Extension Activities
+        function submitExtension() {
+            const research = document.getElementById('extensionResearch').value.trim();
+            if (research.length < 200) {
+                alert('Please write at least 200 words for your research.');
+                return;
+            }
+            
+            awardXP(50, 'extension-research');
+            document.getElementById('extensionResearch').disabled = true;
+            showAchievement('Researcher', '📚', 'Completed advanced research task!');
+            
+            if (gameState.level === 5) {
+                showAchievement('Maximum Level!', '👑', 'You have mastered database normalization!');
+                createParticles();
+            }
+        }
+
+        // Canvas Functions
+        let canvas, ctx;
+        let isDrawing = false;
+        let lastX = 0, lastY = 0;
+
+        function setupCanvas() {
+            canvas = document.getElementById('drawingCanvas');
+            if (!canvas) return;
+            
+            ctx = canvas.getContext('2d');
+            ctx.strokeStyle = '#2563eb';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events
+            canvas.addEventListener('touchstart', handleTouch, { passive: false });
+            canvas.addEventListener('touchmove', handleTouch, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            lastX = e.clientX - rect.left;
+            lastY = e.clientY - rect.top;
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            
+            lastX = x;
+            lastY = y;
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                            e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function saveCanvas() {
+            awardXP(20, 'canvas-design');
+            showAchievement('Designer', '🎨', 'Created a database schema design!');
+            alert('Design saved! (In a real implementation, this would save to a server)');
+        }
+
+        // Paste Protection
+        function setupPasteProtection() {
+            document.addEventListener('paste', function(e) {
+                e.preventDefault();
+                showPasteShame();
+                return false;
+            });
+            
+            // Also prevent right-click paste
+            document.addEventListener('contextmenu', function(e) {
+                if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+            
+            // Prevent drag and drop
+            document.addEventListener('drop', function(e) {
+                if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
+                    e.preventDefault();
+                    showPasteShame();
+                    return false;
+                }
+            });
+        }
+
+        function showPasteShame() {
+            DOM.pasteShame.classList.add('show');
+            setTimeout(() => {
+                DOM.pasteShame.classList.remove('show');
+            }, 3000);
+        }
+
+        // Keyboard Navigation
+        function setupKeyboardNavigation() {
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowLeft' && e.ctrlKey) {
+                    navigatePrevious();
+                } else if (e.key === 'ArrowRight' && e.ctrlKey) {
+                    navigateNext();
+                }
+            });
+            
+            // Make nav items keyboard accessible
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        item.click();
+                    }
+                });
+            });
+        }
+
+        function navigatePrevious() {
+            const sections = ['starter', 'intro', 'referential', '1nf', '2nf', '3nf', 'importance', 'exam', 'summary', 'extension'];
+            const currentIndex = sections.indexOf(gameState.currentSection);
+            if (currentIndex > 0) {
+                navigateToSection(sections[currentIndex - 1]);
+            }
+        }
+
+        function navigateNext() {
+            const sections = ['starter', 'intro', 'referential', '1nf', '2nf', '3nf', 'importance', 'exam', 'summary', 'extension'];
+            const currentIndex = sections.indexOf(gameState.currentSection);
+            if (currentIndex < sections.length - 1) {
+                navigateToSection(sections[currentIndex + 1]);
+            }
+        }
+
+        // Accessibility Functions
+        function toggleAccessibility() {
+            DOM.accessibilityControls.classList.toggle('show');
+        }
+
+        function toggleHighContrast(checkbox) {
+            document.body.classList.toggle('high-contrast', checkbox.checked);
+        }
+
+        function toggleDyslexiaFont(checkbox) {
+            document.body.classList.toggle('dyslexia-font', checkbox.checked);
+        }
+
+        function changeFontSize(change) {
+            const root = document.documentElement;
+            const currentSize = parseInt(getComputedStyle(root).getPropertyValue('--font-size'));
+            const newSize = change === 0 ? 16 : currentSize + change;
+            root.style.setProperty('--font-size', Math.max(12, Math.min(24, newSize)) + 'px');
+        }
+
+        // Feedback System
+        function openFeedback() {
+            DOM.feedbackModal.classList.add('show');
+        }
+
+        function closeFeedback() {
+            DOM.feedbackModal.classList.remove('show');
+        }
+
+        function sendFeedback() {
+            const feedback = document.getElementById('feedbackText').value.trim();
+            if (!feedback) {
+                alert('Please enter your feedback.');
+                return;
+            }
+            
+            const subject = `Normalization Worksheet Feedback - ${gameState.currentSection}`;
+            const body = `Page: ${gameState.currentSection}\n\nFeedback: ${feedback}\n\nUser Level: ${gameState.level}\nUser XP: ${gameState.xp}`;
+            
+            // In a real implementation, this would send an email
+            const mailtoLink = `mailto:millingtond@mgs.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = mailtoLink;
+            
+            closeFeedback();
+            document.getElementById('feedbackText').value = '';
+            showAchievement('Feedback Sent', '📧', 'Thank you for your feedback!');
+        }
+
+        // Modal closing setup
+        function setupModalClosing() {
+            // Close modals when clicking outside
+            DOM.feedbackModal.addEventListener('click', function(e) {
+                if (e.target === DOM.feedbackModal) {
+                    closeFeedback();
+                }
+            });
+            
+            // Close with Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    if (DOM.feedbackModal.classList.contains('show')) {
+                        closeFeedback();
+                    }
+                    if (DOM.accessibilityControls.classList.contains('show')) {
+                        DOM.accessibilityControls.classList.remove('show');
+                    }
+                }
+            });
+        }
+
+        // Touch support setup
+        function setupTouchSupport() {
+            // Add touch class for mobile-specific styles
+            if ('ontouchstart' in window) {
+                document.body.classList.add('touch-device');
+            }
+            
+            // Prevent zooming on mobile
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(e) {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 300) {
+                    e.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+            
+            // Improve touch targets
+            document.querySelectorAll('.btn, .nav-item, .quiz-option, .matching-item').forEach(element => {
+                element.style.minHeight = '44px';
+                element.style.minWidth = '44px';
+            });
+        }
+
+        // Performance monitoring
+        const performanceObserver = new PerformanceObserver((list) => {
+            for (const entry of list.getEntries()) {
+                if (entry.duration > 100) {
+                    console.warn('Slow interaction detected:', entry.name, entry.duration);
+                }
+            }
+        });
+
+        performanceObserver.observe({ entryTypes: ['measure'] });
+
+        // Visibility change handling
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // Pause any animations
+                document.querySelectorAll('.xp-fill, .particle').forEach(el => {
+                    el.style.animationPlayState = 'paused';
+                });
+            } else {
+                // Resume animations
+                document.querySelectorAll('.xp-fill, .particle').forEach(el => {
+                    el.style.animationPlayState = 'running';
+                });
+            }
+        });
+
+        // Error boundary
+        window.addEventListener('error', function(e) {
+            console.error('Global error:', e.error);
+            // Could send error to server in production
+        });
+
+        // Unload warning for unsaved work
+        window.addEventListener('beforeunload', function(e) {
+            const hasUnsavedWork = document.querySelectorAll('textarea:not(:disabled), input[type="text"]:not(:disabled)').length > 0;
+            if (hasUnsavedWork && gameState.xp > 0) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+</html>

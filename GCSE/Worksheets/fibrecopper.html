@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fibre Optic vs. Copper Cable Simulation & Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827;
+        }
+        .interactive-card {
+            background-color: rgba(31, 41, 55, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .btn {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .answer-btn {
+            background-color: #4b5563;
+        }
+        .answer-btn:hover:not(:disabled) {
+            background-color: #6b7280;
+        }
+        .answer-btn.correct {
+            background-color: #22c55e;
+        }
+        .answer-btn.wrong {
+            background-color: #ef4444;
+        }
+        .repeater {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+        }
+        .counter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; font-weight: 600; }
+        .counter-item { text-align: center; }
+        .log-panel { background: #1f2937; border: 1px solid #374151; height: 150px; overflow-y: auto; font-family: 'Courier New', Courier, monospace; font-size: 0.9rem; }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-7xl mx-auto">
+        <h1 class="text-3xl md:text-4xl font-bold text-center mb-2 text-blue-300">Fibre Optic vs. Copper Cable</h1>
+        <p class="text-center text-gray-400 mb-8">An interactive simulation for GCSE students.</p>
+
+        <!-- Main Simulation Controls -->
+        <div class="flex flex-wrap justify-center items-center gap-4 mb-8">
+            <button id="sendDataBtn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">Send Data</button>
+            <button id="interferenceBtn" class="btn bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg">Toggle Interference</button>
+            <button id="resetBtn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">Reset Simulation</button>
+        </div>
+
+        <!-- Simulation Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            <!-- Fibre Optic Column -->
+            <div class="bg-gray-800 p-6 rounded-2xl shadow-2xl flex flex-col">
+                <h2 class="text-2xl font-bold mb-4 text-center text-blue-400">Fibre Optic Cable</h2>
+                <div class="relative w-full h-24 bg-gray-700 rounded-lg overflow-hidden border-2 border-blue-500/50">
+                    <canvas id="fibreCanvas" class="w-full h-full absolute top-0 left-0"></canvas>
+                </div>
+                <div class="mt-4 counter-grid">
+                    <div class="counter-item text-green-400">Received: <span id="fibreReceived">0</span></div>
+                    <div class="counter-item text-red-400">Lost: <span id="fibreLost">0</span></div>
+                </div>
+                <div id="fibreCard" class="interactive-card mt-4 p-4 rounded-lg flex-grow flex flex-col">
+                     <div class="font-bold text-xl my-2 text-center">Cost: <span id="fibreCost" class="text-blue-300"></span></div>
+                    <!-- Quiz content will be injected here -->
+                </div>
+            </div>
+
+            <!-- Copper Cable Column -->
+            <div class="bg-gray-800 p-6 rounded-2xl shadow-2xl flex flex-col">
+                <h2 class="text-2xl font-bold mb-4 text-center text-orange-400">Copper Cable</h2>
+                <div class="relative w-full h-24 bg-gray-700 rounded-lg overflow-hidden border-2 border-orange-500/50">
+                    <canvas id="copperCanvas" class="w-full h-full absolute top-0 left-0"></canvas>
+                    <div id="repeater" class="repeater absolute top-1/2 left-2/3 w-8 h-12 bg-gray-500 rounded-md transform -translate-x-1/2 -translate-y-1/2 opacity-0 flex items-center justify-center shadow-lg border-2 border-gray-400">
+                        <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                </div>
+                 <div class="mt-4 counter-grid">
+                    <div class="counter-item text-green-400">Received: <span id="copperReceived">0</span></div>
+                    <div class="counter-item text-red-400">Lost: <span id="copperLost">0</span></div>
+                </div>
+                 <div id="copperCard" class="interactive-card mt-4 p-4 rounded-lg flex-grow flex flex-col">
+                    <div class="font-bold text-xl my-2 text-center">Cost: <span id="copperCost" class="text-orange-300"></span></div>
+                    <!-- Quiz content injected here -->
+                    <div id="repeater-controls" class="mt-auto pt-4 border-t border-gray-600">
+                        <li id="repeater-info" class="text-sm text-center text-yellow-300 mb-2 hidden">Signal is weak! A repeater might be needed.</li>
+                        <button id="addRepeaterBtn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg w-full" disabled>Add Repeater</button>
+                    </div>
+                 </div>
+            </div>
+        </div>
+
+        <!-- Simulation Log -->
+        <div class="mt-8">
+            <h3 class="text-xl font-bold mb-2 text-center">Simulation Log</h3>
+            <div id="logPanel" class="log-panel p-4 rounded-lg w-full max-w-4xl mx-auto"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const getEl = (id) => document.getElementById(id);
+        const [sendDataBtn, interferenceBtn, resetBtn, addRepeaterBtn] = ['sendDataBtn', 'interferenceBtn', 'resetBtn', 'addRepeaterBtn'].map(getEl);
+        const [fibreCanvas, copperCanvas] = ['fibreCanvas', 'copperCanvas'].map(getEl);
+        const [f_ctx, c_ctx] = [fibreCanvas.getContext('2d'), copperCanvas.getContext('2d')];
+        const [repeaterEl, repeaterInfoEl, logPanel] = ['repeater', 'repeater-info', 'logPanel'].map(getEl);
+        const [fibreReceivedEl, fibreLostEl, copperReceivedEl, copperLostEl] = ['fibreReceived', 'fibreLost', 'copperReceived', 'copperLost'].map(getEl);
+        const [fibreCostEl, copperCostEl] = ['fibreCost', 'copperCost'].map(getEl);
+        const [fibreCard, copperCard] = ['fibreCard', 'copperCard'].map(getEl);
+
+        // --- State & Constants ---
+        const BASE_FIBRE_COST = 5000;
+        const BASE_COPPER_COST = 1500;
+        const REPEATER_COST = 500;
+        let animationFrameId, showInterference = false, repeaterActive = false;
+        let fibrePulses = [], copperPackets = [];
+        let fibreReceived = 0, fibreLost = 0, copperReceived = 0, copperLost = 0;
+        let currentCopperCost = 0;
+
+        // --- Quiz Data ---
+        const fibreQuestions = [
+            { question: "What material is at the core of a fibre optic cable?", answers: [{ text: "Copper", correct: false }, { text: "Glass", correct: true }, { text: "Plastic", correct: false }] },
+            { question: "How is data transmitted through a fibre optic cable?", answers: [{ text: "Pulses of light", correct: true }, { text: "Electrical signals", correct: false }, { text: "Sound waves", correct: false }] },
+            { question: "Compared to copper, fibre optic has...", answers: [{ text: "Lower bandwidth", correct: false }, { text: "Similar bandwidth", correct: false }, { text: "Higher bandwidth", correct: true }] },
+            { question: "How well does fibre optic handle interference?", answers: [{ text: "It's very susceptible", correct: false }, { text: "It suffers less", correct: true }, { text: "It's the same as copper", correct: false }] },
+            { question: "What is the general cost of fibre optic cable?", answers: [{ text: "Cheaper than copper", correct: false }, { text: "About the same", correct: false }, { text: "More expensive", correct: true }] },
+        ];
+        const copperQuestions = [
+            { question: "What is the primary transmission media in copper cables?", answers: [{ text: "Glass", correct: false }, { text: "Metal (Copper)", correct: true }, { text: "Saline", correct: false }] },
+            { question: "What is a major limitation of copper cables?", answers: [{ text: "Limited length and bandwidth", correct: true }, { text: "Too expensive", correct: false }, { text: "Immunity to interference", correct: false }] },
+            { question: "To transmit signals further, copper cables need...", answers: [{ text: "Amplifiers", correct: false }, { text: "Converters", correct: false }, { text: "Repeaters", correct: true }] },
+            { question: "How does copper's cost compare to fibre?", answers: [{ text: "More expensive", correct: false }, { text: "Cheap to install", correct: true }, { text: "Costs are identical", correct: false }] },
+            { question: "Copper cables are more likely to suffer from...", answers: [{ text: "Water damage", correct: false }, { text: "Light leakage", correct: false }, { text: "Electrical interference", correct: true }] },
+        ];
+
+        // --- Manager Class for Quizzes ---
+        class Quiz {
+             constructor(container, questions) {
+                this.parentContainer = container;
+                this.questions = this.shuffleArray([...questions]);
+                this.currentQuestionIndex = 0;
+                this.score = 0;
+                // Create a dedicated div for quiz content to avoid overwriting other elements
+                this.quizDiv = document.createElement('div');
+                this.quizDiv.className = 'flex-grow flex flex-col';
+                this.parentContainer.prepend(this.quizDiv); // Prepend to keep cost and repeater controls at bottom
+                this.init();
+            }
+            shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } return array; }
+            init() {
+                this.quizDiv.innerHTML = `
+                    <div class="flex flex-col h-full">
+                        <h3 class="text-lg font-bold mb-4 text-center">Test Your Knowledge</h3>
+                        <div id="q-body-${this.parentContainer.id}" class="flex-grow"></div>
+                        <div id="q-footer-${this.parentContainer.id}" class="mt-auto pt-4"></div>
+                    </div>
+                `;
+                this.body = getEl(`q-body-${this.parentContainer.id}`);
+                this.footer = getEl(`q-footer-${this.parentContainer.id}`);
+                this.showQuestion();
+            }
+            showQuestion() { this.body.innerHTML = ''; this.footer.innerHTML = ''; if (this.currentQuestionIndex >= this.questions.length) { this.showFinalScore(); return; } const questionData = this.questions[this.currentQuestionIndex]; this.body.innerHTML = `<p class="text-center mb-4">${questionData.question}</p>`; const answerGrid = document.createElement('div'); answerGrid.className = 'grid grid-cols-1 gap-2'; questionData.answers.forEach(answer => { const button = document.createElement('button'); button.innerText = answer.text; button.className = 'btn answer-btn text-white font-semibold py-2 px-4 rounded-md w-full'; button.dataset.correct = answer.correct; button.addEventListener('click', this.selectAnswer.bind(this)); answerGrid.appendChild(button); }); this.body.appendChild(answerGrid); this.footer.innerHTML = `<div class="text-center font-bold">Score: ${this.score} / ${this.questions.length}</div>`; }
+            selectAnswer(e) { const selectedBtn = e.target; const isCorrect = selectedBtn.dataset.correct === 'true'; if (isCorrect) { this.score++; } selectedBtn.classList.add(isCorrect ? 'correct' : 'wrong'); Array.from(this.body.querySelectorAll('.answer-btn')).forEach(btn => { btn.disabled = true; if (btn.dataset.correct === 'true') btn.classList.add('correct'); }); this.footer.innerHTML = `<div class="text-center font-bold mb-2">Score: ${this.score} / ${this.questions.length}</div><button id="next-btn-${this.parentContainer.id}" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md w-full">Next Question</button>`; getEl(`next-btn-${this.parentContainer.id}`).addEventListener('click', () => { this.currentQuestionIndex++; this.showQuestion(); }); }
+            showFinalScore() { this.body.innerHTML = `<div class="text-center text-xl font-bold">Quiz Complete!</div>`; this.footer.innerHTML = `<div class="text-center font-bold text-2xl mb-4">Final Score: <span class="text-green-400">${this.score} / ${this.questions.length}</span></div><button id="restart-btn-${this.parentContainer.id}" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md w-full">Restart Quiz</button>`; getEl(`restart-btn-${this.parentContainer.id}`).addEventListener('click', () => this.restart()); }
+            restart() { this.questions = this.shuffleArray([...this.questions]); this.currentQuestionIndex = 0; this.score = 0; this.showQuestion(); }
+        }
+        let fibreQuiz, copperQuiz;
+        
+        // --- Utilities ---
+        function formatCurrency(value) { return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', minimumFractionDigits: 0 }).format(value); }
+        function addToLog(message) { logPanel.innerHTML += `<div>> ${message}</div>`; logPanel.scrollTop = logPanel.scrollHeight; }
+
+        // --- Data Packet Classes ---
+        class FibrePulse { 
+            constructor(y) { 
+                this.x = -10; 
+                this.y = y; 
+                this.speed = 7; // Increased speed
+            } 
+            update() { 
+                this.x += this.speed; 
+            } 
+            draw(ctx) { 
+                ctx.fillStyle = `rgba(191, 219, 254, 1)`; 
+                ctx.shadowBlur = 15; ctx.shadowColor = `rgba(191, 219, 254, 1)`; 
+                ctx.fillRect(this.x, this.y - 5, 20, 10); ctx.shadowBlur = 0; 
+            } 
+        }
+        class CopperPacket { 
+            constructor(y) { 
+                this.x = -10; 
+                this.y = y; 
+                this.originalY = y; 
+                this.speed = 2; 
+                this.opacity = 1; 
+                this.repeaterBoosted = false; 
+                this.lost = false; 
+            } 
+            update(canvasWidth) { 
+                if (this.lost) return; 
+                this.x += this.speed; 
+                this.y = this.originalY; 
+                let reason = null; 
+                if (showInterference && Math.random() > 0.95) { 
+                    this.opacity -= 0.5; 
+                    this.y += (Math.random() - 0.5) * 12; 
+                    if(this.opacity < 0.2) reason = "interference";
+                } 
+                // More aggressive signal degradation
+                if (this.x > canvasWidth / 3 && !this.repeaterBoosted) { 
+                    this.opacity -= 0.018; // Increased from 0.008 to ensure fade out
+                    if(this.opacity < 0.1 && !reason) reason = "signal loss";
+                } 
+                if (this.opacity <= 0) { 
+                    this.opacity = 0; 
+                    this.lost = true; 
+                    copperLost++; 
+                    copperLostEl.textContent = copperLost; 
+                    addToLog(`Copper packet lost due to <span class="text-red-400">${reason||'degradation'}</span>.`); 
+                } 
+            } 
+            draw(ctx) { 
+                ctx.fillStyle = `rgba(251, 146, 60, ${this.opacity})`; 
+                ctx.fillRect(this.x, this.y - 6, 15, 12); 
+            } 
+        }
+        
+        // --- Main Functions ---
+        function resetSimulation() {
+            fibrePulses = []; copperPackets = [];
+            repeaterActive = false;
+            repeaterEl.style.opacity = '0';
+            addRepeaterBtn.disabled = true;
+            repeaterInfoEl.classList.add('hidden');
+            
+            fibreReceived = 0; fibreLost = 0; copperReceived = 0; copperLost = 0;
+            [fibreReceivedEl, fibreLostEl, copperReceivedEl, copperLostEl].forEach(el => el.textContent = '0');
+            
+            fibreCostEl.textContent = formatCurrency(BASE_FIBRE_COST);
+            currentCopperCost = BASE_COPPER_COST;
+            copperCostEl.textContent = formatCurrency(currentCopperCost);
+
+            logPanel.innerHTML = "";
+            addToLog("Simulation reset. Ready.");
+
+            if(fibreQuiz) fibreCard.querySelector('.flex-grow')?.remove();
+            if(copperQuiz) copperCard.querySelector('.flex-grow')?.remove();
+
+            fibreQuiz = new Quiz(fibreCard, fibreQuestions);
+            copperQuiz = new Quiz(copperCard, copperQuestions);
+        }
+
+        function animate() {
+            f_ctx.clearRect(0, 0, fibreCanvas.width, fibreCanvas.height);
+            c_ctx.clearRect(0, 0, copperCanvas.width, copperCanvas.height);
+            if (showInterference) { for(let i=0; i<5; i++) {c_ctx.fillStyle = `rgba(255, 100, 100, ${Math.random() * 0.5})`; c_ctx.fillRect(Math.random() * copperCanvas.width, Math.random() * copperCanvas.height, 2, 2);} }
+            
+            fibrePulses.forEach((p, i) => { p.update(); p.draw(f_ctx); if (p.x > fibreCanvas.width) { fibrePulses.splice(i, 1); fibreReceived++; fibreReceivedEl.textContent = fibreReceived; addToLog(`Fibre packet <span class="text-green-400">received</span>.`); }});
+            
+            let signalDegraded = false;
+            copperPackets.forEach((p, i) => { 
+                p.update(copperCanvas.width); 
+                if(p.opacity > 0) p.draw(c_ctx); 
+                if (!p.lost && p.opacity > 0.1 && p.opacity < 0.5 && !repeaterActive) { signalDegraded = true; }
+                const repeaterPos = copperCanvas.width * 2/3; 
+                if(repeaterActive && !p.repeaterBoosted && p.x > repeaterPos && !p.lost){ if(p.opacity < 1) addToLog(`Repeater <span class="text-green-400">boosted</span> copper signal!`); p.opacity = 1; p.repeaterBoosted = true; } 
+                if (p.x > copperCanvas.width + 10 || p.lost) { if(!p.lost){ copperReceived++; copperReceivedEl.textContent = copperReceived; addToLog(`Copper packet <span class="text-green-400">received</span>.`); } copperPackets.splice(i, 1); }
+            });
+
+            if (signalDegraded) {
+                addRepeaterBtn.disabled = false;
+                repeaterInfoEl.classList.remove('hidden');
+            }
+            
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // --- Event Listeners ---
+        sendDataBtn.addEventListener('click', () => { addToLog("--- Sending new data burst ---"); for (let i = 0; i < 5; i++) { setTimeout(() => { fibrePulses.push(new FibrePulse(fibreCanvas.height / 2)); copperPackets.push(new CopperPacket(copperCanvas.height / 2)); }, i * 250); } });
+        resetBtn.addEventListener('click', resetSimulation);
+        interferenceBtn.addEventListener('click', () => { showInterference = !showInterference; interferenceBtn.classList.toggle('bg-red-600', showInterference); interferenceBtn.classList.toggle('bg-orange-500', !showInterference); interferenceBtn.textContent = showInterference ? "Interference: ON" : "Toggle Interference"; addToLog(`Interference turned ${showInterference ? 'ON' : 'OFF'}.`); });
+        addRepeaterBtn.addEventListener('click', () => { if (addRepeaterBtn.disabled) return; repeaterActive = true; repeaterEl.style.opacity = '1'; currentCopperCost += REPEATER_COST; copperCostEl.textContent = formatCurrency(currentCopperCost); addRepeaterBtn.disabled = true; repeaterInfoEl.classList.add('hidden'); addToLog(`Repeater added. Copper cost increased by <span class="text-orange-300">${formatCurrency(REPEATER_COST)}</span>.`); });
+        
+        // --- Initial Setup ---
+        const resizeCanvases = () => {[fibreCanvas, copperCanvas].forEach(c => {const r=c.parentElement.getBoundingClientRect();c.width=r.width;c.height=r.height;})};
+        window.addEventListener('resize', resizeCanvases);
+        window.onload = () => { resizeCanvases(); resetSimulation(); animate(); };
+    </script>
+</body>
+</html>

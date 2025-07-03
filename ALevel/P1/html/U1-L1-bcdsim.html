@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary Coded Decimal (BCD) Simulation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary-color: #0891b2; /* Teal */
+            --secondary-color: #6d28d9; /* Violet */
+            --background-color: #111827;
+            --card-bg-color: rgba(31, 41, 55, 0.75);
+            --text-color: #f3f4f6;
+            --border-color: rgba(75, 85, 99, 0.5);
+            --correct-color: #34d399;
+            --incorrect-color: #f87171;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background-size: 200% 200%;
+            animation: gradient-animation 15s ease infinite;
+        }
+        
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            opacity: 0.8;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .card {
+            background-color: var(--card-bg-color);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            will-change: transform, box-shadow;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .card:hover {
+            transform: translateY(-6px) scale(1.01);
+            box-shadow: 0 15px 25px rgba(0,0,0,0.3);
+        }
+
+        .step-section {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s cubic-bezier(0.23, 1, 0.32, 1), transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+            will-change: opacity, transform;
+        }
+
+        .step-section.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+            position: relative;
+            overflow: hidden;
+            border: none;
+            cursor: pointer;
+            z-index: 1;
+            transform: translateZ(0); /* GPU acceleration */
+        }
+        
+        .btn-primary {
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 0 20px rgba(8, 145, 178, 0.5);
+        }
+
+        .btn-secondary {
+             background: linear-gradient(90deg, #374151, #4b5563);
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: linear-gradient(90deg, #4b5563, #525c6a);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn::after { /* Ripple effect */
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px; height: 5px;
+            background: rgba(255, 255, 255, 0.7);
+            opacity: 0;
+            border-radius: 50%;
+            transform: scale(1, 1) translate(-50%, -50%);
+            transform-origin: 50% 50%;
+            will-change: transform, opacity;
+        }
+        .btn:focus:not(:active)::after {
+            animation: ripple 1s ease-out;
+        }
+        @keyframes ripple {
+            0% { transform: scale(0, 0) translate(-50%, -50%); opacity: 1; }
+            100% { transform: scale(30, 30) translate(-50%, -50%); opacity: 0; }
+        }
+
+        .input-field {
+            background-color: #1f2937;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            text-align: center;
+            font-size: 1.25rem;
+            width: 10rem;
+            transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0s 0.3s linear;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+            transition-delay: 0s;
+        }
+
+        .modal-content {
+            transform: scale(0.95) translateY(10px);
+            transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        
+        .modal-overlay.visible .modal-content {
+            transform: scale(1) translateY(0);
+        }
+
+        .feedback {
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fade-in-up 0.5s forwards;
+        }
+
+        @keyframes fade-in-up {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .feedback.correct {
+            background-color: rgba(16, 185, 129, 0.2);
+            border-left: 4px solid var(--correct-color);
+            color: #a7f3d0;
+        }
+
+        .feedback.incorrect {
+            background-color: rgba(239, 68, 68, 0.2);
+            border-left: 4px solid var(--incorrect-color);
+            color: #fca5a5;
+        }
+
+        .quiz-option {
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            border: 2px solid transparent;
+        }
+        .quiz-option:hover {
+            border-color: var(--primary-color);
+            transform: scale(1.02);
+        }
+        .quiz-option.selected {
+            border-color: var(--primary-color);
+            background-color: rgba(8, 145, 178, 0.2);
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 p-4 sm:p-6 md:p-8">
+
+    <div class="max-w-5xl mx-auto">
+        <header class="text-center mb-8 p-6 rounded-2xl gradient-bg shadow-2xl">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-white shadow-lg">Binary Coded Decimal (BCD)</h1>
+            <p class="text-lg text-cyan-200 mt-2">An Interactive Guide for A-Level Computer Science (9618)</p>
+        </header>
+
+        <main id="simulation-container">
+            <!-- Step 0: Introduction -->
+            <section id="step-0" class="step-section card p-6 md:p-8 active">
+                <h2 class="text-2xl font-bold text-cyan-400 mb-4">What is BCD?</h2>
+                <p class="text-lg mb-4"><strong>Binary Coded Decimal (BCD)</strong> is a way to represent denary integers where each individual denary digit is encoded as its own 4-bit binary number (a nibble).</p>
+                <p class="text-lg mb-6">This is different from standard binary conversion, where the entire number is converted. BCD maintains a direct mapping to denary digits, which is useful in certain applications.</p>
+                <div class="bg-gray-800 p-6 rounded-lg text-center font-mono text-xl">
+                    <p>To convert denary <strong class="text-cyan-300">938</strong> to BCD:</p>
+                    <div class="flex justify-center flex-wrap gap-6 mt-4">
+                        <div><p>9 → <span class="text-emerald-400">1001</span></p></div>
+                        <div><p>3 → <span class="text-blue-400">0011</span></p></div>
+                        <div><p>8 → <span class="text-violet-400">1000</span></p></div>
+                    </div>
+                    <p class="mt-4">Combined BCD: <strong class="text-cyan-300">1001 0011 1000</strong></p>
+                </div>
+                <div class="mt-6 p-4 border border-cyan-500/30 rounded-lg bg-cyan-500/10">
+                    <h3 class="font-bold text-lg text-cyan-300">How to use this simulation:</h3>
+                    <p class="mt-2">Use the <span class="font-bold">'Next'</span> and <span class="font-bold">'Previous'</span> buttons, or the <span class="font-bold">arrow keys (← →)</span> on your keyboard to navigate.</p>
+                </div>
+            </section>
+            
+            <!-- Step 1: BCD Conversion Practice -->
+            <section id="step-1" class="step-section card p-6 md:p-8">
+                 <h2 class="text-2xl font-bold text-cyan-400 mb-4">Denary to BCD Practice</h2>
+                 <p class="text-lg mb-6">Convert each denary digit into its 4-bit binary equivalent and combine them. Remember to include leading zeros to make each a full nibble.</p>
+                 <div class="text-center mt-8">
+                     <p class="text-xl">Your turn: Convert denary <strong id="d2bcd-practice-denary" class="text-cyan-300">152</strong> to BCD.</p>
+                     <div class="flex justify-center items-center gap-4 mt-4">
+                        <input type="text" id="d2bcd-practice-bcd" class="input-field w-64" placeholder="e.g. 0001 0101 0010">
+                        <button id="d2bcd-check-btn" class="btn btn-primary">Check</button>
+                    </div>
+                    <div id="d2bcd-feedback" class="mt-4"></div>
+                </div>
+            </section>
+
+            <!-- Step 2: The BCD Addition Problem -->
+            <section id="step-2" class="step-section card p-6 md:p-8">
+                <h2 class="text-2xl font-bold text-red-500 mb-4">The Problem with BCD Addition</h2>
+                <p class="text-lg mb-4">Standard binary addition fails for BCD when the sum of a digit column is greater than 9. BCD has no representation for values like 10, 11, etc., in a single nibble.</p>
+                <p class="text-lg mb-4">Let's add denary <strong>28 + 24</strong>. In BCD, this is <strong class="font-mono">0010 1000 + 0010 0100</strong>.</p>
+                <div id="bcd-addition-problem" class="bg-gray-800 p-6 rounded-lg font-mono text-center text-lg">
+                    <!-- BCD addition problem will be built here -->
+                </div>
+                <div class="mt-4 p-4 feedback incorrect">
+                    <p class="font-bold">This is incorrect!</p>
+                    <ul class="list-disc list-inside mt-2">
+                        <li>The right column result <strong class="font-mono text-red-400">1100</strong> (12) is an invalid BCD value.</li>
+                        <li>The carry from the right column to the left was ignored.</li>
+                         <li>The result <strong class="font-mono text-red-400">0100 1100</strong> translates to "4 twelve," which is meaningless. The correct answer is 52.</li>
+                    </ul>
+                </div>
+            </section>
+            
+            <!-- Step 3: The BCD Addition Work-around -->
+            <section id="step-3" class="step-section card p-6 md:p-8">
+                <h2 class="text-2xl font-bold text-emerald-400 mb-4">The BCD Addition Work-around</h2>
+                <p class="text-lg mb-4">To fix BCD arithmetic, the processor applies a rule: if a 4-bit sum is invalid (greater than 9) or generated a carry, add 6 (<strong class="font-mono text-cyan-300">0110</strong>) to that sum. This forces a carry-over and adjusts the value back to a valid BCD format.</p>
+                <div id="bcd-addition-solution" class="bg-gray-800 p-6 rounded-lg font-mono text-center text-lg">
+                    <!-- BCD addition solution will be built here -->
+                </div>
+                 <div class="text-center mt-6">
+                    <button id="bcd-fix-btn" class="btn btn-primary">Apply BCD Correction</button>
+                </div>
+            </section>
+            
+            <!-- Step 4: Uses and Benefits -->
+            <section id="step-4" class="step-section card p-6 md:p-8">
+                 <h2 class="text-2xl font-bold text-cyan-400 mb-4">Uses & Benefits of BCD</h2>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-xl font-bold text-emerald-400 mb-3">Common Uses</h3>
+                        <ul class="list-disc list-inside space-y-3">
+                             <li>Operating displays on electronic calculators.</li>
+                             <li>Storing the date and time in a computer's BIOS.</li>
+                             <li>Financial applications where exact decimal representation is crucial.</li>
+                             <li>Barcodes and identifying location data (e.g., in cell towers).</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-emerald-400 mb-3">Key Benefits</h3>
+                         <ul class="list-disc list-inside space-y-3">
+                             <li>Very straightforward to convert to and from denary.</li>
+                             <li>Less complex for programmers to encode and decode.</li>
+                             <li>Can represent monetary values exactly, avoiding the rounding errors of floating-point binary.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 5: Quiz -->
+            <section id="step-5" class="step-section card p-6 md:p-8">
+                <h2 class="text-2xl font-bold text-cyan-400 mb-4">Knowledge Check Quiz</h2>
+                <p class="text-lg mb-6">Test your understanding of Binary Coded Decimal.</p>
+                <div id="quiz-container"></div>
+                <div class="text-center mt-8">
+                    <button id="submit-quiz-btn" class="btn btn-primary hidden">Submit Quiz</button>
+                </div>
+                <div id="quiz-results" class="mt-6"></div>
+            </section>
+        </main>
+        
+        <footer class="mt-8 flex justify-between items-center">
+             <button id="prev-btn" class="btn btn-secondary">← Previous</button>
+             <div id="step-indicator" class="text-center text-gray-400"></div>
+             <button id="next-btn" class="btn btn-secondary">Next →</button>
+        </footer>
+        <div class="text-center mt-4">
+            <button id="reset-btn" class="text-gray-400 hover:text-white transition">Reset Simulation</button>
+        </div>
+    </div>
+
+    <!-- Modal for Popups -->
+    <div id="modal" class="modal-overlay">
+        <div class="modal-content card w-11/12 max-w-md p-6 text-center">
+            <h3 id="modal-title" class="text-2xl font-bold text-cyan-400 mb-4"></h3>
+            <p id="modal-text" class="text-lg mb-6"></p>
+            <button id="modal-close-btn" class="btn btn-primary">Got it!</button>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- DOM Caching: Store all frequently accessed elements once for performance ---
+    const dom = {
+        stepSections: document.querySelectorAll('.step-section'),
+        prevBtn: document.getElementById('prev-btn'),
+        nextBtn: document.getElementById('next-btn'),
+        resetBtn: document.getElementById('reset-btn'),
+        stepIndicator: document.getElementById('step-indicator'),
+
+        // BCD Sections
+        d2bcdPracticeDenary: document.getElementById('d2bcd-practice-denary'),
+        d2bcdPracticeBcd: document.getElementById('d2bcd-practice-bcd'),
+        d2bcdCheckBtn: document.getElementById('d2bcd-check-btn'),
+        d2bcdFeedback: document.getElementById('d2bcd-feedback'),
+        bcdAdditionProblem: document.getElementById('bcd-addition-problem'),
+        bcdAdditionSolution: document.getElementById('bcd-addition-solution'),
+        bcdFixBtn: document.getElementById('bcd-fix-btn'),
+
+        // Quiz
+        quizContainer: document.getElementById('quiz-container'),
+        submitQuizBtn: document.getElementById('submit-quiz-btn'),
+        quizResults: document.getElementById('quiz-results'),
+
+        // Modal
+        modal: document.getElementById('modal'),
+        modalTitle: document.getElementById('modal-title'),
+        modalText: document.getElementById('modal-text'),
+        modalCloseBtn: document.getElementById('modal-close-btn'),
+    };
+
+    // --- State Management: A single object to hold the simulation's current state ---
+    let currentState = {
+        currentStep: 0,
+        totalSteps: dom.stepSections.length,
+        d2bcdPracticeDenary: 0,
+        quizAnswers: {},
+    };
+
+    // --- Data: Quiz questions and answers stored centrally ---
+    const quizQuestions = [
+        { type: 'mcq', question: 'What is the denary number 42 represented as in BCD?', options: ['0100 0010', '101010', '0010 1010', '42'], answer: '0100 0010' },
+        { type: 'mcq', question: 'When performing BCD addition, what value must be added to a nibble if its sum is greater than 9?', options: ['1010 (10)', '0101 (5)', '0110 (6)', '1001 (9)'], answer: '0110 (6)' },
+        { type: 'fib', question: 'A primary benefit of BCD is its ability to represent _______ values exactly, which is important for financial applications.', answers: ['MONETARY'] },
+        { type: 'mcq', question: 'Which of the following is NOT a typical use of BCD?', options: ['Calculator displays', 'Storing RGB color values', 'Computer BIOS time/date', 'Financial calculations'], answer: 'Storing RGB color values' },
+        { type: 'fib', question: 'The BCD value 0111 1001 represents the denary number ______.', answers: ['79'] },
+    ];
+
+    // --- Core Functions ---
+
+    /**
+     * Updates the UI to show the current step and manages navigation button states.
+     * Uses requestAnimationFrame for smooth visual updates.
+     */
+    const updateUI = () => {
+        requestAnimationFrame(() => {
+            dom.stepSections.forEach((section, index) => {
+                section.classList.toggle('active', index === currentState.currentStep);
+            });
+            dom.prevBtn.disabled = currentState.currentStep === 0;
+            dom.nextBtn.disabled = currentState.currentStep === currentState.totalSteps - 1;
+            dom.stepIndicator.textContent = `Step ${currentState.currentStep + 1} of ${currentState.totalSteps}`;
+        });
+    };
+    
+    /**
+     * Displays a modal popup with a title and message.
+     * @param {string} title - The title of the modal.
+     * @param {string} text - The HTML content for the modal body.
+     * @param {function} [onclose=() => {}] - Optional callback to run when the modal is closed.
+     */
+    const showModal = (title, text, onclose = () => {}) => {
+        dom.modalTitle.textContent = title;
+        dom.modalText.innerHTML = text;
+        dom.modal.classList.add('visible');
+        
+        // This handler is created once and removes itself, preventing multiple listeners.
+        const closeHandler = () => {
+            dom.modal.classList.remove('visible');
+            dom.modalCloseBtn.removeEventListener('click', closeHandler);
+            onclose();
+        };
+        dom.modalCloseBtn.addEventListener('click', closeHandler);
+    };
+
+    // --- BCD Logic Functions ---
+
+    /**
+     * Generates a new denary-to-BCD practice problem.
+     */
+    const generateD2BCDPractice = () => {
+        currentState.d2bcdPracticeDenary = Math.floor(Math.random() * 900) + 100; // 3-digit number
+        dom.d2bcdPracticeDenary.textContent = currentState.d2bcdPracticeDenary;
+        dom.d2bcdPracticeBcd.value = '';
+        dom.d2bcdFeedback.innerHTML = '';
+    };
+
+    /**
+     * Checks the user's answer for the denary-to-BCD practice problem.
+     */
+    const checkD2BCDAnswer = () => {
+        const denaryStr = currentState.d2bcdPracticeDenary.toString();
+        const userBCD = dom.d2bcdPracticeBcd.value.trim();
+
+        if (userBCD.length < denaryStr.length * 4) {
+            showModal('Incomplete Answer', 'Please provide the full BCD value, including spaces between nibbles and leading zeros (e.g., 0001 0101 0010).');
+            return;
+        }
+        
+        const correctBCD = denaryStr.split('').map(d => parseInt(d).toString(2).padStart(4, '0')).join(' ');
+
+        if (userBCD === correctBCD) {
+            dom.d2bcdFeedback.innerHTML = `<p class="font-bold">Correct! Denary ${denaryStr} is indeed ${correctBCD}.</p>`;
+            dom.d2bcdFeedback.className = 'feedback correct';
+        } else {
+            dom.d2bcdFeedback.innerHTML = `<p class="font-bold">Not quite. The correct answer for ${denaryStr} is ${correctBCD}.</p>`;
+            dom.d2bcdFeedback.className = 'feedback incorrect';
+        }
+    };
+
+    /**
+     * Sets up the visual demonstration for the BCD addition problem and its solution.
+     */
+    const setupBCDAddition = () => {
+        const bcdRow = (label, val1, val2, color1 = 'text-cyan-300', color2 = 'text-cyan-300') => `
+            <div class="flex justify-end items-center gap-4">
+                <p class="w-28 text-right pr-4">${label}</p>
+                <div class="w-36 text-left"><span class="${color1}">${val1}</span> <span class="${color2}">${val2}</span></div>
+            </div>`;
+
+        dom.bcdAdditionProblem.innerHTML = `
+            ${bcdRow('Denary:', '28', '24')}
+            ${bcdRow('', '0010', '1000', 'text-emerald-400', 'text-blue-400')}
+            ${bcdRow('+', '0010', '0100', 'text-emerald-400', 'text-blue-400')}
+            <hr class="border-gray-600 my-2 w-2/3 ml-auto">
+            ${bcdRow('Result:', '0100', '1100', 'text-red-500', 'text-red-500')}
+        `;
+        
+        dom.bcdAdditionSolution.innerHTML = `
+             ${bcdRow('Initial Sum:', '0100', '1100', 'text-gray-500', 'text-red-500')}
+             ${bcdRow('Reason:', 'OK (<9)', 'Invalid (>9)', 'text-gray-500', 'text-red-500')}
+             ${bcdRow('Correction:', '+ 0000', '+ 0110', 'text-gray-500', 'text-cyan-300')}
+             <hr class="border-gray-600 my-2 w-2/3 ml-auto">
+             <div id="bcd-final-result" class="opacity-0 transition-opacity duration-700">
+                ${bcdRow('Corrected Sum:', '0101', '0010', 'text-emerald-400', 'text-emerald-400')}
+                ${bcdRow('Final Denary:', '5', '2', 'text-emerald-400', 'text-emerald-400')}
+            </div>
+        `;
+    };
+
+    /**
+     * Animates the appearance of the BCD addition fix.
+     */
+    const applyBCDFix = () => {
+        const finalResult = document.getElementById('bcd-final-result');
+        if (finalResult) {
+            finalResult.classList.add('opacity-100');
+        }
+    };
+
+    // --- Quiz Functions ---
+
+    /**
+     * Dynamically builds the quiz UI from the quizQuestions array.
+     */
+    const setupQuiz = () => {
+        dom.quizContainer.innerHTML = '';
+        dom.quizResults.innerHTML = '';
+        currentState.quizAnswers = {};
+        quizQuestions.forEach((q, index) => {
+            const questionEl = document.createElement('div');
+            questionEl.className = 'mb-8';
+            let content = `<p class="text-lg font-semibold mb-3">${index + 1}. ${q.question}</p>`;
+            if (q.type === 'mcq') {
+                content += `<div class="space-y-2 quiz-options" data-question-index="${index}">${q.options.map(option => `<div class="card p-4 quiz-option">${option}</div>`).join('')}</div>`;
+            } else if (q.type === 'fib') {
+                 let questionText = q.question;
+                 q.answers.forEach((ans, i) => { questionText = questionText.replace('_____', `<input type="text" class="input-field w-32 mx-1 quiz-fib uppercase" data-question-index="${index}" data-answer-index="${i}">`); });
+                 content += `<div>${questionText}</div>`;
+            }
+            questionEl.innerHTML = content;
+            dom.quizContainer.appendChild(questionEl);
+        });
+        dom.submitQuizBtn.classList.remove('hidden');
+    };
+
+    /**
+     * Handles user interaction with quiz options using event delegation.
+     * @param {Event} e - The event object from the click or input listener.
+     */
+    const handleQuizInteraction = (e) => {
+        const target = e.target;
+        // MCQ option clicked
+        if (target.matches('.quiz-option')) {
+            const parent = target.parentElement;
+            const qIndex = parent.dataset.questionIndex;
+            parent.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+            target.classList.add('selected');
+            currentState.quizAnswers[qIndex] = target.textContent;
+        } 
+        // Fill-in-the-blank input changed
+        else if (target.matches('.quiz-fib')) {
+            const qIndex = target.dataset.questionIndex;
+            const aIndex = target.dataset.answerIndex;
+            if(!currentState.quizAnswers[qIndex]) currentState.quizAnswers[qIndex] = [];
+            currentState.quizAnswers[qIndex][aIndex] = target.value.trim().toUpperCase();
+        }
+    };
+
+    /**
+     * Submits the quiz, checks answers, and displays the final results.
+     */
+    const submitQuiz = () => {
+        let score = 0;
+        let resultsHTML = '<h3 class="text-2xl font-bold mb-4 text-center">Quiz Results</h3>';
+        quizQuestions.forEach((q, index) => {
+            const userAnswer = currentState.quizAnswers[index];
+            let isCorrect = false;
+            resultsHTML += `<div class="p-4 rounded-lg mb-4 bg-gray-800"><p class="font-semibold">${index + 1}. ${q.question}</p>`;
+            if (q.type === 'mcq') {
+                isCorrect = userAnswer === q.answer;
+                resultsHTML += `<p class="mt-2">Your answer: <span class="font-mono ${isCorrect ? 'text-emerald-400' : 'text-red-400'}">${userAnswer || 'Not answered'}</span></p>`;
+                if (!isCorrect) resultsHTML += `<p>Correct answer: <span class="font-mono text-emerald-400">${q.answer}</span></p>`;
+            } else if (q.type === 'fib') {
+                isCorrect = q.answers.every((ans, i) => userAnswer && userAnswer[i] === ans.toUpperCase());
+                const userAnswerStr = userAnswer ? userAnswer.join(', ') : 'Not answered';
+                resultsHTML += `<p class="mt-2">Your answer: <span class="font-mono ${isCorrect ? 'text-emerald-400' : 'text-red-400'}">${userAnswerStr}</span></p>`;
+                if (!isCorrect) resultsHTML += `<p>Correct answer: <span class="font-mono text-emerald-400">${q.answers.join(', ')}</span></p>`;
+            }
+            if (isCorrect) score++;
+            resultsHTML += `<p class="font-bold ${isCorrect ? 'text-emerald-400' : 'text-red-400'} mt-1">${isCorrect ? 'Correct!' : 'Incorrect.'}</p></div>`;
+        });
+        dom.quizResults.innerHTML = resultsHTML + `<div class="text-center mt-6 p-4 rounded-lg bg-cyan-900/50"><p class="text-2xl font-bold">You scored ${score} out of ${quizQuestions.length}</p></div>`;
+        dom.submitQuizBtn.classList.add('hidden');
+        dom.quizContainer.classList.add('hidden');
+    };
+
+    // --- Main Navigation & Reset ---
+
+    /**
+     * Navigates between steps and triggers setup functions for each step.
+     * @param {number} direction - 1 for next, -1 for previous.
+     */
+    const changeStep = (direction) => {
+        const newStep = currentState.currentStep + direction;
+        if (newStep >= 0 && newStep < currentState.totalSteps) {
+            currentState.currentStep = newStep;
+            // Run setup function for the step being navigated to
+            switch(currentState.currentStep) {
+                case 1: generateD2BCDPractice(); break;
+                case 2: setupBCDAddition(); break;
+                case 3: 
+                    // Reset the animation for the next time the user visits
+                    const finalResult = document.getElementById('bcd-final-result');
+                    if(finalResult) finalResult.classList.remove('opacity-100');
+                    break;
+                case 5: setupQuiz(); break;
+            }
+            updateUI();
+        }
+    };
+    
+    /**
+     * Resets the entire simulation to its initial state.
+     */
+    const reset = () => {
+        currentState.currentStep = 0;
+        dom.quizContainer.classList.remove('hidden');
+        dom.quizResults.innerHTML = '';
+        dom.submitQuizBtn.classList.add('hidden');
+        currentState.quizAnswers = {};
+        updateUI();
+    };
+
+    // --- Event Listeners ---
+    dom.nextBtn.addEventListener('click', () => changeStep(1));
+    dom.prevBtn.addEventListener('click', () => changeStep(-1));
+    dom.resetBtn.addEventListener('click', reset);
+    
+    // BCD Practice & Demo
+    dom.d2bcdCheckBtn.addEventListener('click', checkD2BCDAnswer);
+    dom.bcdFixBtn.addEventListener('click', applyBCDFix);
+    
+    // Quiz (Event Delegation)
+    dom.quizContainer.addEventListener('click', handleQuizInteraction);
+    dom.quizContainer.addEventListener('input', handleQuizInteraction);
+    dom.submitQuizBtn.addEventListener('click', submitQuiz);
+
+    // Keyboard Navigation
+    document.addEventListener('keydown', (e) => {
+        if (document.activeElement.tagName === 'INPUT') return; // Don't navigate while typing
+        if (e.key === 'ArrowRight') dom.nextBtn.click();
+        else if (e.key === 'ArrowLeft') dom.prevBtn.click();
+    });
+
+    // --- Initialization ---
+    updateUI(); // Set the initial view to the first step
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Images: Pixels, Resolution, and Colour</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+            font-size: 16px;
+        }
+        .lesson-header-glow {
+            animation: lessonHeaderGlowDI 3s ease-in-out infinite; /* DI for Digital Image */
+        }
+        @keyframes lessonHeaderGlowDI {
+            0%, 100% { text-shadow: 0 0 10px #fff, 0 0 20px #a78bfa, 0 0 30px #a78bfa, 0 0 40px #a78bfa; } /* Violet */
+            50% { text-shadow: 0 0 20px #fff, 0 0 30px #c084fc, 0 0 40px #c084fc, 0 0 50px #c084fc; } /* Fuchsia */
+        }
+        .achievement-unlocked {
+            animation: achievementPopDI 0.6s ease-out; 
+            opacity: 1 !important;
+        }
+        @keyframes achievementPopDI {
+            0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+            60% { transform: scale(1.2) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        /* Modal Styles (for level up, errors) */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); padding-top: 60px; }
+        .modal-content { background-color: #1f2937; color: #e2e8f0; margin: 5% auto; padding: 24px; border: 1px solid #4f46e5; /* Indigo-600 */ width: 80%; max-width: 500px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-close { color: #94a3b8; float: right; font-size: 28px; font-weight: bold; }
+        .modal-close:hover, .modal-close:focus { color: #e2e8f0; text-decoration: none; cursor: pointer; }
+        #modalMessageTextDI { font-size: 1.125rem; line-height: 1.75rem; }
+
+        /* Flash Notification Styles (for XP/Badges) */
+        .flash-notification-container { position: fixed; top: 20px; right: 20px; z-index: 1050; display: flex; flex-direction: column; gap: 10px;}
+        .flash-message { background-color: #10b981; color: white; padding: 12px 18px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); opacity: 0; transform: translateX(100%); transition: opacity 0.5s ease-out, transform 0.5s ease-out; font-size: 0.9rem; display: flex; align-items: center;}
+        .flash-message.show { opacity: 1; transform: translateX(0); }
+        .flash-message.hide { opacity: 0; transform: translateX(100%); }
+        .flash-message i { margin-right: 8px; }
+
+        .reset-button { background-color: #f43f5e; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; transition: background-color 0.2s ease-in-out; border: none; cursor: pointer; }
+        .reset-button:hover { background-color: #e11d48; }
+        
+        section p, section li { font-size: 1rem; line-height: 1.625; }
+        section h3 { font-size: 1.125rem; }
+
+        /* Digital Image Specific Styles */
+        .pixel-grid-container { display: grid; gap: 1px; background-color: #374151; border: 1px solid #4b5563; margin: 0.5rem auto; width: fit-content;} /* Adjusted for larger grid */
+        .pixel-cell { width: 10px; height: 10px; background-color: #e2e8f0; cursor: pointer; } /* Smaller cells for bigger grid */
+        .pixel-cell:hover { outline: 1px solid #fbbf24; }
+        .color-palette {display: flex; flex-wrap:wrap; justify-content:center; margin-bottom:0.5rem;}
+        .color-palette button { width: 25px; height: 25px; border-radius: 50%; margin: 3px; border: 2px solid transparent; transition: all 0.2s;}
+        .color-palette button.selected-color { border-color: #fde047; transform: scale(1.2); }
+        
+        .resolution-canvas { border: 1px solid #6b7280; margin: 10px auto; display: block; background-color: #e2e8f0;}
+        .metadata-panel { background-color: #374151; padding: 1rem; border-radius: 0.5rem; }
+        .metadata-panel dt { font-weight: bold; color: #a78bfa; } 
+        .metadata-panel dd { margin-left: 1rem; color: #e0e7ff; } 
+
+        /* Canvas for Working Out */
+        .working-out-canvas { border: 1px dashed #7c3aed; border-radius: 0.375rem; cursor: crosshair; background-color: #5b21b61a; transition: height 0.3s ease-in-out; }
+        .working-out-canvas.default-size { width:100%; height: 100px; }
+        .working-out-canvas.expanded-size { width:100%; height: 250px; }
+        .canvas-controls button { background-color: #9333ea; color:white; padding: 0.25rem 0.5rem; font-size:0.75rem; border-radius:0.25rem; margin-top:0.25rem; margin-left: 0.25rem;}
+        .canvas-controls button:hover { background-color: #7e22ce; }
+
+        /* Drag and Drop for File Size Ranking */
+        .draggable-unit { padding: 0.5rem; margin: 0.25rem; background-color: #4f46e5; /* Indigo-600 */ color: white; border-radius: 0.25rem; cursor: grab; text-align: center; }
+        .drop-zone-units { padding: 0.5rem; margin: 0.25rem 0; border: 2px dashed #6366f1; /* Indigo-500 */ border-radius: 0.25rem; min-height: 40px; }
+        .drop-zone-units.drag-over { background-color: #3730a360; /* Indigo-800 with alpha */ }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 min-h-screen p-4 md:p-8 text-slate-200">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-12 relative">
+            <h1 class="text-4xl md:text-6xl font-bold lesson-header-glowDI mb-3 relative z-10">
+                Digital Images: Pixels, Resolution, and Colour <i class="fas fa-palette text-violet-300"></i>
+            </h1>
+            <p class="text-slate-400 text-lg md:text-xl relative z-10">Crafting Digital Worlds, One Dot at a Time!</p>
+            
+            <div class="mt-8 bg-slate-800 rounded-full p-2 shadow-xl max-w-lg mx-auto relative z-10 border border-violet-500">
+                <div class="flex items-center justify-between">
+                    <span id="levelDisplayDI" class="text-sm font-semibold text-slate-300 ml-4">Level 1: Pixel Beginner</span>
+                    <span class="text-sm font-semibold text-fuchsia-400 mr-4"><span id="xpPointsDI">0</span> XP</span>
+                </div>
+                <div class="bg-slate-700 rounded-full h-4 mt-2 mx-1">
+                    <div id="xpBarDI" class="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="mb-10 bg-slate-800/80 backdrop-blur-md p-3 rounded-lg shadow-lg sticky top-4 z-50 border border-purple-700">
+            <ul class="flex flex-wrap justify-center gap-x-3 md:gap-x-4 gap-y-2">
+                <li><a href="#section-di-warmup" class="text-sm md:text-base text-purple-300 hover:text-fuchsia-300 font-medium">⚙️ Warm-up</a></li>
+                <li><a href="#section-di-starter" class="text-sm md:text-base text-purple-300 hover:text-fuchsia-300 font-medium">🖼️ Starter</a></li>
+                <li><a href="#section-pixels" class="text-sm md:text-base text-purple-300 hover:text-fuchsia-300 font-medium">🔍 Pixels</a></li>
+                <li><a href="#section-resolution" class="text-sm md:text-base text-purple-300 hover:text-fuchsia-300 font-medium">📏 Resolution</a></li>
+                <li><a href="#section-color-depth" class="text-sm md:text-base text-purple-300 hover:text-fuchsia-300 font-medium">🌈 Colour Depth</a></li>
+                <li><a href="#section-metadata" class="text-sm md:text-base text-purple-300 hover:text-fuchsia-300 font-medium">ℹ️ Metadata</a></li>
+                <li><a href="#section-file-size" class="text-sm md:text-base text-purple-300 hover:text-fuchsia-300 font-medium">💾 File Size</a></li>
+                <li><a href="#section-di-exam-prep" class="text-sm md:text-base text-purple-300 hover:text-fuchsia-300 font-medium">📝 Exam Prep</a></li>
+                <li><a href="#section-di-extensions" class="text-sm md:text-base text-purple-300 hover:text-fuchsia-300 font-medium">🚀 Extensions</a></li>
+                <li><a href="#section-di-achievements" class="text-sm md:text-base text-purple-300 hover:text-fuchsia-300 font-medium">🏆 Achievements</a></li>
+                <li><a href="#section-di-plenary" class="text-sm md:text-base text-purple-300 hover:text-fuchsia-300 font-medium">🏁 Plenary</a></li>
+            </ul>
+        </nav>
+
+        <!-- Flash Notification Container -->
+        <div id="flashNotificationContainerDI" class="flash-notification-container"></div>
+        
+        <!-- Section 0: Warm-up - File Size Units & Concepts -->
+        <section id="section-di-warmup" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-indigo-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-indigo-400">⚙️ Warm-up: File Size Units & Image Concepts</h2>
+                <button onclick="resetDIWarmup(false)" class="reset-button">Reset Warm-up</button>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold text-indigo-300 mb-2">1. Rank File Sizes</h3>
+                    <p class="text-sm text-slate-400 mb-2">Drag and drop the file size units into the list below, from smallest (top) to largest (bottom).</p>
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <div id="draggableUnitsContainerDI" class="p-2 bg-slate-700/30 rounded-md space-y-2">
+                            <!-- Draggable units will be populated by JS -->
+                        </div>
+                        <div id="fileSizeDropZoneDI" class="p-2 bg-slate-700/30 rounded-md drop-zone-units space-y-1">
+                            <p class="text-xs text-slate-500 text-center py-4">Drop units here in order</p>
+                        </div>
+                    </div>
+                    <button onclick="checkFileSizeRanking()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded text-sm">Check Ranking</button>
+                    <p id="fileSizeRankingFeedback" class="text-xs mt-2 min-h-[16px]"></p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-indigo-300 mb-2">2. True or False?</h3>
+                    <p class="text-sm text-slate-400 mb-2">Read each statement and decide if it's True or False.</p>
+                    <div id="trueFalseContainerDI" class="space-y-3">
+                        <!-- True/False questions will be populated by JS -->
+                    </div>
+                    <button onclick="checkTrueFalseAnswersDI()" class="mt-3 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded text-sm">Check True/False</button>
+                    <p id="trueFalseOverallFeedbackDI" class="text-xs mt-2 min-h-[16px]"></p>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Section 1: Starter - What's That Pixel? -->
+        <section id="section-di-starter" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-purple-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-purple-400">🖼️ Starter: What's That Pixel?</h2>
+                <button onclick="resetDIStarter(false)" class="reset-button">Reset</button>
+            </div>
+            <p class="text-slate-300 mb-4">Let's start with a little mystery! Below is a heavily magnified (pixelated) image. Can you guess what it is?</p>
+            <div class="text-center mb-4">
+                <canvas id="pixelatedImageCanvas" width="200" height="200" class="bg-slate-700 rounded-md mx-auto border-2 border-purple-500"></canvas>
+                <div class="mt-2 space-x-2">
+                    <button onclick="revealPixelatedImage(1)" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 text-xs rounded">Reveal More (1)</button>
+                    <button onclick="revealPixelatedImage(2)" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 text-xs rounded">Reveal More (2)</button>
+                    <button onclick="revealPixelatedImage(3)" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 text-xs rounded">Full Reveal (3)</button>
+                </div>
+            </div>
+            <div class="bg-slate-700/50 p-4 rounded-lg">
+                <label for="starterDIGuess" class="block font-semibold text-purple-300 mb-2">What do you think this image is showing?</label>
+                <input type="text" id="starterDIGuess" class="w-full p-2 bg-slate-600 border-slate-500 rounded mb-2" placeholder="Your guess...">
+                <label for="starterDIThoughts" class="block font-semibold text-purple-300 mb-2 mt-3">What changed to make the image clearer? What are digital images made of?</label>
+                <textarea id="starterDIThoughts" class="w-full p-2 bg-slate-600 border-slate-500 rounded h-20" placeholder="Your thoughts..." onblur="checkDIStarterThoughts()"></textarea>
+                <div id="starterDIFeedback" class="mt-2 p-2 bg-slate-600 rounded min-h-[30px] text-sm"></div>
+            </div>
+        </section>
+
+        <!-- Section 2: Pixels - The Building Blocks -->
+        <section id="section-pixels" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-fuchsia-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-fuchsia-400">🔍 Task 1: Pixels - The Building Blocks</h2>
+                <button onclick="resetDIPixels(false)" class="reset-button">Reset</button>
+            </div>
+            <p class="text-slate-300 mb-2">Every digital image you see is made up of tiny dots or squares called <strong>pixels</strong> (short for "picture elements").</p>
+            <ul class="list-disc list-inside text-slate-300 mb-4 pl-4 text-sm">
+                <li>A pixel is the <strong>smallest identifiable area</strong> of an image.</li>
+                <li>Each pixel is a <strong>single, solid colour</strong>.</li>
+                <li>Computers store the colour of each pixel as a <strong>binary value</strong>. For example, <code class="code-display">11000000</code> might represent Red.</li>
+                <li>Changing this binary value changes the pixel's colour.</li>
+            </ul>
+             <h3 class="text-lg font-semibold text-fuchsia-300 mb-2">Pixel Painter Grid</h3>
+            <p class="text-sm text-slate-400 mb-2">Click a colour from the palette, then click (or click and drag) on the grid to paint pixels. The simplified binary code for your selected colour is shown below the palette.</p>
+            <div class="flex flex-col items-center">
+                <div id="colorPaletteDI" class="color-palette">
+                    <!-- Palette buttons will be added by JS -->
+                </div>
+                 <p class="text-center mt-1 mb-2 text-sm">Selected Colour Binary: <code id="pixelColorBinary" class="code-display">---</code></p>
+                <div id="pixelPainterGrid" class="pixel-grid-container">
+                    <!-- Grid cells will be added by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Image Resolution -->
+        <section id="section-resolution" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-violet-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-violet-400">📏 Task 2: Image Resolution - Dot Density</h2>
+                <button onclick="resetDIResolution(false)" class="reset-button">Reset</button>
+            </div>
+            <p class="text-slate-300 mb-2"><strong>Image resolution</strong> refers to the concentration of pixels within a specific area. It's usually defined by the image's <strong>width and height in pixels</strong> (e.g., 1920 pixels wide by 1080 pixels high, written as 1920x1080).</p>
+            <p class="text-slate-300 mb-4">Generally, for an image displayed at the same physical size, a higher resolution (more pixels) means a clearer, sharper, and more detailed image because there are more dots packed into the same space.</p>
+            
+            <div class="grid md:grid-cols-2 gap-8 items-start">
+                <div class="bg-slate-700/50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-violet-300 mb-2">Resolution Viewer</h3>
+                    <p class="text-sm text-slate-400 mb-2">See how the same simple shape looks with different pixel densities.</p>
+                    <canvas id="resolutionViewerCanvas" width="200" height="200" class="resolution-canvas"></canvas>
+                    <div class="text-center mt-2 space-x-1 flex flex-wrap justify-center">
+                        <button onclick="drawResolutionShape(10)" class="bg-violet-600 hover:bg-violet-700 text-white px-2 py-1 text-xs rounded mb-1">Low (10x10)</button>
+                        <button onclick="drawResolutionShape(30)" class="bg-violet-600 hover:bg-violet-700 text-white px-2 py-1 text-xs rounded mb-1">Medium (30x30)</button>
+                        <button onclick="drawResolutionShape(60)" class="bg-violet-600 hover:bg-violet-700 text-white px-2 py-1 text-xs rounded mb-1">High (60x60)</button>
+                        <button onclick="drawResolutionShape(100)" class="bg-violet-600 hover:bg-violet-700 text-white px-2 py-1 text-xs rounded mb-1">Even Higher (100x100)</button>
+                    </div>
+                </div>
+                <div class="bg-slate-700/50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-violet-300 mb-2">Pixel Counter</h3>
+                    <div class="mb-2">
+                        <label for="imageWidth" class="block text-sm">Image Width (pixels):</label>
+                        <input type="number" id="imageWidth" class="w-full p-1 bg-slate-600 border-slate-500 rounded text-sm" placeholder="e.g., 1920">
+                    </div>
+                    <div class="mb-2">
+                        <label for="imageHeight" class="block text-sm">Image Height (pixels):</label>
+                        <input type="number" id="imageHeight" class="w-full p-1 bg-slate-600 border-slate-500 rounded text-sm" placeholder="e.g., 1080">
+                    </div>
+                    <button onclick="calculateTotalPixels()" class="bg-violet-500 hover:bg-violet-600 text-white px-4 py-1.5 rounded text-sm">Calculate Total Pixels</button>
+                    <p id="totalPixelsOutput" class="mt-2 text-sm">Total Pixels: <span class="font-bold code-display">---</span></p>
+                    <hr class="my-4 border-slate-600">
+                    <h4 class="font-semibold text-violet-300 mb-1">Quick Question:</h4>
+                    <p class="text-sm text-slate-300 mb-1">A phone screen has a resolution of 1080x2340 pixels. How many total pixels are on the screen?</p>
+                    <input type="number" id="resolutionQuestionAnswer" class="w-full p-1 bg-slate-600 border-slate-500 rounded text-sm mb-1" placeholder="Your answer">
+                    <button onclick="checkResolutionQuestion()" class="bg-violet-500 hover:bg-violet-600 text-white px-3 py-1 text-xs rounded">Check Answer</button>
+                    <p id="resolutionQuestionFeedback" class="text-xs mt-1 min-h-[16px]"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Colour Depth -->
+        <section id="section-color-depth" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-pink-600">
+             <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-pink-400">🌈 Task 3: Colour Depth - Painting with More Bits!</h2>
+                <button onclick="resetDIColorDepth(false)" class="reset-button">Reset</button>
+            </div>
+            <p class="text-slate-300 mb-2">The <strong>colour depth</strong> (or bit depth) of an image determines how many different colours each pixel can be. It's defined by the number of bits used to represent each pixel's colour.</p>
+            <ul class="list-disc list-inside text-slate-300 mb-4 pl-4 text-sm">
+                <li>If a pixel is represented by <code class="code-display">n</code> bits, then it can be one of <strong>2<sup>n</sup></strong> possible colours.</li>
+                <li>A <strong>higher bit depth</strong> means more bits per pixel, allowing a <strong>greater range of colours</strong> and usually resulting in a more realistic and higher quality image.</li>
+            </ul>
+             <div class="grid md:grid-cols-2 gap-8 items-start">
+                <div class="bg-slate-700/50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-pink-300 mb-2">Bit Depth to Colours Calculator</h3>
+                    <label for="bitDepthInput" class="block text-sm">Enter Bit Depth (n):</label>
+                    <input type="number" id="bitDepthInput" min="1" max="24" class="w-1/2 p-1 bg-slate-600 border-slate-500 rounded text-sm mb-2" placeholder="e.g., 8">
+                    <button onclick="calculatePossibleColors()" class="bg-pink-600 hover:bg-pink-700 text-white px-4 py-1.5 rounded text-sm ml-2">Calculate Colours</button>
+                    <p id="possibleColorsOutput" class="mt-2 text-sm">Number of Colours (2<sup>n</sup>): <span class="font-bold code-display">---</span></p>
+                     <hr class="my-4 border-slate-600">
+                    <h4 class="font-semibold text-pink-300 mb-1">Quick Question:</h4>
+                    <p class="text-sm text-slate-300 mb-1">An image uses a 4-bit colour depth. How many different colours can each pixel represent?</p>
+                    <input type="number" id="colorDepthQuestionAnswer" class="w-1/2 p-1 bg-slate-600 border-slate-500 rounded text-sm mb-1" placeholder="Your answer">
+                    <button onclick="checkColorDepthQuestion()" class="bg-pink-500 hover:bg-pink-600 text-white px-3 py-1 text-xs rounded ml-2">Check</button>
+                    <p id="colorDepthQuestionFeedback" class="text-xs mt-1 min-h-[16px]"></p>
+                </div>
+                <div class="bg-slate-700/50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-pink-300 mb-2">Colour Depth Visualizer</h3>
+                    <p class="text-sm text-slate-400 mb-2">See how a simple scene might look with different bit depths.</p>
+                    <canvas id="colorDepthCanvas" width="200" height="150" class="resolution-canvas"></canvas>
+                     <div class="text-center mt-2 space-x-1 flex flex-wrap justify-center">
+                        <button onclick="drawWithBitDepth(1)" class="bg-pink-600 hover:bg-pink-700 text-white px-2 py-1 text-xs rounded mb-1">1-bit (2)</button>
+                        <button onclick="drawWithBitDepth(2)" class="bg-pink-600 hover:bg-pink-700 text-white px-2 py-1 text-xs rounded mb-1">2-bit (4)</button>
+                        <button onclick="drawWithBitDepth(4)" class="bg-pink-600 hover:bg-pink-700 text-white px-2 py-1 text-xs rounded mb-1">4-bit (16)</button>
+                        <button onclick="drawWithBitDepth(8)" class="bg-pink-600 hover:bg-pink-700 text-white px-2 py-1 text-xs rounded mb-1">8-bit (256)</button>
+                        <button onclick="drawWithBitDepth(12)" class="bg-pink-600 hover:bg-pink-700 text-white px-2 py-1 text-xs rounded mb-1">12-bit (4,096)</button>
+                        <button onclick="drawWithBitDepth(16)" class="bg-pink-600 hover:bg-pink-700 text-white px-2 py-1 text-xs rounded mb-1">16-bit (65,536)</button>
+                        <button onclick="drawWithBitDepth(24)" class="bg-pink-600 hover:bg-pink-700 text-white px-2 py-1 text-xs rounded mb-1">True Colour (24-bit)</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Metadata -->
+        <section id="section-metadata" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-blue-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-blue-400">ℹ️ Task 4: Metadata - The Story Behind the Pixels</h2>
+                 <button onclick="resetDIMetadata(false)" class="reset-button">Reset</button>
+            </div>
+            <p class="text-slate-300 mb-2">Beyond the pixels themselves, image files also contain <strong>metadata</strong>. Metadata is "data that describes other data."</p>
+            <p class="text-slate-300 mb-4">For an image, metadata can include information like:</p>
+            <ul class="list-disc list-inside text-slate-300 mb-4 pl-4 text-sm">
+                <li><strong>Dimensions:</strong> Width and height in pixels.</li>
+                <li><strong>Resolution:</strong> Often in DPI (Dots Per Inch) for printing.</li>
+                <li><strong>Colour Depth:</strong> The number of bits per pixel.</li>
+                <li><strong>File Type:</strong> e.g., JPEG, PNG, GIF.</li>
+                <li><strong>Date Created/Modified.</strong></li>
+                <li><strong>Camera Information:</strong> (For photos) Model, shutter speed, aperture, GPS location.</li>
+                <li><strong>Copyright information.</strong></li>
+            </ul>
+            <div class="bg-slate-700/50 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold text-blue-300 mb-2">Simplified Image File Properties</h3>
+                <p class="text-sm text-slate-400 mb-3">Click on an image name (these are just examples) to see its mock metadata:</p>
+                <div class="flex space-x-3 mb-3">
+                    <button onclick="showMetadata('beach')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-sm rounded">BeachSunset.jpg</button>
+                    <button onclick="showMetadata('logo')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-sm rounded">CompanyLogo.png</button>
+                    <button onclick="showMetadata('cat')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-sm rounded">MyCat.gif</button>
+                </div>
+                <div id="metadataDisplayPanel" class="metadata-panel min-h-[150px]">
+                    <p class="text-slate-400 italic">Select an image to view its properties.</p>
+                </div>
+                <hr class="my-4 border-slate-600">
+                <div class="space-y-3 mt-3">
+                    <div>
+                        <label for="metadataQ1" class="block font-semibold text-blue-300 mb-1">1. Describe the term "metadata" in the context of digital images.</label>
+                        <textarea id="metadataQ1" class="w-full p-2 bg-slate-600 border-slate-500 rounded h-16 text-sm" placeholder="Your description..."></textarea>
+                    </div>
+                    <div>
+                        <label for="metadataQ2" class="block font-semibold text-blue-300 mb-1">2. State two examples of metadata that might be stored in an image file (apart from dimensions).</label>
+                        <textarea id="metadataQ2" class="w-full p-2 bg-slate-600 border-slate-500 rounded h-16 text-sm" placeholder="Example 1, Example 2..."></textarea>
+                    </div>
+                     <div>
+                        <label for="metadataQ3" class="block font-semibold text-blue-300 mb-1">3. Identify a profession where viewing the metadata of an image might be important, and briefly explain why.</label>
+                        <textarea id="metadataQ3" class="w-full p-2 bg-slate-600 border-slate-500 rounded h-20 text-sm" placeholder="Profession and reason..."></textarea>
+                    </div>
+                </div>
+                <button onclick="checkMetadataQuestions()" class="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded text-sm">Check Answers</button>
+                <p id="metadataAllQuestionsFeedback" class="text-xs mt-2 min-h-[16px]"></p>
+            </div>
+        </section>
+
+        <!-- Section 6: Calculating Image File Size -->
+        <section id="section-file-size" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-green-600">
+            <div class="flex justify-between items-center mb-5">
+                 <h2 class="text-2xl md:text-3xl font-bold text-green-400">💾 Task 5: Calculating Image File Size</h2>
+                 <button onclick="resetDIFileSize(false)" class="reset-button">Reset</button>
+            </div>
+            <p class="text-slate-300 mb-3">Understanding pixels, resolution, and colour depth allows us to estimate the uncompressed file size of an image. Here's how (remember 1 Byte = 8 bits, 1KB = 1000 Bytes, 1MB = 1000KB):</p>
+            <ol class="list-decimal list-inside text-slate-300 mb-4 pl-4 space-y-1 text-sm">
+                <li><strong>Total Pixels</strong> = Width (px) × Height (px)</li>
+                <li><strong>Bits Per Pixel</strong> = Colour Depth (bits)</li>
+                <li><strong>Total Bits</strong> = Total Pixels × Bits Per Pixel</li>
+                <li><strong>File Size (Bytes)</strong> = Total Bits ÷ 8</li>
+            </ol>
+            
+            <h3 class="text-lg font-semibold text-green-300 mb-2 mt-6">Practice Problems (Manual Calculation)</h3>
+            <p class="text-sm text-slate-400 mb-3">Try to calculate these without the estimator first - good practice for exams! Show your working on the canvas.</p>
+            <div id="fileSizeManualProblemsContainer" class="space-y-6">
+                <!-- Manual problems will be added by JS -->
+            </div>
+
+            <h3 class="text-lg font-semibold text-green-300 mb-2 mt-8">Real-World Scenarios (Estimator Allowed)</h3>
+            <p class="text-sm text-slate-400 mb-3">For these larger examples, you can use the File Size Estimator tool below to help.</p>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div id="fileSizeEstimatorProblemsContainer" class="space-y-6">
+                    <!-- Estimator problems will be added by JS -->
+                </div>
+                <div class="bg-slate-700/50 p-4 rounded-lg">
+                    <h4 class="text-md font-semibold text-green-300 mb-2">File Size Estimator Tool</h4>
+                    <div class="mb-2"><label for="fsWidth" class="block text-sm">Image Width (pixels):</label><input type="number" id="fsWidth" class="w-full p-1 bg-slate-600 border-slate-500 rounded text-sm" placeholder="e.g., 1920"></div>
+                    <div class="mb-2"><label for="fsHeight" class="block text-sm">Image Height (pixels):</label><input type="number" id="fsHeight" class="w-full p-1 bg-slate-600 border-slate-500 rounded text-sm" placeholder="e.g., 1080"></div>
+                    <div class="mb-3"><label for="fsColorDepth" class="block text-sm">Colour Depth (bits per pixel):</label><input type="number" id="fsColorDepth" class="w-full p-1 bg-slate-600 border-slate-500 rounded text-sm" placeholder="e.g., 24"></div>
+                    <button onclick="estimateFileSize()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded text-sm">Estimate File Size</button>
+                    <div id="fileSizeOutput" class="mt-3 space-y-1 text-sm">
+                        <p>1. Total Pixels: <span id="fsTotalPixels" class="font-bold code-display">---</span></p>
+                        <p>2. Bits Per Pixel: <span id="fsBpp" class="font-bold code-display">---</span></p>
+                        <p>3. Total Bits: <span id="fsTotalBits" class="font-bold code-display">---</span></p>
+                        <p>4. File Size (Bytes): <span id="fsTotalBytes" class="font-bold code-display">---</span></p>
+                        <p class="text-xs">(Using 1KB = 1000B) Kilobytes (KB): <span id="fsTotalKB" class="font-bold code-display">---</span></p>
+                        <p class="text-xs">(Using 1MB = 1000KB) Megabytes (MB): <span id="fsTotalMB" class="font-bold code-display">---</span></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 7: Exam Prep Zone -->
+        <section id="section-di-exam-prep" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-orange-500">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-orange-400">📝 Digital Image Exam Prep</h2>
+                <button onclick="resetDIExamPrep(false)" class="reset-button">Reset Exam Qs</button>
+            </div>
+            <p class="text-slate-300 mb-6">Test your digital image knowledge!</p>
+            <div id="diExamQuestionsContainer"> <!-- Questions will be populated here --> </div>
+        </section>
+
+        <!-- Section 8: Extension Activities -->
+        <section id="section-di-extensions" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-yellow-500">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-yellow-400">🚀 Extension Activities</h2>
+                <button onclick="resetDIExtensions(false)" class="reset-button">Reset Extensions</button>
+            </div>
+            <div id="diExtensionsContainer" class="space-y-8">
+                <!-- Extension activities will be populated here -->
+            </div>
+        </section>
+
+        <!-- Section 9: Achievement Gallery -->
+        <section id="section-di-achievements" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-6 border border-violet-400"> 
+            <h2 class="text-2xl md:text-3xl font-bold text-violet-300 mb-5">🏆 Your Pixel Palette Badges!</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div id="achieve-di-first-frame" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🖼️</span><p class="font-bold text-sm mt-2">First Frame</p><p class="text-xs text-slate-400">Completed Starter</p></div>
+                <div id="achieve-di-pixel-peeker" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🔍</span><p class="font-bold text-sm mt-2">Pixel Peeker</p><p class="text-xs text-slate-400">Mastered Pixels</p></div>
+                <div id="achieve-di-dimension-detective" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">📏</span><p class="font-bold text-sm mt-2">Dimension Detective</p><p class="text-xs text-slate-400">Understood Resolution</p></div>
+                <div id="achieve-di-hue-hero" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🌈</span><p class="font-bold text-sm mt-2">Hue Hero</p><p class="text-xs text-slate-400">Conquered Colour Depth</p></div>
+                <div id="achieve-di-metadata-maven" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">ℹ️</span><p class="font-bold text-sm mt-2">Metadata Maven</p><p class="text-xs text-slate-400">Decoded Image Info</p></div>
+                <div id="achieve-di-size-savant" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">💾</span><p class="font-bold text-sm mt-2">Size Savant</p><p class="text-xs text-slate-400">Aced File Size Calc</p></div>
+                <div id="achieve-di-exam-ace" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🎓</span><p class="font-bold text-sm mt-2">Exam Ace</p><p class="text-xs text-slate-400">Passed DI Exam Prep</p></div>
+                <div id="achieve-di-pixel-picasso" class="bg-slate-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🏆</span><p class="font-bold text-sm mt-2">Pixel Picasso</p><p class="text-xs text-slate-400">Mastered Digital Images!</p></div>
+            </div>
+        </section>
+        
+        <!-- Section 10: Plenary -->
+        <section id="section-di-plenary" class="bg-slate-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-teal-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-teal-400">🏁 Plenary: Learning Outcomes Checklist</h2>
+            </div>
+            <p class="text-slate-300 mb-4">Reflect on what you've learned. Tick the outcomes you feel you have achieved today:</p>
+            <div id="learningOutcomesDIContainer" class="space-y-2">
+                <!-- Outcomes will be added by JS -->
+            </div>
+             <button onclick="submitLearningOutcomesDI()" class="mt-4 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded text-sm">Mark as Reviewed</button>
+             <p id="learningOutcomesFeedbackDI" class="text-xs mt-2 min-h-[16px]"></p>
+        </section>
+
+
+        <footer class="text-center mt-12 py-6 border-t border-slate-700">
+            <p class="text-slate-500 text-sm">&copy; Your School Name/Your Name - Digital Images Lesson</p>
+        </footer>
+    </div>
+
+    <div id="messageModalDI" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModalDI('messageModalDI')">&times;</span>
+            <p id="modalMessageTextDI" class="text-lg"></p>
+            <button onclick="closeModalDI('messageModalDI')" class="mt-4 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // --- XP and Level System ---
+        let totalXPDI = 0; // Changed from totalPPDI
+        const MAX_XP_PER_LEVEL_DI = 75; 
+        let currentLevelDI = 1;
+        const levelsDI = ["Pixel Beginner", "Dot Detailer", "Resolution Ruler", "Colour Connoisseur", "Image Virtuoso"];
+
+        // --- Activity States & Data ---
+        let starterDIThoughtsSubmitted = false;
+        let starterDIGuessSubmitted = false; 
+        let pixelArtPainted = false;
+        // pixelDefSubmitted removed
+        let resolutionViewerUsed = false;
+        let pixelCounterUsed = false;
+        let resolutionQuestionAnswered = false;
+        let bitDepthCalcUsed = false;
+        let colorDepthVisualizerUsed = false;
+        let colorDepthQuestionAnswered = false;
+        let metadataViewerUsed = false;
+        let metadataQuestionsAnsweredCount = 0; // Track how many metadata questions answered
+        let fileSizeEstimatorUsed = false;
+        const fileSizeManualProblemStates = {}; // To track individual manual problems
+        const fileSizeEstimatorProblemStates = {}; // To track individual estimator problems
+        const diExamPrepState = {};
+        const diExtensionStates = {};
+        let diWarmupFileSizeRanked = false;
+        let diWarmupTrueFalseAttempted = false;
+        let plenaryReviewedDI = false;
+
+
+        // --- Achievements ---
+        const achievementsDI = {
+            'di-first-frame': { unlocked: false, points: 15, condition: () => starterDIThoughtsSubmitted && starterDIGuessSubmitted },
+            'di-pixel-peeker': { unlocked: false, points: 20, condition: () => pixelArtPainted }, // XP rebalanced as question removed
+            'di-dimension-detective': { unlocked: false, points: 30, condition: () => resolutionViewerUsed && pixelCounterUsed && resolutionQuestionAnswered },
+            'di-hue-hero': { unlocked: false, points: 35, condition: () => bitDepthCalcUsed && colorDepthVisualizerUsed && colorDepthQuestionAnswered },
+            'di-metadata-maven': { unlocked: false, points: 25, condition: () => metadataViewerUsed && metadataQuestionsAnsweredCount >= 2 }, // Need to answer at least 2 Qs
+            'di-size-savant': { unlocked: false, points: 30, condition: () => {
+                const manualSolved = Object.values(fileSizeManualProblemStates).filter(s => s.correct).length >= 2;
+                const estimatorSolved = Object.values(fileSizeEstimatorProblemStates).filter(s => s.correct).length >= 1;
+                return fileSizeEstimatorUsed && manualSolved && estimatorSolved;
+            }},
+            'di-exam-ace': { unlocked: false, points: 40, condition: () => Object.values(diExamPrepState).filter(q => q.selfMark && parseInt(q.selfMark) >= 0 && q.markSchemeViewed).length >= 2 },
+            'di-pixel-picasso': { unlocked: false, points: 100, condition: () => {
+                const core = ['di-first-frame', 'di-pixel-peeker', 'di-dimension-detective', 'di-hue-hero', 'di-metadata-maven', 'di-size-savant', 'di-exam-ace'];
+                return core.every(key => achievementsDI[key]?.unlocked);
+            }}
+        };
+        Object.keys(achievementsDI).forEach(key => achievementsDI[key].name = key);
+
+        // --- Utility Functions ---
+        function showModalDI(message) { 
+            const modalEl = document.getElementById('messageModalDI');
+            const modalTextEl = document.getElementById('modalMessageTextDI');
+            if (modalEl && modalTextEl) {
+                modalTextEl.innerHTML = message;
+                modalEl.style.display = 'block';
+            }
+        }
+        function closeModalDI(modalId) {
+            const modalEl = document.getElementById(modalId);
+            if(modalEl) modalEl.style.display = 'none';
+        }
+         window.addEventListener('click', (event) => {
+            const modal = document.getElementById('messageModalDI');
+            if (modal && event.target == modal) closeModalDI('messageModalDI');
+        });
+
+        function showFlashNotificationDI(message, type = 'success', isInitialSetup = false) {
+            if (isInitialSetup) return;
+            const container = document.getElementById('flashNotificationContainerDI');
+            if (!container) return;
+            const flashMessage = document.createElement('div');
+            flashMessage.className = 'flash-message';
+            let iconClass = 'fas fa-check-circle'; 
+            if (type === 'badge') { iconClass = 'fas fa-award'; flashMessage.style.backgroundColor = '#fbbf24'; }
+            else if (type === 'error') { iconClass = 'fas fa-exclamation-circle'; flashMessage.style.backgroundColor = '#f43f5e'; }
+            else if (type === 'info') { iconClass = 'fas fa-info-circle'; flashMessage.style.backgroundColor = '#60a5fa'; } // Blue for info
+            flashMessage.innerHTML = `<i class="${iconClass}"></i><span>${message}</span>`;
+            container.appendChild(flashMessage);
+            setTimeout(() => { flashMessage.classList.add('show'); }, 10); 
+            setTimeout(() => {
+                flashMessage.classList.remove('show'); flashMessage.classList.add('hide');
+                setTimeout(() => { if (container.contains(flashMessage)) { container.removeChild(flashMessage);}}, 500); 
+            }, 3500); 
+        }
+
+        function addXPDI(points, feedbackMessage = "", isInitialSetup = false) { 
+            if (isInitialSetup && points > 0) return;
+            totalXPDI += points;
+            document.getElementById('xpPointsDI').textContent = totalXPDI; 
+            let xpForCurrentLevel = totalXPDI - ((currentLevelDI - 1) * MAX_XP_PER_LEVEL_DI);
+            const newLevelCalc = Math.floor(totalXPDI / MAX_XP_PER_LEVEL_DI) + 1;
+            if (newLevelCalc > currentLevelDI) {
+                currentLevelDI = newLevelCalc;
+                showModalDI(`<strong>Level Up!</strong> You are now Level ${currentLevelDI}: ${levelsDI[Math.min(currentLevelDI - 1, levelsDI.length - 1)]}!`);
+                xpForCurrentLevel = totalXPDI - ((currentLevelDI - 1) * MAX_XP_PER_LEVEL_DI);
+            }
+            document.getElementById('levelDisplayDI').textContent = `Level ${currentLevelDI}: ${levelsDI[Math.min(currentLevelDI - 1, levelsDI.length - 1)]}`;
+            const xpBarPercentage = Math.min(100, (xpForCurrentLevel / MAX_XP_PER_LEVEL_DI) * 100);
+            document.getElementById('xpBarDI').style.width = xpBarPercentage + '%'; 
+            
+            if (feedbackMessage && points > 0 && !isInitialSetup) {
+                showFlashNotificationDI(`${feedbackMessage} (+${points} XP)`);
+            }
+            checkAchievementsDI(isInitialSetup);
+        }
+
+        function checkAchievementsDI(isInitialSetup = false) {
+            if(isInitialSetup) return;
+            let allCoreUnlocked = true;
+            const coreKeys = ['di-first-frame', 'di-pixel-peeker', 'di-dimension-detective', 'di-hue-hero', 'di-metadata-maven', 'di-size-savant', 'di-exam-ace'];
+            for (const key in achievementsDI) {
+                if (key === 'di-pixel-picasso') continue;
+                const ach = achievementsDI[key];
+                if (ach && !ach.unlocked && ach.condition && ach.condition()) {
+                    ach.unlocked = true;
+                    const achEl = document.getElementById(`achieve-${key}`);
+                    if(achEl) {
+                        achEl.classList.remove('opacity-40'); achEl.classList.add('achievement-unlocked');
+                        const nameEl = achEl.querySelector('p.font-bold');
+                        addXPDI(ach.points, "", isInitialSetup); 
+                        showFlashNotificationDI(`🏆 Badge Unlocked: <strong>${nameEl ? nameEl.textContent : key}</strong>! (+${ach.points} XP)`, 'badge');
+                    }
+                }
+                if(coreKeys.includes(key) && ach && !ach.unlocked) allCoreUnlocked = false;
+            }
+            const masterAch = achievementsDI['di-pixel-picasso'];
+            if(masterAch && !masterAch.unlocked && allCoreUnlocked && masterAch.condition()){
+                masterAch.unlocked = true;
+                const achEl = document.getElementById(`achieve-di-pixel-picasso`);
+                 if(achEl) {
+                    achEl.classList.remove('opacity-40'); achEl.classList.add('achievement-unlocked');
+                    const nameEl = achEl.querySelector('p.font-bold');
+                    addXPDI(masterAch.points, "", isInitialSetup);
+                    showFlashNotificationDI(`🏆 MASTER Badge: <strong>${nameEl ? nameEl.textContent : 'Pixel Picasso'}</strong>! (+${masterAch.points} XP)`, 'badge');
+                }
+            }
+        }
+        
+        function initializeCanvas(canvasId, clearButtonId, toggleButtonId) { /* Implementation from previous lesson */ }
+        
+        // --- Section 0: Warm-up ---
+        const fileSizeUnits = [
+            { id: "bit", name: "Bit (b)", order: 1 }, { id: "nibble", name: "Nibble", order: 2 },
+            { id: "byte", name: "Byte (B)", order: 3 }, { id: "kb", name: "Kilobyte (KB)", order: 4 },
+            { id: "mb", name: "Megabyte (MB)", order: 5 }, { id: "gb", name: "Gigabyte (GB)", order: 6 },
+            { id: "tb", name: "Terabyte (TB)", order: 7 }, { id: "pb", name: "Petabyte (PB)", order: 8 }
+        ];
+        let draggedUnitDI = null;
+
+        const trueFalseQuestionsDI = [
+            { id: "tfq1", text: "A pixel is the smallest unit of a digital image.", answer: true, feedbackGiven: false, xp: 2 },
+            { id: "tfq2", text: "8K resolution is four times the resolution of 4K resolution.", answer: true, feedbackGiven: false, xp: 2 }, // Pixel count is 4x
+            { id: "tfq3", text: "The resolution of a digital image can be changed without affecting its quality.", answer: false, feedbackGiven: false, xp: 2 },
+            { id: "tfq4", text: "Increasing resolution always results in a higher quality image.", answer: false, feedbackGiven: false, xp: 2 } // Not always, depends on source, display, etc.
+        ];
+
+        function setupDIWarmup() {
+            // File Size Ranking
+            const draggableContainer = document.getElementById('draggableUnitsContainerDI');
+            draggableContainer.innerHTML = '';
+            const shuffledUnits = [...fileSizeUnits].sort(() => Math.random() - 0.5);
+            shuffledUnits.forEach(unit => {
+                const div = document.createElement('div');
+                div.id = `drag_${unit.id}`;
+                div.className = 'draggable-unit';
+                div.textContent = unit.name;
+                div.draggable = true;
+                div.dataset.order = unit.order;
+                div.addEventListener('dragstart', (e) => { draggedUnitDI = e.target; });
+                draggableContainer.appendChild(div);
+            });
+            const dropZone = document.getElementById('fileSizeDropZoneDI');
+            dropZone.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Drop units here in order</p>'; // Reset drop zone placeholder
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                if (draggedUnitDI) {
+                    if(dropZone.querySelector('p.text-slate-500')) dropZone.innerHTML = ''; // Clear placeholder on first drop
+                    dropZone.appendChild(draggedUnitDI);
+                    draggedUnitDI = null;
+                }
+            });
+
+            // True/False Questions
+            const tfContainer = document.getElementById('trueFalseContainerDI');
+            tfContainer.innerHTML = '';
+            trueFalseQuestionsDI.forEach(q => {
+                q.feedbackGiven = false; // Reset feedback state
+                tfContainer.innerHTML += `
+                    <div class="p-2 bg-slate-700/30 rounded-md">
+                        <p class="text-sm text-slate-300">${q.id.replace('tfq','.')} ${q.text}</p>
+                        <div class="flex space-x-2 mt-1">
+                            <button onclick="answerTrueFalseDI('${q.id}', true)" class="text-xs bg-green-600 hover:bg-green-700 px-2 py-1 rounded">True</button>
+                            <button onclick="answerTrueFalseDI('${q.id}', false)" class="text-xs bg-red-600 hover:bg-red-700 px-2 py-1 rounded">False</button>
+                        </div>
+                        <p id="${q.id}_feedback" class="text-xs mt-1 min-h-[16px]"></p>
+                    </div>`;
+            });
+             document.getElementById('fileSizeRankingFeedback').textContent = '';
+             document.getElementById('trueFalseOverallFeedbackDI').textContent = '';
+        }
+
+        function checkFileSizeRanking() {
+            const dropZone = document.getElementById('fileSizeDropZoneDI');
+            const droppedItems = Array.from(dropZone.children).filter(child => child.classList.contains('draggable-unit'));
+            let correctOrder = true;
+            if (droppedItems.length !== fileSizeUnits.length) {
+                correctOrder = false;
+            } else {
+                for (let i = 0; i < droppedItems.length; i++) {
+                    if (parseInt(droppedItems[i].dataset.order) !== (i + 1)) {
+                        correctOrder = false;
+                        break;
+                    }
+                }
+            }
+            const feedbackEl = document.getElementById('fileSizeRankingFeedback');
+            if (correctOrder) {
+                feedbackEl.innerHTML = `<span class="text-green-400">Correct order! Well done.</span>`;
+                if(!diWarmupFileSizeRanked){ addXPDI(10, "Ranked file sizes correctly"); diWarmupFileSizeRanked = true;}
+            } else {
+                feedbackEl.innerHTML = `<span class="text-red-400">Not quite the right order. Try again! Smallest at the top.</span>`;
+            }
+            checkAchievementsDI();
+        }
+
+        function answerTrueFalseDI(questionId, userAnswer) {
+            const question = trueFalseQuestionsDI.find(q => q.id === questionId);
+            const feedbackEl = document.getElementById(`${questionId}_feedback`);
+            if (!question || !feedbackEl) return;
+
+            if (userAnswer === question.answer) {
+                feedbackEl.innerHTML = `<span class="text-green-400">Correct!</span>`;
+                if(!question.feedbackGiven) { addXPDI(question.xp); question.feedbackGiven = true; }
+            } else {
+                feedbackEl.innerHTML = `<span class="text-red-400">Incorrect. The answer is ${question.answer}.</span>`;
+                 if(!question.feedbackGiven) { question.feedbackGiven = true; } // Mark as attempted
+            }
+            checkAchievementsDI();
+        }
+        function checkTrueFalseAnswersDI(){ // Optional overall check if needed, or can be removed if individual feedback is enough
+            let allCorrect = true;
+            let answeredCount = 0;
+            trueFalseQuestionsDI.forEach(q => {
+                if(q.feedbackGiven) answeredCount++; // Check if student interacted
+                if(document.getElementById(`${q.id}_feedback`).textContent.includes("Incorrect")) allCorrect = false;
+            });
+             const feedbackEl = document.getElementById('trueFalseOverallFeedbackDI');
+            if(answeredCount < trueFalseQuestionsDI.length){
+                feedbackEl.innerHTML = `<span class="text-yellow-400">Please answer all True/False questions.</span>`;
+                return;
+            }
+            if(allCorrect && !diWarmupTrueFalseAttempted){ // Only give bonus XP if all were correct on first 'overall' check
+                addXPDI(5, "All True/False correct!");
+                diWarmupTrueFalseAttempted = true;
+            }
+            feedbackEl.innerHTML = allCorrect ? `<span class="text-green-400">All answers checked!</span>` : `<span class="text-yellow-400">Some answers were incorrect. Review them.</span>`;
+            checkAchievementsDI();
+        }
+         function resetDIWarmup(isInitialSetup = false) {
+            setupDIWarmup();
+            diWarmupFileSizeRanked = false;
+            diWarmupTrueFalseAttempted = false;
+            if (!isInitialSetup) showFlashNotificationDI("Warm-up section reset.", "info");
+        }
+
+
+        // --- Section 1: Starter --- (Copied and pasted, with variable name fix)
+        const pixelatedImageDataBase = { // 10x10 heart
+            width: 10, height: 10,
+            colors: ['#FFFFFF', '#FF0000', '#000000'], // White, Red, Black (Outline)
+            data: [ // 0=White, 1=Red, 2=Black
+                0,0,2,2,2,2,2,2,0,0,
+                0,2,1,1,1,1,1,1,2,0,
+                2,1,1,1,1,1,1,1,1,2,
+                2,1,1,1,1,1,1,1,1,2,
+                2,1,1,1,1,1,1,1,1,2,
+                0,2,1,1,1,1,1,1,2,0,
+                0,0,2,1,1,1,1,2,0,0,
+                0,0,0,2,1,1,2,0,0,0,
+                0,0,0,0,2,2,0,0,0,0,
+                0,0,0,0,0,0,0,0,0,0
+            ]
+        };
+        let currentPixelatedLevelDI = 0; // Renamed to avoid conflict
+
+        function drawPixelatedImageDI() {
+            const canvas = document.getElementById('pixelatedImageCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const imgData = pixelatedImageDataBase;
+            const canvasSize = canvas.width; // Assuming square canvas
+            ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+            let blocksPerSide;
+            if (currentPixelatedLevelDI === 0) blocksPerSide = 2; // Most pixelated
+            else if (currentPixelatedLevelDI === 1) blocksPerSide = 4;
+            else if (currentPixelatedLevelDI === 2) blocksPerSide = 6;
+            else blocksPerSide = imgData.width; // Full resolution
+
+            const blockSizeCanvas = canvasSize / blocksPerSide;
+            const sourceBlockSize = imgData.width / blocksPerSide;
+
+            for (let rBlock = 0; rBlock < blocksPerSide; rBlock++) {
+                for (let cBlock = 0; cBlock < blocksPerSide; cBlock++) {
+                    // Get dominant color from the corresponding source block
+                    let dominantColorIndex = imgData.data[Math.floor(rBlock * sourceBlockSize) * imgData.width + Math.floor(cBlock * sourceBlockSize)];
+                    ctx.fillStyle = imgData.colors[dominantColorIndex];
+                    ctx.fillRect(cBlock * blockSizeCanvas, rBlock * blockSizeCanvas, blockSizeCanvas, blockSizeCanvas);
+                }
+            }
+        }
+        function revealPixelatedImage(level) {
+            currentPixelatedLevelDI = level;
+            drawPixelatedImageDI();
+            if (!starterDIGuessSubmitted && level > 0) {
+                starterDIGuessSubmitted = true; 
+                addXPDI(2, "Revealed more of pixel image");
+            }
+            checkAchievementsDI();
+        }
+        function checkDIStarterThoughts() {
+            const thoughts = document.getElementById('starterDIThoughts').value.trim();
+            const feedbackEl = document.getElementById('starterDIFeedback');
+            if (thoughts.length > 10) { // Reduced from 20 for starter thoughts
+                if (!starterDIThoughtsSubmitted) {
+                    feedbackEl.innerHTML = `<span class="text-green-400">Good initial thoughts!</span>`;
+                    addXPDI(10, "Shared starter thoughts");
+                    starterDIThoughtsSubmitted = true;
+                } else {
+                     feedbackEl.innerHTML = `<span class="text-purple-400">Thoughts noted!</span>`;
+                }
+            } else {
+                 feedbackEl.innerHTML = `<span class="text-yellow-400">Share some of your ideas!</span>`;
+            }
+            checkAchievementsDI();
+        }
+        function resetDIStarter(isInitialSetup = false) {
+            currentPixelatedLevelDI = 0;
+            drawPixelatedImageDI();
+            document.getElementById('starterDIGuess').value = '';
+            document.getElementById('starterDIThoughts').value = '';
+            document.getElementById('starterDIFeedback').innerHTML = '';
+            starterDIThoughtsSubmitted = false;
+            starterDIGuessSubmitted = false;
+            if (!isInitialSetup) showFlashNotificationDI("Starter section reset.", "info");
+        }
+
+        // --- Section 2: Pixels ---
+        const pixelPainterColors = [
+            { name: 'Black', hex: '#000000', binary: '001' }, { name: 'White', hex: '#FFFFFF', binary: '000' },
+            { name: 'Red', hex: '#FF0000', binary: '010' }, { name: 'Green', hex: '#00FF00', binary: '011' },
+            { name: 'Blue', hex: '#0000FF', binary: '100' }, { name: 'Yellow', hex: '#FFFF00', binary: '101' }
+        ];
+        let selectedPixelColor = pixelPainterColors[0].hex;
+        let selectedPixelBinary = pixelPainterColors[0].binary;
+        let isPaintingDI = false;
+
+        function setupPixelPainter() {
+            const paletteContainer = document.getElementById('colorPaletteDI');
+            const gridContainer = document.getElementById('pixelPainterGrid');
+            paletteContainer.innerHTML = '';
+            gridContainer.innerHTML = '';
+            const gridSize = 20; // Increased grid size
+            gridContainer.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+
+            pixelPainterColors.forEach(color => {
+                const button = document.createElement('button');
+                button.className = 'color-palette-button';
+                button.style.backgroundColor = color.hex;
+                button.dataset.hex = color.hex;
+                button.dataset.binary = color.binary;
+                button.title = color.name;
+                if (color.hex === selectedPixelColor) button.classList.add('selected-color');
+                button.onclick = () => selectPixelPainterColor(color, button);
+                paletteContainer.appendChild(button);
+            });
+
+            for (let i = 0; i < gridSize * gridSize; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'pixel-cell';
+                // Mouse events for click and drag painting
+                cell.addEventListener('mousedown', (e) => { isPaintingDI = true; paintPixelCell(e.target); });
+                cell.addEventListener('mousemove', (e) => { if(isPaintingDI) paintPixelCell(e.target); });
+                gridContainer.appendChild(cell);
+            }
+            document.body.addEventListener('mouseup', () => { isPaintingDI = false; }); // Stop painting if mouseup anywhere
+            document.getElementById('pixelColorBinary').textContent = selectedPixelBinary;
+        }
+        function selectPixelPainterColor(color, buttonEl) {
+            selectedPixelColor = color.hex;
+            selectedPixelBinary = color.binary;
+            document.getElementById('pixelColorBinary').textContent = selectedPixelBinary;
+            document.querySelectorAll('#colorPaletteDI button').forEach(btn => btn.classList.remove('selected-color'));
+            buttonEl.classList.add('selected-color');
+        }
+        function paintPixelCell(cell) {
+            if(cell.classList.contains('pixel-cell')){ // Ensure we are painting a cell
+                cell.style.backgroundColor = selectedPixelColor;
+                if(!pixelArtPainted) { addXPDI(10, "Painted first pixel!"); pixelArtPainted = true;} // Increased XP slightly
+                checkAchievementsDI();
+            }
+        }
+        // Removed checkPixelDefinition and associated HTML elements
+        function resetDIPixels(isInitialSetup = false) {
+            setupPixelPainter();
+            pixelArtPainted = false;
+            // pixelDefSubmitted removed
+            if (!isInitialSetup) showFlashNotificationDI("Pixel Painter task reset.", "info");
+        }
+
+
+        // --- Section 3: Resolution --- (Added 100x100 to drawResolutionShape options)
+        function drawResolutionShape(gridSize) {
+            const canvas = document.getElementById('resolutionViewerCanvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            const cellSize = w / gridSize; // cellSize will be smaller for higher gridSize
+            ctx.clearRect(0,0,w,h);
+            ctx.fillStyle = '#a78bfa'; // Violet
+            const starPoints = [ 
+                [0.5, 0.05], [0.6, 0.35], [0.95, 0.35], [0.65, 0.55],
+                [0.75, 0.9], [0.5, 0.7], [0.25, 0.9], [0.35, 0.55],
+                [0.05, 0.35], [0.4, 0.35]
+            ];
+            for(let r=0; r<gridSize; r++){
+                for(let c=0; c<gridSize; c++){
+                    const cx = (c + 0.5) * cellSize;
+                    const cy = (r + 0.5) * cellSize;
+                    if(isPointInStar(cx/w, cy/h, starPoints)){
+                         ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+            if(!resolutionViewerUsed) { addXPDI(5,"Used Resolution Viewer"); resolutionViewerUsed = true;}
+            checkAchievementsDI();
+        }
+        // isPointInStar, calculateTotalPixels, checkResolutionQuestion - same as before
+        // resetDIResolution - same as before
+        // --- Re-add functions for Section 3 from previous state ---
+        function isPointInStar(x, y, vs) { let inside = false; for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) { const xi = vs[i][0], yi = vs[i][1]; const xj = vs[j][0], yj = vs[j][1]; const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi); if (intersect) inside = !inside; } return inside; }
+        function calculateTotalPixels(){ const w = parseInt(document.getElementById('imageWidth').value); const h = parseInt(document.getElementById('imageHeight').value); const outputEl = document.getElementById('totalPixelsOutput').querySelector('span'); if(w > 0 && h > 0){ outputEl.textContent = (w*h).toLocaleString(); if(!pixelCounterUsed) {addXPDI(5, "Calculated total pixels"); pixelCounterUsed = true;} } else { outputEl.textContent = "---"; showModalDI("Please enter valid width and height."); } checkAchievementsDI(); }
+        function checkResolutionQuestion(){ const userAnswer = parseInt(document.getElementById('resolutionQuestionAnswer').value); const feedbackEl = document.getElementById('resolutionQuestionFeedback'); const correctAnswer = 1080 * 2340; if(userAnswer === correctAnswer){ feedbackEl.innerHTML = `<span class="text-green-400">Correct! That's ${correctAnswer.toLocaleString()} pixels.</span>`; if(!resolutionQuestionAnswered) {addXPDI(10, "Answered resolution question"); resolutionQuestionAnswered = true;} } else { feedbackEl.innerHTML = `<span class="text-red-400">Not quite. Recheck your multiplication.</span>`; } checkAchievementsDI(); }
+        function resetDIResolution(isInitialSetup = false){ const canvas = document.getElementById('resolutionViewerCanvas'); if(canvas) canvas.getContext('2d').clearRect(0,0,canvas.width, canvas.height); const defCanvas = document.getElementById('resolutionViewerCanvas'); if(defCanvas) drawResolutionShape(30); document.getElementById('imageWidth').value = ''; document.getElementById('imageHeight').value = ''; document.getElementById('totalPixelsOutput').querySelector('span').textContent = '---'; document.getElementById('resolutionQuestionAnswer').value = ''; document.getElementById('resolutionQuestionFeedback').innerHTML = ''; resolutionViewerUsed = false; pixelCounterUsed = false; resolutionQuestionAnswered = false; if (!isInitialSetup) showFlashNotificationDI("Resolution task reset.", "info"); }
+
+
+        // --- Section 4: Colour Depth --- (Buttons for 12, 16, 24 bit)
+        // calculatePossibleColors, checkColorDepthQuestion - same as before
+        // drawWithBitDepth - now takes a predefined simple scene to show color reduction better
+        const simpleSceneColors = { // Define some base colors for our scene
+            sky: {r:135, g:206, b:250},   // Light Sky Blue
+            sun: {r:255, g:255, b:0},    // Yellow
+            grass: {r:34, g:139, b:34},   // Forest Green
+            house: {r:222, g:184, b:135}, // Burlywood
+            roof: {r:165, g:42, b:42}     // Brown
+        };
+
+        function quantizeColor(originalColorComponent, numLevels) {
+            if (numLevels <= 1) return originalColorComponent > 127 ? 255 : 0; // For 1-bit (B&W)
+            const step = 256 / numLevels;
+            const quantizedIndex = Math.floor(originalColorComponent / step);
+            return Math.floor(quantizedIndex * step + step / 2);
+        }
+
+        function drawWithBitDepth(bitDepth){
+            const canvas = document.getElementById('colorDepthCanvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width; const h = canvas.height;
+            ctx.clearRect(0,0,w,h);
+            const numColorsPerChannel = bitDepth >= 8 ? 256 : Math.pow(2, Math.floor(bitDepth/3)); // Simplified for non-true color
+                                                                                              // For >8 bit, we mostly simulate full color with RGB
+
+            // Sky
+            let rSky = simpleSceneColors.sky.r; let gSky = simpleSceneColors.sky.g; let bSky = simpleSceneColors.sky.b;
+            if (bitDepth < 8) { // Apply quantization for lower bit depths
+                 rSky = quantizeColor(rSky, numColorsPerChannel);
+                 gSky = quantizeColor(gSky, numColorsPerChannel);
+                 bSky = quantizeColor(bSky, numColorsPerChannel);
+            }
+            ctx.fillStyle = `rgb(${rSky}, ${gSky}, ${bSky})`;
+            ctx.fillRect(0,0,w,h*0.6); // Sky part
+
+            // Grass
+            let rGrass = simpleSceneColors.grass.r; let gGrass = simpleSceneColors.grass.g; let bGrass = simpleSceneColors.grass.b;
+            if (bitDepth < 8) {
+                 rGrass = quantizeColor(rGrass, numColorsPerChannel);
+                 gGrass = quantizeColor(gGrass, numColorsPerChannel);
+                 bGrass = quantizeColor(bGrass, numColorsPerChannel);
+            }
+            ctx.fillStyle = `rgb(${rGrass}, ${gGrass}, ${bGrass})`;
+            ctx.fillRect(0,h*0.6,w,h*0.4); // Grass part
+
+            // Sun
+            let rSun = simpleSceneColors.sun.r; let gSun = simpleSceneColors.sun.g; let bSun = simpleSceneColors.sun.b;
+             if (bitDepth < 8 && bitDepth > 1) { // Don't make sun black/white in 1-bit if sky/grass is
+                 rSun = quantizeColor(rSun, numColorsPerChannel);
+                 gSun = quantizeColor(gSun, numColorsPerChannel);
+                 bSun = quantizeColor(bSun, numColorsPerChannel);
+            } else if (bitDepth === 1) { // For 1-bit, make sun contrast with sky
+                 rSun = gSun = bSun = (rSky > 127 ? 0 : 255);
+            }
+            ctx.fillStyle = `rgb(${rSun}, ${gSun}, ${bSun})`;
+            ctx.beginPath(); ctx.arc(w*0.8, h*0.2, w*0.1, 0, Math.PI*2); ctx.fill();
+
+            // House
+            let rHouse = simpleSceneColors.house.r; let gHouse = simpleSceneColors.house.g; let bHouse = simpleSceneColors.house.b;
+            if (bitDepth < 8) { /* Quantize */ rHouse=quantizeColor(rHouse,numColorsPerChannel); gHouse=quantizeColor(gHouse,numColorsPerChannel); bHouse=quantizeColor(bHouse,numColorsPerChannel); }
+            ctx.fillStyle = `rgb(${rHouse}, ${gHouse}, ${bHouse})`;
+            ctx.fillRect(w*0.2, h*0.4, w*0.4, h*0.3); // House body
+
+            // Roof
+            let rRoof = simpleSceneColors.roof.r; let gRoof = simpleSceneColors.roof.g; let bRoof = simpleSceneColors.roof.b;
+            if (bitDepth < 8) { /* Quantize */rRoof=quantizeColor(rRoof,numColorsPerChannel); gRoof=quantizeColor(gRoof,numColorsPerChannel); bRoof=quantizeColor(bRoof,numColorsPerChannel); }
+            ctx.fillStyle = `rgb(${rRoof}, ${gRoof}, ${bRoof})`;
+            ctx.beginPath(); ctx.moveTo(w*0.15, h*0.4); ctx.lineTo(w*0.4, h*0.2); ctx.lineTo(w*0.65, h*0.4); ctx.closePath(); ctx.fill();
+
+            if(!colorDepthVisualizerUsed){ addXPDI(10, "Used Colour Depth Visualizer"); colorDepthVisualizerUsed = true;}
+            checkAchievementsDI();
+        }
+        // --- Re-add functions for Section 4 from previous state ---
+        function calculatePossibleColors(){ const n = parseInt(document.getElementById('bitDepthInput').value); const outputEl = document.getElementById('possibleColorsOutput').querySelector('span'); if(n > 0 && n <= 24){ outputEl.textContent = Math.pow(2,n).toLocaleString(); if(!bitDepthCalcUsed) { addXPDI(5, "Calculated possible colours"); bitDepthCalcUsed = true;} } else { outputEl.textContent = "---"; showModalDI("Please enter a bit depth between 1 and 24."); } checkAchievementsDI(); }
+        function checkColorDepthQuestion(){ const userAnswer = parseInt(document.getElementById('colorDepthQuestionAnswer').value); const feedbackEl = document.getElementById('colorDepthQuestionFeedback'); if(userAnswer === 16){ feedbackEl.innerHTML = `<span class="text-green-400">Correct! 2<sup>4</sup> = 16 colours.</span>`; if(!colorDepthQuestionAnswered) {addXPDI(10, "Answered color depth question"); colorDepthQuestionAnswered = true;} } else { feedbackEl.innerHTML = `<span class="text-red-400">Not quite. Remember it's 2<sup>n</sup>.</span>`; } checkAchievementsDI(); }
+        function resetDIColorDepth(isInitialSetup = false){ document.getElementById('bitDepthInput').value = ''; document.getElementById('possibleColorsOutput').querySelector('span').textContent = '---'; document.getElementById('colorDepthQuestionAnswer').value = ''; document.getElementById('colorDepthQuestionFeedback').innerHTML = ''; const canvas = document.getElementById('colorDepthCanvas'); if(canvas) canvas.getContext('2d').clearRect(0,0,canvas.width, canvas.height); if(canvas) drawWithBitDepth(8); bitDepthCalcUsed = false; colorDepthVisualizerUsed = false; colorDepthQuestionAnswered = false; if (!isInitialSetup) showFlashNotificationDI("Colour Depth task reset.", "info"); }
+
+
+        // --- Section 5: Metadata ---
+        // showMetadata, checkMetadataQuestion (modified), resetDIMetadata - same as before
+        // --- Re-add functions for Section 5 (Metadata) ---
+        const metadataExamples = { beach: { Filename: "BeachSunset.jpg", Dimensions: "4000x3000 pixels", Resolution: "300 DPI", 'Colour Depth': "24-bit", 'File Type': "JPEG", 'Date Created': "15/07/2024", 'Camera Model': "PixelSnap 7" }, logo: { Filename: "CompanyLogo.png", Dimensions: "800x200 pixels", Resolution: "72 DPI", 'Colour Depth': "32-bit (with Alpha)", 'File Type': "PNG", 'Software': "VectorMagic Pro" }, cat: { Filename: "MyCat.gif", Dimensions: "320x240 pixels", 'Colour Depth': "8-bit (256 colours)", 'File Type': "GIF", 'Animated': "Yes, 5 frames" } };
+        function showMetadata(imageKey){ const panel = document.getElementById('metadataDisplayPanel'); const data = metadataExamples[imageKey]; if(!data || !panel) return; let html = '<dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">'; for(const key in data){ html += `<dt>${key}:</dt><dd>${data[key]}</dd>`; } html += '</dl>'; panel.innerHTML = html; if(!metadataViewerUsed) { addXPDI(5, "Viewed image metadata"); metadataViewerUsed = true;} checkAchievementsDI(); }
+        
+        function checkMetadataQuestions(){
+            let q1Pass = document.getElementById('metadataQ1').value.trim().length > 10;
+            let q2Pass = document.getElementById('metadataQ2').value.trim().split(',').length >= 2 || document.getElementById('metadataQ2').value.trim().split(' and ').length >=2 ;
+            let q3Pass = document.getElementById('metadataQ3').value.trim().length > 10;
+            const feedbackEl = document.getElementById('metadataAllQuestionsFeedback');
+            let allAnsweredSufficiently = q1Pass && q2Pass && q3Pass;
+
+            if (allAnsweredSufficiently) {
+                feedbackEl.innerHTML = `<span class="text-green-400">Answers noted! Good job thinking about metadata.</span>`;
+                if (metadataQuestionsAnsweredCount < 3) { // Award XP only once for completing all
+                    addXPDI(15, "Answered metadata questions thoughtfully");
+                    metadataQuestionsAnsweredCount = 3; // Mark as all attempted for achievement
+                }
+            } else {
+                let specificFeedback = "Please ensure you provide a reasonable answer for: ";
+                if (!q1Pass) specificFeedback += "Description of metadata. ";
+                if (!q2Pass) specificFeedback += "Two examples. ";
+                if (!q3Pass) specificFeedback += "Profession and reason. ";
+                feedbackEl.innerHTML = `<span class="text-yellow-400">${specificFeedback.trim()}</span>`;
+            }
+            checkAchievementsDI();
+        }
+
+        function resetDIMetadata(isInitialSetup = false){
+            document.getElementById('metadataDisplayPanel').innerHTML = '<p class="text-slate-400 italic">Select an image to view its properties.</p>';
+            document.getElementById('metadataQ1').value = '';
+            document.getElementById('metadataQ2').value = '';
+            document.getElementById('metadataQ3').value = '';
+            document.getElementById('metadataAllQuestionsFeedback').innerHTML = '';
+            metadataViewerUsed = false; metadataQuestionsAnsweredCount = 0;
+            if (!isInitialSetup) showFlashNotificationDI("Metadata task reset.", "info");
+        }
+
+
+        // --- Section 6: File Size ---
+        // setupDIFileSizeProblems, checkFileSizeManualProblem, estimateFileSize, resetDIFileSize - modified
+        const fileSizeManualProblemsData = [
+            { id: "fs_manual1", width: 10, height: 10, colors: 2, correctAnswerBytes: 100 / 8 /* 1 bit per pixel */, xp: 5}, // 10x10, 1-bit color
+            { id: "fs_manual2", width: 20, height: 20, colors: 8, correctAnswerBytes: (20*20*3)/8 /* 3 bits per pixel */, xp: 5},
+            { id: "fs_manual3", width: 50, height: 30, colors: 16, correctAnswerBytes: (50*30*4)/8 /* 4 bits per pixel */, xp: 5}
+        ];
+        const fileSizeEstimatorProblemsData = [
+            { id: "fs_est1", scenario: "A small web icon: 64 pixels wide, 64 pixels high, using 256 colours (8-bit colour depth).", width: 64, height: 64, depth: 8, xp: 7},
+            { id: "fs_est2", scenario: "A phone wallpaper: 1080 pixels wide, 2340 pixels high, using 'True Color' (24-bit colour depth).", width: 1080, height: 2340, depth: 24, xp: 8}
+        ];
+
+        function setupDIFileSizeProblems() {
+            const manualContainer = document.getElementById('fileSizeManualProblemsContainer');
+            manualContainer.innerHTML = '';
+            Object.keys(fileSizeManualProblemStates).forEach(key => delete fileSizeManualProblemStates[key]);
+            fileSizeManualProblemsData.forEach((prob, index) => {
+                fileSizeManualProblemStates[prob.id] = { correct: false, xpAwarded: false};
+                manualContainer.innerHTML += `
+                <div class="bg-slate-700/60 p-3 rounded-md">
+                    <p class="text-sm text-slate-300 mb-1"><strong>${index+1}.</strong> Image: ${prob.width}px x ${prob.height}px, ${prob.colors} colours. Calculate size in Bytes.</p>
+                    <input type="number" id="${prob.id}_answer" class="w-1/2 p-1 bg-slate-600 border-slate-500 rounded text-sm" placeholder="Bytes">
+                    <button onclick="checkFileSizeManualProblem('${prob.id}')" class="bg-green-500 text-white px-2 py-1 text-xs rounded ml-1">Check</button>
+                    <span id="${prob.id}_feedback" class="text-xs ml-2"></span>
+                    <div class="mt-1">
+                        <canvas id="${prob.id}_canvas" class="working-out-canvas mx-auto"></canvas>
+                        <div class="text-center canvas-controls"><button id="${prob.id}_clearCanvas">Clear</button><button id="${prob.id}_toggleCanvas">Toggle Size</button></div>
+                    </div>
+                </div>`;
+            });
+            fileSizeManualProblemsData.forEach((prob) => {
+                 initializeCanvas(`${prob.id}_canvas`, `${prob.id}_clearCanvas`, `${prob.id}_toggleCanvas`);
+            });
+
+            const estimatorContainer = document.getElementById('fileSizeEstimatorProblemsContainer');
+            estimatorContainer.innerHTML = '';
+            Object.keys(fileSizeEstimatorProblemStates).forEach(key => delete fileSizeEstimatorProblemStates[key]);
+            fileSizeEstimatorProblemsData.forEach((prob, index) => {
+                fileSizeEstimatorProblemStates[prob.id] = { correct: false, xpAwarded: false};
+                 estimatorContainer.innerHTML += `
+                <div class="bg-slate-700/60 p-3 rounded-md">
+                    <p class="text-sm text-slate-300 mb-1"><strong>${index+1+fileSizeManualProblemsData.length}.</strong> ${prob.scenario} Fill the estimator and find the size in Bytes.</p>
+                    <label for="${prob.id}_answer" class="block text-xs text-slate-400 mt-1">Enter calculated Bytes from estimator:</label>
+                    <input type="number" id="${prob.id}_answer" class="w-1/2 p-1 bg-slate-600 border-slate-500 rounded text-sm" placeholder="Bytes from Estimator">
+                    <button onclick="checkFileSizeEstimatorProblem('${prob.id}')" class="bg-green-500 text-white px-2 py-1 text-xs rounded ml-1">Check</button>
+                    <span id="${prob.id}_feedback" class="text-xs ml-2"></span>
+                </div>`;
+            });
+        }
+
+        function getBitsForColors(numColors) { // Helper for manual problems
+            if (numColors <=0) return 0;
+            return Math.ceil(Math.log2(numColors));
+        }
+
+        function checkFileSizeManualProblem(problemId) {
+            const probData = fileSizeManualProblemsData.find(p => p.id === problemId);
+            const userAnswer = parseFloat(document.getElementById(`${problemId}_answer`).value);
+            const feedbackEl = document.getElementById(`${problemId}_feedback`);
+            const state = fileSizeManualProblemStates[problemId];
+
+            const bitsPerPixel = getBitsForColors(probData.colors);
+            const correctAnswerBytes = (probData.width * probData.height * bitsPerPixel) / 8;
+
+            if (userAnswer === correctAnswerBytes) {
+                feedbackEl.innerHTML = `<span class="text-green-400">Correct! ${correctAnswerBytes.toLocaleString()} Bytes.</span>`;
+                state.correct = true;
+                if(!state.xpAwarded) {addXPDI(probData.xp); state.xpAwarded = true;}
+            } else {
+                 feedbackEl.innerHTML = `<span class="text-red-400">Not quite. Bits for ${probData.colors} colors is ${bitsPerPixel}. Correct: ${correctAnswerBytes.toLocaleString()} Bytes.</span>`;
+            }
+            checkAchievementsDI();
+        }
+        
+        function checkFileSizeEstimatorProblem(problemId) {
+            const probData = fileSizeEstimatorProblemsData.find(p => p.id === problemId);
+            const userAnswer = parseFloat(document.getElementById(`${problemId}_answer`).value);
+            const feedbackEl = document.getElementById(`${problemId}_feedback`);
+            const state = fileSizeEstimatorProblemStates[problemId];
+            
+            // For these, they should use the estimator. The estimator will show the bytes.
+            // We primarily check if they used the estimator for this problem's values.
+            const estimatorBytesOutput = parseFloat(document.getElementById('fsTotalBytes').textContent.replace(/,/g, ''));
+            const expectedBytes = (probData.width * probData.height * probData.depth) / 8;
+
+            if (userAnswer === expectedBytes) {
+                 feedbackEl.innerHTML = `<span class="text-green-400">Correct! ${expectedBytes.toLocaleString()} Bytes.</span>`;
+                state.correct = true;
+                if(!state.xpAwarded) {addXPDI(probData.xp); state.xpAwarded = true;}
+            } else if (userAnswer === estimatorBytesOutput && estimatorBytesOutput !== expectedBytes) {
+                 feedbackEl.innerHTML = `<span class="text-yellow-400">You entered the estimator's current output, but ensure the estimator has this problem's values (${probData.width}x${probData.height}, ${probData.depth}-bit). Correct: ${expectedBytes.toLocaleString()} Bytes.</span>`;
+            } else {
+                feedbackEl.innerHTML = `<span class="text-red-400">Not quite. Use the estimator with this problem's values. Correct answer: ${expectedBytes.toLocaleString()} Bytes.</span>`;
+            }
+            checkAchievementsDI();
+        }
+
+
+        function estimateFileSize(){
+            const w = parseInt(document.getElementById('fsWidth').value);
+            const h = parseInt(document.getElementById('fsHeight').value);
+            const d = parseInt(document.getElementById('fsColorDepth').value);
+
+            if(w > 0 && h > 0 && d > 0){
+                const totalPixels = w * h;
+                const totalBits = totalPixels * d;
+                const totalBytes = totalBits / 8;
+                const totalKB = totalBytes / 1000; // Using 1000 for KB
+                const totalMB = totalKB / 1000;    // Using 1000 for MB
+                
+                document.getElementById('fsTotalPixels').textContent = totalPixels.toLocaleString();
+                document.getElementById('fsBpp').textContent = d;
+                document.getElementById('fsTotalBits').textContent = totalBits.toLocaleString();
+                document.getElementById('fsTotalBytes').textContent = totalBytes.toLocaleString();
+                document.getElementById('fsTotalKB').textContent = totalKB.toFixed(2) + " KB";
+                document.getElementById('fsTotalMB').textContent = totalMB.toFixed(3) + " MB"; // Show more precision for MB
+                 if(!fileSizeEstimatorUsed) {addXPDI(5, "Used File Size Estimator"); fileSizeEstimatorUsed = true;} // Reduced XP for just using tool
+            } else {
+                ['fsTotalPixels', 'fsBpp', 'fsTotalBits', 'fsTotalBytes', 'fsTotalKB', 'fsTotalMB'].forEach(id => document.getElementById(id).textContent = '---');
+                showModalDI("Please enter valid width, height, and color depth.");
+            }
+            checkAchievementsDI();
+        }
+        function resetDIFileSize(isInitialSetup = false){
+            ['fsWidth','fsHeight','fsColorDepth'].forEach(id => document.getElementById(id).value = '');
+            ['fsTotalPixels', 'fsBpp', 'fsTotalBits', 'fsTotalBytes', 'fsTotalKB', 'fsTotalMB'].forEach(id => document.getElementById(id).textContent = '---');
+            setupDIFileSizeProblems(); // This will reset individual problem states and inputs
+            fileSizeEstimatorUsed = false;
+            if (!isInitialSetup) showFlashNotificationDI("File Size task reset.", "info");
+        }
+
+        // --- Section 7: Exam Prep --- (Unchanged from previous correct version)
+        const diExamQuestionsData = [
+            { id: "diexq1", text: "Define 'image resolution' and give an example of how it's typically expressed. (2 marks)", markScheme: "<li>Image resolution is the concentration/density of pixels within a specific area of an image (1 mark).</li><li>It's typically expressed as width x height in pixels, e.g., 1920x1080 pixels (1 mark).</li>" },
+            { id: "diexq2", text: "Explain what 'colour depth' (or bit depth) means. If an image has a bit depth of 4, how many different colours can each pixel represent? Show your calculation. (3 marks)", markScheme: "<li>Colour depth is the number of bits used to represent the colour of a single pixel (1 mark).</li><li>Number of colours = 2<sup>bit depth</sup> (1 mark for formula).</li><li>For 4-bit depth, 2<sup>4</sup> = 16 colours (1 mark for correct calculation and answer).</li>" },
+            { id: "diexq3", text: "What is image metadata? Give two examples of information typically found in image metadata. (3 marks)", markScheme: "<li>Metadata is data that describes other data; in images, it's information about the image itself rather than the image content (1 mark).</li><li>Example 1: Dimensions (width/height) or File type (e.g., JPEG) (1 mark).</li><li>Example 2: Date created, Camera model, Colour depth, Resolution (DPI) (1 mark for another valid example).</li>" },
+            { id: "diexq4", text: "List the four main steps to calculate the uncompressed file size of an image in bytes. (4 marks)", markScheme: "<li>1. Find total number of pixels (Width × Height) (1 mark).</li><li>2. Determine bits per pixel (colour depth) (1 mark).</li><li>3. Find total bits (Total Pixels × Bits Per Pixel) (1 mark).</li><li>4. Convert to bytes (Total Bits ÷ 8) (1 mark).</li>" },
+            { id: "diexq5", text: "What is a pixel, and how is its colour typically stored by a computer? (2 marks)", markScheme: "<li>A pixel is the smallest identifiable area or dot of an image, and each pixel is a single colour (1 mark).</li><li>Its colour is stored as a binary value (or number) (1 mark).</li>" }
+        ];
+        function setupDIExamPrep() { /* Same as before */ }
+        function checkDIExamPrerequisites(questionId) { /* Same as before */ }
+        function toggleDIMarkScheme(questionId) { /* Same as before */ }
+        function resetDIExamPrep(isInitialSetup = false) { /* Same as before */ }
+         // Actual implementation for Exam Prep (copy & adapt from previous lesson if needed)
+        function setupDIExamPrep() {
+            const container = document.getElementById('diExamQuestionsContainer');
+            if(!container) return;
+            container.innerHTML = '';
+            Object.keys(diExamPrepState).forEach(key => delete diExamPrepState[key]);
+            diExamQuestionsData.forEach((q, index) => {
+                const qId = `di_exam_q${index + 1}`;
+                diExamPrepState[qId] = { selfMark: null, markSchemeViewed: false, marksSelected: false, xpAwardedForMarking: false };
+                const marks = q.text.match(/\[(\d) marks\]/)?.[1] || '2';
+                container.innerHTML += `
+                    <div class="bg-slate-700/50 p-6 rounded-lg shadow mb-6">
+                        <div class="flex justify-between items-start mb-3"><h3 class="text-lg font-bold text-slate-200">Question ${index + 1}</h3><span class="bg-orange-600 text-orange-100 px-3 py-1 rounded-full text-sm font-semibold">[${marks} marks]</span></div>
+                        <p class="text-slate-300 mb-3">${q.text}</p>
+                        <textarea id="${qId}Answer" class="w-full p-3 bg-slate-600 border-2 border-slate-500 rounded-lg focus:border-orange-400 focus:ring-orange-400 text-slate-200 h-24 mb-3 text-base" placeholder="Your answer..." oninput="checkDIExamPrerequisites('${qId}')"></textarea>
+                        <div class="mt-2 mb-3">
+                            <canvas id="${qId}_canvas" class="working-out-canvas mx-auto"></canvas>
+                            <div class="text-center canvas-controls">
+                                <button id="${qId}_clearCanvas">Clear</button>
+                                <button id="${qId}_toggleCanvas">Toggle Size</button>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4 mb-3">
+                            <label for="${qId}Marks" class="text-sm font-semibold text-slate-300">Self-Assessed Marks:</label>
+                            <select id="${qId}Marks" class="p-2 bg-slate-600 border border-slate-500 rounded-md text-slate-200 text-base" onchange="checkDIExamPrerequisites('${qId}')"><option value="">Select...</option>${[...Array(parseInt(marks) + 1).keys()].map(i => `<option value="${i}">${i}</option>`).join('')}</select>
+                        </div>
+                        <button id="${qId}ShowSchemeBtn" onclick="toggleDIMarkScheme('${qId}')" class="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors text-sm disabled:opacity-50" disabled>Show/Hide Mark Scheme</button>
+                        <div id="${qId}MarkScheme" class="hidden mt-3 bg-purple-800/30 p-4 rounded-lg border border-purple-700 text-base"><h4 class="font-bold text-purple-300 mb-2">Mark Scheme:</h4><ul class="text-sm space-y-1 list-disc list-inside text-purple-200">${q.markScheme}</ul></div>
+                    </div>`;
+            });
+            diExamQuestionsData.forEach((q, index) => {
+                 initializeCanvas(`di_exam_q${index + 1}_canvas`, `di_exam_q${index + 1}_clearCanvas`, `di_exam_q${index + 1}_toggleCanvas`);
+            });
+        }
+        function checkDIExamPrerequisites(questionId) {
+            const marksEl = document.getElementById(`${questionId}Marks`);
+            const showSchemeBtn = document.getElementById(`${questionId}ShowSchemeBtn`);
+            const state = diExamPrepState[questionId];
+            if (!marksEl || !showSchemeBtn || !state) return;
+            state.marksSelected = marksEl.value !== "";
+            showSchemeBtn.disabled = !state.marksSelected; 
+            if (state.marksSelected) {
+                state.selfMark = marksEl.value;
+                if (parseInt(marksEl.value) >= 0 && !state.xpAwardedForMarking) { 
+                    addXPDI(2, `Self-assessed ${questionId}`); 
+                    state.xpAwardedForMarking = true; 
+                }
+            } else { state.selfMark = null; }
+            checkAchievementsDI();
+        }
+        function toggleDIMarkScheme(questionId) { 
+            const markSchemeEl = document.getElementById(questionId + 'MarkScheme');
+            const showSchemeBtn = document.getElementById(`${questionId}ShowSchemeBtn`);
+            if(!markSchemeEl || !showSchemeBtn || showSchemeBtn.disabled) return;
+            markSchemeEl.classList.toggle('hidden');
+            const state = diExamPrepState[questionId];
+            if (state && !state.markSchemeViewed && !markSchemeEl.classList.contains('hidden')) {
+                addXPDI(5, `Viewed mark scheme for ${questionId}`); 
+                state.markSchemeViewed = true;
+            }
+            checkAchievementsDI();
+        }
+        function resetDIExamPrep(isInitialSetup = false) { 
+            setupDIExamPrep();
+            if (!isInitialSetup) showFlashNotificationDI("Digital Image Exam Prep reset.", "info");
+        }
+
+
+        // --- Section 8: Extension Activities ---
+        const diExtensionData = [
+            { id: "extDI1", title: "Compression Exploration", task: "Research and briefly explain the difference between <strong>Lossy</strong> (like JPEG) and <strong>Lossless</strong> (like PNG) image compression. Why would you choose one over the other?", type: "textarea", xp: 15 },
+            { id: "extDI2", title: "Vector vs. Raster Graphics", task: "What is the main difference between a <strong>raster image</strong> (made of pixels, like the ones we've discussed) and a <strong>vector image</strong>? Give an example of when you would use each type.", type: "textarea", xp: 15 },
+            { id: "extDI3", title: "Pixel Art Challenge", task: "Follow the link to <a href='https://studio.code.org/s/pixelation/stage/2/puzzle/1' target='_blank' class='text-yellow-300 hover:underline'>Code.org's Pixelation tool</a>. Create your own 1-bit (black and white) image using binary. If you complete one, click the button below!", type: "link_button", xp: 10 }
+        ];
+        function setupDIExtensions() {
+            const container = document.getElementById('diExtensionsContainer');
+            container.innerHTML = '';
+            diExtensionData.forEach(ext => {
+                if (!diExtensionStates[ext.id]) diExtensionStates[ext.id] = { xpAwarded: false };
+                let extHTML = `<div class="bg-slate-700/50 p-6 rounded-lg shadow">
+                                <h3 class="text-xl font-bold text-yellow-300 mb-3">${ext.title}</h3>`;
+                if (ext.type === "textarea") {
+                    extHTML += `<p class="text-slate-300 mb-2 text-sm">${ext.task}</p>
+                                <textarea id="${ext.id}_answer" class="w-full p-2 bg-slate-600 border-slate-500 rounded h-24 text-sm" placeholder="Your research summary..."></textarea>
+                                <button onclick="submitDIExtensionAnswer('${ext.id}', ${ext.xp})" id="btn_${ext.id}" class="mt-2 bg-yellow-600 text-white px-4 py-1.5 rounded hover:bg-yellow-700 text-sm">Submit Summary</button>`;
+                } else if (ext.type === "link_button") {
+                     extHTML += `<p class="text-slate-300 mb-3 text-sm">${ext.task}</p>
+                                <button onclick="markDIExtensionExplored('${ext.id}', ${ext.xp})" id="btn_${ext.id}" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 text-sm">I've completed the external activity!</button>`;
+                }
+                extHTML += `</div>`;
+                container.innerHTML += extHTML;
+            });
+        }
+        function submitDIExtensionAnswer(extId, xp){
+            const answerEl = document.getElementById(`${extId}_answer`);
+            const state = diExtensionStates[extId];
+            // Removed min 30 words check
+            if(answerEl && answerEl.value.trim().length > 0 && state && !state.xpAwarded){ 
+                addXPDI(xp, `Completed ${diExtensionData.find(e=>e.id===extId)?.title || 'extension'}`);
+                state.xpAwarded = true;
+                const btn = document.getElementById(`btn_${extId}`);
+                if(btn) {btn.disabled = true; btn.textContent="Submitted!";}
+            } else if (answerEl && answerEl.value.trim().length === 0) {
+                showModalDI("Please provide a response for the extension task."); 
+            } else if (state && state.xpAwarded){
+                 showFlashNotificationDI("You've already received points for this extension.", "info");
+            }
+            checkAchievementsDI();
+        }
+         function markDIExtensionExplored(extId, xp) {
+            const state = diExtensionStates[extId];
+            if (state && !state.xpAwarded) {
+                addXPDI(xp, `Marked '${diExtensionData.find(e=>e.id===extId)?.title || 'extension'}' as explored`);
+                state.xpAwarded = true;
+                const btn = document.getElementById(`btn_${extId}`);
+                if(btn) {btn.disabled = true; btn.textContent="XP Awarded!";}
+            }
+            checkAchievementsDI();
+        }
+        function resetDIExtensions(isInitialSetup = false){
+            setupDIExtensions();
+            if(!isInitialSetup) showFlashNotificationDI("Extension Activities reset.", "info");
+        }
+        
+        // --- Section 10: Plenary ---
+        const learningOutcomesDI = [
+            "Recognise the different file sizes required for data storage.",
+            "Calculate image file sizes.",
+            "Understand the role that resolution, bit depth and metadata play in determining image properties and size."
+        ];
+        function setupDIPlenary() {
+            const container = document.getElementById('learningOutcomesDIContainer');
+            container.innerHTML = '';
+            learningOutcomesDI.forEach((outcome, index) => {
+                container.innerHTML += `
+                <div class="flex items-center">
+                    <input id="outcomeDI_${index}" type="checkbox" class="h-4 w-4 text-teal-500 border-slate-400 rounded focus:ring-teal-400">
+                    <label for="outcomeDI_${index}" class="ml-2 block text-sm text-slate-300">${outcome}</label>
+                </div>`;
+            });
+            document.getElementById('learningOutcomesFeedbackDI').textContent = '';
+        }
+        function submitLearningOutcomesDI(){
+            const feedbackEl = document.getElementById('learningOutcomesFeedbackDI');
+            feedbackEl.innerHTML = `<span class="text-green-400">Thanks for your reflection!</span>`;
+            if(!plenaryReviewedDI){
+                addXPDI(5, "Reviewed learning outcomes");
+                plenaryReviewedDI = true;
+            }
+            checkAchievementsDI();
+        }
+        function resetDIPlenary(isInitialSetup = false){
+            setupDIPlenary();
+            plenaryReviewedDI = false;
+            if(!isInitialSetup) showFlashNotificationDI("Plenary reset.", "info");
+        }
+
+
+        // --- DOMContentLoaded Initializations ---
+        document.addEventListener('DOMContentLoaded', () => {
+            addXPDI(0, "", true); 
+            resetDIWarmup(true);
+            resetDIStarter(true); 
+            resetDIPixels(true);
+            resetDIResolution(true); drawResolutionShape(30); 
+            resetDIColorDepth(true); drawWithBitDepth(8); 
+            resetDIMetadata(true);
+            resetDIFileSize(true); 
+            setupDIFileSizeProblems(); // Call this after reset to populate problem containers
+             initializeCanvas('fileSizeCanvas', 'fileSizeCanvasClear', 'fileSizeCanvasToggle'); // Initialize the general canvas for file size section
+            resetDIExamPrep(true);
+            resetDIExtensions(true);
+            resetDIPlenary(true);
+            checkAchievementsDI(true); 
+        });
+    </script>
+</body>
+</html>

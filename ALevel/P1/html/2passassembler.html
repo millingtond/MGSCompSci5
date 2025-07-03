@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two-Pass Assembler Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.5);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --primary-color-start: #3b82f6;
+            --primary-color-end: #818cf8;
+            --text-color: #e2e8f0;
+            --text-muted: #94a3b8;
+            --highlight-bg: rgba(59, 130, 246, 0.15);
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+        }
+        
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .glassmorphism {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .btn {
+            position: relative;
+            overflow: hidden;
+            border-radius: 0.5rem;
+            padding: 0.6rem 1.5rem;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+            transform: translateZ(0); /* GPU acceleration */
+        }
+        
+        .btn-primary {
+            background-image: linear-gradient(45deg, var(--primary-color-start), var(--primary-color-end));
+            color: white;
+        }
+        .btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.6);
+            transform: scale(0);
+            animation: ripple-effect 0.6s linear;
+        }
+
+        @keyframes ripple-effect {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        .code-line, .table-row {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 0.375rem;
+        }
+
+        .highlight-line {
+            background-color: var(--highlight-bg);
+            transform: scale(1.01);
+        }
+        
+        .highlight-symbol {
+            background-color: rgba(234, 179, 8, 0.2);
+            border: 1px solid rgba(234, 179, 8, 0.5);
+            border-radius: 4px;
+            padding: 2px 4px;
+        }
+        
+        .fade-out {
+            opacity: 0.3;
+            transition: opacity 0.5s ease;
+        }
+
+        .modal-overlay {
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .modal-content {
+             transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        .modal-overlay.hidden .modal-content {
+            transform: scale(0.95);
+            opacity: 0;
+        }
+        
+        #quiz-container .option {
+            transition: all 0.2s ease-in-out;
+        }
+        #quiz-container .option.selected {
+            border-color: var(--primary-color-start);
+            background-color: var(--highlight-bg);
+            transform: scale(1.02);
+        }
+        #quiz-container .option.correct, .draggable.correct {
+            border-color: var(--success-color);
+            background-color: rgba(34, 197, 94, 0.1);
+        }
+        #quiz-container .option.incorrect, .draggable.incorrect {
+            border-color: var(--error-color);
+            background-color: rgba(239, 68, 68, 0.1);
+        }
+        
+        .progress-bar div {
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            background-image: linear-gradient(45deg, var(--primary-color-start), var(--primary-color-end));
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after {
+                animation-delay: -1ms !important;
+                animation-duration: 1ms !important;
+                animation-iteration-count: 1 !important;
+                background-attachment: initial !important;
+                scroll-behavior: auto !important;
+                transition-duration: 0s !important;
+                transition-delay: 0s !important;
+            }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <canvas id="particle-canvas"></canvas>
+
+    <div id="simulation-container" class="max-w-7xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                Interactive Two-Pass Assembler
+            </h1>
+            <p class="text-lg text-gray-400 mt-2">Cambridge A-Level Computer Science (9618)</p>
+        </header>
+        
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <section id="assembly-code-section" class="glassmorphism p-6 lg:col-span-1">
+                <h2 id="pass-title" class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">1. Assembly Program</h2>
+                <div id="assembly-code" class="text-sm font-mono space-y-1"></div>
+            </section>
+
+            <section id="symbol-table-section" class="glassmorphism p-6 lg:col-span-1">
+                <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">2. Symbol Table</h2>
+                <div class="grid grid-cols-2 gap-2 font-semibold text-gray-400 mb-2 px-2">
+                    <span>Symbol (Label)</span>
+                    <span class="text-right">Absolute Address</span>
+                </div>
+                <div id="symbol-table" class="text-sm font-mono space-y-2"></div>
+            </section>
+
+            <section id="object-code-section" class="glassmorphism p-6 lg:col-span-1">
+                <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">3. Object Code</h2>
+                <div class="grid grid-cols-2 gap-2 font-semibold text-gray-400 mb-2 px-2">
+                    <span>Address</span>
+                    <span class="text-right">Generated Code</span>
+                </div>
+                <div id="object-code" class="text-sm font-mono space-y-2"></div>
+            </section>
+        </main>
+
+        <footer class="mt-8">
+            <div id="progress-bar-container" class="w-full bg-slate-700 rounded-full h-2.5 mb-4">
+                <div id="progress-bar" class="h-2.5 rounded-full" style="width: 0%"></div>
+            </div>
+            <div id="controls" class="flex items-center justify-center gap-4">
+                <button id="prev-step" class="btn btn-primary">Previous</button>
+                <button id="next-step" class="btn btn-primary">Next</button>
+                <button id="reset-sim" class="btn btn-primary">Reset</button>
+                <button id="start-quiz" class="btn btn-primary hidden">Start Quiz</button>
+            </div>
+        </footer>
+    </div>
+    
+    <div id="quiz-container" class="hidden max-w-4xl mx-auto p-8 glassmorphism">
+        <h2 id="quiz-title" class="text-2xl font-bold text-center mb-6">Knowledge Check</h2>
+        <div id="quiz-question-container"></div>
+        <div id="quiz-feedback" class="mt-4 text-center min-h-[2rem]"></div>
+        <div class="flex justify-center mt-6 gap-4">
+            <button id="submit-answer" class="btn btn-primary">Submit</button>
+            <button id="next-question" class="btn btn-primary hidden">Next Question</button>
+        </div>
+    </div>
+    
+    <div id="quiz-results-container" class="hidden max-w-4xl mx-auto p-8 glassmorphism text-center">
+        <h2 class="text-3xl font-bold mb-4">Quiz Complete!</h2>
+        <p class="text-xl mb-2">Your score:</p>
+        <p id="quiz-score" class="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-500 mb-6"></p>
+        <button id="restart-quiz" class="btn btn-primary mt-6">Try Again</button>
+    </div>
+
+    <div id="info-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden">
+        <div class="modal-content glassmorphism max-w-2xl w-full p-6 rounded-lg shadow-lg">
+            <h3 id="modal-title" class="text-2xl font-bold mb-4 text-blue-400"></h3>
+            <div id="modal-content" class="text-base text-slate-300 space-y-4"></div>
+            <div class="mt-6 text-right">
+                <button id="modal-close" class="btn btn-primary">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Caching ---
+            const dom = {
+                simulationContainer: document.getElementById('simulation-container'),
+                quizContainer: document.getElementById('quiz-container'),
+                quizResultsContainer: document.getElementById('quiz-results-container'),
+                assemblyCode: document.getElementById('assembly-code'),
+                symbolTable: document.getElementById('symbol-table'),
+                objectCode: document.getElementById('object-code'),
+                passTitle: document.getElementById('pass-title'),
+                prevStepBtn: document.getElementById('prev-step'),
+                nextStepBtn: document.getElementById('next-step'),
+                resetBtn: document.getElementById('reset-sim'),
+                startQuizBtn: document.getElementById('start-quiz'),
+                progressBar: document.getElementById('progress-bar'),
+                modal: {
+                    overlay: document.getElementById('info-modal'),
+                    title: document.getElementById('modal-title'),
+                    content: document.getElementById('modal-content'),
+                    closeBtn: document.getElementById('modal-close'),
+                },
+                quiz: {
+                    questionContainer: document.getElementById('quiz-question-container'),
+                    feedback: document.getElementById('quiz-feedback'),
+                    submitBtn: document.getElementById('submit-answer'),
+                    nextBtn: document.getElementById('next-question'),
+                    scoreEl: document.getElementById('quiz-score'),
+                    restartBtn: document.getElementById('restart-quiz'),
+                },
+                particleCanvas: document.getElementById('particle-canvas'),
+            };
+
+            // --- State Management ---
+            let historyStack = [];
+            let currentStepIndex = -1;
+            let isModalOpen = false;
+            let currentQuizQuestionIndex = 0;
+            let score = 0;
+            
+            // --- Simulation Data ---
+            const assemblyProgram = [
+                 { label: '', instruction: 'ORG', operand: '100', comment: '; Set start address to 100' },
+                { label: 'START', instruction: 'LDA', operand: '#COUNT', comment: '; Load the value at COUNT' },
+                { label: 'LOOP', instruction: 'ADD', operand: '#1', comment: '; Add 1 to accumulator' },
+                { label: '', instruction: 'STO', operand: 'RESULT', comment: '; Store result' },
+                { label: '', instruction: 'JMP', operand: 'LOOP', comment: '; Jump back to LOOP' },
+                { label: 'COUNT', instruction: 'DAT', operand: '5', comment: '; Variable for counting' },
+                { label: 'RESULT', instruction: 'DAT', operand: '0', comment: '; Variable to store result' },
+                { label: '', instruction: 'END', operand: '', comment: '; End of program' },
+            ];
+            
+            const steps = [
+                 // --- Introduction ---
+                {
+                    type: 'modal',
+                    title: 'Welcome to the Assembler!',
+                    content: `<p>This simulation will guide you through how a <strong>two-pass assembler</strong> translates assembly language into machine code.</p><p>An assembler's job is to convert human-readable assembly instructions into binary code that the computer's processor can execute.</p><p class="mt-4 font-semibold">Use the "Next" and "Previous" buttons or your arrow keys to navigate.</p>`,
+                    action: (state) => { state.passTitle = '1. Assembly Program'; return state; }
+                },
+                // --- Pass 1 ---
+                {
+                    type: 'modal',
+                    title: 'Pass 1: Building the Symbol Table',
+                    content: `<p>The <strong>first pass</strong> has two main goals:</p><ul class="list-disc list-inside mt-2 space-y-1"><li>Act on any <strong>assembler directives</strong>.</li><li>Build a <strong>symbol table</strong>, which maps all symbolic addresses (labels) to their absolute memory addresses.</li></ul>`,
+                    action: (state) => { state.passTitle = '1. Assembly Program (Pass 1)'; return state; }
+                },
+                {
+                    type: 'highlight_code', line: 0,
+                    modal: { title: 'Assembler Directive: ORG', content: `<p>The assembler finds an <strong>ORG</strong> directive. This tells the assembler that the program should start at memory location <strong>100</strong>. This value is used to initialize the <strong>Location Counter (LC)</strong>.</p>`},
+                    action: (state) => { state.locationCounter = 100; return state; }
+                },
+                {
+                    type: 'highlight_code', line: 1,
+                    modal: { title: 'Creating the Symbol Table', content: `<p>The assembler scans the next line and finds the label <strong>START</strong>. It adds 'START' to the symbol table with the current Location Counter address: <strong>100</strong>.</p>`},
+                    action: (state) => { state.symbolTable['START'] = state.locationCounter; state.locationCounter++; return state; }
+                },
+                {
+                    type: 'highlight_code', line: 2,
+                    modal: { title: 'Adding another Symbol', content: `<p>Next, the assembler finds the label <strong>LOOP</strong>. It adds 'LOOP' to the symbol table with the current Location Counter address: <strong>101</strong>.</p>`},
+                    action: (state) => { state.symbolTable['LOOP'] = state.locationCounter; state.locationCounter++; return state; }
+                },
+                { type: 'highlight_code', line: 3, action: (state) => { state.locationCounter++; return state; } },
+                {
+                    type: 'highlight_code', line: 4,
+                    modal: { title: 'Symbol Usage', content: `<p>The instruction <strong>JMP LOOP</strong> uses the symbol 'LOOP'. Since 'LOOP' is already in our symbol table, this is easy to handle later. If it wasn't, it would be a <strong>forward reference</strong>, which is the main reason a two-pass approach is needed.</p>`},
+                    action: (state) => { state.locationCounter++; return state; }
+                },
+                {
+                    type: 'highlight_code', line: 5,
+                    modal: { title: 'Data Directives (DAT)', content: `<p>The label <strong>COUNT</strong> is found and added to the symbol table at address <strong>104</strong>. The <strong>DAT</strong> directive tells the assembler to set aside space for the data value <strong>5</strong>.</p>`},
+                    action: (state) => { state.symbolTable['COUNT'] = state.locationCounter; state.locationCounter++; return state; }
+                },
+                {
+                    type: 'highlight_code', line: 6,
+                    modal: { title: 'Another Data Directive', content: `<p>The label <strong>RESULT</strong> is added to the symbol table at address <strong>105</strong>. This location will hold the data value <strong>0</strong>.</p>`},
+                    action: (state) => { state.symbolTable['RESULT'] = state.locationCounter; state.locationCounter++; return state; }
+                },
+                { type: 'action', action: (state) => { state.commentsVisible = false; return state; } },
+                { type: 'modal', title: 'End of Pass 1', content: `<p><strong>Pass 1 is complete!</strong> We have successfully built the symbol table. The assembler now knows the absolute memory location of every label.</p><p class="mt-4 font-semibold">Press "Next" to begin Pass 2.</p>`,
+                    action: (state) => { state.passTitle = '1. Assembly Program (Pass 2)'; state.commentsVisible = true; return state; }
+                },
+                // --- Pass 2 ---
+                {
+                    type: 'modal', title: 'Pass 2: Generating Object Code',
+                    content: `<p>In the <strong>second pass</strong>, the assembler re-scans the code with the completed symbol table. Its main goal is to replace all symbolic addresses with their absolute addresses and generate the final machine code.</p>`,
+                    action: (state) => { state.locationCounter = 100; state.objectCode = {}; return state; }
+                },
+                {
+                    type: 'highlight_code', line: 1,
+                    modal: { title: 'Replacing Symbolic Operands', content: `<p>The assembler sees <strong>LDA #COUNT</strong>. It looks up <strong>COUNT</strong> in the symbol table (address: <strong>${104}</strong>) and generates the machine code. Assuming 'LDA #' is opcode <strong>A9</strong>, the object code becomes <strong>A9 104</strong>.</p>`},
+                    action: (state) => { state.objectCode[state.locationCounter] = `A9 ${state.symbolTable['COUNT']}`; state.locationCounter++; return state; }
+                },
+                {
+                    type: 'highlight_code', line: 2,
+                    action: (state) => { state.objectCode[state.locationCounter] = '69 01'; state.locationCounter++; return state; }
+                },
+                {
+                    type: 'highlight_code', line: 3,
+                    modal: { title: 'Resolving another Symbol', content: `<p>Instruction: <strong>STO RESULT</strong>. The assembler looks up <strong>RESULT</strong> (address: <strong>${105}</strong>) and generates the code. Assuming 'STO' is opcode <strong>8D</strong>, the code is <strong>8D 105</strong>.</p>`},
+                    action: (state) => { state.objectCode[state.locationCounter] = `8D ${state.symbolTable['RESULT']}`; state.locationCounter++; return state; }
+                },
+                {
+                    type: 'highlight_code', line: 4,
+                    modal: { title: 'Resolving a Jump', content: `<p>Instruction: <strong>JMP LOOP</strong>. The assembler looks up <strong>LOOP</strong> (address: <strong>${101}</strong>) and replaces it. Assuming 'JMP' is <strong>4C</strong>, the code becomes <strong>4C 101</strong>.</p>`},
+                    action: (state) => { state.objectCode[state.locationCounter] = `4C ${state.symbolTable['LOOP']}`; state.locationCounter++; return state; }
+                },
+                {
+                    type: 'highlight_code', line: 5,
+                    action: (state) => { state.objectCode[state.locationCounter] = '05'; state.locationCounter++; return state; }
+                },
+                {
+                    type: 'highlight_code', line: 6,
+                    action: (state) => { state.objectCode[state.locationCounter] = '00'; state.locationCounter++; return state; }
+                },
+                {
+                    type: 'modal', title: 'Simulation Complete!',
+                    content: `<p><strong>Pass 2 is finished!</strong> The assembly program has been fully translated into object code.</p><p class="mt-4">You can now review the process or test your knowledge with a short quiz.</p>`,
+                    action: (state) => { state.isFinished = true; return state; }
+                }
+            ];
+            
+            const quizQuestions = [
+                { question: "What is the fundamental role of an assembler?", type: "mcq", options: ["To execute a high-level language program line by line.", "To convert a program from Python into machine code.", "To combine multiple object code files into a single executable.", "To translate a low-level assembly language program into machine code."], answer: "To translate a low-level assembly language program into machine code." },
+                { question: "What is the primary purpose of the first pass of a two-pass assembler?", type: "mcq", options: ["To generate the final object code.", "To execute the program and find errors.", "To build the symbol table.", "To load the program into memory."], answer: "To build the symbol table." },
+                { question: "An instruction for the assembler itself, like ORG or DAT, is called a(n) ____.", type: "fill", answer: "directive" },
+                { question: "Which of these tasks is NOT performed during the first pass?", type: "mcq", options: ["Acting on directives like ORG.", "Creating the symbol table.", "Generating the final object code.", "Removing comments from the source code."], answer: "Generating the final object code." },
+                { question: "A `DAT` instruction is translated directly into a CPU operation like 'add' or 'subtract'.", type: "tf", answer: "False" },
+                { question: "Match the term to its correct definition.", type: "match", pairs: [ { term: "Symbolic Address", definition: "A label used by a programmer to refer to a memory location." }, { term: "Absolute Address", definition: "The actual, physical memory address." }, { term: "Forward Reference", definition: "Using a label before it has been defined in the code." }, { term: "Object Code", definition: "The final, machine-readable output of the assembler." } ] },
+                { question: "During which pass are forward references resolved?", type: "mcq", options: ["Pass 1", "Pass 2", "During linking", "They are not resolved by the assembler"], answer: "Pass 2" },
+                { question: "The main purpose of the second pass is to...", type: "mcq", options: ["Find all the labels in the program.", "Use the completed symbol table to produce machine code.", "Check for syntax errors only.", "Remove all comments and directives."], answer: "Use the completed symbol table to produce machine code." },
+                { question: "If a program starts with 'ORG 250', what will be the absolute address of the first instruction's label?", type: "mcq", options: ["0", "100", "250", "It cannot be determined."], answer: "250" },
+                {
+                    question: "Categorize the following assembler actions into the correct pass.",
+                    type: "categorize",
+                    categories: ["Pass 1", "Pass 2"],
+                    items: [
+                        { text: "Building the Symbol Table", category: "Pass 1" },
+                        { text: "Resolving Forward References", category: "Pass 2" },
+                        { text: "Replacing 'LOOP' with '101'", category: "Pass 2" },
+                        { text: "Handling the 'ORG' instruction", category: "Pass 1" },
+                    ]
+                }
+            ];
+
+            // --- Core Functions ---
+            
+            function createInitialState() {
+                return {
+                    symbolTable: {},
+                    objectCode: {},
+                    locationCounter: 0,
+                    highlightedLine: -1,
+                    passTitle: '1. Assembly Program',
+                    commentsVisible: true,
+                    isFinished: false
+                };
+            }
+
+            function init() {
+                currentStepIndex = -1;
+                historyStack = [createInitialState()];
+                
+                dom.assemblyCode.innerHTML = assemblyProgram.map((line, index) => `
+                    <div id="code-line-${index}" class="code-line p-1 grid grid-cols-4 gap-2 items-center">
+                        <span class="text-yellow-300 col-span-1">${line.label ? line.label + ':' : ''}</span>
+                        <span class="text-blue-300 col-span-1">${line.instruction}</span>
+                        <span class="text-green-300 col-span-1">${line.operand}</span>
+                        <span class="text-slate-500 col-span-1 code-comment">${line.comment}</span>
+                    </div>
+                `).join('');
+                
+                dom.quizContainer.classList.add('hidden');
+                dom.quizResultsContainer.classList.add('hidden');
+                dom.simulationContainer.classList.remove('hidden');
+
+                handleStep('next');
+            }
+
+            function handleStep(direction) {
+                if (isModalOpen) return;
+                
+                if (direction === 'next' && currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    const step = steps[currentStepIndex];
+                    let currentState = JSON.parse(JSON.stringify(historyStack[historyStack.length - 1]));
+                    
+                    currentState.highlightedLine = step.type === 'highlight_code' ? step.line : -1;
+                    
+                    if (step.action) {
+                       currentState = step.action(currentState);
+                    }
+                    
+                    historyStack.push(currentState);
+                    
+                    if (step.modal) {
+                        showModal(step.modal.title, step.modal.content);
+                    }
+                    
+                } else if (direction === 'prev' && currentStepIndex > 0) {
+                    historyStack.pop();
+                    currentStepIndex--;
+                }
+                
+                renderState(historyStack[historyStack.length - 1]);
+                updateControls();
+            }
+            
+            function renderState(state) {
+                // Render Symbol Table
+                dom.symbolTable.innerHTML = Object.entries(state.symbolTable).map(([symbol, address]) => `
+                    <div class="table-row p-2 grid grid-cols-2 gap-2 items-center">
+                        <span class="text-yellow-300">${symbol}</span>
+                        <span class="text-right text-green-300">${address}</span>
+                    </div>
+                `).join('');
+
+                // Render Object Code
+                dom.objectCode.innerHTML = Object.entries(state.objectCode).map(([address, code]) => `
+                    <div class="table-row p-2 grid grid-cols-2 gap-2 items-center">
+                        <span>${address}</span>
+                        <span class="text-right text-cyan-300">${code}</span>
+                    </div>
+                `).join('');
+                
+                document.querySelectorAll('.code-line').forEach((el, i) => el.classList.toggle('highlight-line', i === state.highlightedLine));
+                document.querySelectorAll('.code-comment').forEach(el => el.style.opacity = state.commentsVisible ? '1' : '0.3');
+                
+                dom.passTitle.textContent = state.passTitle;
+                dom.startQuizBtn.classList.toggle('hidden', !state.isFinished);
+                
+                dom.progressBar.style.width = `${(currentStepIndex / (steps.length - 1)) * 100}%`;
+            }
+
+            function updateControls() {
+                dom.prevStepBtn.disabled = currentStepIndex <= 0;
+                dom.nextStepBtn.disabled = currentStepIndex >= steps.length - 1;
+            }
+
+            function showModal(title, content) {
+                isModalOpen = true;
+                dom.modal.title.innerHTML = title;
+                dom.modal.content.innerHTML = content;
+                dom.modal.overlay.classList.remove('hidden');
+            }
+
+            function hideModal() {
+                isModalOpen = false;
+                dom.modal.overlay.classList.add('hidden');
+            }
+            
+            // --- Quiz Logic ---
+            function startQuiz() {
+                dom.simulationContainer.classList.add('hidden');
+                dom.quizResultsContainer.classList.add('hidden');
+                dom.quizContainer.classList.remove('hidden');
+                currentQuizQuestionIndex = 0;
+                score = 0;
+                displayQuizQuestion();
+            }
+
+            function displayQuizQuestion() {
+                dom.quiz.submitBtn.classList.remove('hidden');
+                dom.quiz.nextBtn.classList.add('hidden');
+                dom.quiz.feedback.innerHTML = '';
+                const question = quizQuestions[currentQuizQuestionIndex];
+                let html = `<h3 class="text-xl mb-4 text-center">${currentQuizQuestionIndex + 1}. ${question.question}</h3>`;
+
+                if (question.type === 'mcq') {
+                    html += `<div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="quiz-options">${question.options.map(o => `<button class="option p-4 rounded-lg border-2 border-slate-600 text-left">${o}</button>`).join('')}</div>`;
+                } else if (question.type === 'tf') {
+                    html += `<div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="quiz-options"><button class="option p-4 rounded-lg border-2 border-slate-600 text-center">True</button><button class="option p-4 rounded-lg border-2 border-slate-600 text-center">False</button></div>`;
+                } else if (question.type === 'fill') {
+                     html += `<input type="text" id="fill-answer" class="w-full p-3 bg-slate-800 border-2 border-slate-600 rounded-lg text-center focus:border-blue-500 focus:outline-none" placeholder="Type your answer here...">`;
+                } else if (question.type === 'match') {
+                     const defs = [...question.pairs].sort(() => Math.random() - 0.5);
+                     html += `<div id="matching-game" class="flex flex-col md:flex-row gap-8 justify-center items-start"><div id="match-terms" class="space-y-3 w-full md:w-1/2">${question.pairs.map(p => `<div class="p-3 bg-slate-800 border border-slate-600 rounded-lg cursor-grab draggable" draggable="true" data-term="${p.term}">${p.term}</div>`).join('')}</div><div id="match-defs" class="space-y-3 w-full md:w-1/2">${defs.map(d => `<div class="p-3 bg-slate-900 border border-dashed border-slate-600 rounded-lg min-h-[4rem] flex items-center justify-center text-slate-400 dropzone" data-definition="${d.term}">${d.definition}</div>`).join('')}</div></div>`;
+                } else if (question.type === 'categorize') {
+                    const items = [...question.items].sort(() => Math.random() - 0.5);
+                    html += `<div id="categorize-game" class="flex flex-col lg:flex-row gap-4 justify-center items-start"><div id="categorize-items" class="w-full lg:w-1/3 p-2 space-y-3">${items.map(item => `<div class="p-3 bg-slate-800 border border-slate-600 rounded-lg cursor-grab draggable" draggable="true" data-item="${item.text}">${item.text}</div>`).join('')}</div><div id="categorize-zones" class="w-full lg:w-2/3 grid grid-cols-2 gap-4">${question.categories.map(cat => `<div><h4 class="font-semibold text-center mb-2">${cat}</h4><div class="p-3 bg-slate-900 border border-dashed border-slate-600 rounded-lg min-h-[12rem] space-y-2 dropzone" data-category="${cat}"></div></div>`).join('')}</div></div>`;
+                }
+
+                dom.quiz.questionContainer.innerHTML = html;
+                addQuizEventListeners();
+            }
+
+            function addQuizEventListeners() {
+                const questionType = quizQuestions[currentQuizQuestionIndex].type;
+                if (questionType === 'mcq' || questionType === 'tf') {
+                    dom.quiz.questionContainer.querySelector('#quiz-options').addEventListener('click', e => {
+                        if (e.target.matches('.option')) {
+                            dom.quiz.questionContainer.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+                            e.target.classList.add('selected');
+                        }
+                    });
+                }
+                // Universal Drag and Drop for Match and Categorize
+                if (questionType === 'match' || questionType === 'categorize') {
+                    let draggedItem = null;
+                    dom.quiz.questionContainer.addEventListener('dragstart', e => {
+                        if (e.target.matches('.draggable')) {
+                            draggedItem = e.target;
+                            setTimeout(() => e.target.style.opacity = '0.5', 0);
+                        }
+                    });
+                    dom.quiz.questionContainer.addEventListener('dragend', () => {
+                        if(draggedItem) {
+                            draggedItem.style.opacity = '1';
+                            draggedItem = null;
+                        }
+                    });
+                    dom.quiz.questionContainer.querySelectorAll('.dropzone').forEach(zone => {
+                        zone.addEventListener('dragover', e => e.preventDefault());
+                        zone.addEventListener('drop', e => {
+                            e.preventDefault();
+                            if(draggedItem) {
+                                // For matching, only one item per zone
+                                if(questionType === 'match' && e.currentTarget.children.length > 0) return;
+                                e.currentTarget.appendChild(draggedItem);
+                            }
+                        });
+                    });
+                }
+            }
+            
+            function checkAnswer() {
+                 const question = quizQuestions[currentQuizQuestionIndex];
+                 let isCorrect = false;
+
+                if (question.type === 'mcq' || question.type === 'tf') {
+                    const selected = dom.quiz.questionContainer.querySelector('.option.selected');
+                    if (!selected) { dom.quiz.feedback.innerHTML = `<p class="text-yellow-400">Please select an answer.</p>`; return; }
+                    isCorrect = selected.textContent === question.answer;
+                    dom.quiz.questionContainer.querySelectorAll('.option').forEach(opt => {
+                        if(opt.textContent === question.answer) opt.classList.add('correct');
+                        else if(opt.classList.contains('selected')) opt.classList.add('incorrect');
+                    });
+                } else if (question.type === 'fill') {
+                    const input = document.getElementById('fill-answer');
+                    if (input.value.length < 3) { dom.quiz.feedback.innerHTML = `<p class="text-yellow-400">Please type a complete answer.</p>`; return; }
+                    isCorrect = input.value.trim().toLowerCase() === question.answer.toLowerCase();
+                    input.classList.add(isCorrect ? 'border-green-500' : 'border-red-500');
+                } else if (question.type === 'match') {
+                    const dropzones = dom.quiz.questionContainer.querySelectorAll('.dropzone');
+                    let correctMatches = 0;
+                    dropzones.forEach(zone => {
+                        const termEl = zone.querySelector('.draggable');
+                        if (termEl && termEl.dataset.term === zone.dataset.definition) {
+                           zone.classList.add('correct'); correctMatches++;
+                        } else if(termEl) {
+                           zone.classList.add('incorrect');
+                        }
+                    });
+                    isCorrect = correctMatches === question.pairs.length;
+                } else if (question.type === 'categorize') {
+                    const zones = dom.quiz.questionContainer.querySelectorAll('.dropzone');
+                    let allCorrect = true;
+                    let itemsPlaced = 0;
+                    zones.forEach(zone => {
+                        const category = zone.dataset.category;
+                        zone.querySelectorAll('.draggable').forEach(itemEl => {
+                            itemsPlaced++;
+                            const itemText = itemEl.dataset.item;
+                            const correctCategory = question.items.find(i => i.text === itemText).category;
+                            if (category === correctCategory) {
+                                itemEl.classList.add('correct');
+                            } else {
+                                itemEl.classList.add('incorrect');
+                                allCorrect = false;
+                            }
+                        });
+                    });
+                    if (itemsPlaced !== question.items.length) allCorrect = false;
+                    isCorrect = allCorrect;
+                }
+
+                if (isCorrect) { score++; dom.quiz.feedback.innerHTML = `<p class="text-green-400 font-semibold text-lg">Correct!</p>`; }
+                else { dom.quiz.feedback.innerHTML = `<p class="text-red-400 font-semibold text-lg">Not quite.</p>`; }
+                
+                dom.quiz.submitBtn.classList.add('hidden');
+                dom.quiz.nextBtn.classList.remove('hidden');
+            }
+            
+            function showQuizResults() {
+                dom.quizContainer.classList.add('hidden');
+                dom.quizResultsContainer.classList.remove('hidden');
+                dom.quiz.scoreEl.textContent = `${score} / ${quizQuestions.length}`;
+            }
+
+            // --- Event Listeners & Utilities ---
+            function throttle(func, limit) { let inThrottle; return function() { const args = arguments, context = this; if (!inThrottle) { func.apply(context, args); inThrottle = true; setTimeout(() => inThrottle = false, limit); } } }
+            function createRipple(event) { const btn=event.currentTarget,c=document.createElement("span"),d=Math.max(btn.clientWidth,btn.clientHeight),r=d/2;c.style.width=c.style.height=`${d}px`;c.style.left=`${event.clientX-btn.getBoundingClientRect().left-r}px`;c.style.top=`${event.clientY-btn.getBoundingClientRect().top-r}px`;c.classList.add("ripple");const rip=btn.getElementsByClassName("ripple")[0];if(rip)rip.remove();btn.appendChild(c); }
+            document.querySelectorAll('.btn').forEach(button => button.addEventListener('click', createRipple));
+            dom.nextStepBtn.addEventListener('click', () => handleStep('next'));
+            dom.prevStepBtn.addEventListener('click', () => handleStep('prev'));
+            dom.resetBtn.addEventListener('click', init);
+            dom.startQuizBtn.addEventListener('click', startQuiz);
+            dom.modal.closeBtn.addEventListener('click', hideModal);
+            dom.quiz.submitBtn.addEventListener('click', checkAnswer);
+            dom.quiz.nextBtn.addEventListener('click', () => { currentQuizQuestionIndex++; (currentQuizQuestionIndex < quizQuestions.length) ? displayQuizQuestion() : showQuizResults(); });
+            dom.quiz.restartBtn.addEventListener('click', startQuiz);
+            document.addEventListener('keydown', (e) => { if (isModalOpen) { if(e.key === 'Escape') hideModal(); return; } if (e.key === 'ArrowRight' && !dom.nextStepBtn.disabled) handleStep('next'); else if (e.key === 'ArrowLeft' && !dom.prevStepBtn.disabled) handleStep('prev'); });
+            const ctx = dom.particleCanvas.getContext('2d');
+            let particles = [];
+            const resizeCanvas = () => { dom.particleCanvas.width = window.innerWidth; dom.particleCanvas.height = window.innerHeight; createParticles(); };
+            const createParticles = () => { particles = []; let n = Math.floor(window.innerWidth/60); for(let i=0; i<n; i++) particles.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,vx:Math.random()*0.4-0.2,vy:Math.random()*0.4-0.2,r:Math.random()*1.5+0.5}); };
+            const animateParticles = () => { ctx.clearRect(0, 0, innerWidth, innerHeight); particles.forEach(p => { p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>innerWidth)p.vx*=-1; if(p.y<0||p.y>innerHeight)p.vy*=-1; ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle='rgba(59,130,246,0.3)';ctx.fill();}); requestAnimationFrame(animateParticles); };
+            window.addEventListener('resize', throttle(resizeCanvas, 250));
+            resizeCanvas();
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) { animateParticles(); }
+            init();
+        });
+    </script>
+</body>
+</html>

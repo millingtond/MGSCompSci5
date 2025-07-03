@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A* Pathfinding Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #111827;
+            --primary-color: #3b82f6;
+            --secondary-color: #1f2937;
+            --text-color: #f3f4f6;
+            --glass-bg: rgba(31, 41, 55, 0.5);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --start-node-bg: #10b981;
+            --end-node-bg: #ef4444;
+            --wall-node-bg: #374151;
+            --open-list-bg: rgba(59, 130, 246, 0.3);
+            --closed-list-bg: rgba(249, 115, 22, 0.3);
+            --path-node-bg: #f59e0b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism Effect */
+        .glassmorphism {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* Animated Gradient Background for Header */
+        .animated-gradient {
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Grid Cell Styling */
+        .grid-cell {
+            width: 25px;
+            height: 25px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            will-change: transform, background-color;
+            transform: translateZ(0); /* GPU Acceleration */
+        }
+        
+        .grid-cell .costs {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            font-size: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            line-height: 1;
+            color: white;
+            pointer-events: none; /* Allow clicks to pass through */
+        }
+
+        .grid-cell .costs .g-cost, .grid-cell .costs .h-cost { font-size: 7px; }
+        .grid-cell .costs .f-cost { font-weight: bold; }
+
+        .grid-cell:hover {
+            transform: scale(1.1);
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .start-node { background-color: var(--start-node-bg); }
+        .end-node { background-color: var(--end-node-bg); }
+        .wall-node { 
+            background-color: var(--wall-node-bg); 
+            animation: wall-appear 0.3s ease-out;
+        }
+        .open-list { background-color: var(--open-list-bg); }
+        .closed-list { background-color: var(--closed-list-bg); }
+        .path-node {
+            animation: path-appear 0.1s ease-in-out forwards;
+        }
+        .current-node {
+            box-shadow: 0 0 10px 3px #a7f3d0;
+            z-index: 10;
+        }
+
+        @keyframes wall-appear {
+            from { transform: scale(0.5); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes path-appear {
+            0% { background-color: var(--open-list-bg); transform: scale(0.5); }
+            100% { background-color: var(--path-node-bg); transform: scale(1); }
+        }
+
+        /* Button Styling */
+        .control-btn {
+            background: linear-gradient(45deg, var(--primary-color), #60a5fa);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px 0 rgba(59, 130, 246, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px 0 rgba(59, 130, 246, 0.6);
+        }
+        .control-btn.active {
+            box-shadow: 0 0 0 3px var(--bg-color), 0 0 0 5px #60a5fa;
+        }
+        .control-btn:disabled {
+            background: var(--wall-node-bg);
+            cursor: not-allowed;
+            box-shadow: none;
+            opacity: 0.7;
+        }
+
+        /* Modal Styling */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 40;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        /* Quiz Styling */
+        .quiz-option {
+            border: 2px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+        .quiz-option:hover {
+            background-color: var(--glass-bg);
+            border-color: var(--primary-color);
+        }
+        .quiz-option.selected {
+            background-color: #3b82f6;
+            border-color: #60a5fa;
+        }
+        .quiz-option.correct {
+            background-color: #10b981;
+            border-color: #34d399;
+        }
+        .quiz-option.incorrect {
+            background-color: #ef4444;
+            border-color: #f87171;
+        }
+        
+        /* Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--secondary-color); }
+        ::-webkit-scrollbar-thumb { background: var(--primary-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #60a5fa; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 lg:p-8">
+
+    <!-- Header -->
+    <header class="w-full max-w-7xl text-center mb-6">
+        <div class="p-4 rounded-xl animated-gradient">
+            <h1 class="text-3xl md:text-4xl font-bold text-white shadow-lg">A* Pathfinding Algorithm Simulation</h1>
+        </div>
+        <p class="mt-2 text-gray-300">Cambridge 9618 A-Level Computer Science</p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="w-full max-w-7xl flex flex-col lg:flex-row gap-6">
+        
+        <!-- Left Panel: Controls and Info -->
+        <div class="w-full lg:w-1/4 flex flex-col gap-6">
+            <!-- Controls -->
+            <section id="controls-panel" class="glassmorphism p-4">
+                <h2 class="text-xl font-bold mb-4 border-b-2 border-blue-400 pb-2">Controls</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="set-start-btn" class="control-btn text-white font-bold py-2 px-4 rounded-lg">Set Start</button>
+                    <button id="set-end-btn" class="control-btn text-white font-bold py-2 px-4 rounded-lg">Set End</button>
+                    <button id="draw-wall-btn" class="control-btn text-white font-bold py-2 px-4 rounded-lg active">Draw Walls</button>
+                    <button id="erase-wall-btn" class="control-btn text-white font-bold py-2 px-4 rounded-lg">Erase</button>
+                </div>
+                <div class="mt-4 flex flex-col gap-3">
+                    <button id="start-btn" class="control-btn text-white font-bold py-2 px-4 rounded-lg w-full bg-green-500">Start Search</button>
+                    <div class="flex gap-2">
+                        <button id="prev-step-btn" class="control-btn text-white font-bold py-2 px-4 rounded-lg w-full" disabled>&lt; Prev</button>
+                        <button id="next-step-btn" class="control-btn text-white font-bold py-2 px-4 rounded-lg w-full" disabled>Next &gt;</button>
+                    </div>
+                    <button id="reset-sim-btn" class="control-btn text-white font-bold py-2 px-4 rounded-lg w-full bg-red-500">Reset Simulation</button>
+                </div>
+                 <div class="mt-4">
+                    <label for="speed-slider" class="block text-sm font-medium text-gray-300">Animation Speed</label>
+                    <input id="speed-slider" type="range" min="10" max="500" value="50" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </section>
+
+            <!-- Info Panel -->
+            <section id="info-panel" class="glassmorphism p-4 flex-grow">
+                <h2 class="text-xl font-bold mb-4 border-b-2 border-blue-400 pb-2">Information</h2>
+                <div id="info-content" class="text-gray-300 space-y-2">
+                    <p>Welcome! Use the controls to set up the grid, then start the search.</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- Center Panel: Grid -->
+        <div class="w-full lg:w-1/2 flex justify-center items-center">
+            <div id="grid-container" class="grid-container p-2 glassmorphism" style="display: grid; touch-action: none;">
+                <!-- Grid cells will be generated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Right Panel: Legend and Quiz -->
+        <div class="w-full lg:w-1/4 flex flex-col gap-6">
+            <!-- Legend -->
+            <section id="legend-panel" class="glassmorphism p-4">
+                <h2 class="text-xl font-bold mb-4 border-b-2 border-blue-400 pb-2">Legend</h2>
+                <ul class="space-y-2 text-sm">
+                    <li class="flex items-center gap-2"><div class="w-5 h-5 rounded" style="background-color: var(--start-node-bg);"></div> Start Node</li>
+                    <li class="flex items-center gap-2"><div class="w-5 h-5 rounded" style="background-color: var(--end-node-bg);"></div> End Node</li>
+                    <li class="flex items-center gap-2"><div class="w-5 h-5 rounded" style="background-color: var(--wall-node-bg);"></div> Wall/Obstacle</li>
+                    <li class="flex items-center gap-2"><div class="w-5 h-5 rounded" style="background-color: var(--open-list-bg);"></div> Open List (To be visited)</li>
+                    <li class="flex items-center gap-2"><div class="w-5 h-5 rounded" style="background-color: var(--closed-list-bg);"></div> Closed List (Visited)</li>
+                    <li class="flex items-center gap-2"><div class="w-5 h-5 rounded" style="background-color: var(--path-node-bg);"></div> Final Path</li>
+                </ul>
+            </section>
+             <!-- Quiz -->
+            <section id="quiz-panel" class="glassmorphism p-4">
+                <h2 class="text-xl font-bold mb-4 border-b-2 border-blue-400 pb-2">Knowledge Check</h2>
+                <p class="text-gray-300 mb-4">Run the simulation to unlock the quiz and test your understanding!</p>
+                <button id="start-quiz-btn" class="control-btn text-white font-bold py-2 px-4 rounded-lg w-full" disabled>Start Quiz</button>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modal Container -->
+    <div id="modal-container"></div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- DOM Element Caching ---
+        const gridContainer = document.getElementById('grid-container');
+        const controls = {
+            setStartBtn: document.getElementById('set-start-btn'),
+            setEndBtn: document.getElementById('set-end-btn'),
+            drawWallBtn: document.getElementById('draw-wall-btn'),
+            eraseWallBtn: document.getElementById('erase-wall-btn'),
+            startBtn: document.getElementById('start-btn'),
+            prevStepBtn: document.getElementById('prev-step-btn'),
+            nextStepBtn: document.getElementById('next-step-btn'),
+            resetSimBtn: document.getElementById('reset-sim-btn'),
+            speedSlider: document.getElementById('speed-slider'),
+            startQuizBtn: document.getElementById('start-quiz-btn'),
+        };
+        const infoContent = document.getElementById('info-content');
+        const modalContainer = document.getElementById('modal-container');
+
+        // --- Simulation State ---
+        let grid = [];
+        let gridWidth, gridHeight;
+        let startNode = null;
+        let endNode = null;
+        let currentMode = 'draw-wall'; // 'set-start', 'set-end', 'draw-wall', 'erase-wall'
+        let isMouseDown = false;
+        let isSimulationRunning = false;
+        let animationSpeed = 50;
+        let algorithmSteps = [];
+        let currentStepIndex = -1;
+
+        // --- Node Class ---
+        class Node {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.isStart = false;
+                this.isEnd = false;
+                this.isWall = false;
+                this.g = Infinity; // Cost from start to this node
+                this.h = 0;        // Heuristic cost from this node to end
+                this.f = Infinity; // Total cost (g + h)
+                this.parent = null;
+                this.element = document.createElement('div');
+                this.element.className = 'grid-cell';
+                this.element.dataset.x = x;
+                this.element.dataset.y = y;
+                
+                this.costsElement = document.createElement('div');
+                this.costsElement.className = 'costs';
+                this.element.appendChild(this.costsElement);
+            }
+
+            // Resets the node for a new search, keeping walls
+            resetState() {
+                this.g = Infinity;
+                this.h = 0;
+                this.f = Infinity;
+                this.parent = null;
+                if (!this.isStart && !this.isEnd && !this.isWall) {
+                    this.element.className = 'grid-cell';
+                }
+                this.updateCostsDisplay(false);
+            }
+            
+            updateCostsDisplay(show) {
+                if(show && !this.isStart && !this.isEnd) {
+                    this.costsElement.innerHTML = `
+                        <span class="f-cost">${Math.round(this.f)}</span>
+                        <div>
+                            <span class="g-cost">G:${Math.round(this.g)}</span>
+                            <span class="h-cost">H:${Math.round(this.h)}</span>
+                        </div>
+                    `;
+                } else {
+                    this.costsElement.innerHTML = '';
+                }
+            }
+        }
+
+        // --- Initialization ---
+        function init() {
+            setupGrid();
+            setupEventListeners();
+            updateControlButtons();
+            showIntroModal();
+        }
+
+        function setupGrid() {
+            // Calculate grid size based on container dimensions
+            const containerWidth = gridContainer.clientWidth;
+            const containerHeight = window.innerHeight * 0.7; // Use a portion of viewport height
+            gridWidth = Math.floor(containerWidth / 25);
+            gridHeight = Math.floor(containerHeight / 25);
+
+            // FIX: Add a guard clause to prevent errors on small screens or during initial render
+            if (gridWidth <= 0 || gridHeight <= 0) {
+                gridContainer.innerHTML = '<p class="text-white p-4">Not enough space to display the grid. Please increase window size.</p>';
+                grid = [];
+                startNode = null;
+                endNode = null;
+                return; // Exit the function to prevent further errors
+            }
+
+            gridContainer.innerHTML = '';
+            grid = [];
+            gridContainer.style.gridTemplateColumns = `repeat(${gridWidth}, 25px)`;
+
+            for (let y = 0; y < gridHeight; y++) {
+                const row = [];
+                for (let x = 0; x < gridWidth; x++) {
+                    const node = new Node(x, y);
+                    row.push(node);
+                    gridContainer.appendChild(node.element);
+                }
+                grid.push(row);
+            }
+            
+            // Set default start and end nodes
+            const startY = Math.floor(gridHeight / 2);
+            const startX = Math.floor(gridWidth / 4);
+            const endY = Math.floor(gridHeight / 2);
+            const endX = Math.floor(gridWidth * 3 / 4);
+            
+            setStartNode(grid[startY][startX]);
+            setEndNode(grid[endY][endX]);
+        }
+        
+        // --- Event Listeners ---
+        function setupEventListeners() {
+            // Event delegation for the grid
+            gridContainer.addEventListener('mousedown', handleGridInteraction);
+            gridContainer.addEventListener('mouseover', handleGridInteraction);
+            gridContainer.addEventListener('mouseup', () => { isMouseDown = false; });
+            gridContainer.addEventListener('mouseleave', () => { isMouseDown = false; });
+            // Touch events for mobile
+            gridContainer.addEventListener('touchstart', handleGridInteraction, { passive: false });
+            gridContainer.addEventListener('touchmove', handleGridInteraction, { passive: false });
+            gridContainer.addEventListener('touchend', () => { isMouseDown = false; });
+
+
+            // Control button clicks
+            Object.keys(controls).forEach(key => {
+                if (key.endsWith('Btn')) {
+                    controls[key].addEventListener('click', handleControlButtonClick);
+                }
+            });
+            
+            controls.speedSlider.addEventListener('input', (e) => {
+                // Invert value so right is faster
+                animationSpeed = 510 - e.target.value;
+            });
+
+            // Keyboard navigation
+            window.addEventListener('keydown', handleKeyPress);
+            
+            // Resize listener
+            window.addEventListener('resize', debounce(resetSimulation, 500));
+        }
+
+        function handleGridInteraction(e) {
+            // Prevent default behavior for touch events (like scrolling)
+            if (e.type.startsWith('touch')) {
+                e.preventDefault();
+            }
+            
+            const targetElement = (e.type.startsWith('touch'))
+                ? document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY)
+                : e.target;
+
+            if (!targetElement || !targetElement.classList.contains('grid-cell')) return;
+
+            if (e.type === 'mousedown' || e.type === 'touchstart') {
+                isMouseDown = true;
+            }
+
+            if (!isMouseDown && e.type !== 'mousedown' && e.type !== 'touchstart') return;
+            if (isSimulationRunning) return;
+
+            const x = parseInt(targetElement.dataset.x);
+            const y = parseInt(targetElement.dataset.y);
+            const node = grid[y][x];
+
+            switch (currentMode) {
+                case 'set-start':
+                    if (!node.isEnd) setStartNode(node);
+                    break;
+                case 'set-end':
+                    if (!node.isStart) setEndNode(node);
+                    break;
+                case 'draw-wall':
+                    if (!node.isStart && !node.isEnd) {
+                        node.isWall = true;
+                        node.element.classList.add('wall-node');
+                    }
+                    break;
+                case 'erase-wall':
+                    if (node.isWall) {
+                        node.isWall = false;
+                        node.element.classList.remove('wall-node');
+                    }
+                    break;
+            }
+        }
+        
+        function handleControlButtonClick(e) {
+            const id = e.target.id;
+            switch (id) {
+                case 'set-start-btn': setCurrentMode('set-start'); break;
+                case 'set-end-btn': setCurrentMode('set-end'); break;
+                case 'draw-wall-btn': setCurrentMode('draw-wall'); break;
+                case 'erase-wall-btn': setCurrentMode('erase-wall'); break;
+                case 'start-btn': runAStar(); break;
+                case 'next-step-btn': executeNextStep(); break;
+                case 'prev-step-btn': executePrevStep(); break;
+                case 'reset-sim-btn': resetSimulation(); break;
+                case 'start-quiz-btn': startQuiz(); break;
+            }
+        }
+
+        function handleKeyPress(e) {
+            // Disable key nav if an input is focused
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            if (e.key === 'ArrowRight' && !controls.nextStepBtn.disabled) {
+                executeNextStep();
+            } else if (e.key === 'ArrowLeft' && !controls.prevStepBtn.disabled) {
+                executePrevStep();
+            }
+        }
+        
+        // --- UI & Mode Management ---
+        function setCurrentMode(mode) {
+            currentMode = mode;
+            updateControlButtons();
+        }
+
+        function updateControlButtons() {
+            const buttons = [controls.setStartBtn, controls.setEndBtn, controls.drawWallBtn, controls.eraseWallBtn];
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            switch (currentMode) {
+                case 'set-start': controls.setStartBtn.classList.add('active'); break;
+                case 'set-end': controls.setEndBtn.classList.add('active'); break;
+                case 'draw-wall': controls.drawWallBtn.classList.add('active'); break;
+                case 'erase-wall': controls.eraseWallBtn.classList.add('active'); break;
+            }
+        }
+        
+        function setStartNode(node) {
+            if (startNode) {
+                startNode.isStart = false;
+                startNode.element.classList.remove('start-node');
+            }
+            startNode = node;
+            startNode.isStart = true;
+            startNode.element.classList.add('start-node');
+        }
+
+        function setEndNode(node) {
+            if (endNode) {
+                endNode.isEnd = false;
+                endNode.element.classList.remove('end-node');
+            }
+            endNode = node;
+            endNode.isEnd = true;
+            endNode.element.classList.add('end-node');
+        }
+
+        function resetSimulation() {
+            isSimulationRunning = false;
+            algorithmSteps = [];
+            currentStepIndex = -1;
+            
+            // This can be called on resize before grid is initialized
+            if (grid.length === 0) {
+                setupGrid();
+                return;
+            }
+
+            for (let y = 0; y < gridHeight; y++) {
+                for (let x = 0; x < gridWidth; x++) {
+                    const node = grid[y][x];
+                    node.isWall = false;
+                    node.isStart = false;
+                    node.isEnd = false;
+                    node.element.className = 'grid-cell';
+                    node.resetState();
+                }
+            }
+            setupGrid(); // Re-initializes grid and default start/end
+            updateInfo('Simulation reset. Set up the grid and start the search.', 'default');
+            toggleControls(true);
+            controls.startQuizBtn.disabled = true;
+        }
+
+        function resetAlgorithmState() {
+            isSimulationRunning = false;
+            algorithmSteps = [];
+            currentStepIndex = -1;
+            for (let y = 0; y < gridHeight; y++) {
+                for (let x = 0; x < gridWidth; x++) {
+                    grid[y][x].resetState();
+                }
+            }
+            updateInfo('Algorithm state cleared. You can run the search again.', 'default');
+            toggleControls(true);
+            controls.startQuizBtn.disabled = true;
+        }
+
+        function toggleControls(enable) {
+            const setupBtns = [controls.setStartBtn, controls.setEndBtn, controls.drawWallBtn, controls.eraseWallBtn, controls.startBtn, controls.resetSimBtn];
+            setupBtns.forEach(btn => btn.disabled = !enable);
+            controls.nextStepBtn.disabled = true;
+            controls.prevStepBtn.disabled = true;
+        }
+        
+        function updateInfo(message, type = 'info') {
+            let colorClass = 'text-gray-300';
+            if (type === 'success') colorClass = 'text-green-400';
+            if (type === 'error') colorClass = 'text-red-400';
+            if (type === 'highlight') colorClass = 'text-yellow-400';
+            
+            infoContent.innerHTML = `<p class="${colorClass}">${message}</p>`;
+        }
+        
+        // --- A* Algorithm Logic ---
+        function runAStar() {
+            if (isSimulationRunning || !startNode || !endNode) return;
+            
+            resetAlgorithmState();
+            isSimulationRunning = true;
+            toggleControls(false);
+
+            // The core A* logic is pre-calculated here to generate steps
+            precalculateAStar();
+
+            if (algorithmSteps.length === 0) {
+                updateInfo('No path could be found.', 'error');
+                isSimulationRunning = false;
+                toggleControls(true);
+                return;
+            }
+
+            // Start the animation
+            currentStepIndex = -1;
+            controls.nextStepBtn.disabled = false;
+            animateAlgorithm();
+        }
+
+        function precalculateAStar() {
+            algorithmSteps = [];
+            const openList = [];
+            const closedList = new Set();
+            
+            startNode.g = 0;
+            startNode.h = heuristic(startNode, endNode);
+            startNode.f = startNode.g + startNode.h;
+            openList.push(startNode);
+            
+            saveStepState('initial', { node: startNode, message: `Starting A*. Start node (${startNode.x},${startNode.y}) added to Open List. G=0, H=${Math.round(startNode.h)}, F=${Math.round(startNode.f)}` });
+
+            while (openList.length > 0) {
+                // Find node with lowest F cost in openList
+                openList.sort((a, b) => a.f - b.f);
+                const currentNode = openList.shift();
+                
+                closedList.add(currentNode);
+                saveStepState('close', { node: currentNode, message: `Evaluating node (${currentNode.x},${currentNode.y}) with lowest F cost (${Math.round(currentNode.f)}). Moved from Open to Closed List.` });
+
+                if (currentNode === endNode) {
+                    saveStepState('found', { path: reconstructPath(currentNode), message: 'Path found! Reconstructing path from End to Start.' });
+                    return;
+                }
+
+                const neighbors = getNeighbors(currentNode);
+                for (const neighbor of neighbors) {
+                    if (neighbor.isWall || closedList.has(neighbor)) {
+                        continue;
+                    }
+
+                    const tentativeG = currentNode.g + 1; // Assuming cost of 1 per step
+                    
+                    let newPathIsShorter = false;
+                    if (!openList.includes(neighbor)) {
+                        newPathIsShorter = true;
+                        openList.push(neighbor);
+                        saveStepState('open', { node: neighbor, message: `Found new node (${neighbor.x},${neighbor.y}). Adding to Open List.` });
+                    } else if (tentativeG < neighbor.g) {
+                        newPathIsShorter = true;
+                        saveStepState('update', { node: neighbor, message: `Found a shorter path to (${neighbor.x},${neighbor.y}). Updating its costs.` });
+                    }
+
+                    if (newPathIsShorter) {
+                        neighbor.parent = currentNode;
+                        neighbor.g = tentativeG;
+                        neighbor.h = heuristic(neighbor, endNode);
+                        neighbor.f = neighbor.g + neighbor.h;
+                        saveStepState('cost_update', { node: neighbor, g: neighbor.g, h: neighbor.h, f: neighbor.f });
+                    }
+                }
+            }
+            
+            saveStepState('not_found', { message: 'No path could be found. Open List is empty.' });
+        }
+
+        function heuristic(nodeA, nodeB) {
+            // Manhattan distance
+            const dx = Math.abs(nodeA.x - nodeB.x);
+            const dy = Math.abs(nodeA.y - nodeB.y);
+            return dx + dy;
+        }
+
+        function getNeighbors(node) {
+            const neighbors = [];
+            const { x, y } = node;
+            if (y > 0) neighbors.push(grid[y - 1][x]); // Top
+            if (y < gridHeight - 1) neighbors.push(grid[y + 1][x]); // Bottom
+            if (x > 0) neighbors.push(grid[y][x - 1]); // Left
+            if (x < gridWidth - 1) neighbors.push(grid[y][x + 1]); // Right
+            // Add diagonals if needed
+            return neighbors;
+        }
+
+        function reconstructPath(endNode) {
+            const path = [];
+            let current = endNode;
+            while (current !== null) {
+                path.push(current);
+                current = current.parent;
+            }
+            return path.reverse();
+        }
+
+        function saveStepState(type, data) {
+            // Create a deep enough copy of relevant node states
+            const openNodes = grid.flat().filter(n => n.g !== Infinity && !n.isWall && n.parent !== null && n.f !== n.g).map(n => ({x: n.x, y: n.y, g: n.g, h: n.h, f: n.f}));
+            const closedNodes = grid.flat().filter(n => n.parent !== null && n.isWall === false).map(n => ({x: n.x, y: n.y}));
+
+            algorithmSteps.push({ type, data, openNodes, closedNodes });
+        }
+        
+        // --- Animation and Step Execution ---
+        function animateAlgorithm() {
+            if (currentStepIndex >= algorithmSteps.length - 1) {
+                isSimulationRunning = false;
+                toggleControls(true);
+                controls.nextStepBtn.disabled = true;
+                controls.prevStepBtn.disabled = (currentStepIndex <= 0);
+                controls.startQuizBtn.disabled = false;
+                showModal('Simulation Complete', `<p>${algorithmSteps[algorithmSteps.length-1].data.message}</p><p class="mt-4">You can now review the steps using the Prev/Next buttons or take the quiz to test your knowledge.</p>`, 'Close');
+                return;
+            }
+            
+            executeNextStep();
+            
+            if(isSimulationRunning) {
+                requestAnimationFrame(() => setTimeout(animateAlgorithm, animationSpeed));
+            }
+        }
+        
+        function executeNextStep() {
+            if (currentStepIndex >= algorithmSteps.length - 1) return;
+            currentStepIndex++;
+            applyStep(currentStepIndex);
+        }
+
+        function executePrevStep() {
+            if (currentStepIndex <= 0) return;
+            currentStepIndex--;
+            // To go back, we reset and replay up to the desired step
+            resetAlgorithmStateForReview();
+            for(let i = 0; i <= currentStepIndex; i++) {
+                applyStep(i, true); // Apply silently
+            }
+        }
+        
+        function resetAlgorithmStateForReview() {
+             for (let y = 0; y < gridHeight; y++) {
+                for (let x = 0; x < gridWidth; x++) {
+                    grid[y][x].resetState();
+                }
+            }
+        }
+
+        function applyStep(stepIndex, isSilent = false) {
+            const step = algorithmSteps[stepIndex];
+            if (!step) return;
+
+            // Clear previous 'current' node highlight
+            const prevCurrent = document.querySelector('.current-node');
+            if(prevCurrent) prevCurrent.classList.remove('current-node');
+
+            const { type, data } = step;
+            
+            if (!isSilent) {
+                updateInfo(data.message, 'highlight');
+                controls.prevStepBtn.disabled = (stepIndex <= 0);
+                controls.nextStepBtn.disabled = (stepIndex >= algorithmSteps.length - 1);
+            }
+            
+            let node;
+            if(data.node) node = grid[data.node.y][data.node.x];
+
+            switch (type) {
+                case 'initial':
+                case 'open':
+                    if (node && !node.isStart && !node.isEnd) {
+                        node.element.classList.add('open-list');
+                    }
+                    break;
+                case 'close':
+                    if (node && !node.isStart && !node.isEnd) {
+                        node.element.classList.remove('open-list');
+                        node.element.classList.add('closed-list');
+                        node.element.classList.add('current-node');
+                    }
+                    break;
+                case 'update':
+                    // Visual cue for update can be added here if desired
+                    break;
+                case 'cost_update':
+                    if (node) {
+                        node.g = data.g;
+                        node.h = data.h;
+                        node.f = data.f;
+                        node.updateCostsDisplay(true);
+                    }
+                    break;
+                case 'found':
+                    animatePath(data.path, isSilent);
+                    break;
+                case 'not_found':
+                    updateInfo(data.message, 'error');
+                    break;
+            }
+        }
+        
+        function animatePath(path, isSilent) {
+            if(isSilent) {
+                path.forEach(node => {
+                    if (!node.isStart && !node.isEnd) {
+                        node.element.classList.add('path-node');
+                    }
+                });
+                return;
+            }
+            
+            for (let i = 0; i < path.length; i++) {
+                setTimeout(() => {
+                    const node = path[i];
+                    if (!node.isStart && !node.isEnd) {
+                        node.element.classList.add('path-node');
+                    }
+                }, i * 50);
+            }
+        }
+        
+        // --- Modal System ---
+        function showModal(title, content, buttonText) {
+            const modalHTML = `
+                <div id="dynamic-modal" class="modal-backdrop">
+                    <div class="modal-content glassmorphism p-6 text-white transform transition-all scale-95 opacity-0">
+                        <h3 class="text-2xl font-bold mb-4">${title}</h3>
+                        <div class="text-gray-300">${content}</div>
+                        <div class="mt-6 text-right">
+                            <button id="modal-close-btn" class="control-btn text-white font-bold py-2 px-4 rounded-lg">${buttonText}</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            modalContainer.innerHTML = modalHTML;
+            
+            // Trigger animation
+            setTimeout(() => {
+                const modalContent = document.querySelector('.modal-content');
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
+
+            document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('dynamic-modal');
+            if (modal) {
+                const modalContent = document.querySelector('.modal-content');
+                modalContent.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    modalContainer.innerHTML = '';
+                    if (quizState.active) {
+                        displayQuizQuestion();
+                    }
+                }, 300);
+            }
+        }
+
+        function showIntroModal() {
+            const title = "Welcome to the A* Pathfinding Simulation!";
+            const content = `
+                <p class="mb-4">This tool is designed to help you understand the A* algorithm, a key topic in your A-Level Computer Science course.</p>
+                <h4 class="font-bold text-lg mb-2 text-blue-300">How to Use:</h4>
+                <ol class="list-decimal list-inside space-y-2">
+                    <li><strong>Set Up:</strong> Use the control buttons to place the <span class="text-green-400 font-semibold">Start</span> and <span class="text-red-400 font-semibold">End</span> nodes on the grid.</li>
+                    <li><strong>Create Obstacles:</strong> Select 'Draw Walls' to click and drag on the grid, creating barriers. Use 'Erase' to remove them.</li>
+                    <li><strong>Run Simulation:</strong> Click 'Start Search' to see the full algorithm in action, or use 'Next' and 'Prev' to go step-by-step.</li>
+                    <li><strong>Learn:</strong> Watch the grid and the Info panel to see how the algorithm explores nodes and calculates costs (G, H, and F).</li>
+                    <li><strong>Test Yourself:</strong> After running a simulation, take the quiz to check your understanding.</li>
+                </ol>
+            `;
+            showModal(title, content, "Let's Get Started!");
+        }
+        
+        // --- Quiz Logic ---
+        const quizQuestions = [
+            {
+                type: 'mcq',
+                question: "In the A* formula F = G + H, what does 'G' represent?",
+                options: [
+                    "The estimated distance to the end node.",
+                    "The exact cost from the start node to the current node.",
+                    "The total cost of the path.",
+                    "The number of walls nearby."
+                ],
+                answer: "The exact cost from the start node to the current node."
+            },
+            {
+                type: 'mcq',
+                question: "For A* to guarantee the shortest path, the heuristic 'H' must be:",
+                options: [
+                    "Optimistic (never overestimates the true cost).",
+                    "Pessimistic (always overestimates the true cost).",
+                    "Equal to the G cost.",
+                    "A random value."
+                ],
+                answer: "Optimistic (never overestimates the true cost).",
+                explanation: "This property is called 'admissibility'. An admissible heuristic ensures A* explores promising paths first and doesn't miss the optimal one."
+            },
+            {
+                type: 'fill-in',
+                question: "The list of nodes that have been evaluated and will not be checked again is called the ________ List.",
+                answer: "closed"
+            },
+            {
+                type: 'mcq',
+                question: "Which data structure is most efficient for managing the Open List in A*?",
+                options: [
+                    "A Stack (LIFO)",
+                    "A regular Queue (FIFO)",
+                    "A Priority Queue",
+                    "An Array List"
+                ],
+                answer: "A Priority Queue",
+                explanation: "A Priority Queue is ideal because it allows for efficient retrieval of the node with the lowest F cost, which is the core operation of the A* algorithm."
+            },
+            {
+                type: 'short-answer',
+                question: "Briefly explain why A* is considered an 'informed' search algorithm.",
+                answerKeywords: ['heuristic', 'estimate', 'information', 'goal', 'smarter', 'guess', 'direction']
+            }
+        ];
+
+        let quizState = {
+            active: false,
+            currentQuestionIndex: 0,
+            score: 0,
+            questions: []
+        };
+
+        function startQuiz() {
+            quizState = {
+                active: true,
+                currentQuestionIndex: 0,
+                score: 0,
+                // Shuffle questions for variety
+                questions: [...quizQuestions].sort(() => Math.random() - 0.5)
+            };
+            displayQuizQuestion();
+        }
+        
+        function displayQuizQuestion() {
+            if (quizState.currentQuestionIndex >= quizState.questions.length) {
+                showQuizResults();
+                return;
+            }
+
+            const q = quizState.questions[quizState.currentQuestionIndex];
+            let optionsHTML = '';
+
+            if (q.type === 'mcq') {
+                const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+                optionsHTML = shuffledOptions.map(opt => `
+                    <button class="quiz-option w-full text-left p-3 rounded-lg">${opt}</button>
+                `).join('');
+            } else if (q.type === 'fill-in') {
+                optionsHTML = `<input type="text" id="fill-in-answer" class="w-full p-2 rounded bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Your answer...">`;
+            } else if (q.type === 'short-answer') {
+                 optionsHTML = `<textarea id="short-answer-text" rows="4" class="w-full p-2 rounded bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Explain your reasoning..."></textarea>`;
+            }
+
+            const content = `
+                <p class="mb-4 text-lg">${q.question}</p>
+                <div id="quiz-options-container" class="space-y-3">${optionsHTML}</div>
+            `;
+            
+            const title = `Question ${quizState.currentQuestionIndex + 1} of ${quizState.questions.length}`;
+            showModal(title, content, 'Submit Answer');
+            
+            // FIX: Add event listener for MCQ options
+            const optionsContainer = document.getElementById('quiz-options-container');
+            if (q.type === 'mcq' && optionsContainer) {
+                optionsContainer.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('quiz-option')) {
+                        const allOptions = optionsContainer.querySelectorAll('.quiz-option');
+                        allOptions.forEach(opt => opt.classList.remove('selected'));
+                        e.target.classList.add('selected');
+                    }
+                });
+            }
+            
+            // Override the default close button behavior
+            const submitBtn = document.getElementById('modal-close-btn');
+            submitBtn.onclick = checkQuizAnswer;
+        }
+
+        function checkQuizAnswer() {
+            const q = quizState.questions[quizState.currentQuestionIndex];
+            let isCorrect = false;
+            let userAnswer = '';
+
+            // FIX: Remove previous error messages before checking
+            const existingError = document.getElementById('quiz-error-msg');
+            if (existingError) existingError.remove();
+
+            if (q.type === 'mcq') {
+                const selected = document.querySelector('.quiz-option.selected');
+                if (!selected) { // Check if an option was selected
+                    const optionsContainer = document.getElementById('quiz-options-container');
+                    const errorEl = document.createElement('p');
+                    errorEl.id = 'quiz-error-msg';
+                    errorEl.className = 'text-red-400 text-sm mt-2';
+                    errorEl.textContent = 'Please select an answer.';
+                    optionsContainer.parentElement.appendChild(errorEl);
+                    return;
+                }
+                userAnswer = selected.innerText;
+                isCorrect = userAnswer === q.answer;
+            } else if (q.type === 'fill-in') {
+                const input = document.getElementById('fill-in-answer');
+                userAnswer = input.value.trim().toLowerCase();
+                isCorrect = userAnswer === q.answer;
+            } else if (q.type === 'short-answer') {
+                 const textarea = document.getElementById('short-answer-text');
+                 userAnswer = textarea.value.trim().toLowerCase();
+                 if(userAnswer.length < 15) { // Require a reasonable length
+                     // FIX: Replaced alert with non-blocking message
+                     const errorEl = document.createElement('p');
+                     errorEl.id = 'quiz-error-msg';
+                     errorEl.className = 'text-red-400 text-sm mt-2';
+                     errorEl.textContent = 'Please provide a more detailed answer.';
+                     textarea.parentElement.appendChild(errorEl);
+                     return;
+                 }
+                 isCorrect = q.answerKeywords.some(keyword => userAnswer.includes(keyword));
+            }
+
+            if (isCorrect) {
+                quizState.score++;
+            }
+            
+            showQuizFeedback(isCorrect, q);
+        }
+
+        function showQuizFeedback(isCorrect, question) {
+            const optionsContainer = document.getElementById('quiz-options-container');
+            optionsContainer.style.pointerEvents = 'none'; // Disable further clicks
+            
+            let feedbackText = '';
+            if (isCorrect) {
+                feedbackText = '<h4 class="text-green-400 font-bold text-lg">Correct!</h4>';
+            } else {
+                feedbackText = '<h4 class="text-red-400 font-bold text-lg">Not Quite...</h4>';
+                if (question.type !== 'short-answer') {
+                   feedbackText += `<p class="mt-2">The correct answer is: <strong>${question.answer}</strong></p>`;
+                }
+            }
+
+            if (question.explanation) {
+                feedbackText += `<p class="mt-2 text-sm text-gray-400">${question.explanation}</p>`;
+            }
+            
+            const feedbackEl = document.createElement('div');
+            feedbackEl.className = 'mt-4 p-3 rounded-lg glassmorphism';
+            feedbackEl.innerHTML = feedbackText;
+            optionsContainer.parentElement.appendChild(feedbackEl);
+            
+            // Update button to 'Next'
+            const nextBtn = document.getElementById('modal-close-btn');
+            nextBtn.innerText = 'Next Question';
+            nextBtn.onclick = () => {
+                quizState.currentQuestionIndex++;
+                closeModal();
+            };
+        }
+        
+        function showQuizResults() {
+            quizState.active = false;
+            const percentage = Math.round((quizState.score / quizState.questions.length) * 100);
+            let message = `You scored ${quizState.score} out of ${quizState.questions.length} (${percentage}%).`;
+            
+            if (percentage > 80) {
+                message += "<br><br>Excellent work! You have a strong grasp of the A* algorithm.";
+            } else if (percentage > 50) {
+                message += "<br><br>Good job! Try running the simulation again to solidify the concepts you missed.";
+            } else {
+                message += "<br><br>A good start. It's recommended to watch the simulation again and pay close attention to the info panel explanations.";
+            }
+            
+            showModal('Quiz Complete!', message, 'Close & Reset Quiz');
+            const closeBtn = document.getElementById('modal-close-btn');
+            closeBtn.onclick = () => {
+                controls.startQuizBtn.disabled = true; // Re-lock quiz until next sim run
+                closeModal();
+            };
+        }
+
+        // --- Utility Functions ---
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        // --- Start Everything ---
+        init();
+    });
+    </script>
+</body>
+</html>

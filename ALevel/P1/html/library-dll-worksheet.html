@@ -1,0 +1,2464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Programs and DLL Files - Interactive Worksheet</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #6366f1;
+            --secondary-color: #8b5cf6;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --warning-color: #f59e0b;
+            --background-color: #0f172a;
+            --surface-color: #1e293b;
+            --text-color: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --glass-bg: rgba(30, 41, 59, 0.8);
+            --glass-border: rgba(148, 163, 184, 0.2);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        /* Background Animation */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 50%, var(--primary-color) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, var(--secondary-color) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 20%, var(--success-color) 0%, transparent 50%);
+            opacity: 0.1;
+            filter: blur(100px);
+            z-index: -1;
+            animation: backgroundShift 20s ease-in-out infinite;
+        }
+
+        @keyframes backgroundShift {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.1) rotate(180deg); }
+        }
+
+        /* Header */
+        .header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1.5rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* XP and Level Display */
+        .stats-container {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            background: var(--surface-color);
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .xp-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .xp-bar {
+            width: 150px;
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .xp-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shine 2s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .level-display {
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        /* Navigation */
+        .nav-container {
+            max-width: 1200px;
+            margin: 1rem auto;
+            padding: 0 1rem;
+        }
+
+        .nav-pills {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            padding: 0.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .nav-pill {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.875rem;
+            white-space: nowrap;
+        }
+
+        .nav-pill:hover {
+            background: var(--surface-color);
+            color: var(--text-color);
+        }
+
+        .nav-pill.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            font-weight: 500;
+        }
+
+        /* Main Content */
+        .content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .section {
+            display: none;
+            animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            animation: borderGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes borderGlow {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        .card h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        .card h3 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 1rem;
+            color: var(--text-color);
+        }
+
+        /* Buttons */
+        .btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--surface-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+        }
+
+        .btn-error {
+            background: var(--error-color);
+        }
+
+        /* Input Fields */
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        /* Drag and Drop Areas */
+        .drag-container {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin: 1.5rem 0;
+        }
+
+        .drag-source,
+        .drop-target {
+            min-width: 200px;
+            padding: 1rem;
+            background: var(--surface-color);
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .draggable {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 6px;
+            margin: 0.5rem 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .draggable:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+        }
+
+        .draggable.selected {
+            opacity: 0.6;
+            transform: scale(0.95);
+        }
+
+        .drop-target.drag-over {
+            border-color: var(--primary-color);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        /* Quiz Options */
+        .quiz-options {
+            display: grid;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .quiz-option {
+            padding: 1rem;
+            background: var(--surface-color);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quiz-option:hover {
+            border-color: var(--primary-color);
+            transform: translateX(5px);
+        }
+
+        .quiz-option.selected {
+            border-color: var(--primary-color);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .quiz-option.correct {
+            border-color: var(--success-color);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .quiz-option.incorrect {
+            border-color: var(--error-color);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Achievement Popup */
+        .achievement-popup {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            animation: slideIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            max-width: 300px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .achievement-popup h3 {
+            color: var(--warning-color);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Canvas */
+        .canvas-container {
+            position: relative;
+            margin: 1.5rem 0;
+        }
+
+        canvas {
+            width: 100%;
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        /* Simulation */
+        .simulation-container {
+            background: var(--surface-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+
+        .simulation-controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .code-display {
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+
+        .highlight {
+            background: rgba(99, 102, 241, 0.3);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* XP Indicator */
+        .xp-indicator {
+            position: fixed;
+            color: var(--warning-color);
+            font-weight: bold;
+            font-size: 1.5rem;
+            pointer-events: none;
+            animation: floatUp 2s ease-out forwards;
+            z-index: 1000;
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px);
+            }
+        }
+
+        /* Feedback Button */
+        .feedback-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 90;
+        }
+
+        .feedback-btn:hover {
+            background: var(--primary-color);
+            transform: scale(1.1);
+        }
+
+        /* Feedback Modal */
+        .feedback-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .feedback-content {
+            background: var(--surface-color);
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        /* Navigation Buttons */
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+            gap: 1rem;
+        }
+
+        /* Mark Scheme */
+        .mark-scheme {
+            display: none;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--success-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .mark-scheme.visible {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .stats-container {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .drag-container {
+                flex-direction: column;
+            }
+
+            .nav-pills {
+                justify-content: center;
+            }
+
+            .nav-buttons {
+                flex-direction: column;
+            }
+        }
+
+        /* Hint System */
+        .hint-container {
+            margin: 1rem 0;
+        }
+
+        .hint-btn {
+            background: var(--warning-color);
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        .hint-text {
+            display: none;
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--warning-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .hint-text.visible {
+            display: block;
+        }
+
+        /* Particles */
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            width: 6px;
+            height: 6px;
+            background: var(--warning-color);
+            border-radius: 50%;
+            animation: particle-float 3s ease-out forwards;
+            z-index: 1001;
+        }
+
+        @keyframes particle-float {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--x), var(--y)) scale(0);
+            }
+        }
+
+        /* Fill in the Blanks Options */
+        .word-bank {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 1rem;
+            background: var(--surface-color);
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .word-option {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .word-option:hover:not(.used) {
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+        }
+
+        .word-option.used {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .fill-blank {
+            display: inline-block;
+            min-width: 150px;
+            padding: 0.5rem;
+            margin: 0 0.25rem;
+            background: var(--surface-color);
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .fill-blank:hover {
+            border-color: var(--primary-color);
+        }
+
+        .fill-blank.filled {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: var(--primary-color);
+        }
+
+        /* Error Messages */
+        .error-message {
+            color: var(--error-color);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Success Messages */
+        .success-message {
+            color: var(--success-color);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1>Library Programs and DLL Files</h1>
+            <div class="stats-container">
+                <div class="xp-container">
+                    <span>XP: <span id="xp-display">0</span> / <span id="xp-max">1000</span></span>
+                    <div class="xp-bar">
+                        <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="level-display">
+                    Level <span id="level-display">0</span> / 5
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-container">
+        <div class="nav-pills" id="nav-pills">
+            <button class="nav-pill active" data-section="starter">Starter</button>
+            <button class="nav-pill" data-section="intro">Introduction</button>
+            <button class="nav-pill" data-section="benefits">Benefits</button>
+            <button class="nav-pill" data-section="drawbacks">Drawbacks</button>
+            <button class="nav-pill" data-section="routines">Routines</button>
+            <button class="nav-pill" data-section="dll-intro">DLL Files</button>
+            <button class="nav-pill" data-section="dll-benefits">DLL Benefits</button>
+            <button class="nav-pill" data-section="dll-drawbacks">DLL Drawbacks</button>
+            <button class="nav-pill" data-section="real-world">Real World</button>
+            <button class="nav-pill" data-section="mistakes">Common Mistakes</button>
+            <button class="nav-pill" data-section="exam">Exam Practice</button>
+            <button class="nav-pill" data-section="extension">Extension</button>
+            <button class="nav-pill" data-section="summary">Summary</button>
+            <button class="nav-pill" data-section="videos">Videos</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="content">
+        <!-- Starter Activity -->
+        <section class="section active" id="starter">
+            <div class="card">
+                <h2>🚀 Starter Activity: Programming Concepts Match-Up</h2>
+                <p>Let's warm up! Click on matching pairs of programming concepts and their definitions. This will help us recall important ideas before diving into library programs.</p>
+                
+                <div class="matching-game" id="matching-game">
+                    <div class="match-grid"></div>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetMatching()">Reset Activity</button>
+                
+                <div class="nav-buttons">
+                    <span></span>
+                    <button class="btn" onclick="navigateSection('intro')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Introduction -->
+        <section class="section" id="intro">
+            <div class="card">
+                <h2>📚 Introduction to Library Programs</h2>
+                <p>Imagine you're building a house. Would you make every brick yourself, or would you use pre-made bricks? Library programs work the same way in programming!</p>
+                
+                <div class="simulation-container">
+                    <h3>Interactive Simulation: Building with Libraries</h3>
+                    <div id="library-sim">
+                        <div class="code-display">
+                            <div id="sim-step-1" class="sim-step">
+                                <span class="highlight">// Without Library</span><br>
+                                function calculateSquareRoot(number) {<br>
+                                &nbsp;&nbsp;// Complex mathematical algorithm...<br>
+                                &nbsp;&nbsp;// 50+ lines of code<br>
+                                }
+                            </div>
+                            <div id="sim-step-2" class="sim-step" style="display: none;">
+                                <span class="highlight">// With Library</span><br>
+                                import math<br>
+                                result = math.sqrt(number)
+                            </div>
+                        </div>
+                    </div>
+                    <div class="simulation-controls">
+                        <button class="btn btn-secondary" onclick="simPrev()">← Previous</button>
+                        <button class="btn" onclick="simNext()">Next →</button>
+                        <button class="btn btn-secondary" onclick="resetSimulation()">Reset</button>
+                    </div>
+                </div>
+                
+                <h3>Key Learning Points</h3>
+                <ul>
+                    <li>Library programs are <strong>pre-existing code modules</strong></li>
+                    <li>They can be <strong>linked or imported</strong> into your program</li>
+                    <li>They're designed to be <strong>called to perform common or complex tasks</strong></li>
+                </ul>
+                
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" onclick="navigateSection('starter')">← Previous</button>
+                    <button class="btn" onclick="navigateSection('benefits')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Library Benefits -->
+        <section class="section" id="benefits">
+            <div class="card">
+                <h2>✅ Library Program Benefits</h2>
+                <p>Complete the sentences by selecting the correct words from the word bank. Each word can only be used once!</p>
+                
+                <div class="word-bank" id="benefits-word-bank">
+                    <span class="word-option" data-word="time">time</span>
+                    <span class="word-option" data-word="money">money</span>
+                    <span class="word-option" data-word="tested">tested</span>
+                    <span class="word-option" data-word="broken">broken</span>
+                    <span class="word-option" data-word="reduces">reduces</span>
+                    <span class="word-option" data-word="increases">increases</span>
+                    <span class="word-option" data-word="language">language</span>
+                    <span class="word-option" data-word="color">color</span>
+                    <span class="word-option" data-word="algorithms">algorithms</span>
+                    <span class="word-option" data-word="pictures">pictures</span>
+                    <span class="word-option" data-word="simplifies">simplifies</span>
+                    <span class="word-option" data-word="complicates">complicates</span>
+                </div>
+                
+                <div class="fill-in-exercise">
+                    <p>1. Less code needs to be written which saves <span class="fill-blank" data-answer="time"></span></p>
+                    <p>2. Libraries are pre-<span class="fill-blank" data-answer="tested"></span> by many people</p>
+                    <p>3. This <span class="fill-blank" data-answer="reduces"></span> time testing</p>
+                    <p>4. Can be written in a different programming <span class="fill-blank" data-answer="language"></span></p>
+                    <p>5. Can contain complex <span class="fill-blank" data-answer="algorithms"></span> like mathematical functions</p>
+                    <p>6. <span class="fill-blank" data-answer="simplifies"></span> the program since just the function name is included</p>
+                </div>
+                
+                <button class="btn" onclick="checkBenefitsFill()">Check Answers</button>
+                <button class="btn btn-secondary" onclick="resetBenefitsFill()">Reset</button>
+                
+                <div class="hint-container">
+                    <button class="hint-btn btn" onclick="toggleHint('benefits-hint')">Need a Hint? (-5 XP)</button>
+                    <div class="hint-text" id="benefits-hint">
+                        Think about what makes using pre-made code helpful. Consider time-saving, reliability, and complexity management.
+                    </div>
+                </div>
+                
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" onclick="navigateSection('intro')">← Previous</button>
+                    <button class="btn" onclick="navigateSection('drawbacks')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Library Drawbacks -->
+        <section class="section" id="drawbacks">
+            <div class="card">
+                <h2>❌ Library Program Drawbacks</h2>
+                <p>Not everything about libraries is perfect! Categorize these issues into the correct drawback categories.</p>
+                
+                <div class="drag-container">
+                    <div class="drag-source">
+                        <h3>Issues to Categorize</h3>
+                        <div class="draggable" data-category="compatibility">May not work with other code</div>
+                        <div class="draggable" data-category="testing">Unknown bugs may exist</div>
+                        <div class="draggable" data-category="compatibility">Requires program changes</div>
+                        <div class="draggable" data-category="needs">May not meet exact requirements</div>
+                        <div class="draggable" data-category="testing">Could contain viruses</div>
+                        <div class="draggable" data-category="changes">Updates cause unexpected errors</div>
+                        <div class="draggable" data-category="needs">May need editing to work properly</div>
+                        <div class="draggable" data-category="changes">Results become unpredictable after updates</div>
+                    </div>
+                    
+                    <div class="drop-targets">
+                        <div class="drop-target" data-category="compatibility">
+                            <h3>Compatibility Issues</h3>
+                        </div>
+                        <div class="drop-target" data-category="testing">
+                            <h3>Testing Concerns</h3>
+                        </div>
+                        <div class="drop-target" data-category="needs">
+                            <h3>Requirement Mismatches</h3>
+                        </div>
+                        <div class="drop-target" data-category="changes">
+                            <h3>Change Management</h3>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="checkCategorization()">Check Answers</button>
+                <button class="btn btn-secondary" onclick="resetCategorization()">Reset</button>
+                
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" onclick="navigateSection('benefits')">← Previous</button>
+                    <button class="btn" onclick="navigateSection('routines')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Library Routines -->
+        <section class="section" id="routines">
+            <div class="card">
+                <h2>🔧 Understanding Library Routines</h2>
+                <p>Library routines are the individual functions or procedures within a library. Let's explore their characteristics.</p>
+                
+                <h3>Short Answer Questions</h3>
+                <p>Answer these questions about library routines. Your answers will be checked for key concepts.</p>
+                
+                <div class="question-container">
+                    <p><strong>1. What are the three main characteristics of library routines? (Start with: "Library routines are...")</strong></p>
+                    <textarea id="routines-q1" rows="3" placeholder="Library routines are..."></textarea>
+                    
+                    <p><strong>2. How are library routines made available to programs?</strong></p>
+                    <textarea id="routines-q2" rows="2" placeholder="They can be..."></textarea>
+                    
+                    <p><strong>3. What types of tasks are library routines best suited for?</strong></p>
+                    <textarea id="routines-q3" rows="2" placeholder="Library routines are used to perform..."></textarea>
+                </div>
+                
+                <button class="btn" onclick="checkRoutinesAnswers()">Check Answers</button>
+                <button class="btn btn-secondary" onclick="resetRoutinesAnswers()">Reset</button>
+                
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" onclick="navigateSection('drawbacks')">← Previous</button>
+                    <button class="btn" onclick="navigateSection('dll-intro')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- DLL Introduction -->
+        <section class="section" id="dll-intro">
+            <div class="card">
+                <h2>📁 Dynamic Link Library (DLL) Files</h2>
+                <p>DLL files are a special type of library used in Windows systems. Let's see how they work!</p>
+                
+                <div class="simulation-container">
+                    <h3>DLL Loading Simulation</h3>
+                    <div id="dll-sim">
+                        <div class="sim-visual">
+                            <div class="program-box" id="main-program">
+                                <h4>Main Program (.EXE)</h4>
+                                <div class="code-display">
+                                    <span id="dll-step-1" class="highlight">Program starts...</span><br>
+                                    <span id="dll-step-2" style="opacity: 0.3;">Needs graphics function...</span><br>
+                                    <span id="dll-step-3" style="opacity: 0.3;">Loads graphics.dll</span><br>
+                                    <span id="dll-step-4" style="opacity: 0.3;">Function available!</span>
+                                </div>
+                            </div>
+                            <div class="dll-box" id="dll-file" style="opacity: 0.3;">
+                                <h4>graphics.dll</h4>
+                                <p>Drawing functions</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="simulation-controls">
+                        <button class="btn btn-secondary" onclick="dllSimPrev()">← Previous</button>
+                        <button class="btn" onclick="dllSimNext()">Next →</button>
+                        <button class="btn btn-secondary" onclick="resetDllSim()">Reset</button>
+                    </div>
+                </div>
+                
+                <h3>Key DLL Characteristics</h3>
+                <div class="quiz-options">
+                    <div class="quiz-option" onclick="selectDllOption(this, 'q1')">
+                        <strong>True or False:</strong> DLL files are included inside the .EXE file
+                    </div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="btn" onclick="checkDllIntro()">Check Answer</button>
+                </div>
+                
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" onclick="navigateSection('routines')">← Previous</button>
+                    <button class="btn" onclick="navigateSection('dll-benefits')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- DLL Benefits -->
+        <section class="section" id="dll-benefits">
+            <div class="card">
+                <h2>✅ DLL File Benefits</h2>
+                <p>DLL files offer several advantages. Let's explore them through multiple choice and ranking exercises.</p>
+                
+                <h3>Multiple Choice Questions</h3>
+                <div class="mc-question">
+                    <p><strong>1. Why is the executable file smaller when using DLLs?</strong></p>
+                    <div class="quiz-options" id="dll-mc-1">
+                        <div class="quiz-option" onclick="selectMcOption(this, 'dll-mc-1')" data-correct="false">
+                            The code is compressed more efficiently
+                        </div>
+                        <div class="quiz-option" onclick="selectMcOption(this, 'dll-mc-1')" data-correct="true">
+                            Library routines are stored separately from the main file
+                        </div>
+                        <div class="quiz-option" onclick="selectMcOption(this, 'dll-mc-1')" data-correct="false">
+                            DLL files use a special encoding format
+                        </div>
+                        <div class="quiz-option" onclick="selectMcOption(this, 'dll-mc-1')" data-correct="false">
+                            The compiler removes unnecessary code
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mc-question" style="margin-top: 2rem;">
+                    <p><strong>2. What happens when a DLL file is updated?</strong></p>
+                    <div class="quiz-options" id="dll-mc-2">
+                        <div class="quiz-option" onclick="selectMcOption(this, 'dll-mc-2')" data-correct="false">
+                            All programs using it must be reinstalled
+                        </div>
+                        <div class="quiz-option" onclick="selectMcOption(this, 'dll-mc-2')" data-correct="false">
+                            The main program stops working
+                        </div>
+                        <div class="quiz-option" onclick="selectMcOption(this, 'dll-mc-2')" data-correct="false">
+                            Only the first program to load it gets the update
+                        </div>
+                        <div class="quiz-option" onclick="selectMcOption(this, 'dll-mc-2')" data-correct="true">
+                            All programs using it automatically benefit without recompilation
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="checkDllBenefits()">Check Answers</button>
+                
+                <h3 style="margin-top: 2rem;">Ranking Exercise</h3>
+                <p>Rank these DLL benefits from most to least important for a large software company:</p>
+                <div class="ranking-container" id="dll-ranking">
+                    <div class="rank-item" data-rank="1">Memory efficiency through sharing</div>
+                    <div class="rank-item" data-rank="2">Independent updates without recompilation</div>
+                    <div class="rank-item" data-rank="3">Smaller executable files</div>
+                    <div class="rank-item" data-rank="4">Pre-tested reliability</div>
+                </div>
+                <p class="text-secondary">Click items to swap their positions</p>
+                
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" onclick="navigateSection('dll-intro')">← Previous</button>
+                    <button class="btn" onclick="navigateSection('dll-drawbacks')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- DLL Drawbacks -->
+        <section class="section" id="dll-drawbacks">
+            <div class="card">
+                <h2>❌ DLL File Drawbacks</h2>
+                <p>While DLLs are useful, they can also cause problems. Let's examine real-world scenarios.</p>
+                
+                <h3>Scenario Analysis</h3>
+                <div class="scenario-box">
+                    <p><strong>Scenario 1:</strong> A user tries to run a game but gets an error: "msvcp140.dll was not found"</p>
+                    <p>What is the most likely cause and solution?</p>
+                    <textarea id="dll-scenario-1" rows="3" placeholder="The cause is... The solution would be..."></textarea>
+                </div>
+                
+                <div class="scenario-box" style="margin-top: 1.5rem;">
+                    <p><strong>Scenario 2:</strong> After a Windows update, several programs that were working fine suddenly crash</p>
+                    <p>How might DLL files be involved in this problem?</p>
+                    <textarea id="dll-scenario-2" rows="3" placeholder="This could happen because..."></textarea>
+                </div>
+                
+                <div class="scenario-box" style="margin-top: 1.5rem;">
+                    <p><strong>Scenario 3:</strong> A company's security scan detects that a DLL file has been modified by malware</p>
+                    <p>What are the potential consequences?</p>
+                    <textarea id="dll-scenario-3" rows="3" placeholder="The consequences could include..."></textarea>
+                </div>
+                
+                <button class="btn" onclick="checkDllScenarios()">Check Answers</button>
+                <button class="btn btn-secondary" onclick="resetDllScenarios()">Reset</button>
+                
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" onclick="navigateSection('dll-benefits')">← Previous</button>
+                    <button class="btn" onclick="navigateSection('real-world')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Real World Applications -->
+        <section class="section" id="real-world">
+            <div class="card">
+                <h2>🌍 Real-World Applications</h2>
+                <p>Let's examine how libraries and DLLs are used in actual software development.</p>
+                
+                <h3>Case Study: Video Game Development</h3>
+                <div class="case-study">
+                    <p>A game development studio is creating a new 3D game. They need to decide which components to build themselves and which to use from libraries.</p>
+                    
+                    <h4>Requirements:</h4>
+                    <ul>
+                        <li>3D graphics rendering</li>
+                        <li>Physics simulation</li>
+                        <li>Audio playback</li>
+                        <li>Unique gameplay mechanics</li>
+                        <li>Save game system</li>
+                    </ul>
+                    
+                    <h4>Analysis Questions:</h4>
+                    <p><strong>1. Which components should they use libraries for? Why?</strong></p>
+                    <textarea id="case-study-1" rows="4" placeholder="They should use libraries for..."></textarea>
+                    
+                    <p><strong>2. Which components should they build themselves? Why?</strong></p>
+                    <textarea id="case-study-2" rows="3" placeholder="They should build..."></textarea>
+                    
+                    <p><strong>3. What are the risks of using third-party libraries for critical game components?</strong></p>
+                    <textarea id="case-study-3" rows="3" placeholder="The risks include..."></textarea>
+                </div>
+                
+                <button class="btn" onclick="checkCaseStudy()">Check Answers</button>
+                
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" onclick="navigateSection('dll-drawbacks')">← Previous</button>
+                    <button class="btn" onclick="navigateSection('mistakes')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Common Mistakes -->
+        <section class="section" id="mistakes">
+            <div class="card">
+                <h2>⚠️ Common Mistakes</h2>
+                <p>Test your understanding by identifying whether these statements about libraries and DLLs are true or false.</p>
+                
+                <div class="true-false-quiz">
+                    <div class="tf-question">
+                        <p>1. DLL files are always loaded when the main program starts</p>
+                        <div class="tf-options">
+                            <button class="btn btn-secondary" onclick="checkTrueFalse(this, false, 1)">True</button>
+                            <button class="btn btn-secondary" onclick="checkTrueFalse(this, true, 1)">False</button>
+                        </div>
+                        <p class="feedback" id="tf-feedback-1"></p>
+                    </div>
+                    
+                    <div class="tf-question">
+                        <p>2. Library routines are guaranteed to be bug-free because many people use them</p>
+                        <div class="tf-options">
+                            <button class="btn btn-secondary" onclick="checkTrueFalse(this, false, 2)">True</button>
+                            <button class="btn btn-secondary" onclick="checkTrueFalse(this, true, 2)">False</button>
+                        </div>
+                        <p class="feedback" id="tf-feedback-2"></p>
+                    </div>
+                    
+                    <div class="tf-question">
+                        <p>3. You need to recompile your program every time a DLL is updated</p>
+                        <div class="tf-options">
+                            <button class="btn btn-secondary" onclick="checkTrueFalse(this, false, 3)">True</button>
+                            <button class="btn btn-secondary" onclick="checkTrueFalse(this, true, 3)">False</button>
+                        </div>
+                        <p class="feedback" id="tf-feedback-3"></p>
+                    </div>
+                    
+                    <div class="tf-question">
+                        <p>4. Library routines can be written in a different programming language than your main program</p>
+                        <div class="tf-options">
+                            <button class="btn btn-secondary" onclick="checkTrueFalse(this, true, 4)">True</button>
+                            <button class="btn btn-secondary" onclick="checkTrueFalse(this, false, 4)">False</button>
+                        </div>
+                        <p class="feedback" id="tf-feedback-4"></p>
+                    </div>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetTrueFalse()">Reset All</button>
+                
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" onclick="navigateSection('real-world')">← Previous</button>
+                    <button class="btn" onclick="navigateSection('exam')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exam Practice -->
+        <section class="section" id="exam">
+            <div class="card">
+                <h2>📝 Practice Exam Questions</h2>
+                <p>These questions are similar to what you might see in your A-level exam. Complete them fully before viewing mark schemes.</p>
+                
+                <div class="exam-question">
+                    <p><strong>Question 1 (6 marks)</strong></p>
+                    <p>A programmer is developing a scientific calculator application. Explain three benefits of using mathematical library routines instead of writing all functions from scratch.</p>
+                    <textarea id="exam-q1" rows="6" placeholder="Write your answer here..."></textarea>
+                    <div class="marks-input">
+                        <label>Predicted marks: <input type="number" id="exam-q1-marks" min="0" max="6" step="1"></label>
+                    </div>
+                    <button class="btn" onclick="showMarkScheme('exam-q1', 6)">Show Mark Scheme</button>
+                    <div class="mark-scheme" id="mark-scheme-exam-q1">
+                        <h4>Mark Scheme (6 marks)</h4>
+                        <p>1 mark for each benefit (max 3) + 1 mark for each explanation (max 3)</p>
+                        <ul>
+                            <li><strong>Saves time (1)</strong> - Pre-written code means less development time needed (1)</li>
+                            <li><strong>Pre-tested/reliable (1)</strong> - Used by many people so bugs likely found and fixed (1)</li>
+                            <li><strong>Complex algorithms available (1)</strong> - Mathematical functions that programmer may not know how to implement (1)</li>
+                            <li><strong>Optimized performance (1)</strong> - Written by experts using efficient algorithms (1)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="exam-question" style="margin-top: 2rem;">
+                    <p><strong>Question 2 (8 marks)</strong></p>
+                    <p>Describe what DLL files are and evaluate two advantages and two disadvantages of using them in software development.</p>
+                    <textarea id="exam-q2" rows="8" placeholder="Write your answer here..."></textarea>
+                    <div class="marks-input">
+                        <label>Predicted marks: <input type="number" id="exam-q2-marks" min="0" max="8" step="1"></label>
+                    </div>
+                    <button class="btn" onclick="showMarkScheme('exam-q2', 8)">Show Mark Scheme</button>
+                    <div class="mark-scheme" id="mark-scheme-exam-q2">
+                        <h4>Mark Scheme (8 marks)</h4>
+                        <p><strong>Description (2 marks):</strong></p>
+                        <ul>
+                            <li>Shared library file / Dynamic Link Library (1)</li>
+                            <li>Code saved separately from .EXE / loaded at runtime (1)</li>
+                        </ul>
+                        <p><strong>Advantages (3 marks - any 2):</strong></p>
+                        <ul>
+                            <li>Smaller executable files (1) - routines not included in .EXE (0.5)</li>
+                            <li>Memory efficiency (1) - single DLL serves multiple programs (0.5)</li>
+                            <li>Independent updates (1) - no need to recompile main program (0.5)</li>
+                        </ul>
+                        <p><strong>Disadvantages (3 marks - any 2):</strong></p>
+                        <ul>
+                            <li>Dependency issues (1) - program fails if DLL missing (0.5)</li>
+                            <li>Version conflicts (1) - updates may break compatibility (0.5)</li>
+                            <li>Security risks (1) - malicious changes affect all programs (0.5)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <h3>Drawing Canvas for Calculations</h3>
+                <p>Use this canvas for any working out or diagrams:</p>
+                <div class="canvas-container">
+                    <canvas id="drawing-canvas" width="800" height="400"></canvas>
+                    <button class="btn btn-secondary" onclick="clearCanvas()">Clear Canvas</button>
+                </div>
+                
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" onclick="navigateSection('mistakes')">← Previous</button>
+                    <button class="btn" onclick="navigateSection('extension')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Extension Activity -->
+        <section class="section" id="extension">
+            <div class="card">
+                <h2>🚀 Extension Activity: Design Your Own Library</h2>
+                <p>This activity goes beyond the specification. Design a library for a specific purpose!</p>
+                
+                <h3>Challenge: Game Development Library</h3>
+                <p>You're tasked with designing a library for 2D game development. Consider what functions would be most useful.</p>
+                
+                <div class="extension-task">
+                    <p><strong>1. Name your library and describe its purpose:</strong></p>
+                    <input type="text" id="lib-name" placeholder="Library name...">
+                    <textarea id="lib-purpose" rows="2" placeholder="Purpose and target audience..."></textarea>
+                    
+                    <p><strong>2. List 5 key functions your library would provide:</strong></p>
+                    <textarea id="lib-functions" rows="5" placeholder="1. Function name - what it does
+2. ..."></textarea>
+                    
+                    <p><strong>3. How would you handle versioning and updates?</strong></p>
+                    <textarea id="lib-versioning" rows="3" placeholder="Describe your approach..."></textarea>
+                    
+                    <p><strong>4. What programming language would you use and why?</strong></p>
+                    <textarea id="lib-language" rows="3" placeholder="Language choice and justification..."></textarea>
+                </div>
+                
+                <button class="btn" onclick="submitExtension()">Submit Design</button>
+                
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" onclick="navigateSection('exam')">← Previous</button>
+                    <button class="btn" onclick="navigateSection('summary')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary Quiz -->
+        <section class="section" id="summary">
+            <div class="card">
+                <h2>📊 Summary Quiz</h2>
+                <p>Test your understanding with these final questions covering all topics from today's lesson.</p>
+                
+                <div class="summary-quiz">
+                    <!-- Question 1 -->
+                    <div class="quiz-question">
+                        <p><strong>1. What is the main purpose of library programs?</strong></p>
+                        <div class="quiz-options">
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q1')" data-correct="false">
+                                To make programs run faster
+                            </div>
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q1')" data-correct="true">
+                                To provide pre-written code for common tasks
+                            </div>
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q1')" data-correct="false">
+                                To compress program files
+                            </div>
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q1')" data-correct="false">
+                                To encrypt source code
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 2 -->
+                    <div class="quiz-question">
+                        <p><strong>2. Which is NOT a benefit of using library programs?</strong></p>
+                        <div class="quiz-options">
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q2')" data-correct="false">
+                                Saves development time
+                            </div>
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q2')" data-correct="false">
+                                Pre-tested by other users
+                            </div>
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q2')" data-correct="true">
+                                Guaranteed to meet exact requirements
+                            </div>
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q2')" data-correct="false">
+                                Can use different programming languages
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 3 -->
+                    <div class="quiz-question">
+                        <p><strong>3. When are DLL files loaded into memory?</strong></p>
+                        <div class="quiz-options">
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q3')" data-correct="false">
+                                When the computer starts
+                            </div>
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q3')" data-correct="false">
+                                When the program is compiled
+                            </div>
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q3')" data-correct="true">
+                                When required at runtime
+                            </div>
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q3')" data-correct="false">
+                                When the program is installed
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 4 -->
+                    <div class="quiz-question">
+                        <p><strong>4. What happens if a required DLL file is missing?</strong></p>
+                        <input type="text" id="summary-q4" placeholder="Type your answer...">
+                    </div>
+                    
+                    <!-- Question 5 -->
+                    <div class="quiz-question">
+                        <p><strong>5. True or False: Multiple programs can share the same DLL file simultaneously</strong></p>
+                        <div class="tf-options">
+                            <button class="btn btn-secondary" onclick="checkSummaryTF(this, true, 5)">True</button>
+                            <button class="btn btn-secondary" onclick="checkSummaryTF(this, false, 5)">False</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 6 -->
+                    <div class="quiz-question">
+                        <p><strong>6. Order these from most to least important when choosing a library:</strong></p>
+                        <div class="rank-list" id="summary-ranking">
+                            <div class="rank-item">Cost</div>
+                            <div class="rank-item">Documentation quality</div>
+                            <div class="rank-item">Compatibility</div>
+                            <div class="rank-item">Performance</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 7 -->
+                    <div class="quiz-question">
+                        <p><strong>7. Which file extension is associated with Dynamic Link Libraries?</strong></p>
+                        <div class="quiz-options">
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q7')" data-correct="false">.LIB</div>
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q7')" data-correct="false">.EXE</div>
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q7')" data-correct="true">.DLL</div>
+                            <div class="quiz-option" onclick="selectSummaryOption(this, 'q7')" data-correct="false">.SYS</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 8 -->
+                    <div class="quiz-question">
+                        <p><strong>8. Identify the odd one out and explain why:</strong></p>
+                        <ul>
+                            <li>Pre-compiled modules</li>
+                            <li>Source code included</li>
+                            <li>Linked at runtime</li>
+                            <li>Shared between programs</li>
+                        </ul>
+                        <textarea id="summary-q8" rows="2" placeholder="The odd one out is... because..."></textarea>
+                    </div>
+                </div>
+                
+                <button class="btn btn-success" onclick="checkSummaryQuiz()">Submit Quiz</button>
+                <button class="btn btn-secondary" onclick="resetSummaryQuiz()">Reset Quiz</button>
+                
+                <div class="quiz-results" id="quiz-results" style="display: none;">
+                    <h3>Your Results</h3>
+                    <p>Score: <span id="quiz-score">0</span> / 8</p>
+                    <div id="quiz-feedback"></div>
+                </div>
+                
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" onclick="navigateSection('extension')">← Previous</button>
+                    <button class="btn" onclick="navigateSection('videos')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Videos Section -->
+        <section class="section" id="videos">
+            <div class="card">
+                <h2>🎥 Additional Video Resources</h2>
+                <p>Here are some recommended videos to reinforce your learning:</p>
+                
+                <div class="video-placeholder">
+                    <h3>1. Introduction to Software Libraries</h3>
+                    <div style="background: var(--surface-color); padding: 3rem; text-align: center; border-radius: 8px;">
+                        <p>Video placeholder - Duration: 8:30</p>
+                    </div>
+                </div>
+                
+                <div class="video-placeholder" style="margin-top: 1.5rem;">
+                    <h3>2. Understanding DLL Files in Windows</h3>
+                    <div style="background: var(--surface-color); padding: 3rem; text-align: center; border-radius: 8px;">
+                        <p>Video placeholder - Duration: 12:15</p>
+                    </div>
+                </div>
+                
+                <div class="video-placeholder" style="margin-top: 1.5rem;">
+                    <h3>3. Common DLL Errors and Solutions</h3>
+                    <div style="background: var(--surface-color); padding: 3rem; text-align: center; border-radius: 8px;">
+                        <p>Video placeholder - Duration: 6:45</p>
+                    </div>
+                </div>
+                
+                <h3>Key Takeaways</h3>
+                <ul>
+                    <li>Library programs save time and reduce errors through code reuse</li>
+                    <li>DLL files enable efficient memory usage and easy updates</li>
+                    <li>Both libraries and DLLs have trade-offs to consider</li>
+                    <li>Understanding these concepts is crucial for modern software development</li>
+                </ul>
+                
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" onclick="navigateSection('summary')">← Previous</button>
+                    <button class="btn btn-success" onclick="completeLesson()">Complete Lesson</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Feedback Button -->
+    <div class="feedback-btn" onclick="openFeedback()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+        </svg>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div class="feedback-modal" id="feedback-modal">
+        <div class="feedback-content">
+            <h3>Send Feedback</h3>
+            <p>Found a bug or have a suggestion? Let us know!</p>
+            <textarea id="feedback-text" rows="5" placeholder="Describe the issue or suggestion..."></textarea>
+            <div style="margin-top: 1rem; display: flex; gap: 1rem;">
+                <button class="btn" onclick="sendFeedback()">Send</button>
+                <button class="btn btn-secondary" onclick="closeFeedback()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentSection = 'starter';
+        let xp = 0;
+        let level = 0;
+        let achievements = new Set();
+        let completedActions = new Set();
+        let currentSimStep = 1;
+        let currentDllStep = 1;
+        let hintUsed = new Set();
+        
+        // XP thresholds for each level
+        const levelThresholds = [0, 200, 500, 900, 1400, 2000];
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMatching();
+            initializeCanvas();
+            setupEventListeners();
+            updateDisplay();
+        });
+        
+        // Prevent paste
+        document.addEventListener('paste', function(e) {
+            e.preventDefault();
+            showShameMessage();
+            return false;
+        });
+        
+        // Navigation
+        function navigateSection(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
+            
+            document.getElementById(sectionId).classList.add('active');
+            document.querySelector(`[data-section="${sectionId}"]`).classList.add('active');
+            
+            currentSection = sectionId;
+            
+            if (!completedActions.has(`visited-${sectionId}`)) {
+                awardXP(10, `Visited ${sectionId} section`);
+                completedActions.add(`visited-${sectionId}`);
+            }
+        }
+        
+        // Event listeners setup
+        function setupEventListeners() {
+            document.querySelectorAll('.nav-pill').forEach(pill => {
+                pill.addEventListener('click', function() {
+                    navigateSection(this.dataset.section);
+                });
+            });
+            
+            // Keyboard navigation
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowRight') {
+                    navigateNext();
+                } else if (e.key === 'ArrowLeft') {
+                    navigatePrev();
+                }
+            });
+        }
+        
+        function navigateNext() {
+            const sections = ['starter', 'intro', 'benefits', 'drawbacks', 'routines', 'dll-intro', 'dll-benefits', 'dll-drawbacks', 'real-world', 'mistakes', 'exam', 'extension', 'summary', 'videos'];
+            const currentIndex = sections.indexOf(currentSection);
+            if (currentIndex < sections.length - 1) {
+                navigateSection(sections[currentIndex + 1]);
+            }
+        }
+        
+        function navigatePrev() {
+            const sections = ['starter', 'intro', 'benefits', 'drawbacks', 'routines', 'dll-intro', 'dll-benefits', 'dll-drawbacks', 'real-world', 'mistakes', 'exam', 'extension', 'summary', 'videos'];
+            const currentIndex = sections.indexOf(currentSection);
+            if (currentIndex > 0) {
+                navigateSection(sections[currentIndex - 1]);
+            }
+        }
+        
+        // XP and Achievement System
+        function awardXP(amount, reason) {
+            const prevLevel = level;
+            xp += amount;
+            
+            // Check level up
+            for (let i = levelThresholds.length - 1; i >= 0; i--) {
+                if (xp >= levelThresholds[i]) {
+                    level = i;
+                    break;
+                }
+            }
+            
+            updateDisplay();
+            showXPIndicator(amount);
+            
+            if (level > prevLevel) {
+                showAchievement('Level Up!', `You reached Level ${level}!`);
+                createParticles();
+            }
+        }
+        
+        function updateDisplay() {
+            document.getElementById('xp-display').textContent = xp;
+            document.getElementById('xp-max').textContent = level < 5 ? levelThresholds[level + 1] : levelThresholds[5];
+            document.getElementById('level-display').textContent = level;
+            
+            const xpPercentage = level < 5 
+                ? ((xp - levelThresholds[level]) / (levelThresholds[level + 1] - levelThresholds[level])) * 100
+                : 100;
+            document.getElementById('xp-fill').style.width = xpPercentage + '%';
+        }
+        
+        function showXPIndicator(amount) {
+            const indicator = document.createElement('div');
+            indicator.className = 'xp-indicator';
+            indicator.textContent = `+${amount} XP`;
+            indicator.style.left = (Math.random() * window.innerWidth * 0.8 + window.innerWidth * 0.1) + 'px';
+            indicator.style.top = (window.innerHeight * 0.5) + 'px';
+            document.body.appendChild(indicator);
+            
+            setTimeout(() => indicator.remove(), 2000);
+        }
+        
+        function showAchievement(title, description) {
+            const popup = document.createElement('div');
+            popup.className = 'achievement-popup';
+            popup.innerHTML = `
+                <h3>🏆 ${title}</h3>
+                <p>${description}</p>
+            `;
+            document.body.appendChild(popup);
+            
+            setTimeout(() => popup.remove(), 5000);
+        }
+        
+        function createParticles() {
+            for (let i = 0; i < 30; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = (Math.random() * window.innerWidth) + 'px';
+                    particle.style.top = (window.innerHeight * 0.3) + 'px';
+                    particle.style.setProperty('--x', (Math.random() - 0.5) * 200 + 'px');
+                    particle.style.setProperty('--y', (Math.random() - 0.5) * 200 + 'px');
+                    document.body.appendChild(particle);
+                    
+                    setTimeout(() => particle.remove(), 3000);
+                }, i * 50);
+            }
+        }
+        
+        // Starter Activity - Matching Game
+        function initializeMatching() {
+            const concepts = [
+                { term: 'Compiler', def: 'Translates entire program before execution' },
+                { term: 'Algorithm', def: 'Step-by-step problem-solving procedure' },
+                { term: 'Function', def: 'Reusable block of code' },
+                { term: 'Variable', def: 'Named storage location' },
+                { term: 'Loop', def: 'Repeats code multiple times' },
+                { term: 'Array', def: 'Collection of similar data items' }
+            ];
+            
+            const grid = document.querySelector('.match-grid');
+            if (!grid) return;
+            
+            grid.innerHTML = '';
+            grid.style.display = 'grid';
+            grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+            grid.style.gap = '1rem';
+            
+            // Shuffle and create cards
+            const allItems = [];
+            concepts.forEach(c => {
+                allItems.push({ text: c.term, type: 'term', match: c.def });
+                allItems.push({ text: c.def, type: 'def', match: c.term });
+            });
+            
+            // Fisher-Yates shuffle
+            for (let i = allItems.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [allItems[i], allItems[j]] = [allItems[j], allItems[i]];
+            }
+            
+            allItems.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'match-card';
+                card.textContent = item.text;
+                card.dataset.match = item.match;
+                card.dataset.type = item.type;
+                card.style.padding = '1rem';
+                card.style.background = 'var(--surface-color)';
+                card.style.border = '2px solid var(--border-color)';
+                card.style.borderRadius = '8px';
+                card.style.cursor = 'pointer';
+                card.style.transition = 'all 0.3s ease';
+                
+                card.addEventListener('click', function() {
+                    handleMatchClick(this);
+                });
+                
+                grid.appendChild(card);
+            });
+        }
+        
+        let selectedMatch = null;
+        function handleMatchClick(card) {
+            if (card.classList.contains('matched')) return;
+            
+            if (!selectedMatch) {
+                selectedMatch = card;
+                card.style.borderColor = 'var(--primary-color)';
+                card.style.background = 'rgba(99, 102, 241, 0.1)';
+            } else {
+                if (selectedMatch.dataset.match === card.textContent || card.dataset.match === selectedMatch.textContent) {
+                    // Match!
+                    card.classList.add('matched');
+                    selectedMatch.classList.add('matched');
+                    card.style.background = 'rgba(16, 185, 129, 0.2)';
+                    selectedMatch.style.background = 'rgba(16, 185, 129, 0.2)';
+                    card.style.borderColor = 'var(--success-color)';
+                    selectedMatch.style.borderColor = 'var(--success-color)';
+                    
+                    if (!completedActions.has('matching-pair')) {
+                        awardXP(20, 'First match!');
+                        completedActions.add('matching-pair');
+                    }
+                    
+                    // Check if all matched
+                    const allCards = document.querySelectorAll('.match-card');
+                    const matchedCards = document.querySelectorAll('.match-card.matched');
+                    if (allCards.length === matchedCards.length && !completedActions.has('matching-complete')) {
+                        awardXP(50, 'Completed matching activity!');
+                        completedActions.add('matching-complete');
+                        showAchievement('Memory Master', 'Completed the matching game!');
+                    }
+                } else {
+                    // No match
+                    card.style.background = 'rgba(239, 68, 68, 0.2)';
+                    selectedMatch.style.background = 'rgba(239, 68, 68, 0.2)';
+                    card.style.borderColor = 'var(--error-color)';
+                    selectedMatch.style.borderColor = 'var(--error-color)';
+                    
+                    setTimeout(() => {
+                        card.style.background = 'var(--surface-color)';
+                        card.style.borderColor = 'var(--border-color)';
+                        selectedMatch.style.background = 'var(--surface-color)';
+                        selectedMatch.style.borderColor = 'var(--border-color)';
+                    }, 1000);
+                }
+                selectedMatch = null;
+            }
+        }
+        
+        function resetMatching() {
+            initializeMatching();
+        }
+        
+        // Simulation Controls
+        function simNext() {
+            if (currentSimStep < 2) {
+                document.getElementById(`sim-step-${currentSimStep}`).style.display = 'none';
+                currentSimStep++;
+                document.getElementById(`sim-step-${currentSimStep}`).style.display = 'block';
+                
+                if (!completedActions.has('sim-complete') && currentSimStep === 2) {
+                    awardXP(30, 'Completed library simulation!');
+                    completedActions.add('sim-complete');
+                }
+            }
+        }
+        
+        function simPrev() {
+            if (currentSimStep > 1) {
+                document.getElementById(`sim-step-${currentSimStep}`).style.display = 'none';
+                currentSimStep--;
+                document.getElementById(`sim-step-${currentSimStep}`).style.display = 'block';
+            }
+        }
+        
+        function resetSimulation() {
+            currentSimStep = 1;
+            document.querySelectorAll('.sim-step').forEach(step => step.style.display = 'none');
+            document.getElementById('sim-step-1').style.display = 'block';
+        }
+        
+        // DLL Simulation
+        function dllSimNext() {
+            if (currentDllStep < 4) {
+                currentDllStep++;
+                updateDllSimulation();
+            }
+        }
+        
+        function dllSimPrev() {
+            if (currentDllStep > 1) {
+                currentDllStep--;
+                updateDllSimulation();
+            }
+        }
+        
+        function updateDllSimulation() {
+            // Reset all steps
+            for (let i = 1; i <= 4; i++) {
+                const step = document.getElementById(`dll-step-${i}`);
+                if (step) {
+                    step.style.opacity = i <= currentDllStep ? '1' : '0.3';
+                    if (i === currentDllStep) {
+                        step.classList.add('highlight');
+                    } else {
+                        step.classList.remove('highlight');
+                    }
+                }
+            }
+            
+            // Update DLL box
+            const dllBox = document.getElementById('dll-file');
+            if (dllBox) {
+                dllBox.style.opacity = currentDllStep >= 3 ? '1' : '0.3';
+                if (currentDllStep === 3) {
+                    dllBox.style.transform = 'scale(1.1)';
+                } else {
+                    dllBox.style.transform = 'scale(1)';
+                }
+            }
+            
+            if (!completedActions.has('dll-sim-complete') && currentDllStep === 4) {
+                awardXP(30, 'Completed DLL simulation!');
+                completedActions.add('dll-sim-complete');
+            }
+        }
+        
+        function resetDllSim() {
+            currentDllStep = 1;
+            updateDllSimulation();
+        }
+        
+        // Fill in the blanks - Benefits
+        let selectedWord = null;
+        document.addEventListener('DOMContentLoaded', function() {
+            const wordOptions = document.querySelectorAll('.word-option');
+            wordOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    if (this.classList.contains('used')) return;
+                    
+                    if (selectedWord) {
+                        selectedWord.style.transform = 'scale(1)';
+                    }
+                    
+                    selectedWord = this;
+                    this.style.transform = 'scale(1.1)';
+                });
+            });
+            
+            const blanks = document.querySelectorAll('.fill-blank');
+            blanks.forEach(blank => {
+                blank.addEventListener('click', function() {
+                    if (selectedWord && !selectedWord.classList.contains('used')) {
+                        // Clear previous word if any
+                        if (this.dataset.filled) {
+                            const prevWord = document.querySelector(`.word-option[data-word="${this.dataset.filled}"]`);
+                            if (prevWord) prevWord.classList.remove('used');
+                        }
+                        
+                        this.textContent = selectedWord.textContent;
+                        this.dataset.filled = selectedWord.dataset.word;
+                        this.classList.add('filled');
+                        selectedWord.classList.add('used');
+                        selectedWord.style.transform = 'scale(1)';
+                        selectedWord = null;
+                    }
+                });
+            });
+        });
+        
+        function checkBenefitsFill() {
+            const blanks = document.querySelectorAll('.fill-blank');
+            let correct = 0;
+            let total = blanks.length;
+            
+            blanks.forEach(blank => {
+                if (blank.dataset.filled === blank.dataset.answer) {
+                    blank.style.borderColor = 'var(--success-color)';
+                    blank.style.background = 'rgba(16, 185, 129, 0.1)';
+                    correct++;
+                } else {
+                    blank.style.borderColor = 'var(--error-color)';
+                    blank.style.background = 'rgba(239, 68, 68, 0.1)';
+                }
+            });
+            
+            if (correct === total && !completedActions.has('benefits-complete')) {
+                awardXP(60, 'Completed benefits exercise perfectly!');
+                completedActions.add('benefits-complete');
+                showAchievement('Benefits Expert', 'Understood all library benefits!');
+            } else if (correct >= total * 0.7) {
+                awardXP(40, 'Good work on benefits exercise!');
+            }
+        }
+        
+        function resetBenefitsFill() {
+            document.querySelectorAll('.fill-blank').forEach(blank => {
+                blank.textContent = '';
+                blank.dataset.filled = '';
+                blank.classList.remove('filled');
+                blank.style.borderColor = 'var(--border-color)';
+                blank.style.background = 'var(--surface-color)';
+            });
+            
+            document.querySelectorAll('.word-option').forEach(option => {
+                option.classList.remove('used');
+                option.style.transform = 'scale(1)';
+            });
+            
+            selectedWord = null;
+        }
+        
+        // Categorization (Drawbacks)
+        let selectedDraggable = null;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const draggables = document.querySelectorAll('.draggable');
+            const dropTargets = document.querySelectorAll('.drop-target');
+            
+            draggables.forEach(draggable => {
+                draggable.addEventListener('click', function() {
+                    if (selectedDraggable) {
+                        selectedDraggable.classList.remove('selected');
+                    }
+                    selectedDraggable = this;
+                    this.classList.add('selected');
+                });
+            });
+            
+            dropTargets.forEach(target => {
+                target.addEventListener('click', function() {
+                    if (selectedDraggable && !selectedDraggable.parentElement.classList.contains('drop-target')) {
+                        this.appendChild(selectedDraggable);
+                        selectedDraggable.classList.remove('selected');
+                        selectedDraggable = null;
+                    }
+                });
+                
+                target.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.classList.add('drag-over');
+                });
+                
+                target.addEventListener('dragleave', function() {
+                    this.classList.remove('drag-over');
+                });
+            });
+        });
+        
+        function checkCategorization() {
+            const dropTargets = document.querySelectorAll('.drop-target');
+            let correct = 0;
+            let total = 0;
+            
+            dropTargets.forEach(target => {
+                const category = target.dataset.category;
+                const items = target.querySelectorAll('.draggable');
+                
+                items.forEach(item => {
+                    total++;
+                    if (item.dataset.category === category) {
+                        item.style.background = 'var(--success-color)';
+                        correct++;
+                    } else {
+                        item.style.background = 'var(--error-color)';
+                    }
+                });
+            });
+            
+            if (correct === total && !completedActions.has('categorization-complete')) {
+                awardXP(70, 'Perfect categorization!');
+                completedActions.add('categorization-complete');
+                showAchievement('Category Master', 'Correctly categorized all drawbacks!');
+            } else if (correct >= total * 0.7) {
+                awardXP(40, 'Good categorization!');
+            }
+        }
+        
+        function resetCategorization() {
+            const dragSource = document.querySelector('.drag-source');
+            const draggables = document.querySelectorAll('.draggable');
+            
+            draggables.forEach(draggable => {
+                dragSource.appendChild(draggable);
+                draggable.style.background = '';
+                draggable.classList.remove('selected');
+            });
+            
+            selectedDraggable = null;
+        }
+        
+        // Routines Questions
+        function checkRoutinesAnswers() {
+            const keywords = {
+                q1: ['pre-existing', 'pre-compiled', 'pre-written', 'modules', 'code'],
+                q2: ['linked', 'imported', 'program'],
+                q3: ['common', 'complex', 'tasks']
+            };
+            
+            let score = 0;
+            
+            for (let i = 1; i <= 3; i++) {
+                const answer = document.getElementById(`routines-q${i}`).value.toLowerCase();
+                const requiredKeywords = keywords[`q${i}`];
+                
+                let found = 0;
+                requiredKeywords.forEach(keyword => {
+                    if (answer.includes(keyword) || answer.includes(keyword.replace('-', ' '))) {
+                        found++;
+                    }
+                });
+                
+                if (found >= 2) {
+                    score++;
+                    document.getElementById(`routines-q${i}`).style.borderColor = 'var(--success-color)';
+                } else {
+                    document.getElementById(`routines-q${i}`).style.borderColor = 'var(--error-color)';
+                }
+            }
+            
+            if (score === 3 && !completedActions.has('routines-complete')) {
+                awardXP(60, 'Excellent understanding of routines!');
+                completedActions.add('routines-complete');
+            } else if (score >= 2) {
+                awardXP(30, 'Good work on routines!');
+            }
+        }
+        
+        function resetRoutinesAnswers() {
+            for (let i = 1; i <= 3; i++) {
+                document.getElementById(`routines-q${i}`).value = '';
+                document.getElementById(`routines-q${i}`).style.borderColor = 'var(--border-color)';
+            }
+        }
+        
+        // DLL Introduction Quiz
+        let dllIntroAnswer = null;
+        
+        function selectDllOption(option, question) {
+            dllIntroAnswer = false; // The correct answer is False
+            option.classList.add('selected');
+        }
+        
+        function checkDllIntro() {
+            if (dllIntroAnswer === false) {
+                if (!completedActions.has('dll-intro-quiz')) {
+                    awardXP(30, 'Correct! DLL files are separate.');
+                    completedActions.add('dll-intro-quiz');
+                }
+            }
+        }
+        
+        // Multiple Choice Handler
+        function selectMcOption(option, groupId) {
+            const group = document.getElementById(groupId);
+            group.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+            option.classList.add('selected');
+        }
+        
+        function checkDllBenefits() {
+            let correct = 0;
+            
+            // Check MC 1
+            const mc1 = document.querySelector('#dll-mc-1 .selected');
+            if (mc1 && mc1.dataset.correct === 'true') {
+                mc1.classList.add('correct');
+                correct++;
+            } else if (mc1) {
+                mc1.classList.add('incorrect');
+            }
+            
+            // Check MC 2
+            const mc2 = document.querySelector('#dll-mc-2 .selected');
+            if (mc2 && mc2.dataset.correct === 'true') {
+                mc2.classList.add('correct');
+                correct++;
+            } else if (mc2) {
+                mc2.classList.add('incorrect');
+            }
+            
+            if (correct === 2 && !completedActions.has('dll-benefits-complete')) {
+                awardXP(50, 'Perfect understanding of DLL benefits!');
+                completedActions.add('dll-benefits-complete');
+            }
+        }
+        
+        // DLL Scenarios
+        function checkDllScenarios() {
+            const scenarios = {
+                's1': ['dll', 'missing', 'not found', 'install', 'download'],
+                's2': ['update', 'compatibility', 'version', 'broken', 'crash'],
+                's3': ['virus', 'malware', 'security', 'programs', 'affected']
+            };
+            
+            let score = 0;
+            
+            for (let i = 1; i <= 3; i++) {
+                const answer = document.getElementById(`dll-scenario-${i}`).value.toLowerCase();
+                const keywords = scenarios[`s${i}`];
+                
+                let matches = 0;
+                keywords.forEach(keyword => {
+                    if (answer.includes(keyword)) matches++;
+                });
+                
+                if (matches >= 2 && answer.length > 50) {
+                    score++;
+                    document.getElementById(`dll-scenario-${i}`).style.borderColor = 'var(--success-color)';
+                }
+            }
+            
+            if (score === 3 && !completedActions.has('dll-scenarios-complete')) {
+                awardXP(80, 'Excellent scenario analysis!');
+                completedActions.add('dll-scenarios-complete');
+                showAchievement('Problem Solver', 'Analyzed all DLL scenarios correctly!');
+            } else if (score >= 2) {
+                awardXP(40, 'Good scenario analysis!');
+            }
+        }
+        
+        function resetDllScenarios() {
+            for (let i = 1; i <= 3; i++) {
+                document.getElementById(`dll-scenario-${i}`).value = '';
+                document.getElementById(`dll-scenario-${i}`).style.borderColor = 'var(--border-color)';
+            }
+        }
+        
+        // Case Study
+        function checkCaseStudy() {
+            const answers = {
+                'case-study-1': ['graphics', 'physics', 'audio', 'library', 'complex'],
+                'case-study-2': ['gameplay', 'mechanics', 'unique', 'custom', 'build'],
+                'case-study-3': ['compatibility', 'updates', 'support', 'dependency', 'risk']
+            };
+            
+            let score = 0;
+            
+            for (let i = 1; i <= 3; i++) {
+                const answer = document.getElementById(`case-study-${i}`).value.toLowerCase();
+                const keywords = answers[`case-study-${i}`];
+                
+                let matches = 0;
+                keywords.forEach(keyword => {
+                    if (answer.includes(keyword)) matches++;
+                });
+                
+                if (matches >= 2 && answer.length > 40) {
+                    score++;
+                }
+            }
+            
+            const xpAmount = Math.min(score * 30, 90);
+            if (xpAmount > 0 && !completedActions.has('case-study-complete')) {
+                awardXP(xpAmount, 'Case study analysis complete!');
+                if (score === 3) {
+                    completedActions.add('case-study-complete');
+                    showAchievement('Industry Ready', 'Perfect case study analysis!');
+                }
+            }
+        }
+        
+        // True/False Questions
+        function checkTrueFalse(button, isCorrect, questionNum) {
+            const feedback = document.getElementById(`tf-feedback-${questionNum}`);
+            
+            if (isCorrect) {
+                button.classList.add('btn-success');
+                feedback.textContent = '✓ Correct!';
+                feedback.style.color = 'var(--success-color)';
+                
+                if (!completedActions.has(`tf-${questionNum}`)) {
+                    awardXP(15, 'Correct answer!');
+                    completedActions.add(`tf-${questionNum}`);
+                }
+            } else {
+                button.classList.add('btn-error');
+                feedback.textContent = '✗ Incorrect. Think again!';
+                feedback.style.color = 'var(--error-color)';
+            }
+            
+            // Disable both buttons
+            button.parentElement.querySelectorAll('button').forEach(btn => {
+                btn.disabled = true;
+            });
+        }
+        
+        function resetTrueFalse() {
+            document.querySelectorAll('.tf-question button').forEach(btn => {
+                btn.disabled = false;
+                btn.classList.remove('btn-success', 'btn-error');
+            });
+            document.querySelectorAll('.feedback').forEach(f => f.textContent = '');
+        }
+        
+        // Exam Questions
+        function showMarkScheme(questionId, maxMarks) {
+            const answer = document.getElementById(questionId).value;
+            const marks = document.getElementById(`${questionId}-marks`).value;
+            
+            if (answer.length < 100) {
+                alert('Please write a more complete answer before viewing the mark scheme.');
+                return;
+            }
+            
+            document.getElementById(`mark-scheme-${questionId}`).classList.add('visible');
+            
+            if (marks && !completedActions.has(`exam-${questionId}`)) {
+                const percentage = (parseInt(marks) / maxMarks) * 100;
+                if (percentage >= 70) {
+                    awardXP(50, 'Good exam answer!');
+                    completedActions.add(`exam-${questionId}`);
+                }
+            }
+        }
+        
+        // Canvas Drawing
+        let canvas, ctx;
+        let drawing = false;
+        
+        function initializeCanvas() {
+            canvas = document.getElementById('drawing-canvas');
+            if (!canvas) return;
+            
+            ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            function resizeCanvas() {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = 400;
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events
+            canvas.addEventListener('touchstart', handleTouch);
+            canvas.addEventListener('touchmove', handleTouch);
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+        
+        function startDrawing(e) {
+            drawing = true;
+            const rect = canvas.getBoundingClientRect();
+            ctx.beginPath();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+        
+        function draw(e) {
+            if (!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            ctx.stroke();
+        }
+        
+        function stopDrawing() {
+            drawing = false;
+        }
+        
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
+                                            e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+        
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        // Extension Activity
+        function submitExtension() {
+            const fields = ['lib-name', 'lib-purpose', 'lib-functions', 'lib-versioning', 'lib-language'];
+            let filled = 0;
+            
+            fields.forEach(field => {
+                const value = document.getElementById(field).value;
+                if (value.length > 20) filled++;
+            });
+            
+            if (filled === fields.length && !completedActions.has('extension-complete')) {
+                awardXP(100, 'Completed extension activity!');
+                completedActions.add('extension-complete');
+                showAchievement('Innovator', 'Designed your own library!');
+            }
+        }
+        
+        // Summary Quiz
+        let summaryAnswers = {};
+        
+        function selectSummaryOption(option, question) {
+            const container = option.parentElement;
+            container.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+            option.classList.add('selected');
+            summaryAnswers[question] = option.dataset.correct === 'true';
+        }
+        
+        function checkSummaryTF(button, isCorrect, questionNum) {
+            summaryAnswers[`tf${questionNum}`] = isCorrect;
+            button.classList.add('btn-success');
+            button.parentElement.querySelectorAll('button').forEach(btn => {
+                if (btn !== button) btn.classList.remove('btn-success');
+            });
+        }
+        
+        function checkSummaryQuiz() {
+            let score = 0;
+            const feedback = [];
+            
+            // Check multiple choice
+            if (summaryAnswers.q1 === true) score++;
+            if (summaryAnswers.q2 === true) score++;
+            if (summaryAnswers.q3 === true) score++;
+            if (summaryAnswers.q7 === true) score++;
+            
+            // Check text answer q4
+            const q4Answer = document.getElementById('summary-q4').value.toLowerCase();
+            if (q4Answer.includes('error') || q4Answer.includes('fail')) {
+                score++;
+            }
+            
+            // Check true/false
+            if (summaryAnswers.tf5 === true) score++;
+            
+            // Check odd one out
+            const q8Answer = document.getElementById('summary-q8').value.toLowerCase();
+            if (q8Answer.includes('source code') && q8Answer.includes('included')) {
+                score++;
+            }
+            
+            // Show results
+            document.getElementById('quiz-score').textContent = score;
+            document.getElementById('quiz-results').style.display = 'block';
+            
+            if (score >= 7 && !completedActions.has('summary-perfect')) {
+                awardXP(150, 'Perfect summary quiz!');
+                completedActions.add('summary-perfect');
+                showAchievement('Master Student', 'Achieved excellence in the summary quiz!');
+            } else if (score >= 5) {
+                awardXP(80, 'Good performance on summary quiz!');
+            }
+        }
+        
+        function resetSummaryQuiz() {
+            summaryAnswers = {};
+            document.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+            document.getElementById('summary-q4').value = '';
+            document.getElementById('summary-q8').value = '';
+            document.getElementById('quiz-results').style.display = 'none';
+        }
+        
+        // Complete Lesson
+        function completeLesson() {
+            if (!completedActions.has('lesson-complete')) {
+                awardXP(200, 'Lesson completed!');
+                completedActions.add('lesson-complete');
+                showAchievement('Course Complete!', 'You have mastered Library Programs and DLL Files!');
+                createParticles();
+            }
+        }
+        
+        // Hint System
+        function toggleHint(hintId) {
+            const hint = document.getElementById(hintId);
+            if (!hint.classList.contains('visible')) {
+                hint.classList.add('visible');
+                if (!hintUsed.has(hintId)) {
+                    awardXP(-5, 'Used hint');
+                    hintUsed.add(hintId);
+                }
+            } else {
+                hint.classList.remove('visible');
+            }
+        }
+        
+        // Feedback System
+        function openFeedback() {
+            document.getElementById('feedback-modal').style.display = 'flex';
+        }
+        
+        function closeFeedback() {
+            document.getElementById('feedback-modal').style.display = 'none';
+            document.getElementById('feedback-text').value = '';
+        }
+        
+        function sendFeedback() {
+            const feedback = document.getElementById('feedback-text').value;
+            if (feedback.length < 10) {
+                alert('Please provide more detailed feedback.');
+                return;
+            }
+            
+            const section = currentSection;
+            const subject = `Worksheet Feedback - ${section}`;
+            const body = `Section: ${section}\n\nFeedback:\n${feedback}\n\nBrowser: ${navigator.userAgent}`;
+            
+            // Create mailto link
+            const mailtoLink = `mailto:millingtond@mgs.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = mailtoLink;
+            
+            closeFeedback();
+            showAchievement('Feedback Sent', 'Thank you for your feedback!');
+        }
+        
+        // Shame message for paste attempts
+        function showShameMessage() {
+            const shame = document.createElement('div');
+            shame.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: var(--error-color);
+                color: white;
+                padding: 2rem;
+                border-radius: 12px;
+                font-size: 1.5rem;
+                font-weight: bold;
+                z-index: 9999;
+                animation: shake 0.5s;
+            `;
+            shame.textContent = '🚫 No pasting allowed! Do your own work!';
+            document.body.appendChild(shame);
+            
+            setTimeout(() => shame.remove(), 3000);
+        }
+        
+        // Add shake animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+                25% { transform: translate(-52%, -50%) rotate(-5deg); }
+                75% { transform: translate(-48%, -50%) rotate(5deg); }
+            }
+            
+            .program-box, .dll-box {
+                padding: 1.5rem;
+                background: var(--surface-color);
+                border: 2px solid var(--border-color);
+                border-radius: 8px;
+                margin: 1rem;
+                transition: all 0.3s ease;
+            }
+            
+            .rank-item {
+                padding: 0.75rem;
+                background: var(--surface-color);
+                border: 2px solid var(--border-color);
+                border-radius: 8px;
+                margin: 0.5rem 0;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+            
+            .rank-item:hover {
+                border-color: var(--primary-color);
+                transform: translateX(5px);
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

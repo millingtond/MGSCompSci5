@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Sampling Rate Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #111827;
+            --bg-medium: #1f2937;
+            --bg-light: #374151;
+            --primary-glow: rgba(16, 185, 129, 0.4);
+            --primary: #10b981; /* Emerald */
+            --secondary: #6366f1; /* Indigo */
+            --text-light: #f3f4f6;
+            --text-dark: #9ca3af;
+            --border: #4b5563;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            overflow: hidden;
+        }
+
+        .simulation-body {
+            background-image: radial-gradient(circle at top left, var(--secondary), transparent 40%),
+                              radial-gradient(circle at bottom right, var(--primary), transparent 40%);
+        }
+
+        /* Card styling */
+        .sim-card {
+            background: rgba(31, 41, 55, 0.5); /* bg-medium with alpha */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            will-change: transform, opacity;
+            transition: transform 0.5s ease, opacity 0.5s ease;
+        }
+
+        /* Active/Hidden states for steps */
+        .sim-step {
+            position: absolute;
+            width: 100%;
+            top: 0;
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+        }
+
+        .sim-step.hidden {
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+        }
+
+        /* Button styling */
+        .sim-button {
+            background-color: var(--primary);
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+        .sim-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 25px var(--primary-glow);
+        }
+        .sim-button.secondary {
+             background-color: var(--bg-light);
+             box-shadow: none;
+        }
+        .sim-button.secondary:hover {
+            background-color: #4b5563;
+            box-shadow: none;
+        }
+
+        /* Slider Styling */
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 6px;
+            background: var(--bg-light);
+            border-radius: 3px; outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 22px; height: 22px;
+            background: white; border-radius: 50%;
+            border: 4px solid var(--primary);
+            cursor: pointer; transition: transform 0.2s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        /* Modal styling */
+        dialog {
+             background: rgba(17, 24, 39, 0.8);
+             backdrop-filter: blur(10px);
+        }
+        dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+
+        /* Quiz Styling */
+        .quiz-option {
+            border: 2px solid var(--border);
+            transition: all 0.2s ease-in-out;
+        }
+        .quiz-option.selected {
+            border-color: var(--primary);
+            background-color: rgba(16, 185, 129, 0.2);
+        }
+        .quiz-option.correct {
+            border-color: #22c55e;
+            background-color: rgba(34, 197, 94, 0.2);
+        }
+        .quiz-option.incorrect {
+            border-color: #ef4444;
+            background-color: rgba(239, 68, 68, 0.2);
+        }
+        
+    </style>
+</head>
+<body class="simulation-body flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div id="simulation-root" class="w-full max-w-4xl relative" style="height: 550px;">
+        
+        <!-- Step 1: Introduction -->
+        <section id="step-0" class="sim-step">
+            <div class="sim-card rounded-2xl p-8 text-center shadow-2xl">
+                <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-indigo-400 mb-4">Digital Audio: The Sampling Process</h1>
+                <p class="text-lg text-text-dark mb-8">An A-Level Computer Science (9618) interactive guide to how analogue sound is digitized through sampling.</p>
+                <div class="bg-gray-900/50 p-4 rounded-lg border border-gray-700">
+                    <h3 class="text-xl font-semibold text-emerald-300 mb-2">Instructions</h3>
+                    <p class="text-text-dark">Use the navigation buttons below or your keyboard's <kbd class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">←</kbd> and <kbd class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→</kbd> keys to move through the simulation.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 2: Analogue Sound -->
+        <section id="step-1" class="sim-step hidden">
+            <div class="sim-card rounded-2xl p-8 shadow-2xl">
+                 <h2 class="text-2xl font-bold text-emerald-400 mb-2 text-center">1. The Analogue Wave</h2>
+                 <p class="text-text-dark mb-6 text-center">Sound in the real world is a continuous analogue wave. This wave contains infinite detail, which computers cannot store directly.</p>
+                 <div class="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
+                     <canvas id="analogue-canvas" class="w-full h-64"></canvas>
+                 </div>
+            </div>
+        </section>
+
+        <!-- Step 3: Sampling -->
+        <section id="step-2" class="sim-step hidden">
+            <div class="sim-card rounded-2xl p-8 shadow-2xl">
+                <h2 class="text-2xl font-bold text-emerald-400 mb-2 text-center">2. Sampling the Wave</h2>
+                <p class="text-text-dark mb-4 text-center">To digitize the wave, we take periodic measurements (samples) of its amplitude. The <span class="font-semibold text-emerald-300">sampling rate</span> dictates how often we take these samples.</p>
+                
+                <div class="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
+                     <canvas id="sampling-canvas" class="w-full h-64"></canvas>
+                </div>
+
+                <div class="mt-6">
+                    <label for="sampling-rate-slider" class="block font-medium text-lg text-center mb-2">Sampling Rate: <span id="sampling-rate-value" class="font-bold text-emerald-400">10 Hz</span></label>
+                    <input id="sampling-rate-slider" type="range" min="2" max="80" value="10" class="w-full">
+                    <p id="file-size-text" class="text-sm text-text-dark mt-2 text-center">Notice how a higher rate results in a more accurate reconstructed wave (purple) and a larger file size.</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Step 4: Nyquist Theorem -->
+        <section id="step-3" class="sim-step hidden">
+            <div class="sim-card rounded-2xl p-8 shadow-2xl">
+                 <h2 class="text-2xl font-bold text-emerald-400 mb-4 text-center">3. The Nyquist-Shannon Theorem</h2>
+                 <p class="text-text-dark mb-6 text-center">To accurately reproduce a sound, the sampling rate must be at least <span class="font-bold text-indigo-400">twice the highest frequency</span> in the sound. Sampling below this rate (the Nyquist rate) causes <span class="font-semibold text-rose-400">aliasing</span>, distorting the audio.</p>
+                 <div class="bg-gray-900/50 rounded-lg p-6 border border-gray-700 text-center">
+                    <p class="text-lg">Human hearing peaks at ~20,000 Hz. The CD quality sampling rate of <span class="text-2xl font-bold text-emerald-300">44,100 Hz</span> is more than double this, safely satisfying the theorem.</p>
+                 </div>
+            </div>
+        </section>
+        
+        <!-- Step 5: Quiz -->
+        <section id="step-4" class="sim-step hidden">
+             <div class="sim-card rounded-2xl p-8 shadow-2xl">
+                <h2 class="text-2xl font-bold text-emerald-400 mb-6 text-center">4. Knowledge Check</h2>
+                <div id="quiz-container"></div>
+             </div>
+        </section>
+
+        <!-- Step 6: Summary -->
+        <section id="step-5" class="sim-step hidden">
+            <div class="sim-card rounded-2xl p-8 text-center shadow-2xl">
+                <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-green-500 mb-4">Simulation Complete</h1>
+                <p class="text-lg text-text-dark mb-6">Congratulations! You've successfully reviewed the core concepts of digital audio sampling.</p>
+                <div id="final-score" class="mb-6 text-lg font-semibold"></div>
+                <button id="reset-button-final" class="sim-button secondary font-bold py-3 px-6 rounded-lg">
+                    Restart Simulation
+                </button>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Navigation -->
+    <footer class="fixed bottom-0 left-0 right-0 p-4">
+        <div class="max-w-xl mx-auto flex justify-between items-center bg-gray-900/50 backdrop-blur-sm border border-gray-700 p-3 rounded-2xl shadow-lg">
+            <button id="prev-step" class="sim-button secondary font-bold py-2 px-5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+            <div id="step-indicator" class="text-sm text-text-dark"></div>
+            <button id="next-step" class="sim-button font-bold py-2 px-5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+        </div>
+    </footer>
+    
+    <!-- Modal Dialog -->
+    <dialog id="info-modal" class="p-6 rounded-xl border border-gray-700 text-white w-full max-w-md sim-card">
+        <div id="modal-content" class="text-center"></div>
+        <button id="modal-close-button" class="mt-6 w-full sim-button font-bold py-2 px-4 rounded-lg">
+            Continue
+        </button>
+    </dialog>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- STATE MANAGEMENT ---
+    const state = {
+        currentStep: 0,
+        totalSteps: 6,
+        isModalOpen: false,
+        modalsShown: [],
+        quiz: {
+            currentQuestion: 0,
+            answers: [],
+            score: 0,
+        },
+        sliderValue: 10,
+    };
+
+    // --- DOM CACHING ---
+    const dom = {
+        steps: document.querySelectorAll('.sim-step'),
+        prevButton: document.getElementById('prev-step'),
+        nextButton: document.getElementById('next-step'),
+        stepIndicator: document.getElementById('step-indicator'),
+        modal: document.getElementById('info-modal'),
+        modalContent: document.getElementById('modal-content'),
+        modalCloseButton: document.getElementById('modal-close-button'),
+        resetButton: document.getElementById('reset-button-final'),
+        analogueCanvas: document.getElementById('analogue-canvas'),
+        samplingCanvas: document.getElementById('sampling-canvas'),
+        slider: document.getElementById('sampling-rate-slider'),
+        sliderValueLabel: document.getElementById('sampling-rate-value'),
+        fileSizeText: document.getElementById('file-size-text'),
+        quizContainer: document.getElementById('quiz-container'),
+        finalScore: document.getElementById('final-score'),
+    };
+    
+    // --- QUIZ DATA ---
+    const quizData = [
+        { type: 'mcq', question: "What is the primary unit for sampling rate?", options: ["Bits per second", "Hertz (Hz)", "Decibels (dB)"], correctAnswer: "Hertz (Hz)", explanation: "Hertz (Hz) means 'samples per second'." },
+        { type: 'fill-in-the-blanks', question: "The Nyquist Theorem states the sampling rate must be at least ______ the ______ frequency of the sound.", blanks: [{ correctAnswer: 'twice' }, { correctAnswer: 'highest' }], explanation: "The rate must be > 2x the max frequency to avoid aliasing." },
+        { type: 'calculation', question: "For a sound with a maximum frequency of 15 kHz, what is the minimum sampling rate in kHz needed?", correctAnswer: 30, explanation: "According to the Nyquist Theorem, 15 kHz * 2 = 30 kHz." }
+    ];
+
+    // --- CORE LOGIC ---
+
+    /**
+     * Updates the entire UI based on the current state.
+     * This is the main controller function.
+     */
+    function updateUI() {
+        // Update step visibility
+        dom.steps.forEach((step, index) => {
+            step.classList.toggle('hidden', index !== state.currentStep);
+        });
+
+        // Update navigation
+        dom.stepIndicator.textContent = `Step ${state.currentStep + 1} / ${state.totalSteps}`;
+        dom.prevButton.disabled = state.currentStep === 0;
+        dom.nextButton.disabled = state.currentStep >= state.totalSteps - 1;
+
+        // Execute step-specific logic
+        runStepLogic(state.currentStep);
+    }
+
+    /**
+     * Handles logic for the currently active step (drawing canvas, building quiz, etc.).
+     * @param {number} stepIndex - The index of the current step.
+     */
+    function runStepLogic(stepIndex) {
+        switch (stepIndex) {
+            case 0: // Welcome
+                showModalOnce(0, "Welcome!", "This simulation explains digital audio sampling. Use the controls to navigate.");
+                break;
+            case 1: // Analogue Wave
+                drawAnalogueWave();
+                showModalOnce(1, "Analogue Sound", "This continuous wave represents real-world sound. Notice its smooth, detailed form.");
+                break;
+            case 2: // Sampling
+                drawSamplingCanvas();
+                showModalOnce(2, "Digital Sampling", "We now measure the wave at intervals (red dots). The purple line is the computer's reconstruction. Adjust the slider to see the effect.");
+                break;
+            case 3: // Nyquist
+                showModalOnce(3, "The Nyquist Theorem", "This fundamental rule prevents audio distortion by ensuring the sampling rate is high enough.");
+                break;
+            case 4: // Quiz
+                if (!dom.quizContainer.hasChildNodes()) buildQuizQuestion();
+                break;
+            case 5: // Summary
+                dom.finalScore.textContent = `You scored ${state.quiz.score} out of ${quizData.length} on the quiz.`;
+                break;
+        }
+    }
+
+    // --- NAVIGATION ---
+    function navigate(direction) {
+        const newStep = state.currentStep + direction;
+        if (newStep >= 0 && newStep < state.totalSteps) {
+            state.currentStep = newStep;
+            updateUI();
+        }
+    }
+
+    // --- CANVAS DRAWING ---
+    const waveConfig = { amplitude: 90, frequency: 2.5, yOffset: 128 };
+    
+    function initCanvas(canvas) {
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width === 0) return null; // Canvas not visible
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        return ctx;
+    }
+
+    function drawAnalogueWave() {
+        const ctx = initCanvas(dom.analogueCanvas);
+        if (!ctx) return;
+        
+        const width = dom.analogueCanvas.clientWidth;
+        ctx.clearRect(0, 0, width, dom.analogueCanvas.clientHeight);
+        ctx.beginPath();
+        ctx.strokeStyle = '#34d399'; // Emerald-400
+        ctx.lineWidth = 3;
+        ctx.shadowColor = 'rgba(16, 185, 129, 0.5)';
+        ctx.shadowBlur = 8;
+        
+        for (let x = 0; x < width; x++) {
+            const y = Math.sin(x * (Math.PI / 180) * waveConfig.frequency) * waveConfig.amplitude + waveConfig.yOffset;
+            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+    }
+
+    function drawSamplingCanvas() {
+        const ctx = initCanvas(dom.samplingCanvas);
+        if (!ctx) return;
+
+        const width = dom.samplingCanvas.clientWidth;
+        const samples = state.sliderValue;
+
+        ctx.clearRect(0, 0, width, dom.samplingCanvas.clientHeight);
+
+        // 1. Draw original wave (faded gray)
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(156, 163, 175, 0.3)';
+        ctx.lineWidth = 2;
+        for (let x = 0; x < width; x++) {
+            const y = Math.sin(x * (Math.PI / 180) * waveConfig.frequency) * waveConfig.amplitude + waveConfig.yOffset;
+            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        
+        // 2. Draw reconstructed wave (purple) and sample points (red)
+        ctx.beginPath();
+        ctx.strokeStyle = '#818cf8'; // Indigo-400
+        ctx.lineWidth = 3;
+        const stepSize = width / (samples);
+        for (let i = 0; i <= samples; i++) {
+            const x = i * stepSize;
+            const y = Math.sin(x * (Math.PI / 180) * waveConfig.frequency) * waveConfig.amplitude + waveConfig.yOffset;
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        
+        // 3. Draw sample points on top
+        for (let i = 0; i <= samples; i++) {
+            const x = i * stepSize;
+            const y = Math.sin(x * (Math.PI / 180) * waveConfig.frequency) * waveConfig.amplitude + waveConfig.yOffset;
+            ctx.beginPath();
+            ctx.fillStyle = '#f43f5e'; // Rose-500
+            ctx.arc(x, y, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    
+    // --- QUIZ LOGIC ---
+    function buildQuizQuestion() {
+        const q = quizData[state.quiz.currentQuestion];
+        let content = `<h3 class="text-xl font-semibold mb-4 text-center">${q.question}</h3>`;
+
+        if (q.type === 'mcq') {
+            content += `<div class="grid grid-cols-1 gap-3" id="quiz-options">${q.options.map(opt => `<button class="quiz-option p-3 rounded-lg text-lg text-left">${opt}</button>`).join('')}</div>`;
+        } else if (q.type === 'fill-in-the-blanks') {
+            let questionText = q.question.replace('______', `<input type="text" class="quiz-input bg-gray-800 border-2 border-gray-600 rounded-md p-1 mx-2 text-center w-28 text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none focus:border-emerald-500">`);
+            questionText = questionText.replace('______', `<input type="text" class="quiz-input bg-gray-800 border-2 border-gray-600 rounded-md p-1 mx-2 text-center w-28 text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none focus:border-emerald-500">`);
+            content += `<div class="text-center text-lg">${questionText}</div>`;
+        } else if (q.type === 'calculation') {
+            content += `<div class="flex justify-center"><input type="number" class="quiz-input bg-gray-800 border-2 border-gray-600 rounded-md p-2 mx-2 text-center w-48 text-white focus:ring-2 focus:ring-emerald-500 focus:outline-none focus:border-emerald-500" placeholder="Enter number (kHz)"></div>`;
+        }
+
+        content += `<div id="feedback-container" class="mt-4 text-center min-h-[50px]"></div>`;
+        content += `<button id="submit-quiz" class="mt-4 mx-auto block sim-button font-bold py-2 px-6 rounded-lg">Submit</button>`;
+
+        dom.quizContainer.innerHTML = content;
+        
+        document.getElementById('submit-quiz').addEventListener('click', checkQuizAnswer);
+        if (q.type === 'mcq') {
+            document.getElementById('quiz-options').addEventListener('click', e => {
+                if (e.target.tagName === 'BUTTON') {
+                    document.querySelectorAll('.quiz-option').forEach(btn => btn.classList.remove('selected'));
+                    e.target.classList.add('selected');
+                }
+            });
+        }
+    }
+
+    function checkQuizAnswer() {
+        const q = quizData[state.quiz.currentQuestion];
+        const feedbackContainer = dom.quizContainer.querySelector('#feedback-container');
+        let isCorrect = false;
+
+        if (q.type === 'mcq') {
+            const selected = dom.quizContainer.querySelector('.quiz-option.selected');
+            if (!selected) { feedbackContainer.innerHTML = `<p class="text-yellow-400">Please select an option.</p>`; return; }
+            isCorrect = selected.textContent === q.correctAnswer;
+            dom.quizContainer.querySelectorAll('.quiz-option').forEach(opt => {
+                opt.disabled = true;
+                if (opt.textContent === q.correctAnswer) opt.classList.add('correct');
+                else if (opt.classList.contains('selected')) opt.classList.add('incorrect');
+            });
+        } else { // Handles both calculation and fill-in-the-blanks
+            const inputs = dom.quizContainer.querySelectorAll('.quiz-input');
+            const answers = Array.from(inputs).map(i => i.value.trim().toLowerCase());
+            if (answers.some(a => a.length < 2)) { feedbackContainer.innerHTML = `<p class="text-yellow-400">Please fill in all fields.</p>`; return; }
+            
+            if (q.type === 'calculation') {
+                isCorrect = parseFloat(answers[0]) === q.correctAnswer;
+            } else {
+                isCorrect = answers.every((ans, i) => ans === q.blanks[i].correctAnswer);
+            }
+        }
+        
+        if (isCorrect) {
+            state.quiz.score++;
+            feedbackContainer.innerHTML = `<div class="p-3 rounded-lg bg-green-500/20 text-green-300"><p class="font-bold">Correct!</p><p>${q.explanation}</p></div>`;
+        } else {
+            feedbackContainer.innerHTML = `<div class="p-3 rounded-lg bg-red-500/20 text-red-300"><p class="font-bold">Not quite.</p><p>${q.explanation}</p></div>`;
+        }
+
+        const submitBtn = document.getElementById('submit-quiz');
+        submitBtn.textContent = 'Next Question';
+        submitBtn.onclick = () => {
+            state.quiz.currentQuestion++;
+            if (state.quiz.currentQuestion < quizData.length) {
+                buildQuizQuestion();
+            } else {
+                navigate(1); // Move to summary
+            }
+        };
+    }
+
+    // --- UTILITY FUNCTIONS ---
+
+    function resetSimulation() {
+        state.currentStep = 0;
+        state.modalsShown = [];
+        state.quiz = { currentQuestion: 0, answers: [], score: 0 };
+        state.sliderValue = 10;
+        dom.slider.value = 10;
+        dom.quizContainer.innerHTML = "";
+        updateUI();
+    }
+    
+    function showModalOnce(stepIndex, title, content) {
+        if (state.modalsShown[stepIndex]) return;
+        state.modalsShown[stepIndex] = true;
+        state.isModalOpen = true;
+        dom.modalContent.innerHTML = `<h3 class="text-xl font-bold text-emerald-400 mb-3">${title}</h3><div class="text-text-dark">${content}</div>`;
+        dom.modal.showModal();
+    }
+
+    // --- EVENT LISTENERS ---
+    dom.prevButton.addEventListener('click', () => navigate(-1));
+    dom.nextButton.addEventListener('click', () => navigate(1));
+    dom.resetButton.addEventListener('click', resetSimulation);
+    dom.modalCloseButton.addEventListener('click', () => {
+        state.isModalOpen = false;
+        dom.modal.close();
+    });
+    
+    dom.slider.addEventListener('input', e => {
+        state.sliderValue = parseInt(e.target.value, 10);
+        dom.sliderValueLabel.textContent = `${state.sliderValue} Hz`;
+        const fileSize = state.sliderValue * 8 * 16 / 1024; // (rate * bit depth * channels) / 1024
+        dom.fileSizeText.textContent = `Approx. File Size: ${fileSize.toFixed(2)} KB/s`;
+        requestAnimationFrame(drawSamplingCanvas);
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.target.tagName === 'INPUT' || state.isModalOpen) return;
+        if (e.key === 'ArrowRight') navigate(1);
+        if (e.key === 'ArrowLeft') navigate(-1);
+    });
+
+    window.addEventListener('resize', () => {
+        if (state.currentStep === 1) drawAnalogueWave();
+        if (state.currentStep === 2) drawSamplingCanvas();
+    });
+
+    // --- INITIALIZATION ---
+    updateUI();
+});
+</script>
+
+</body>
+</html>

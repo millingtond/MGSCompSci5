@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Representation: Colour Depth Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a; /* Deeper blue */
+            --surface-color: #1e293b; /* Slate blue */
+            --primary-text: #f8fafc;
+            --secondary-text: #94a3b8;
+            --accent-color: #38bdf8; /* Lighter, vibrant blue */
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --success-color: #4ade80;
+            --error-color: #f87171;
+            --border-color: #334155;
+            --font-main: 'Inter', sans-serif;
+            --transition-speed: 0.4s;
+            --transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Base styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--primary-text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+        
+        @keyframes background-pan {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Main container */
+        .simulation-container {
+            width: 100%;
+            max-width: 1200px;
+            height: 95vh;
+            max-height: 800px;
+            background: var(--surface-color);
+            border-radius: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Header */
+        .sim-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+            flex-shrink: 0;
+            background: linear-gradient(90deg, #1e293b, #334155, #1e293b);
+            background-size: 200% 200%;
+            animation: background-pan 15s ease infinite;
+        }
+
+        .sim-header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Content area */
+        .sim-content {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sim-step {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 2rem;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: opacity var(--transition-speed) var(--transition-timing), 
+                        transform var(--transition-speed) var(--transition-timing), 
+                        visibility var(--transition-speed);
+            will-change: transform, opacity;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            overflow-y: auto;
+        }
+
+        .sim-step.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .step-content {
+            display: flex;
+            gap: 2rem;
+            width: 100%;
+            align-items: center;
+        }
+
+        .explanation, .interactive-area {
+            flex: 1;
+            text-align: left;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            transform: translateZ(0); /* Promote to own layer */
+        }
+        
+        .explanation h2 {
+            color: var(--accent-color);
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+        }
+        
+        .explanation p {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            color: var(--secondary-text);
+            margin-bottom: 1rem;
+        }
+        
+        .explanation strong { color: var(--primary-text); font-weight: 600; }
+        
+        .formula {
+            background: var(--bg-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-size: 1.2rem;
+            font-family: 'Courier New', Courier, monospace;
+            border-left: 4px solid var(--accent-color);
+            text-align: center;
+        }
+
+        /* Interactive area */
+        .interactive-area { gap: 1.5rem; }
+
+        .image-container {
+            width: 300px;
+            height: 300px;
+            position: relative;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        #image-canvas, #image-canvas-mono, #image-canvas-color {
+            width: 100%;
+            height: 100%;
+        }
+        
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: var(--border-color);
+            border-radius: 5px;
+            outline: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+            border: 4px solid var(--surface-color);
+            box-shadow: 0 0 10px var(--accent-glow);
+            transition: transform 0.2s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        #bit-depth-value, #bit-depth-value-color {
+            font-weight: 700;
+            color: var(--accent-color);
+        }
+
+        /* Quiz */
+        .quiz-container { width: 100%; max-width: 800px; }
+        .question-box {
+            background: rgba(15, 23, 42, 0.5);
+            padding: 2rem;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 1rem;
+        }
+        .question-text { font-size: 1.25rem; margin-bottom: 1.5rem; line-height: 1.6; }
+        .options-container { display: grid; gap: 1rem; }
+        
+        .option {
+            background: var(--border-color);
+            border: 2px solid transparent;
+            padding: 1rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+        .option:hover {
+            border-color: var(--accent-color);
+            background: #334155;
+            transform: translateY(-2px);
+        }
+        .option.selected {
+            border-color: var(--accent-color);
+            background: rgba(56, 189, 248, 0.2);
+        }
+        .option.correct {
+            border-color: var(--success-color);
+            background: rgba(74, 222, 128, 0.15);
+        }
+        .option.incorrect {
+            border-color: var(--error-color);
+            background: rgba(248, 113, 113, 0.15);
+        }
+        
+        input.text-input {
+            width: 100%;
+            padding: 1rem;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--primary-text);
+            font-size: 1.1rem;
+            font-family: var(--font-main);
+            transition: all 0.2s ease;
+        }
+        input.text-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .feedback {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            display: none;
+            line-height: 1.6;
+            animation: fadeIn 0.5s ease;
+        }
+        .feedback.correct {
+            background: rgba(74, 222, 128, 0.1);
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+        }
+        .feedback.incorrect {
+            background: rgba(248, 113, 113, 0.1);
+            color: var(--error-color);
+            border: 1px solid var(--error-color);
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Navigation & Buttons */
+        .sim-navigation {
+            padding: 1rem 2rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            background: var(--surface-color);
+        }
+        
+        .btn {
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s var(--transition-timing);
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0); /* GPU Acceleration */
+            text-align: center;
+        }
+        .btn-primary { background: var(--accent-color); color: var(--bg-color); box-shadow: 0 0 20px var(--accent-glow); }
+        .btn-primary:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 0 30px var(--accent-glow); }
+        .btn-success { background: var(--success-color); color: var(--bg-color); box-shadow: 0 0 20px rgba(74, 222, 128, 0.4); }
+        .btn-success:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 0 30px rgba(74, 222, 128, 0.5); }
+        .btn-danger { background: var(--error-color); color: var(--bg-color); box-shadow: 0 0 20px rgba(248, 113, 113, 0.4); }
+        .btn-danger:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 0 30px rgba(248, 113, 113, 0.5); }
+        
+        .btn:disabled {
+            background-color: var(--border-color);
+            color: var(--secondary-text);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s;
+            z-index: 1000;
+        }
+        .modal.visible { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: var(--surface-color);
+            padding: 2.5rem;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 500px;
+            text-align: center;
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        .modal.visible .modal-content { transform: scale(1); }
+        .modal h2 { margin-bottom: 1rem; color: var(--accent-color); }
+        .modal p { margin-bottom: 1.5rem; color: var(--secondary-text); line-height: 1.6; }
+        
+        @media (prefers-reduced-motion: reduce) {
+            * { animation: none !important; transition-duration: 0.01ms !important; }
+        }
+        
+        @media (max-width: 768px) {
+            .step-content { flex-direction: column; }
+            .sim-header h1 { font-size: 1.25rem; }
+            .sim-step { padding: 1rem; }
+            .explanation h2 { font-size: 1.5rem; }
+            .explanation p { font-size: 1rem; }
+            .image-container { width: 250px; height: 250px; }
+            .btn { padding: 0.75rem 1rem; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="simulation-container">
+        <header class="sim-header">
+            <h1>Image Representation: Monochrome & Colour Depth</h1>
+        </header>
+
+        <main class="sim-content">
+            <!-- Step 1: Introduction -->
+            <section class="sim-step active" id="step-1">
+                <div class="explanation" style="text-align: center; max-width: 700px;">
+                    <h2>Welcome!</h2>
+                    <p>This simulation will guide you through how computers represent images, focusing on <strong>monochrome images</strong> and <strong>colour depth</strong>.</p>
+                    <p>Follow the steps to learn the concepts and test your knowledge with a quiz at the end.</p>
+                    <p style="color: var(--accent-color); font-weight: 600;">Use the 'Next' and 'Previous' buttons, or your keyboard's Right and Left arrow keys to navigate.</p>
+                </div>
+            </section>
+
+            <!-- Step 2: Monochrome Images -->
+            <section class="sim-step" id="step-2">
+                <div class="step-content">
+                    <div class="explanation">
+                        <h2>1. Monochrome Images</h2>
+                        <p>The simplest type of image is a <strong>monochrome</strong> image. Each pixel can be one of only two colours: <strong>black or white</strong>. This requires only <strong>1 bit</strong> of data per pixel.</p>
+                        <ul>
+                            <li>A bit value of <strong>0</strong> might represent a <strong>black</strong> pixel.</li>
+                            <li>A bit value of <strong>1</strong> might represent a <strong>white</strong> pixel.</li>
+                        </ul>
+                        <p>This is known as a <strong>1-bit colour depth</strong>.</p>
+                    </div>
+                    <div class="interactive-area">
+                        <div class="image-container">
+                            <canvas id="image-canvas-mono"></canvas>
+                        </div>
+                        <p>A 1-bit representation of a photograph.</p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Step 3: Grayscale Bit Depth -->
+            <section class="sim-step" id="step-3">
+                <div class="step-content">
+                     <div class="explanation">
+                        <h2>2. Grayscale Bit Depth</h2>
+                        <p>To represent shades of gray, we can use more bits per pixel. This allows for a smoother, more detailed grayscale image.</p>
+                        <p>The number of available shades is still determined by the formula:</p>
+                        <div class="formula">
+                            Number of Shades = 2<sup>n</sup>
+                        </div>
+                        <p>Where <strong>'n'</strong> is the bit depth.</p>
+                        <p>Notice at 1-bit, the image is monochrome (black & white). At 8-bits, you get 256 shades of gray.</p>
+                    </div>
+                    <div class="interactive-area">
+                        <h3>Explore Bit Depth (Grayscale)</h3>
+                        <p>Use the slider to change the bit depth and see how it affects the number of available shades of gray.</p>
+                        <div class="image-container">
+                            <canvas id="image-canvas"></canvas>
+                        </div>
+                        <div class="controls">
+                            <label for="bit-depth-slider">Bit Depth: <span id="bit-depth-value">1</span>-bit</label>
+                            <input type="range" id="bit-depth-slider" min="1" max="8" value="1" step="1">
+                        </div>
+                        <div id="color-info">
+                            <p><strong>Available Shades:</strong> <span id="color-count">2</span></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Step 4: Colour Bit Depth -->
+            <section class="sim-step" id="step-4">
+                <div class="step-content">
+                     <div class="explanation">
+                        <h2>3. Colour Bit Depth</h2>
+                        <p>For colour images, the total bit depth (n) is split between the three colour channels: <strong>Red, Green, and Blue</strong>.</p>
+                        <p>At <strong>1-bit</strong>, there aren't enough bits for colour, so the image is monochrome. As the bit depth increases, more bits are assigned to each colour channel, and the number of possible colours grows exponentially.</p>
+                        <p>A <strong>24-bit</strong> image (8 bits per channel) is called "True Color" as it can represent approximately 16.7 million colours, more than the human eye can distinguish.</p>
+                    </div>
+                    <div class="interactive-area">
+                        <h3>Explore Bit Depth (Colour)</h3>
+                        <p>Use the slider to change the total bit depth and see how the colour palette expands.</p>
+                        <div class="image-container">
+                            <canvas id="image-canvas-color"></canvas>
+                        </div>
+                        <div class="controls">
+                            <label for="bit-depth-slider-color">Total Bit Depth: <span id="bit-depth-value-color">1</span>-bit</label>
+                            <input type="range" id="bit-depth-slider-color" min="1" max="24" value="1" step="1">
+                        </div>
+                        <div id="color-info-color">
+                            <p><strong>Total Available Colours:</strong> <span id="color-count-color">2</span></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Step 5: Quiz Introduction -->
+            <section class="sim-step" id="step-5">
+                 <div class="explanation" style="text-align: center; max-width: 700px;">
+                    <h2>Quiz Time!</h2>
+                    <p>Now it's time to test your understanding of the concepts covered.</p>
+                    <p>There are a few questions to work through. Read each one carefully.</p>
+                </div>
+            </section>
+            
+            <!-- Step 6: Quiz Question 1 -->
+            <section class="sim-step" id="step-6">
+                <div class="quiz-container">
+                     <div class="question-box">
+                        <p class="question-text"><strong>Question 1:</strong> Which of these statements best defines a monochrome image in the context of computing?</p>
+                        <div class="options-container" id="q1-options">
+                            <div class="option" data-answer="A">A) An image that uses various shades of a single colour.</div>
+                            <div class="option" data-answer="B">B) An image where each pixel is represented by 1 bit, allowing for only two colours (e.g., black and white).</div>
+                            <div class="option" data-answer="C">C) An image that is stored with a low file size.</div>
+                            <div class="option" data-answer="D">D) An image that lacks colour and is therefore always grayscale.</div>
+                        </div>
+                        <div class="feedback" id="q1-feedback"></div>
+                    </div>
+                    <button class="btn btn-success" id="submit-q1" disabled>Submit Answer</button>
+                </div>
+            </section>
+            
+            <!-- Step 7: Quiz Question 2 -->
+            <section class="sim-step" id="step-7">
+                <div class="quiz-container">
+                     <div class="question-box">
+                        <p class="question-text"><strong>Question 2:</strong> An image is stored with a colour depth of 5 bits. How many different colours can be represented per pixel?</p>
+                        <input type="text" id="q2-input" class="text-input" placeholder="Enter your answer here...">
+                        <div class="feedback" id="q2-feedback"></div>
+                    </div>
+                    <button class="btn btn-success" id="submit-q2" disabled>Submit Answer</button>
+                </div>
+            </section>
+            
+            <!-- Step 8: Quiz Question 3 -->
+             <section class="sim-step" id="step-8">
+                <div class="quiz-container">
+                     <div class="question-box">
+                        <p class="question-text"><strong>Question 3:</strong> An image with a resolution of <strong>800 x 600 pixels</strong> is saved with a <strong>4-bit</strong> colour depth. What is the minimum file size of this image in <strong>kilobytes (KB)</strong>, assuming no compression or metadata? (1 kilobyte = 1024 bytes)</p>
+                         <input type="text" id="q3-input" class="text-input" placeholder="Enter your answer as a number...">
+                         <div class="feedback" id="q3-feedback"></div>
+                    </div>
+                     <button class="btn btn-success" id="submit-q3" disabled>Submit Answer</button>
+                </div>
+            </section>
+
+            <!-- Step 9: Final Summary -->
+            <section class="sim-step" id="step-9">
+                <div class="explanation" style="text-align: center; max-width: 800px;">
+                    <h2>Simulation Complete!</h2>
+                    <p>Well done! You have completed the simulation on monochrome images and colour depth.</p>
+                    <p><strong>Key Takeaways:</strong></p>
+                    <ul style="text-align: left; display: inline-block; margin-top: 1rem; color: var(--secondary-text);">
+                        <li style="margin-bottom: 0.5rem;">A <strong>monochrome</strong> image uses 1 bit per pixel (black or white).</li>
+                        <li style="margin-bottom: 0.5rem;"><strong>Colour depth (n)</strong> is the number of bits per pixel.</li>
+                        <li style="margin-bottom: 0.5rem;">The number of possible colours is <strong>2<sup>n</sup></strong>.</li>
+                        <li style="margin-bottom: 0.5rem;">Higher colour depth means <strong>better quality</strong> but a <strong>larger file size</strong>.</li>
+                    </ul>
+                    <p style="margin-top: 2rem;">You can use the <strong>Reset</strong> button to go through the simulation again.</p>
+                </div>
+            </section>
+
+        </main>
+        
+        <footer class="sim-navigation">
+            <button class="btn btn-primary" id="prev-btn">Previous Step</button>
+            <span id="step-counter">Step 1 / 9</span>
+            <button class="btn btn-primary" id="next-btn">Next Step</button>
+            <button class="btn btn-danger" id="reset-button" style="display: none;">Reset Simulation</button>
+        </footer>
+    </div>
+    
+    <!-- Modals -->
+    <div class="modal" id="instruction-modal">
+        <div class="modal-content">
+            <h2>Instructions</h2>
+            <p>Welcome to the Colour Depth Simulation. Use the navigation buttons at the bottom or the left/right arrow keys on your keyboard to move through the steps.</p>
+            <button class="btn btn-primary" id="start-sim-btn">Start Simulation</button>
+        </div>
+    </div>
+    
+    <div class="modal" id="context-modal">
+        <div class="modal-content">
+            <h2 id="context-title"></h2>
+            <p id="context-text"></p>
+            <button class="btn btn-primary" id="close-context-btn">Got it!</button>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Caching DOM elements for performance ---
+            const dom = {
+                steps: document.querySelectorAll('.sim-step'),
+                prevBtn: document.getElementById('prev-btn'),
+                nextBtn: document.getElementById('next-btn'),
+                stepCounter: document.getElementById('step-counter'),
+                resetButton: document.getElementById('reset-button'),
+                instructionModal: document.getElementById('instruction-modal'),
+                startSimBtn: document.getElementById('start-sim-btn'),
+                contextModal: document.getElementById('context-modal'),
+                closeContextBtn: document.getElementById('close-context-btn'),
+                contextTitle: document.getElementById('context-title'),
+                contextText: document.getElementById('context-text'),
+                imageCanvas: document.getElementById('image-canvas'),
+                imageCanvasMono: document.getElementById('image-canvas-mono'),
+                imageCanvasColor: document.getElementById('image-canvas-color'),
+                bitDepthSlider: document.getElementById('bit-depth-slider'),
+                bitDepthValue: document.getElementById('bit-depth-value'),
+                colorCount: document.getElementById('color-count'),
+                bitDepthSliderColor: document.getElementById('bit-depth-slider-color'),
+                bitDepthValueColor: document.getElementById('bit-depth-value-color'),
+                colorCountColor: document.getElementById('color-count-color'),
+            };
+
+            // --- Application State ---
+            const state = {
+                currentStep: 0,
+                totalSteps: dom.steps.length,
+                isModalOpen: true,
+                originalImageData: null,
+                sourceImage: new Image(),
+                quiz: {
+                    q1: { correct: "B", submitted: false, selected: null, container: document.getElementById('q1-options'), button: document.getElementById('submit-q1'), feedback: document.getElementById('q1-feedback') },
+                    q2: { correct: "32", submitted: false, input: document.getElementById('q2-input'), button: document.getElementById('submit-q2'), feedback: document.getElementById('q2-feedback') },
+                    q3: { correct: 234.375, submitted: false, input: document.getElementById('q3-input'), button: document.getElementById('submit-q3'), feedback: document.getElementById('q3-feedback') }
+                }
+            };
+            
+            state.sourceImage.crossOrigin = "Anonymous";
+            state.sourceImage.onerror = () => { console.error("Failed to load the source image."); dom.imageCanvas.parentElement.innerHTML = "<p>Error loading image</p>"; }
+            state.sourceImage.src = 'https://picsum.photos/id/1059/300/300';
+
+            // --- Canvas & Image Processing ---
+            const initCanvas = () => {
+                const processImage = () => {
+                    const canvases = [dom.imageCanvas, dom.imageCanvasMono, dom.imageCanvasColor];
+                    canvases.forEach(canvas => {
+                         const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                         canvas.width = 300;
+                         canvas.height = 300;
+                         ctx.drawImage(state.sourceImage, 0, 0, canvas.width, canvas.height);
+                    });
+                    
+                    try {
+                        const mainCtx = dom.imageCanvas.getContext('2d');
+                        state.originalImageData = mainCtx.getImageData(0, 0, dom.imageCanvas.width, dom.imageCanvas.height);
+                        applyGrayscaleDepth(dom.imageCanvas, 1);
+                        applyMonochrome(dom.imageCanvasMono);
+                        applyTotalBitDepth(dom.imageCanvasColor, 1);
+                    } catch (e) {
+                        console.error("Error getting image data:", e);
+                    }
+                };
+
+                if (state.sourceImage.complete) processImage();
+                else state.sourceImage.onload = processImage;
+            };
+            
+            const applyMonochrome = (canvas) => {
+                if (!state.originalImageData) return;
+                const ctx = canvas.getContext('2d');
+                const newImageData = new ImageData(new Uint8ClampedArray(state.originalImageData.data), state.originalImageData.width);
+                const data = newImageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    const color = avg > 127 ? 255 : 0;
+                    data[i] = data[i+1] = data[i+2] = color;
+                }
+                ctx.putImageData(newImageData, 0, 0);
+            };
+
+            const applyGrayscaleDepth = (canvas, bitDepth) => {
+                if (!state.originalImageData) return;
+                const ctx = canvas.getContext('2d');
+                const newImageData = new ImageData(new Uint8ClampedArray(state.originalImageData.data), state.originalImageData.width);
+                const data = newImageData.data;
+                const levels = Math.pow(2, bitDepth);
+                const step = levels > 1 ? 255 / (levels - 1) : 255;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    const quantized = Math.round(avg / step) * step;
+                    data[i] = data[i+1] = data[i+2] = quantized;
+                }
+                ctx.putImageData(newImageData, 0, 0);
+            };
+
+            const applyTotalBitDepth = (canvas, totalBits) => {
+                if (!state.originalImageData) return;
+                const ctx = canvas.getContext('2d');
+
+                if (totalBits >= 24) {
+                    ctx.putImageData(state.originalImageData, 0, 0);
+                    return;
+                }
+                 if (totalBits === 1) {
+                    applyMonochrome(canvas);
+                    return;
+                }
+
+                const newImageData = new ImageData(new Uint8ClampedArray(state.originalImageData.data), state.originalImageData.width);
+                const data = newImageData.data;
+                
+                const remainder = totalBits % 3;
+                const bBits = Math.floor(totalBits / 3);
+                const gBits = bBits + (remainder > 0 ? 1 : 0);
+                const rBits = bBits + (remainder > 1 ? 1 : 0);
+
+                const rLevels = Math.pow(2, rBits);
+                const gLevels = Math.pow(2, gBits);
+                const bLevels = Math.pow(2, bBits);
+
+                const rStep = 255 / (rLevels - 1);
+                const gStep = 255 / (gLevels - 1);
+                const bStep = 255 / (bLevels - 1);
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i]   = Math.round(data[i] / rStep) * rStep;
+                    data[i+1] = Math.round(data[i+1] / gStep) * gStep;
+                    data[i+2] = Math.round(data[i+2] / bStep) * bStep;
+                }
+                ctx.putImageData(newImageData, 0, 0);
+            };
+
+            // --- Navigation & Flow Control ---
+            const showStep = (stepIndex) => {
+                if (state.isModalOpen) return;
+                dom.steps.forEach((step, index) => step.classList.toggle('active', index === stepIndex));
+                dom.stepCounter.textContent = `Step ${stepIndex + 1} / ${state.totalSteps}`;
+                dom.prevBtn.disabled = stepIndex === 0;
+                dom.nextBtn.disabled = stepIndex === state.totalSteps - 1;
+                const isFinalStep = stepIndex === state.totalSteps - 1;
+                dom.resetButton.style.display = isFinalStep ? 'inline-block' : 'none';
+                dom.prevBtn.style.display = isFinalStep ? 'none' : 'inline-block';
+                dom.nextBtn.style.display = isFinalStep ? 'none' : 'inline-block';
+                dom.stepCounter.style.display = isFinalStep ? 'none' : 'inline-block';
+            };
+
+            const navigate = (direction) => {
+                const newStep = state.currentStep + direction;
+                if (newStep >= 0 && newStep < state.totalSteps) {
+                    state.currentStep = newStep;
+                    showStep(state.currentStep);
+                }
+            };
+
+            // --- Modal Management ---
+            const toggleModal = (modalElement, show) => {
+                state.isModalOpen = show;
+                modalElement.classList.toggle('visible', show);
+                if (!show) { showStep(state.currentStep); }
+            };
+
+            const showContextPopup = (bitDepth) => {
+                const content = {
+                    4: { title: 'Noticeable Banding', text: 'With only 4 bits total, the colour palette is very restricted (16 colours). You can see large patches of flat colour.' },
+                    8: { title: 'Classic 8-bit Colour', text: 'At 8 bits (256 colours), the image resembles classic video game graphics. The main shapes are clear, but there is very little subtle shading.' }
+                };
+                if (content[bitDepth]) {
+                    dom.contextTitle.textContent = content[bitDepth].title;
+                    dom.contextText.textContent = content[bitDepth].text;
+                    toggleModal(dom.contextModal, true);
+                }
+            };
+
+            // --- Quiz Logic ---
+            const initQuiz = () => {
+                state.quiz.q1.container.addEventListener('click', (e) => {
+                    const q = state.quiz.q1;
+                    if (q.submitted) return;
+                    const selectedOption = e.target.closest('.option');
+                    if (!selectedOption) return;
+                    q.container.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+                    selectedOption.classList.add('selected');
+                    q.selected = selectedOption.dataset.answer;
+                    q.button.disabled = false;
+                });
+                state.quiz.q1.button.addEventListener('click', () => handleMCSubmit(state.quiz.q1, { correct: '<strong>Correct!</strong> A monochrome image uses exactly 1 bit per pixel to represent one of two colours, typically black and white.', incorrect: '<strong>Incorrect.</strong> The correct answer is B. The defining characteristic is the 1-bit depth allowing only two distinct colours.' }));
+                state.quiz.q2.input.addEventListener('input', () => { state.quiz.q2.button.disabled = state.quiz.q2.input.value.trim().length < 1; });
+                state.quiz.q2.button.addEventListener('click', () => handleTextSubmit(state.quiz.q2, { correct: `<strong>Correct!</strong> The number of colours is 2<sup>n</sup>. So, for n=5, it's 2<sup>5</sup> = 32 colours.`, incorrect: `<strong>Incorrect.</strong> The calculation is 2 to the power of the bit depth (n). Here, n=5, so the calculation is 2<sup>5</sup>, which equals 32.` }));
+                state.quiz.q3.input.addEventListener('input', () => { state.quiz.q3.button.disabled = state.quiz.q3.input.value.trim().length < 1; });
+                state.quiz.q3.button.addEventListener('click', () => {
+                    const q = state.quiz.q3;
+                    if(q.submitted) return;
+                    q.submitted = true;
+                    const userAnswer = parseFloat(q.input.value.trim());
+                    const isCorrect = Math.abs(userAnswer - q.correct) < 0.1;
+                    const calculation = `<p><strong>Mark Scheme:</strong></p><ol style="text-align: left; padding-left: 20px;"><li><strong>Total pixels:</strong> 800 * 600 = 480,000 pixels</li><li><strong>Total bits:</strong> 480,000 * 4 = 1,920,000 bits</li><li><strong>Bits to bytes:</strong> 1,920,000 / 8 = 240,000 bytes</li><li><strong>Bytes to KB:</strong> 240,000 / 1024 = 234.375 KB</li></ol>`;
+                    const feedbackText = isCorrect ? `<strong>Correct!</strong> Your calculation is spot on.` : `<strong>Incorrect.</strong> Review the calculation below.`;
+                    showFeedback(q.feedback, `${feedbackText} ${calculation}`, isCorrect);
+                    q.button.textContent = 'Answer Submitted';
+                    q.button.disabled = true;
+                    q.input.disabled = true;
+                });
+            };
+            const handleMCSubmit = (q, feedbackText) => {
+                 if (q.submitted) return;
+                 q.submitted = true;
+                 const isCorrect = q.selected === q.correct;
+                 q.container.querySelectorAll('.option').forEach(opt => {
+                    const answer = opt.dataset.answer;
+                    if(answer === q.correct) opt.classList.add('correct');
+                    else if (answer === q.selected) opt.classList.add('incorrect');
+                 });
+                 showFeedback(q.feedback, isCorrect ? feedbackText.correct : feedbackText.incorrect, isCorrect);
+                 q.button.textContent = 'Answer Submitted';
+                 q.button.disabled = true;
+            };
+            const handleTextSubmit = (q, feedbackText) => {
+                if (q.submitted) return;
+                q.submitted = true;
+                const isCorrect = q.input.value.trim() == q.correct;
+                showFeedback(q.feedback, isCorrect ? feedbackText.correct : feedbackText.incorrect, isCorrect);
+                q.button.textContent = 'Answer Submitted';
+                q.button.disabled = true;
+                q.input.disabled = true;
+            };
+            const showFeedback = (el, text, isCorrect) => {
+                el.innerHTML = text;
+                el.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+                el.style.display = 'block';
+            };
+
+            // --- Reset & Initialization ---
+            const resetSimulation = () => {
+                state.currentStep = 0;
+                showStep(0);
+                dom.bitDepthSlider.value = 1;
+                dom.bitDepthValue.textContent = '1';
+                dom.colorCount.textContent = '2';
+                applyGrayscaleDepth(dom.imageCanvas, 1);
+                
+                dom.bitDepthSliderColor.value = 1;
+                dom.bitDepthValueColor.textContent = '1';
+                dom.colorCountColor.textContent = '2';
+                applyTotalBitDepth(dom.imageCanvasColor, 1);
+                 
+                Object.values(state.quiz).forEach(q => {
+                    q.submitted = false;
+                    if (q.container) {
+                        q.selected = null;
+                        q.container.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected', 'correct', 'incorrect'));
+                    }
+                    if (q.input) {
+                        q.input.value = '';
+                        q.input.disabled = false;
+                    }
+                    if (q.button) {
+                        q.button.disabled = true;
+                        q.button.textContent = 'Submit Answer';
+                    }
+                    if (q.feedback) {
+                        q.feedback.style.display = 'none';
+                    }
+                });
+            };
+
+            const init = () => {
+                dom.nextBtn.addEventListener('click', () => navigate(1));
+                dom.prevBtn.addEventListener('click', () => navigate(-1));
+                dom.resetButton.addEventListener('click', resetSimulation);
+                dom.startSimBtn.addEventListener('click', () => toggleModal(dom.instructionModal, false));
+                dom.closeContextBtn.addEventListener('click', () => toggleModal(dom.contextModal, false));
+                document.addEventListener('keydown', (e) => {
+                    if (state.isModalOpen) return;
+                    if (e.key === 'ArrowRight') navigate(1);
+                    else if (e.key === 'ArrowLeft') navigate(-1);
+                });
+
+                dom.bitDepthSlider.addEventListener('input', (e) => {
+                    const depth = parseInt(e.target.value);
+                    dom.bitDepthValue.textContent = depth;
+                    dom.colorCount.textContent = Math.pow(2, depth).toLocaleString();
+                    requestAnimationFrame(() => applyGrayscaleDepth(dom.imageCanvas, depth));
+                });
+                
+                dom.bitDepthSliderColor.addEventListener('input', (e) => {
+                    const depth = parseInt(e.target.value);
+                    dom.bitDepthValueColor.textContent = depth;
+                    // Use BigInt for potentially huge numbers, then try to convert to Number for localeString
+                    try {
+                        const numColors = BigInt(2) ** BigInt(depth);
+                        dom.colorCountColor.textContent = Number(numColors).toLocaleString();
+                    } catch (err) {
+                        dom.colorCountColor.textContent = "Over 16.7 million";
+                    }
+                    requestAnimationFrame(() => applyTotalBitDepth(dom.imageCanvasColor, depth));
+                });
+
+                dom.bitDepthSliderColor.addEventListener('change', (e) => {
+                    showContextPopup(parseInt(e.target.value));
+                });
+                
+                initCanvas();
+                initQuiz();
+                toggleModal(dom.instructionModal, true);
+                showStep(state.currentStep);
+            };
+
+            init();
+        });
+    </script>
+</body>
+</html>

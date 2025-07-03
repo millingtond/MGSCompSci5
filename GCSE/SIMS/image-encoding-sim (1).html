@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Binary Encoding Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #e94560;
+            --primary-dark: #d63651;
+            --secondary: #f47068;
+            --bg-dark: #1a1a2e;
+            --bg-medium: #16213e;
+            --bg-light: #0f3460;
+            --text-primary: #ffffff;
+            --text-secondary: #a8a8a8;
+            --success: #00ff88;
+            --warning: #ffaa00;
+            --error: #ff4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-medium) 50%, var(--bg-light) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 0;
+            animation: fadeInDown 0.8s ease;
+        }
+
+        h1 {
+            font-size: clamp(2em, 5vw, 3em);
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: var(--text-secondary);
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tab::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .tab:hover::before {
+            left: 100%;
+        }
+
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .tab.active {
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            box-shadow: 0 4px 20px rgba(233, 69, 96, 0.3);
+        }
+
+        .section {
+            display: none;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 40px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.5s ease;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .pixel-grid {
+            display: grid;
+            gap: 1px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .pixel {
+            aspect-ratio: 1;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .pixel:hover {
+            transform: scale(1.2);
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        .result-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .result-box:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .info-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .info-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+
+        .button {
+            padding: 12px 30px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px 5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .button::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .button:active::after {
+            width: 300px;
+            height: 300px;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(233, 69, 96, 0.4);
+        }
+
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .slider-container {
+            margin: 20px 0;
+        }
+
+        .slider-container label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 25px;
+            height: 25px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        input[type="text"], input[type="number"], select, textarea {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 20px rgba(233, 69, 96, 0.2);
+        }
+
+        .binary-display {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            word-break: break-all;
+            font-size: 14px;
+            line-height: 1.6;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .binary-display::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(233, 69, 96, 0.1), transparent);
+            animation: scan 3s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .color-preview {
+            width: 100px;
+            height: 100px;
+            border-radius: 15px;
+            margin: 10px auto;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .color-preview:hover {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        canvas {
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            white-space: nowrap;
+            font-size: 14px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .drawing-tools {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .color-picker {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .color-picker::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .color-picker.active {
+            transform: scale(1.2);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            border-color: white;
+        }
+
+        .color-picker.active::after {
+            opacity: 1;
+        }
+
+        .histogram {
+            height: 150px;
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .histogram-bar {
+            flex: 1;
+            background: var(--primary);
+            border-radius: 2px 2px 0 0;
+            transition: height 0.5s ease;
+            position: relative;
+        }
+
+        .histogram-bar:hover {
+            background: var(--secondary);
+        }
+
+        .quiz-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .quiz-option {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .quiz-option:hover {
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(5px);
+        }
+
+        .quiz-option.correct {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: var(--success);
+        }
+
+        .quiz-option.incorrect {
+            background: rgba(255, 68, 68, 0.2);
+            border-color: var(--error);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .section {
+                padding: 20px;
+            }
+            
+            .grid-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .tab {
+                width: 80%;
+                text-align: center;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Image Binary Encoding</h1>
+            <p class="subtitle">Discover how images are stored as binary data</p>
+        </header>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showSection('pixels')">Pixel Explorer</div>
+            <div class="tab" onclick="showSection('depth')">Color Depth</div>
+            <div class="tab" onclick="showSection('resolution')">Resolution</div>
+            <div class="tab" onclick="showSection('compression')">Compression</div>
+            <div class="tab" onclick="showSection('formats')">File Formats</div>
+            <div class="tab" onclick="showSection('builder')">Image Builder</div>
+            <div class="tab" onclick="showSection('quiz')">Quiz</div>
+        </div>
+
+        <div class="content">
+            <!-- Pixel Explorer Section -->
+            <div id="pixels" class="section active">
+                <h2>How Images Are Made of Pixels</h2>
+                <p style="margin-bottom: 20px;">Click on any pixel to see its binary representation!</p>
+                
+                <div class="grid-container">
+                    <div>
+                        <h3>Interactive Canvas</h3>
+                        <canvas id="sampleCanvas" width="300" height="300"></canvas>
+                        <div class="slider-container">
+                            <label>Zoom Level: <span id="zoomLevel">1x</span></label>
+                            <input type="range" id="zoomSlider" min="1" max="20" value="1" oninput="updateZoom()">
+                        </div>
+                        <div style="text-align: center; margin-top: 10px;">
+                            <button class="button" onclick="loadSampleImage('gradient')">Gradient</button>
+                            <button class="button" onclick="loadSampleImage('photo')">Photo</button>
+                            <button class="button" onclick="loadSampleImage('pattern')">Pattern</button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3>Pixel Information</h3>
+                        <div class="result-box">
+                            <p><strong>Position:</strong> <span id="pixelPosition">Click a pixel</span></p>
+                            <p><strong>Color (RGB):</strong> <span id="pixelRGB">-</span></p>
+                            <p><strong>Hex Color:</strong> <span id="pixelHex">-</span></p>
+                            <p><strong>HSL:</strong> <span id="pixelHSL">-</span></p>
+                            <div class="color-preview" id="colorPreview"></div>
+                            <h4>Binary Representation (24-bit):</h4>
+                            <div class="binary-display" id="pixelBinary">
+                                Click on a pixel to see its binary code
+                            </div>
+                        </div>
+                        
+                        <div class="result-box">
+                            <h4>Color Histogram</h4>
+                            <div class="histogram" id="colorHistogram"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <h3>📸 Understanding Pixels</h3>
+                    <p>Every digital image is made up of tiny colored squares called pixels. Each pixel has:</p>
+                    <ul style="list-style: none; padding: 10px;">
+                        <li>• <span class="tooltip" data-tooltip="Horizontal and vertical position in the image grid">Position (X, Y)</span></li>
+                        <li>• <span class="tooltip" data-tooltip="Red (0-255), Green (0-255), Blue (0-255)">RGB color values</span></li>
+                        <li>• <span class="tooltip" data-tooltip="8 bits = 256 possible values per channel">8 bits per color channel</span></li>
+                        <li>• <span class="tooltip" data-tooltip="8 bits × 3 channels = 24 bits total">24 bits total for full color</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Color Depth Section -->
+            <div id="depth" class="section">
+                <h2>Color Depth Comparison</h2>
+                <p style="margin-bottom: 20px;">See how bit depth affects image quality and file size</p>
+                
+                <div class="result-box">
+                    <h3>Choose an Image:</h3>
+                    <div style="text-align: center;">
+                        <button class="button" onclick="loadDepthImage('flower')">🌸 Flower</button>
+                        <button class="button" onclick="loadDepthImage('landscape')">🏔️ Landscape</button>
+                        <button class="button" onclick="loadDepthImage('portrait')">👤 Portrait</button>
+                        <input type="file" id="uploadImage" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+                        <button class="button" onclick="document.getElementById('uploadImage').click()">📤 Upload Image</button>
+                    </div>
+                </div>
+
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value">2</div>
+                        <p>1-bit colors</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">256</div>
+                        <p>8-bit colors</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">65K</div>
+                        <p>16-bit colors</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">16.7M</div>
+                        <p>24-bit colors</p>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0;">
+                    <div class="result-box">
+                        <h3>1-bit (Black & White)</h3>
+                        <canvas id="canvas1bit" width="250" height="250"></canvas>
+                        <p>File Size: <span id="size1bit">-</span></p>
+                        <div class="binary-display" style="font-size: 12px;">
+                            Pixel: <span id="binary1bit">0 or 1</span>
+                        </div>
+                    </div>
+                    
+                    <div class="result-box">
+                        <h3>8-bit (256 Colors)</h3>
+                        <canvas id="canvas8bit" width="250" height="250"></canvas>
+                        <p>File Size: <span id="size8bit">-</span></p>
+                        <div class="binary-display" style="font-size: 12px;">
+                            Pixel: <span id="binary8bit">00000000-11111111</span>
+                        </div>
+                    </div>
+                    
+                    <div class="result-box">
+                        <h3>24-bit (True Color)</h3>
+                        <canvas id="canvas24bit" width="250" height="250"></canvas>
+                        <p>File Size: <span id="size24bit">-</span></p>
+                        <div class="binary-display" style="font-size: 12px;">
+                            RGB: <span id="binary24bit">3 × 8 bits</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <h3>🎨 Color Depth Impact</h3>
+                    <p>Higher bit depth means:</p>
+                    <ul style="list-style: none; padding: 10px;">
+                        <li>✅ More colors available</li>
+                        <li>✅ Smoother gradients</li>
+                        <li>✅ Better quality</li>
+                        <li>❌ Larger file sizes</li>
+                        <li>❌ More processing power needed</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Resolution Section -->
+            <div id="resolution" class="section">
+                <h2>Resolution and File Size</h2>
+                <p style="margin-bottom: 20px;">Adjust resolution to see its effect on quality and file size</p>
+                
+                <div class="grid-container">
+                    <div>
+                        <h3>Resolution Controls</h3>
+                        <div class="slider-container">
+                            <label>Width: <span id="resWidth">100</span> pixels</label>
+                            <input type="range" id="widthSlider" min="10" max="500" value="100" oninput="updateResolution()">
+                        </div>
+                        <div class="slider-container">
+                            <label>Height: <span id="resHeight">100</span> pixels</label>
+                            <input type="range" id="heightSlider" min="10" max="500" value="100" oninput="updateResolution()">
+                        </div>
+                        <div class="slider-container">
+                            <label>Color Depth: <span id="depthValue">24</span> bits</label>
+                            <select id="depthSelect" onchange="updateResolution()">
+                                <option value="1">1-bit (B&W)</option>
+                                <option value="8">8-bit (256 colors)</option>
+                                <option value="16">16-bit (65K colors)</option>
+                                <option value="24" selected>24-bit (True color)</option>
+                                <option value="32">32-bit (True color + Alpha)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="result-box">
+                            <h4>Common Resolutions:</h4>
+                            <button class="button" onclick="setResolution(640, 480)">VGA</button>
+                            <button class="button" onclick="setResolution(1280, 720)">HD</button>
+                            <button class="button" onclick="setResolution(1920, 1080)">Full HD</button>
+                            <button class="button" onclick="setResolution(3840, 2160)">4K</button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3>Preview</h3>
+                        <canvas id="resolutionCanvas" width="400" height="400"></canvas>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="sizeProgress" style="width: 0%"></div>
+                        </div>
+                        <p style="text-align: center;">Storage: <span id="sizePercentage">0%</span> of 10MB</p>
+                    </div>
+                </div>
+
+                <div class="result-box">
+                    <h3>📊 Image Statistics</h3>
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalPixels">10,000</div>
+                            <p>Total Pixels</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="fileSize">30 KB</div>
+                            <p>Uncompressed</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="megapixels">0.01 MP</div>
+                            <p>Megapixels</p>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="aspectRatio">1:1</div>
+                            <p>Aspect Ratio</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <h3>📐 Resolution Formula</h3>
+                    <p style="font-family: monospace; font-size: 1.2em; text-align: center; margin: 20px 0;">
+                        File Size = Width × Height × (Bits per Pixel ÷ 8) bytes
+                    </p>
+                    <p>Example: 1920 × 1080 × 24-bit = 6,220,800 bytes ≈ 6MB</p>
+                </div>
+            </div>
+
+            <!-- Compression Section -->
+            <div id="compression" class="section">
+                <h2>Image Compression</h2>
+                <p style="margin-bottom: 20px;">Learn how compression reduces file size</p>
+                
+                <div class="grid-container">
+                    <div>
+                        <h3>Compression Types</h3>
+                        <div class="result-box">
+                            <h4>Lossless Compression</h4>
+                            <p>Preserves all image data</p>
+                            <ul style="list-style: none; padding: 10px;">
+                                <li>✅ No quality loss</li>
+                                <li>✅ Perfect for logos, diagrams</li>
+                                <li>❌ Larger file sizes</li>
+                            </ul>
+                            <p>Examples: PNG, GIF, BMP</p>
+                        </div>
+                        
+                        <div class="result-box">
+                            <h4>Lossy Compression</h4>
+                            <p>Removes some data to reduce size</p>
+                            <ul style="list-style: none; padding: 10px;">
+                                <li>✅ Much smaller files</li>
+                                <li>✅ Good for photos</li>
+                                <li>❌ Quality degradation</li>
+                            </ul>
+                            <p>Examples: JPEG, WebP</p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3>Compression Demo</h3>
+                        <canvas id="compressionCanvas" width="300" height="300"></canvas>
+                        <div class="slider-container">
+                            <label>JPEG Quality: <span id="jpegQuality">90</span>%</label>
+                            <input type="range" id="qualitySlider" min="10" max="100" value="90" step="10" oninput="updateCompression()">
+                        </div>
+                        
+                        <div class="stats">
+                            <div class="stat-card">
+                                <div class="stat-value" id="originalSize">1.2 MB</div>
+                                <p>Original</p>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="compressedSize">150 KB</div>
+                                <p>Compressed</p>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="compressionRatio">8:1</div>
+                                <p>Ratio</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <h3>🗜️ How Compression Works</h3>
+                    <p><strong>Run-Length Encoding (RLE):</strong></p>
+                    <div class="binary-display">
+                        Original: 11111111 00000000 00000000 00000000<br>
+                        Compressed: [8×1] [24×0] (saves 75%!)
+                    </div>
+                    <p style="margin-top: 10px;"><strong>Pattern Recognition:</strong> Finds and stores repeating patterns once</p>
+                </div>
+            </div>
+
+            <!-- File Formats Section -->
+            <div id="formats" class="section">
+                <h2>Image File Formats</h2>
+                <p style="margin-bottom: 20px;">Compare different image formats and their uses</p>
+                
+                <div class="grid-container">
+                    <div class="result-box">
+                        <h3>📸 JPEG</h3>
+                        <p><strong>Best for:</strong> Photos</p>
+                        <p><strong>Compression:</strong> Lossy</p>
+                        <p><strong>Transparency:</strong> ❌ No</p>
+                        <p><strong>Animation:</strong> ❌ No</p>
+                        <p><strong>Colors:</strong> 16.7 million</p>
+                        <div class="binary-display" style="font-size: 12px;">
+                            Header: FF D8 FF E0 (JPEG signature)
+                        </div>
+                    </div>
+                    
+                    <div class="result-box">
+                        <h3>🎨 PNG</h3>
+                        <p><strong>Best for:</strong> Graphics, logos</p>
+                        <p><strong>Compression:</strong> Lossless</p>
+                        <p><strong>Transparency:</strong> ✅ Yes</p>
+                        <p><strong>Animation:</strong> ❌ No</p>
+                        <p><strong>Colors:</strong> 16.7 million + alpha</p>
+                        <div class="binary-display" style="font-size: 12px;">
+                            Header: 89 50 4E 47 (PNG signature)
+                        </div>
+                    </div>
+                    
+                    <div class="result-box">
+                        <h3>🎬 GIF</h3>
+                        <p><strong>Best for:</strong> Simple animations</p>
+                        <p><strong>Compression:</strong> Lossless</p>
+                        <p><strong>Transparency:</strong> ✅ Yes (1-bit)</p>
+                        <p><strong>Animation:</strong> ✅ Yes</p>
+                        <p><strong>Colors:</strong> 256 max</p>
+                        <div class="binary-display" style="font-size: 12px;">
+                            Header: 47 49 46 38 (GIF8)
+                        </div>
+                    </div>
+                    
+                    <div class="result-box">
+                        <h3>🌐 WebP</h3>
+                        <p><strong>Best for:</strong> Web images</p>
+                        <p><strong>Compression:</strong> Both</p>
+                        <p><strong>Transparency:</strong> ✅ Yes</p>
+                        <p><strong>Animation:</strong> ✅ Yes</p>
+                        <p><strong>Colors:</strong> 16.7 million</p>
+                        <div class="binary-display" style="font-size: 12px;">
+                            Header: 52 49 46 46 (RIFF)
+                        </div>
+                    </div>
+                </div>
+
+                <div class="result-box">
+                    <h3>Format Comparison</h3>
+                    <canvas id="formatCanvas" width="800" height="200"></canvas>
+                </div>
+
+                <div class="info-card">
+                    <h3>💡 Choosing the Right Format</h3>
+                    <ul style="list-style: none; padding: 10px;">
+                        <li>📷 <strong>Photos:</strong> Use JPEG for smaller files</li>
+                        <li>🎨 <strong>Graphics:</strong> Use PNG for transparency and sharp edges</li>
+                        <li>🎬 <strong>Animations:</strong> Use GIF for simple, WebP for complex</li>
+                        <li>🌐 <strong>Web:</strong> Consider WebP for best compression</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Image Builder Section -->
+            <div id="builder" class="section">
+                <h2>Binary Image Builder</h2>
+                <p style="margin-bottom: 20px;">Create your own image by setting pixel values!</p>
+                
+                <div class="grid-container">
+                    <div>
+                        <h3>Drawing Canvas</h3>
+                        <div class="result-box">
+                            <label>Grid Size: <span id="gridSize">8×8</span></label>
+                            <input type="range" id="gridSlider" min="4" max="16" value="8" oninput="updateGridSize()">
+                        </div>
+                        
+                        <div class="pixel-grid" id="builderGrid">
+                            <!-- Pixels will be generated by JavaScript -->
+                        </div>
+                        
+                        <div class="drawing-tools">
+                            <div class="color-picker active" style="background: #000000;" data-color="0,0,0" onclick="selectColor(this)"></div>
+                            <div class="color-picker" style="background: #FFFFFF;" data-color="255,255,255" onclick="selectColor(this)"></div>
+                            <div class="color-picker" style="background: #FF0000;" data-color="255,0,0" onclick="selectColor(this)"></div>
+                            <div class="color-picker" style="background: #00FF00;" data-color="0,255,0" onclick="selectColor(this)"></div>
+                            <div class="color-picker" style="background: #0000FF;" data-color="0,0,255" onclick="selectColor(this)"></div>
+                            <div class="color-picker" style="background: #FFFF00;" data-color="255,255,0" onclick="selectColor(this)"></div>
+                            <div class="color-picker" style="background: #FF00FF;" data-color="255,0,255" onclick="selectColor(this)"></div>
+                            <div class="color-picker" style="background: #00FFFF;" data-color="0,255,255" onclick="selectColor(this)"></div>
+                            <input type="color" id="customColor" onchange="addCustomColor()" style="width: 50px; height: 50px; border-radius: 15px; cursor: pointer;">
+                        </div>
+                        
+                        <div style="text-align: center; margin: 20px 0;">
+                            <button class="button" onclick="clearBuilder()">🗑️ Clear</button>
+                            <button class="button" onclick="fillBuilder()">🎨 Fill</button>
+                            <button class="button" onclick="exportBinary()">💾 Export Binary</button>
+                            <button class="button" onclick="saveAsImage()">📸 Save as PNG</button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3>Binary Data</h3>
+                        <div class="result-box">
+                            <h4>Raw Binary (First 3 pixels):</h4>
+                            <div class="binary-display" id="builderBinary" style="max-height: 200px; overflow-y: auto;">
+                                Click on pixels to start drawing...
+                            </div>
+                            
+                            <h4>Image Statistics:</h4>
+                            <div class="stats">
+                                <div class="stat-card">
+                                    <div class="stat-value" id="builderPixels">64</div>
+                                    <p>Pixels</p>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" id="builderColors">1</div>
+                                    <p>Colors</p>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value" id="builderSize">192</div>
+                                    <p>Bytes</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="result-box">
+                            <h4>Preview:</h4>
+                            <canvas id="builderPreview" width="256" height="256"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quiz Section -->
+            <div id="quiz" class="section">
+                <h2>Test Your Knowledge</h2>
+                <p style="margin-bottom: 20px;">Challenge yourself with these questions!</p>
+                
+                <div class="quiz-container" id="quizContainer">
+                    <!-- Quiz will be generated by JavaScript -->
+                </div>
+                
+                <div style="text-align: center; margin: 20px 0;">
+                    <button class="button" onclick="startQuiz()">🎯 Start Quiz</button>
+                    <button class="button" onclick="showQuizResults()" style="display: none;" id="submitQuiz">📊 Submit Quiz</button>
+                </div>
+                
+                <div class="result-box" id="quizResults" style="display: none;">
+                    <h3>Quiz Results</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="scoreBar" style="width: 0%"></div>
+                    </div>
+                    <p style="text-align: center; font-size: 1.5em; margin: 20px 0;">
+                        Score: <span id="quizScore">0</span>%
+                    </p>
+                    <div id="quizFeedback"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentSection = 'pixels';
+        let selectedColor = '0,0,0';
+        let gridSize = 8;
+        let pixelData = [];
+        let zoomLevel = 1;
+        let currentImage = null;
+        let quizQuestions = [];
+        let quizAnswers = {};
+
+        // Cache DOM elements
+        const elements = {
+            sampleCanvas: null,
+            zoomSlider: null,
+            zoomLevel: null,
+            pixelPosition: null,
+            pixelRGB: null,
+            pixelHex: null,
+            pixelHSL: null,
+            colorPreview: null,
+            pixelBinary: null,
+            colorHistogram: null
+        };
+
+        // Initialize cached elements
+        function initElements() {
+            for (let key in elements) {
+                elements[key] = document.getElementById(key);
+            }
+        }
+
+        // Debounce function for performance
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Show section with optimized transitions
+        function showSection(sectionId) {
+            if (currentSection === sectionId) return;
+            
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.querySelectorAll('.section').forEach(section => section.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            
+            currentSection = sectionId;
+            
+            // Initialize section-specific content
+            switch(sectionId) {
+                case 'pixels':
+                    initPixelExplorer();
+                    break;
+                case 'depth':
+                    loadDepthImage('flower');
+                    break;
+                case 'resolution':
+                    updateResolution();
+                    break;
+                case 'compression':
+                    initCompression();
+                    break;
+                case 'formats':
+                    drawFormatComparison();
+                    break;
+                case 'builder':
+                    initBuilder();
+                    break;
+                case 'quiz':
+                    initQuiz();
+                    break;
+            }
+        }
+
+        // Pixel Explorer Functions
+        function initPixelExplorer() {
+            if (!elements.sampleCanvas) initElements();
+            loadSampleImage('gradient');
+        }
+
+        function loadSampleImage(type) {
+            const canvas = elements.sampleCanvas;
+            const ctx = canvas.getContext('2d', { alpha: false });
+            
+            switch(type) {
+                case 'gradient':
+                    drawGradientPattern(ctx);
+                    break;
+                case 'photo':
+                    drawPhotoSimulation(ctx);
+                    break;
+                case 'pattern':
+                    drawGeometricPattern(ctx);
+                    break;
+            }
+            
+            updateColorHistogram(ctx);
+        }
+
+        function drawGradientPattern(ctx) {
+            const width = ctx.canvas.width;
+            const height = ctx.canvas.height;
+            
+            const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, width/2);
+            gradient.addColorStop(0, '#e94560');
+            gradient.addColorStop(0.5, '#f47068');
+            gradient.addColorStop(1, '#0f3460');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        function drawPhotoSimulation(ctx) {
+            const width = ctx.canvas.width;
+            const height = ctx.canvas.height;
+            
+            // Sky
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, height * 0.6);
+            skyGradient.addColorStop(0, '#87CEEB');
+            skyGradient.addColorStop(1, '#F0E68C');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, width, height);
+            
+            // Sun
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(width * 0.8, height * 0.2, 30, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Mountains
+            ctx.fillStyle = '#8B7355';
+            ctx.beginPath();
+            ctx.moveTo(0, height * 0.6);
+            ctx.lineTo(width * 0.3, height * 0.3);
+            ctx.lineTo(width * 0.5, height * 0.5);
+            ctx.lineTo(width * 0.7, height * 0.4);
+            ctx.lineTo(width, height * 0.6);
+            ctx.lineTo(width, height);
+            ctx.lineTo(0, height);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawGeometricPattern(ctx) {
+            const width = ctx.canvas.width;
+            const height = ctx.canvas.height;
+            const size = 30;
+            
+            for (let x = 0; x < width; x += size) {
+                for (let y = 0; y < height; y += size) {
+                    const hue = ((x + y) / (width + height)) * 360;
+                    ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                    ctx.fillRect(x, y, size - 2, size - 2);
+                }
+            }
+        }
+
+        // Optimized canvas click handler
+        const handleCanvasClick = debounce((e) => {
+            const canvas = elements.sampleCanvas;
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) * (canvas.width / rect.width) / zoomLevel);
+            const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height) / zoomLevel);
+            
+            if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+                const ctx = canvas.getContext('2d');
+                const imageData = ctx.getImageData(x, y, 1, 1);
+                const pixel = imageData.data;
+                
+                displayPixelInfo(x, y, pixel);
+            }
+        }, 10);
+
+        function updateZoom() {
+            zoomLevel = elements.zoomSlider.value;
+            elements.zoomLevel.textContent = zoomLevel + 'x';
+            
+            const canvas = elements.sampleCanvas;
+            canvas.style.transform = `scale(${zoomLevel})`;
+            canvas.style.transformOrigin = 'top left';
+        }
+
+        function displayPixelInfo(x, y, pixel) {
+            const [r, g, b] = pixel;
+            
+            elements.pixelPosition.textContent = `(${x}, ${y})`;
+            elements.pixelRGB.textContent = `(${r}, ${g}, ${b})`;
+            elements.pixelHex.textContent = rgbToHex(r, g, b);
+            elements.pixelHSL.textContent = rgbToHsl(r, g, b);
+            
+            elements.colorPreview.style.background = `rgb(${r}, ${g}, ${b})`;
+            
+            // Show binary with visual formatting
+            const rBinary = r.toString(2).padStart(8, '0');
+            const gBinary = g.toString(2).padStart(8, '0');
+            const bBinary = b.toString(2).padStart(8, '0');
+            
+            elements.pixelBinary.innerHTML = 
+                `<span style="color: #ff6b6b;">Red:   ${rBinary}</span> (${r})<br>` +
+                `<span style="color: #6bff6b;">Green: ${gBinary}</span> (${g})<br>` +
+                `<span style="color: #6b6bff;">Blue:  ${bBinary}</span> (${b})<br>` +
+                `<br>Combined: ${rBinary}${gBinary}${bBinary}`;
+        }
+
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+        }
+
+        function rgbToHsl(r, g, b) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+            
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            
+            if (max === min) {
+                h = s = 0;
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                    case g: h = ((b - r) / d + 2) / 6; break;
+                    case b: h = ((r - g) / d + 4) / 6; break;
+                }
+            }
+            
+            return `(${Math.round(h * 360)}°, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`;
+        }
+
+        function updateColorHistogram(ctx) {
+            const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+            const data = imageData.data;
+            
+            const histogram = {
+                r: new Array(256).fill(0),
+                g: new Array(256).fill(0),
+                b: new Array(256).fill(0)
+            };
+            
+            for (let i = 0; i < data.length; i += 4) {
+                histogram.r[data[i]]++;
+                histogram.g[data[i + 1]]++;
+                histogram.b[data[i + 2]]++;
+            }
+            
+            drawHistogram(histogram);
+        }
+
+        function drawHistogram(histogram) {
+            const container = elements.colorHistogram;
+            container.innerHTML = '';
+            
+            const maxCount = Math.max(
+                ...histogram.r,
+                ...histogram.g,
+                ...histogram.b
+            );
+            
+            // Sample every 4th value for performance
+            for (let i = 0; i < 256; i += 4) {
+                const bar = document.createElement('div');
+                bar.className = 'histogram-bar';
+                
+                const avgHeight = (
+                    histogram.r[i] + histogram.g[i] + histogram.b[i]
+                ) / (3 * maxCount) * 100;
+                
+                bar.style.height = avgHeight + '%';
+                bar.style.background = `rgb(${i}, ${i}, ${i})`;
+                container.appendChild(bar);
+            }
+        }
+
+        // Color Depth Functions
+        function loadDepthImage(type) {
+            const canvases = ['canvas1bit', 'canvas8bit', 'canvas24bit'];
+            
+            canvases.forEach(canvasId => {
+                const canvas = document.getElementById(canvasId);
+                const ctx = canvas.getContext('2d', { alpha: false });
+                
+                switch(type) {
+                    case 'flower':
+                        drawFlower(ctx);
+                        break;
+                    case 'landscape':
+                        drawLandscape(ctx);
+                        break;
+                    case 'portrait':
+                        drawPortrait(ctx);
+                        break;
+                }
+                
+                applyBitDepth(ctx, canvasId);
+            });
+            
+            updateDepthFileSizes();
+        }
+
+        function drawFlower(ctx) {
+            const width = ctx.canvas.width;
+            const height = ctx.canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            
+            // Background
+            const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, width / 2);
+            gradient.addColorStop(0, '#FFE4E1');
+            gradient.addColorStop(1, '#87CEEB');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+            
+            // Petals
+            const petalCount = 8;
+            const petalRadius = width / 6;
+            
+            for (let i = 0; i < petalCount; i++) {
+                const angle = (i * Math.PI * 2) / petalCount;
+                const x = centerX + Math.cos(angle) * width / 4;
+                const y = centerY + Math.sin(angle) * width / 4;
+                
+                const petalGradient = ctx.createRadialGradient(x, y, 0, x, y, petalRadius);
+                petalGradient.addColorStop(0, '#FF69B4');
+                petalGradient.addColorStop(1, '#FF1493');
+                
+                ctx.fillStyle = petalGradient;
+                ctx.beginPath();
+                ctx.arc(x, y, petalRadius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Center
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, width / 8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawLandscape(ctx) {
+            const width = ctx.canvas.width;
+            const height = ctx.canvas.height;
+            
+            // Sky gradient
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, height * 0.7);
+            skyGradient.addColorStop(0, '#87CEEB');
+            skyGradient.addColorStop(0.5, '#F0E68C');
+            skyGradient.addColorStop(1, '#FFB6C1');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, width, height);
+            
+            // Sun
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(width * 0.8, height * 0.2, width / 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Mountains
+            ctx.fillStyle = '#8B7D6B';
+            ctx.beginPath();
+            ctx.moveTo(0, height * 0.5);
+            ctx.lineTo(width * 0.3, height * 0.3);
+            ctx.lineTo(width * 0.5, height * 0.4);
+            ctx.lineTo(width * 0.7, height * 0.2);
+            ctx.lineTo(width, height * 0.5);
+            ctx.lineTo(width, height);
+            ctx.lineTo(0, height);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Ground
+            const groundGradient = ctx.createLinearGradient(0, height * 0.7, 0, height);
+            groundGradient.addColorStop(0, '#228B22');
+            groundGradient.addColorStop(1, '#006400');
+            ctx.fillStyle = groundGradient;
+            ctx.fillRect(0, height * 0.7, width, height * 0.3);
+        }
+
+        function drawPortrait(ctx) {
+            const width = ctx.canvas.width;
+            const height = ctx.canvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            
+            // Background
+            ctx.fillStyle = '#E6E6FA';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Face
+            ctx.fillStyle = '#FDBCB4';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, width / 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Eyes
+            ctx.fillStyle = '#4169E1';
+            ctx.beginPath();
+            ctx.arc(centerX - width / 8, centerY - height / 12, width / 20, 0, Math.PI * 2);
+            ctx.arc(centerX + width / 8, centerY - height / 12, width / 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Mouth
+            ctx.strokeStyle = '#DC143C';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY + height / 12, width / 10, 0, Math.PI);
+            ctx.stroke();
+        }
+
+        function applyBitDepth(ctx, canvasId) {
+            const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+            const data = imageData.data;
+            
+            if (canvasId === 'canvas1bit') {
+                // Floyd-Steinberg dithering for better 1-bit conversion
+                for (let y = 0; y < ctx.canvas.height; y++) {
+                    for (let x = 0; x < ctx.canvas.width; x++) {
+                        const i = (y * ctx.canvas.width + x) * 4;
+                        const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+                        const newVal = gray > 128 ? 255 : 0;
+                        const error = gray - newVal;
+                        
+                        data[i] = data[i + 1] = data[i + 2] = newVal;
+                        
+                        // Distribute error to neighboring pixels
+                        if (x < ctx.canvas.width - 1) {
+                            data[i + 4] += error * 7 / 16;
+                        }
+                    }
+                }
+            } else if (canvasId === 'canvas8bit') {
+                // Quantize to 256 colors (3-3-2 bit allocation)
+                for (let i = 0; i < data.length; i += 4) {
+                    data[i] = Math.floor(data[i] / 32) * 32;
+                    data[i + 1] = Math.floor(data[i + 1] / 32) * 32;
+                    data[i + 2] = Math.floor(data[i + 2] / 64) * 64;
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function updateDepthFileSizes() {
+            const pixels = 250 * 250;
+            document.getElementById('size1bit').textContent = formatFileSize(Math.ceil(pixels / 8));
+            document.getElementById('size8bit').textContent = formatFileSize(pixels);
+            document.getElementById('size24bit').textContent = formatFileSize(pixels * 3);
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    currentImage = img;
+                    const canvases = ['canvas1bit', 'canvas8bit', 'canvas24bit'];
+                    
+                    canvases.forEach(canvasId => {
+                        const canvas = document.getElementById(canvasId);
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Scale image to fit canvas
+                        const scale = Math.min(
+                            canvas.width / img.width,
+                            canvas.height / img.height
+                        );
+                        const width = img.width * scale;
+                        const height = img.height * scale;
+                        const x = (canvas.width - width) / 2;
+                        const y = (canvas.height - height) / 2;
+                        
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, x, y, width, height);
+                        
+                        applyBitDepth(ctx, canvasId);
+                    });
+                    
+                    updateDepthFileSizes();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Resolution Functions
+        function updateResolution() {
+            const width = parseInt(document.getElementById('widthSlider').value);
+            const height = parseInt(document.getElementById('heightSlider').value);
+            const depth = parseInt(document.getElementById('depthSelect').value);
+            
+            document.getElementById('resWidth').textContent = width;
+            document.getElementById('resHeight').textContent = height;
+            document.getElementById('depthValue').textContent = depth;
+            
+            // Update statistics
+            const totalPixels = width * height;
+            const fileSize = totalPixels * (depth / 8);
+            const megapixels = (totalPixels / 1000000).toFixed(2);
+            const gcd = calculateGCD(width, height);
+            const aspectRatio = `${width/gcd}:${height/gcd}`;
+            
+            document.getElementById('totalPixels').textContent = totalPixels.toLocaleString();
+            document.getElementById('fileSize').textContent = formatFileSize(fileSize);
+            document.getElementById('megapixels').textContent = megapixels + ' MP';
+            document.getElementById('aspectRatio').textContent = aspectRatio;
+            
+            // Update progress bar
+            const percentage = Math.min((fileSize / (10 * 1024 * 1024)) * 100, 100);
+            document.getElementById('sizeProgress').style.width = percentage + '%';
+            document.getElementById('sizePercentage').textContent = Math.round(percentage) + '%';
+            
+            // Draw preview
+            drawResolutionPreview(width, height, depth);
+        }
+
+        function calculateGCD(a, b) {
+            return b === 0 ? a : calculateGCD(b, a % b);
+        }
+
+        function setResolution(width, height) {
+            document.getElementById('widthSlider').value = width;
+            document.getElementById('heightSlider').value = height;
+            updateResolution();
+        }
+
+        function drawResolutionPreview(width, height, depth) {
+            const canvas = document.getElementById('resolutionCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Calculate scale to fit
+            const padding = 20;
+            const availableWidth = canvas.width - padding * 2;
+            const availableHeight = canvas.height - padding * 2;
+            const scale = Math.min(
+                availableWidth / width,
+                availableHeight / height,
+                1
+            );
+            
+            const scaledWidth = width * scale;
+            const scaledHeight = height * scale;
+            const offsetX = (canvas.width - scaledWidth) / 2;
+            const offsetY = (canvas.height - scaledHeight) / 2;
+            
+            // Draw checkerboard pattern
+            const tileSize = Math.max(scale, 1);
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const pixelX = offsetX + x * scale;
+                    const pixelY = offsetY + y * scale;
+                    
+                    // Create pattern based on position
+                    const isLight = (x + y) % 2 === 0;
+                    
+                    if (depth === 1) {
+                        ctx.fillStyle = isLight ? '#ffffff' : '#000000';
+                    } else if (depth === 8) {
+                        const gray = isLight ? 200 : 50;
+                        ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+                    } else {
+                        const r = (x / width) * 255;
+                        const g = (y / height) * 255;
+                        const b = isLight ? 200 : 50;
+                        ctx.fillStyle = `rgb(${Math.floor(r)}, ${Math.floor(g)}, ${b})`;
+                    }
+                    
+                    ctx.fillRect(Math.floor(pixelX), Math.floor(pixelY), 
+                                Math.ceil(scale), Math.ceil(scale));
+                }
+            }
+            
+            // Draw border
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(offsetX, offsetY, scaledWidth, scaledHeight);
+        }
+
+        function formatFileSize(bytes) {
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let size = bytes;
+            let unitIndex = 0;
+            
+            while (size >= 1024 && unitIndex < units.length - 1) {
+                size /= 1024;
+                unitIndex++;
+            }
+            
+            return size.toFixed(size < 10 ? 1 : 0) + ' ' + units[unitIndex];
+        }
+
+        // Compression Functions
+        function initCompression() {
+            drawCompressionDemo();
+            updateCompression();
+        }
+
+        function drawCompressionDemo() {
+            const canvas = document.getElementById('compressionCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Draw a detailed image for compression demo
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#e94560');
+            gradient.addColorStop(0.5, '#f47068');
+            gradient.addColorStop(1, '#0f3460');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Add some details
+            for (let i = 0; i < 50; i++) {
+                ctx.fillStyle = `hsla(${Math.random() * 360}, 70%, 50%, 0.5)`;
+                ctx.beginPath();
+                ctx.arc(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height,
+                    Math.random() * 30 + 10,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+        }
+
+        function updateCompression() {
+            const quality = parseInt(document.getElementById('qualitySlider').value);
+            document.getElementById('jpegQuality').textContent = quality;
+            
+            // Simulate compression effects
+            const canvas = document.getElementById('compressionCanvas');
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            // Apply quality reduction simulation
+            const blockSize = Math.floor((100 - quality) / 10) + 1;
+            
+            if (blockSize > 1) {
+                for (let y = 0; y < canvas.height; y += blockSize) {
+                    for (let x = 0; x < canvas.width; x += blockSize) {
+                        // Get average color for block
+                        let r = 0, g = 0, b = 0, count = 0;
+                        
+                        for (let by = 0; by < blockSize && y + by < canvas.height; by++) {
+                            for (let bx = 0; bx < blockSize && x + bx < canvas.width; bx++) {
+                                const i = ((y + by) * canvas.width + (x + bx)) * 4;
+                                r += data[i];
+                                g += data[i + 1];
+                                b += data[i + 2];
+                                count++;
+                            }
+                        }
+                        
+                        r = Math.floor(r / count);
+                        g = Math.floor(g / count);
+                        b = Math.floor(b / count);
+                        
+                        // Apply average to block
+                        for (let by = 0; by < blockSize && y + by < canvas.height; by++) {
+                            for (let bx = 0; bx < blockSize && x + bx < canvas.width; bx++) {
+                                const i = ((y + by) * canvas.width + (x + bx)) * 4;
+                                data[i] = r;
+                                data[i + 1] = g;
+                                data[i + 2] = b;
+                            }
+                        }
+                    }
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+            }
+            
+            // Update file sizes
+            const originalSize = canvas.width * canvas.height * 3;
+            const compressedSize = originalSize * (quality / 100) * 0.15; // Rough JPEG estimation
+            const ratio = Math.round(originalSize / compressedSize);
+            
+            document.getElementById('originalSize').textContent = formatFileSize(originalSize);
+            document.getElementById('compressedSize').textContent = formatFileSize(compressedSize);
+            document.getElementById('compressionRatio').textContent = ratio + ':1';
+        }
+
+        // File Formats Functions
+        function drawFormatComparison() {
+            const canvas = document.getElementById('formatCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            const formats = [
+                { name: 'BMP', size: 100, color: '#FF6B6B' },
+                { name: 'PNG', size: 40, color: '#4ECDC4' },
+                { name: 'JPEG', size: 15, color: '#45B7D1' },
+                { name: 'WebP', size: 10, color: '#96CEB4' },
+                { name: 'GIF', size: 30, color: '#FECA57' }
+            ];
+            
+            const barWidth = canvas.width / formats.length - 20;
+            const maxHeight = canvas.height - 60;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            formats.forEach((format, index) => {
+                const x = index * (barWidth + 20) + 10;
+                const height = (format.size / 100) * maxHeight;
+                const y = canvas.height - height - 40;
+                
+                // Draw bar
+                ctx.fillStyle = format.color;
+                ctx.fillRect(x, y, barWidth, height);
+                
+                // Draw label
+                ctx.fillStyle = '#fff';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(format.name, x + barWidth / 2, canvas.height - 20);
+                
+                // Draw size
+                ctx.fillText(format.size + '%', x + barWidth / 2, y - 10);
+            });
+            
+            // Draw baseline
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height - 40);
+            ctx.lineTo(canvas.width, canvas.height - 40);
+            ctx.stroke();
+        }
+
+        // Image Builder Functions
+        function initBuilder() {
+            updateGridSize();
+        }
+
+        function updateGridSize() {
+            gridSize = parseInt(document.getElementById('gridSlider').value);
+            document.getElementById('gridSize').textContent = `${gridSize}×${gridSize}`;
+            
+            // Reset pixel data
+            pixelData = new Array(gridSize * gridSize).fill('0,0,0');
+            
+            // Rebuild grid
+            const grid = document.getElementById('builderGrid');
+            grid.innerHTML = '';
+            grid.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+            
+            for (let i = 0; i < gridSize * gridSize; i++) {
+                const pixel = document.createElement('div');
+                pixel.className = 'pixel';
+                pixel.style.background = 'rgb(0, 0, 0)';
+                pixel.setAttribute('data-index', i);
+                pixel.onclick = (e) => paintPixel(e.target);
+                grid.appendChild(pixel);
+            }
+            
+            updateBuilderDisplay();
+        }
+
+        function selectColor(picker) {
+            document.querySelectorAll('.color-picker').forEach(p => p.classList.remove('active'));
+            picker.classList.add('active');
+            selectedColor = picker.getAttribute('data-color');
+        }
+
+        function addCustomColor() {
+            const color = document.getElementById('customColor').value;
+            const rgb = hexToRgb(color);
+            selectedColor = `${rgb.r},${rgb.g},${rgb.b}`;
+            
+            // Deselect all predefined colors
+            document.querySelectorAll('.color-picker').forEach(p => p.classList.remove('active'));
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function paintPixel(pixel) {
+            const index = parseInt(pixel.getAttribute('data-index'));
+            pixelData[index] = selectedColor;
+            pixel.style.background = `rgb(${selectedColor})`;
+            
+            updateBuilderDisplay();
+        }
+
+        function fillBuilder() {
+            pixelData.fill(selectedColor);
+            document.querySelectorAll('#builderGrid .pixel').forEach(pixel => {
+                pixel.style.background = `rgb(${selectedColor})`;
+            });
+            updateBuilderDisplay();
+        }
+
+        function clearBuilder() {
+            pixelData.fill('0,0,0');
+            document.querySelectorAll('#builderGrid .pixel').forEach(pixel => {
+                pixel.style.background = 'rgb(0, 0, 0)';
+            });
+            updateBuilderDisplay();
+        }
+
+        function updateBuilderDisplay() {
+            updateBuilderBinary();
+            updateBuilderPreview();
+            updateBuilderStats();
+        }
+
+        function updateBuilderBinary() {
+            let binary = '';
+            const pixelsToShow = Math.min(3, pixelData.length);
+            
+            for (let i = 0; i < pixelsToShow; i++) {
+                const [r, g, b] = pixelData[i].split(',').map(Number);
+                binary += `Pixel ${i}: `;
+                binary += `R:${r.toString(2).padStart(8, '0')} `;
+                binary += `G:${g.toString(2).padStart(8, '0')} `;
+                binary += `B:${b.toString(2).padStart(8, '0')}\n`;
+            }
+            
+            if (pixelData.length > pixelsToShow) {
+                binary += `... (${pixelData.length - pixelsToShow} more pixels)`;
+            }
+            
+            document.getElementById('builderBinary').textContent = binary;
+        }
+
+        function updateBuilderPreview() {
+            const canvas = document.getElementById('builderPreview');
+            const ctx = canvas.getContext('2d');
+            
+            const pixelSize = canvas.width / gridSize;
+            
+            for (let y = 0; y < gridSize; y++) {
+                for (let x = 0; x < gridSize; x++) {
+                    const index = y * gridSize + x;
+                    const [r, g, b] = pixelData[index].split(',').map(Number);
+                    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                    ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+                }
+            }
+        }
+
+        function updateBuilderStats() {
+            const uniqueColors = new Set(pixelData).size;
+            const totalPixels = pixelData.length;
+            const fileSize = totalPixels * 3;
+            
+            document.getElementById('builderPixels').textContent = totalPixels;
+            document.getElementById('builderColors').textContent = uniqueColors;
+            document.getElementById('builderSize').textContent = fileSize;
+        }
+
+        function exportBinary() {
+            let fullBinary = `Image Dimensions: ${gridSize}×${gridSize}\n`;
+            fullBinary += `Total Pixels: ${pixelData.length}\n`;
+            fullBinary += `Bit Depth: 24-bit (RGB)\n\n`;
+            
+            pixelData.forEach((color, index) => {
+                const [r, g, b] = color.split(',').map(Number);
+                const x = index % gridSize;
+                const y = Math.floor(index / gridSize);
+                fullBinary += `Pixel[${x},${y}]: `;
+                fullBinary += `R:${r.toString(2).padStart(8, '0')} `;
+                fullBinary += `G:${g.toString(2).padStart(8, '0')} `;
+                fullBinary += `B:${b.toString(2).padStart(8, '0')}\n`;
+            });
+            
+            const blob = new Blob([fullBinary], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'image_binary_data.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function saveAsImage() {
+            const canvas = document.getElementById('builderPreview');
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'pixel_art.png';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        // Quiz Functions
+        function initQuiz() {
+            quizQuestions = [
+                {
+                    question: "How many bits are needed to represent one pixel in true color (RGB)?",
+                    options: ["8 bits", "16 bits", "24 bits", "32 bits"],
+                    correct: 2,
+                    explanation: "True color uses 8 bits per channel (R, G, B), totaling 24 bits per pixel."
+                },
+                {
+                    question: "What is the maximum number of colors in an 8-bit image?",
+                    options: ["128", "256", "512", "1024"],
+                    correct: 1,
+                    explanation: "8 bits can represent 2^8 = 256 different values."
+                },
+                {
+                    question: "Which image format supports animation?",
+                    options: ["JPEG", "PNG", "BMP", "GIF"],
+                    correct: 3,
+                    explanation: "GIF supports multiple frames for animation."
+                },
+                {
+                    question: "What does image resolution refer to?",
+                    options: ["Color depth", "File size", "Pixel dimensions", "Compression ratio"],
+                    correct: 2,
+                    explanation: "Resolution refers to the width and height in pixels."
+                },
+                {
+                    question: "Which compression type preserves all original data?",
+                    options: ["Lossy", "Lossless", "Dynamic", "Adaptive"],
+                    correct: 1,
+                    explanation: "Lossless compression preserves all data and allows perfect reconstruction."
+                }
+            ];
+        }
+
+        function startQuiz() {
+            const container = document.getElementById('quizContainer');
+            container.innerHTML = '';
+            quizAnswers = {};
+            
+            quizQuestions.forEach((q, index) => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'quiz-container';
+                questionDiv.innerHTML = `
+                    <h3>Question ${index + 1}</h3>
+                    <p>${q.question}</p>
+                    <div id="question${index}">
+                        ${q.options.map((opt, i) => `
+                            <div class="quiz-option" onclick="selectQuizAnswer(${index}, ${i})">
+                                ${opt}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(questionDiv);
+            });
+            
+            document.getElementById('submitQuiz').style.display = 'inline-block';
+            document.getElementById('quizResults').style.display = 'none';
+        }
+
+        function selectQuizAnswer(questionIndex, optionIndex) {
+            // Store answer
+            quizAnswers[questionIndex] = optionIndex;
+            
+            // Update visual selection
+            const options = document.querySelectorAll(`#question${questionIndex} .quiz-option`);
+            options.forEach((opt, i) => {
+                opt.classList.remove('correct', 'incorrect');
+                if (i === optionIndex) {
+                    opt.style.background = 'rgba(233, 69, 96, 0.2)';
+                    opt.style.borderColor = 'var(--primary)';
+                } else {
+                    opt.style.background = '';
+                    opt.style.borderColor = '';
+                }
+            });
+        }
+
+        function showQuizResults() {
+            let correct = 0;
+            let feedback = '<h4>Detailed Results:</h4>';
+            
+            quizQuestions.forEach((q, index) => {
+                const userAnswer = quizAnswers[index];
+                const isCorrect = userAnswer === q.correct;
+                
+                if (isCorrect) correct++;
+                
+                // Show correct/incorrect answers
+                const options = document.querySelectorAll(`#question${index} .quiz-option`);
+                options.forEach((opt, i) => {
+                    if (i === q.correct) {
+                        opt.classList.add('correct');
+                    } else if (i === userAnswer && !isCorrect) {
+                        opt.classList.add('incorrect');
+                    }
+                });
+                
+                feedback += `<p><strong>Q${index + 1}:</strong> ${isCorrect ? '✅ Correct' : '❌ Incorrect'}<br>`;
+                feedback += `<small>${q.explanation}</small></p>`;
+            });
+            
+            const score = Math.round((correct / quizQuestions.length) * 100);
+            
+            document.getElementById('quizScore').textContent = score;
+            document.getElementById('scoreBar').style.width = score + '%';
+            document.getElementById('quizFeedback').innerHTML = feedback;
+            document.getElementById('quizResults').style.display = 'block';
+            
+            // Scroll to results
+            document.getElementById('quizResults').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initElements();
+            
+            // Add event listeners
+            elements.sampleCanvas.addEventListener('click', handleCanvasClick);
+            elements.sampleCanvas.addEventListener('mousemove', handleCanvasClick);
+            
+            // Initialize first section
+            initPixelExplorer();
+        });
+
+        // Performance optimization: use requestAnimationFrame for animations
+        let animationFrame = null;
+        function animate(callback) {
+            if (animationFrame) {
+                cancelAnimationFrame(animationFrame);
+            }
+            animationFrame = requestAnimationFrame(callback);
+        }
+    </script>
+</body>
+</html>

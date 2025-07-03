@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Storage Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #8b5cf6; /* Purple */
+            --success-color: #10b981; /* Green */
+            --error-color: #ef4444;   /* Red */
+            --bg-color: #f3f4f6;
+            --text-color: #1f2937;
+            --container-bg: #ffffff;
+            --border-color: #d1d5db;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+        }
+        .simulation-container {
+            background-color: var(--container-bg);
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+            margin: 2rem auto;
+            max-width: 90vw;
+            width: 1000px;
+        }
+        .server-icon, .user-icon {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s ease;
+            z-index: 5;
+        }
+        .server-icon .icon-bg {
+            background-color: #e5e7eb;
+            border-radius: 50%;
+            padding: 1rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .server-icon.active .icon-bg {
+            animation: pulse 2s infinite;
+        }
+        .server-icon.failed .icon-bg {
+            background-color: #fee2e2;
+        }
+        .server-icon.failed .icon {
+            color: var(--error-color);
+        }
+        .server-icon .failed-overlay {
+            display: none;
+            position: absolute;
+            inset: 0;
+            background-color: rgba(239, 68, 68, 0.5);
+            border-radius: 50%;
+            align-items: center;
+            justify-content: center;
+        }
+        .server-icon.failed .failed-overlay {
+            display: flex;
+        }
+        .file-packet {
+            position: absolute;
+            z-index: 10;
+            opacity: 0;
+            color: var(--primary-color);
+            transition: transform 1.5s cubic-bezier(0.4, 0, 0.6, 1), opacity 0.5s;
+            transform: translate(0, 0);
+        }
+        #connection-lines path {
+            transition: stroke-dashoffset 1.5s ease-in-out, stroke 0.5s ease;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(139, 92, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            max-width: 500px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+        
+        /* Quiz Styles */
+        .quiz-option {
+            border: 2px solid var(--border-color);
+            transition: all 0.2s ease-in-out;
+        }
+        .quiz-option:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+        .quiz-option.correct { background-color: #dcfce7; border-color: #22c55e; }
+        .quiz-option.incorrect { background-color: #fee2e2; border-color: #ef4444; }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            color: white;
+            position: relative;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .loader {
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #FFF;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="simulation-container">
+        <div class="text-center mb-4">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Interactive Cloud Storage Simulation</h1>
+            <p class="mt-2 text-lg text-gray-600">Understanding Offsite & Redundant Storage (9618 Syllabus)</p>
+        </div>
+        
+        <div id="instructions" class="bg-purple-50 border-l-4 border-purple-500 text-purple-800 p-4 rounded-md mb-8">
+            <h3 class="font-bold text-lg mb-2">How to Use This Simulation:</h3>
+            <ol class="list-decimal list-inside space-y-1">
+                <li>Click 'Upload File' to see how files are stored across multiple servers.</li>
+                <li>Click 'Download File' to see how your computer retrieves the file.</li>
+                <li>Click 'Simulate Server Failure' to see how the cloud system handles outages and reroutes your request.</li>
+                <li>Use the 'Reset' button to start over. Then, test your knowledge with the quiz.</li>
+            </ol>
+        </div>
+        
+        <div id="simulation-area" class="relative w-full h-[400px] bg-gray-50 rounded-lg border border-dashed border-gray-300 mb-6">
+             <svg id="connection-lines" class="absolute top-0 left-0 w-full h-full z-0"></svg>
+
+            <div id="user" class="user-icon" style="left: 50%; top: 80%; transform: translateX(-50%);">
+                <svg class="w-16 h-16 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.97 2.122L7.03 22.5l-1.06-1.06a3 3 0 0 1-2.122-.97v-1.007M15 17.25v1.007a3 3 0 0 0 .97 2.122l1.06 1.06 1.06-1.06a3 3 0 0 0 2.122-.97v-1.007M9 11.25a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M12 1.5v5.25m0 0a1.5 1.5 0 0 1-1.5 1.5h-5.25a1.5 1.5 0 0 1-1.5-1.5v-2.25a1.5 1.5 0 0 1 1.5-1.5h5.25a1.5 1.5 0 0 1 1.5 1.5v2.25Z" /></svg>
+                <p class="font-bold">Your Computer</p>
+            </div>
+
+            <div id="server1" class="server-icon" style="left: 20%; top: 15%; transform: translateX(-50%);">
+                <div class="icon-bg"><div class="failed-overlay"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></div><svg class="w-12 h-12 icon text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 17.25v-.228a4.5 4.5 0 0 0-.12-1.03l-2.268-9.64a3.375 3.375 0 0 0-3.285-2.816H7.923a3.375 3.375 0 0 0-3.285 2.816l-2.268 9.64a4.5 4.5 0 0 0-.12 1.03v.228m15.56 0a2.25 2.25 0 0 1-2.25 2.25H4.69a2.25 2.25 0 0 1-2.25-2.25M16.125 4.5h-8.25" /></svg></div>
+                <p class="font-semibold text-sm mt-1">Server A (EU)</p>
+            </div>
+            <div id="server2" class="server-icon" style="left: 50%; top: 15%; transform: translateX(-50%);">
+                <div class="icon-bg"><div class="failed-overlay"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></div><svg class="w-12 h-12 icon text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 17.25v-.228a4.5 4.5 0 0 0-.12-1.03l-2.268-9.64a3.375 3.375 0 0 0-3.285-2.816H7.923a3.375 3.375 0 0 0-3.285 2.816l-2.268 9.64a4.5 4.5 0 0 0-.12 1.03v.228m15.56 0a2.25 2.25 0 0 1-2.25 2.25H4.69a2.25 2.25 0 0 1-2.25-2.25M16.125 4.5h-8.25" /></svg></div>
+                <p class="font-semibold text-sm mt-1">Server B (US)</p>
+            </div>
+            <div id="server3" class="server-icon" style="left: 80%; top: 15%; transform: translateX(-50%);">
+                 <div class="icon-bg"><div class="failed-overlay"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></div><svg class="w-12 h-12 icon text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 17.25v-.228a4.5 4.5 0 0 0-.12-1.03l-2.268-9.64a3.375 3.375 0 0 0-3.285-2.816H7.923a3.375 3.375 0 0 0-3.285 2.816l-2.268 9.64a4.5 4.5 0 0 0-.12 1.03v.228m15.56 0a2.25 2.25 0 0 1-2.25 2.25H4.69a2.25 2.25 0 0 1-2.25-2.25M16.125 4.5h-8.25" /></svg></div>
+                <p class="font-semibold text-sm mt-1">Server C (Asia)</p>
+            </div>
+            
+            <div id="file-packet" class="file-packet">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-10 h-10"><path d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a1.875 1.875 0 0 1-1.875-1.875V5.25A3.75 3.75 0 0 0 9 1.5H5.625Z" /><path d="M12.971 1.816A5.23 5.23 0 0 1 14.25 1.5a.75.75 0 0 1 .75.75v3.75c0 .621.504 1.125 1.125 1.125h3.75a.75.75 0 0 1 .75.75 5.23 5.23 0 0 1-.316 1.471l-5.25 5.25a.75.75 0 0 1-1.06 0l-5.25-5.25A5.23 5.23 0 0 1 3 8.25a.75.75 0 0 1 .75-.75h3.75c.621 0 1.125-.504 1.125-1.125V3.75a.75.75 0 0 1 .75-.75 5.23 5.23 0 0 1 1.471.316l2.188 2.188a.75.75 0 0 0 1.06 0l2.188-2.188Z" /></svg>
+            </div>
+        </div>
+
+        <div class="flex justify-center flex-wrap gap-4">
+            <button id="upload-btn" class="btn bg-blue-500 hover:bg-blue-600">1. Upload File</button>
+            <button id="download-btn" class="btn bg-green-500 hover:bg-green-600" disabled>2. Download File</button>
+            <button id="fail-btn" class="btn bg-red-500 hover:bg-red-600" disabled>3. Simulate Server Failure</button>
+            <button id="reset-btn" class="btn bg-gray-700 hover:bg-gray-800">Reset</button>
+        </div>
+
+        <div id="quiz-container" class="mt-12 border-t pt-8">
+            <h2 class="text-3xl font-bold text-center mb-6">Test Your Knowledge</h2>
+            <div id="quiz-content" class="max-w-3xl mx-auto bg-white p-8 rounded-lg shadow-md"></div>
+        </div>
+    </div>
+    
+    <div id="modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-2xl font-bold mb-4"></h3>
+            <p id="modal-text" class="text-gray-700 mb-6"></p>
+            <button id="modal-close-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg w-full">Got it!</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const userEl = document.getElementById('user');
+            const servers = [
+                { el: document.getElementById('server1'), name: 'Server A (EU)' },
+                { el: document.getElementById('server2'), name: 'Server B (US)' },
+                { el: document.getElementById('server3'), name: 'Server C (Asia)' },
+            ];
+            const filePacket = document.getElementById('file-packet');
+            const svgLinesContainer = document.getElementById('connection-lines');
+
+            const uploadBtn = document.getElementById('upload-btn');
+            const downloadBtn = document.getElementById('download-btn');
+            const failBtn = document.getElementById('fail-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            
+            const modal = {
+                overlay: document.getElementById('modal'),
+                title: document.getElementById('modal-title'),
+                text: document.getElementById('modal-text'),
+                closeBtn: document.getElementById('modal-close-btn')
+            };
+
+            let fileIsUploaded = false;
+            let failedServerIndex = -1;
+            let isAnimating = false;
+
+            // --- UI & Animation Helpers ---
+            const toggleButtonLoader = (btn, show) => {
+                if (show) {
+                    btn.dataset.originalText = btn.innerHTML;
+                    btn.innerHTML = '<div class="loader"></div>';
+                    btn.disabled = true;
+                } else {
+                    btn.innerHTML = btn.dataset.originalText;
+                    btn.disabled = false;
+                }
+            };
+
+            const showModal = (title, text) => {
+                modal.title.textContent = title;
+                modal.text.textContent = text;
+                modal.overlay.classList.add('visible');
+                return new Promise(resolve => {
+                    modal.closeBtn.onclick = () => {
+                        modal.overlay.classList.remove('visible');
+                        resolve();
+                    };
+                });
+            };
+            
+            // Re-calculates positions and redraws lines
+            const setupLines = () => {
+                svgLinesContainer.innerHTML = '';
+                const userRect = userEl.getBoundingClientRect();
+                const areaRect = svgLinesContainer.getBoundingClientRect();
+                const userX = userRect.left - areaRect.left + userRect.width / 2;
+                const userY = userRect.top - areaRect.top + userRect.height / 2;
+
+                servers.forEach((server, i) => {
+                    const serverRect = server.el.getBoundingClientRect();
+                    const serverX = serverRect.left - areaRect.left + serverRect.width / 2;
+                    const serverY = serverRect.top - areaRect.top + serverRect.height / 2;
+                    
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('id', `line${i}`);
+                    path.setAttribute('d', `M${userX},${userY} L${serverX},${serverY}`);
+                    path.setAttribute('stroke', 'var(--primary-color)');
+                    path.setAttribute('stroke-width', '3');
+                    path.setAttribute('fill', 'none');
+                    const length = path.getTotalLength();
+                    path.style.strokeDasharray = length;
+                    path.style.strokeDashoffset = length;
+                    svgLinesContainer.appendChild(path);
+                });
+            };
+            
+            const animateConnection = (lineIndex, color = 'var(--primary-color)') => {
+                const line = document.getElementById(`line${lineIndex}`);
+                if (!line) return;
+                line.style.stroke = color;
+                const length = line.getTotalLength();
+                line.style.strokeDashoffset = '0';
+                return new Promise(resolve => setTimeout(resolve, 1500));
+            };
+
+            const hideConnection = (lineIndex) => {
+                const line = document.getElementById(`line${lineIndex}`);
+                if (!line) return;
+                const length = line.getTotalLength();
+                line.style.strokeDashoffset = length;
+            };
+
+            const animatePacket = (startEl, endEl) => {
+                 return new Promise(resolve => {
+                    const startRect = startEl.getBoundingClientRect();
+                    const endRect = endEl.getBoundingClientRect();
+                    const areaRect = document.getElementById('simulation-area').getBoundingClientRect();
+                    
+                    const startX = startRect.left - areaRect.left + startRect.width / 2 - 20;
+                    const startY = startRect.top - areaRect.top + startRect.height / 2 - 20;
+                    const endX = endRect.left - areaRect.left + endRect.width / 2 - 20;
+                    const endY = endRect.top - areaRect.top + endRect.height / 2 - 20;
+
+                    filePacket.style.transition = 'none';
+                    filePacket.style.transform = `translate(${startX}px, ${startY}px)`;
+                    filePacket.style.opacity = '1';
+
+                    setTimeout(() => {
+                        filePacket.style.transition = 'transform 1.5s cubic-bezier(0.4, 0, 0.6, 1), opacity 0.5s';
+                        filePacket.style.transform = `translate(${endX}px, ${endY}px)`;
+                    }, 50);
+
+                    setTimeout(() => {
+                        filePacket.style.opacity = '0';
+                        resolve();
+                    }, 1550);
+                });
+            };
+
+            // --- Core Logic Handlers ---
+            const handleUpload = async () => {
+                if(isAnimating) return;
+                isAnimating = true;
+                toggleButtonLoader(uploadBtn, true);
+                
+                await showModal('Uploading File...', 'You are uploading a file to the cloud. It will be stored offsite in multiple locations for safety and accessibility.');
+
+                for (let i = 0; i < servers.length; i++) {
+                    animatePacket(userEl, servers[i].el);
+                    await animateConnection(i);
+                    servers[i].el.classList.add('active');
+                    hideConnection(i);
+                }
+
+                fileIsUploaded = true;
+                await showModal('Upload Complete: Redundancy', 'The file has been copied to multiple servers across the world. This is called redundancy. If one server fails, your data is still safe on the others.');
+                isAnimating = false;
+                toggleButtonLoader(uploadBtn, false);
+                uploadBtn.disabled = true;
+                downloadBtn.disabled = false;
+                failBtn.disabled = false;
+            };
+
+            const handleDownload = async () => {
+                if (!fileIsUploaded || isAnimating) return;
+                isAnimating = true;
+                toggleButtonLoader(downloadBtn, true);
+                
+                let targetIndex = 0;
+                let rerouted = false;
+
+                if (failedServerIndex === 0) {
+                     await showModal('Connection Failed', `Connecting to nearest server: ${servers[0].name}... FAILED. The server is offline. Rerouting...`);
+                     animateConnection(0, 'var(--error-color)');
+                     await new Promise(r => setTimeout(r, 1600));
+                     hideConnection(0);
+                     targetIndex = 1; // Reroute to the next available server
+                     rerouted = true;
+                }
+
+                const targetServer = servers[targetIndex];
+                await showModal(rerouted ? 'Rerouting Successful' : 'Downloading File...', `Connecting to optimal server: ${targetServer.name}.`);
+                
+                animatePacket(targetServer.el, userEl);
+                await animateConnection(targetIndex);
+                hideConnection(targetIndex);
+                
+                await showModal('Download Complete!', 'The file was successfully retrieved from the cloud server.');
+                isAnimating = false;
+                toggleButtonLoader(downloadBtn, false);
+            };
+
+            const handleFailure = async () => {
+                if (failedServerIndex !== -1 || isAnimating) return;
+                isAnimating = true;
+                toggleButtonLoader(failBtn, true);
+
+                failedServerIndex = 0; // Fail the first server
+                servers[failedServerIndex].el.classList.add('failed');
+                servers[failedServerIndex].el.classList.remove('active');
+
+                await showModal('Oh no! Server Failure!', `${servers[failedServerIndex].name} has gone down! But don't worry, your file is still safe due to redundancy. Try downloading the file again to see the failover system in action.`);
+                isAnimating = false;
+                toggleButtonLoader(failBtn, false);
+                failBtn.disabled = true;
+            };
+
+            const handleReset = () => {
+                fileIsUploaded = false;
+                failedServerIndex = -1;
+                isAnimating = false;
+
+                uploadBtn.disabled = false;
+                downloadBtn.disabled = true;
+                failBtn.disabled = true;
+                
+                // Clear any leftover button loaders
+                [uploadBtn, downloadBtn, failBtn].forEach(btn => {
+                   if(btn.dataset.originalText) btn.innerHTML = btn.dataset.originalText;
+                });
+
+                servers.forEach(s => s.el.classList.remove('active', 'failed'));
+                setupLines();
+                
+                currentQuestionIndex = 0;
+                score = 0;
+                renderQuiz();
+            };
+
+            uploadBtn.addEventListener('click', handleUpload);
+            downloadBtn.addEventListener('click', handleDownload);
+            failBtn.addEventListener('click', handleFailure);
+            resetBtn.addEventListener('click', handleReset);
+            window.addEventListener('resize', setupLines);
+
+            // --- Quiz Logic (unchanged from previous version) ---
+            const quizData = [
+                { question: "What is the main advantage of storing a file on multiple servers in the cloud?", options: ["It makes the file download faster.", "It provides redundancy, so the file is safe even if one server fails.", "It uses less storage space overall.", "It is a cheaper way to store data."], answer: "It provides redundancy, so the file is safe even if one server fails.", explanation: "This is the key principle of redundancy. By having copies in multiple locations (offsite servers), the data is protected against hardware failure or disasters in one location." },
+                { question: "When you access a file from the cloud, your computer typically connects to the...", options: ["...newest server available.", "...server with the most storage space.", "...server that is geographically nearest or has the fastest connection.", "...server that you manually select from a list."], answer: "...server that is geographically nearest or has the fastest connection.", explanation: "Cloud systems optimize for speed and low latency by directing your request to the most efficient server, which is often the one closest to you." },
+                { question: "A company stores its financial records on a cloud service. A fire destroys the data center where their files were being accessed from. Can they still retrieve their files?", options: ["No, the files are lost forever.", "Only if they paid for a special backup service.", "Yes, because cloud storage is inherently redundant across multiple locations.", "No, because the local server is gone."], answer: "Yes, because cloud storage is inherently redundant across multiple locations.", explanation: "A key feature of cloud storage is its distributed and redundant nature. The loss of a single data center does not mean the loss of data, as it is replicated elsewhere." }
+            ];
+            let currentQuestionIndex = 0;
+            let score = 0;
+            const quizContent = document.getElementById('quiz-content');
+
+            function renderQuiz() {
+                if (currentQuestionIndex >= quizData.length) {
+                    quizContent.innerHTML = `<h3 class="text-2xl font-bold text-center">Quiz Complete!</h3><p class="text-center text-xl my-4">Your final score is: <span class="font-bold text-purple-600">${score}</span> out of <span class="font-bold">${quizData.length}</span></p><div class="text-center"><button onclick="document.getElementById('reset-btn').click()" class="btn bg-purple-500 hover:bg-purple-600">Restart Simulation & Quiz</button></div>`;
+                    return;
+                }
+                const question = quizData[currentQuestionIndex];
+                quizContent.innerHTML = `<p class="text-gray-500 mb-2">Question ${currentQuestionIndex + 1} of ${quizData.length}</p><h3 class="text-xl font-semibold mb-6">${question.question}</h3><div id="options-container">${question.options.map(opt => `<button class="quiz-option w-full text-left p-4 rounded-lg mb-3">${opt}</button>`).join('')}</div><div id="feedback-container" class="mt-4"></div>`;
+                quizContent.querySelectorAll('.quiz-option').forEach(btn => btn.addEventListener('click', (e) => handleAnswer(e.target, question)));
+            }
+
+            function handleAnswer(selectedButton, question) {
+                const allButtons = quizContent.querySelectorAll('.quiz-option');
+                allButtons.forEach(btn => btn.disabled = true);
+                if (selectedButton.textContent === question.answer) {
+                    score++; selectedButton.classList.add('correct');
+                    quizContent.querySelector('#feedback-container').innerHTML = `<div class="p-4 rounded-md bg-green-50 text-green-800"><h4 class="font-bold">Correct!</h4><p>${question.explanation}</p></div>`;
+                } else {
+                    selectedButton.classList.add('incorrect');
+                    allButtons.forEach(btn => { if (btn.textContent === question.answer) btn.classList.add('correct'); });
+                    quizContent.querySelector('#feedback-container').innerHTML = `<div class="p-4 rounded-md bg-red-50 text-red-800"><h4 class="font-bold">Incorrect.</h4><p>${question.explanation}</p></div>`;
+                }
+                quizContent.querySelector('#feedback-container').insertAdjacentHTML('beforeend', `<button id="next-q-btn" class="btn bg-gray-700 hover:bg-gray-800 mt-4 w-full">Next Question</button>`);
+                quizContent.querySelector('#next-q-btn').addEventListener('click', () => { currentQuestionIndex++; renderQuiz(); });
+            }
+
+            // Initial render
+            handleReset();
+        });
+    </script>
+</body>
+</html>

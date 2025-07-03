@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Programs: An Interactive Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --primary-color: #58a6ff;
+            --primary-glow: rgba(88, 166, 255, 0.3);
+            --secondary-color: #1f6feb;
+            --accent-color: #2f81f7;
+            --text-color: #c9d1d9;
+            --border-color: #30363d;
+            --card-bg: #161b22;
+            --green-color: #3fb950;
+            --green-glow: rgba(63, 185, 80, 0.25);
+            --red-color: #f85149;
+            --red-glow: rgba(248, 81, 73, 0.25);
+            --font-main: 'Inter', sans-serif;
+            --font-code: 'Roboto Mono', monospace;
+            --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 10px 15px rgba(0, 0, 0, 0.2);
+            --easing: cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          *,
+          *::before,
+          *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .simulation-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+            width: 100%;
+        }
+
+        .main-content {
+            width: 100%;
+            max-width: 1000px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 70vh;
+            position: relative;
+        }
+        
+        main {
+            position: relative;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .simulation-header {
+            padding: 1.25rem 1.5rem;
+            background: linear-gradient(135deg, #1f6feb, #0d1117 60%);
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .simulation-header h1 {
+            font-size: 1.5rem;
+            color: white;
+            text-align: center;
+            text-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .step {
+            display: none;
+            padding: 2rem;
+            flex-grow: 1;
+            flex-direction: column;
+            justify-content: flex-start; /* FIX: Changed from center to prevent scroll cutoff */
+            align-items: center;
+            text-align: center;
+            opacity: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            animation: fadeIn 0.8s var(--easing) forwards;
+            visibility: hidden;
+            overflow-y: auto;
+        }
+
+        .step.active {
+            display: flex;
+            visibility: visible;
+        }
+        
+        .step.exiting {
+            animation: fadeOut 0.6s var(--easing) forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
+        }
+
+        .step h2 {
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+            flex-shrink: 0; /* Prevent h2 from shrinking */
+        }
+
+        .step p {
+            max-width: 650px;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            flex-shrink: 0; /* Prevent p from shrinking */
+        }
+        
+        .code-block-container {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .code-block {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: var(--font-code);
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            text-align: left;
+            width: 100%;
+            max-width: 400px;
+            position: relative;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            will-change: transform, opacity;
+            transition: all 0.5s var(--easing);
+        }
+        
+        .code-block.small {
+            height: 250px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .code-block.small::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: linear-gradient(to top, var(--bg-color), transparent);
+        }
+
+        .code-block .line {
+            opacity: 0;
+            animation: type-in 0.1s forwards;
+            animation-delay: calc(var(--line-index) * 0.08s);
+        }
+
+        @keyframes type-in {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .code-block .comment { color: #8b949e; font-style: italic; }
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .function { color: #d2a8ff; }
+        .code-block .variable { color: #79c0ff; }
+        .code-block .string { color: #a5d6ff; }
+
+        .arrow-visual {
+            font-size: 3rem;
+            color: var(--primary-color);
+            opacity: 0;
+            transform: scale(0.5);
+            animation: pop-in 0.5s 1s forwards cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes pop-in {
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .shrink-anim {
+            animation: shrink-and-replace 1.5s forwards var(--easing);
+        }
+
+        @keyframes shrink-and-replace {
+            0% { transform: scale(1); opacity: 1; }
+            49% { transform: scale(0.05); opacity: 0; }
+            50% { visibility: hidden; }
+            51% { visibility: visible; transform: scale(0.05); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .benefits-drawbacks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            width: 100%;
+            margin-top: 2rem;
+        }
+
+        .info-card {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: transform 0.3s var(--easing), box-shadow 0.3s var(--easing);
+            position: relative;
+            overflow: hidden;
+            will-change: transform;
+            transform: translateZ(0); /* GPU Acceleration */
+        }
+        
+        .info-card:hover {
+            transform: translateY(-5px) translateZ(0);
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+        
+        .info-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, var(--primary-glow), transparent);
+            transition: left 0.6s var(--easing);
+        }
+        
+        .info-card:hover::before {
+            left: 100%;
+        }
+
+        .info-card h3 {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .navigation {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--bg-color);
+            position: relative;
+            z-index: 10;
+        }
+
+        .nav-btn, .quiz-btn, .action-btn {
+            background: linear-gradient(145deg, var(--accent-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s var(--easing), box-shadow 0.2s var(--easing);
+            position: relative;
+            overflow: hidden;
+            will-change: transform;
+            transform: translateZ(0); /* GPU Acceleration */
+            z-index: 1;
+        }
+
+        .nav-btn:hover, .quiz-btn:hover, .action-btn:hover {
+            box-shadow: 0 0 15px var(--primary-glow);
+            transform: scale(1.05) translateZ(0);
+        }
+        
+        .nav-btn:after, .quiz-btn:after, .action-btn:after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+            transform: scale(1) translate(-50%, -50%);
+            opacity: 0;
+        }
+        
+        .nav-btn.ripple:after, .quiz-btn.ripple:after, .action-btn.ripple:after {
+            animation: ripple 0.7s ease-out;
+        }
+        
+        @keyframes ripple {
+            to {
+                transform: scale(30) translate(-50%, -50%);
+                opacity: 0;
+            }
+        }
+        
+        .nav-btn:disabled {
+            background: var(--border-color);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .step-counter {
+            font-size: 0.9rem;
+            color: var(--text-color);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            align-items: center;
+            justify-content: center;
+            animation: fadeInModal 0.3s var(--easing);
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            margin: auto;
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 500px;
+            border-radius: 12px;
+            text-align: center;
+            backdrop-filter: blur(10px) saturate(180%);
+            -webkit-backdrop-filter: blur(10px) saturate(180%);
+            background-color: rgba(22, 27, 34, 0.75);
+            box-shadow: var(--shadow-md);
+            transform: scale(0.95);
+            animation: zoomInModal 0.3s var(--easing) forwards;
+            will-change: transform, opacity;
+        }
+        
+        @keyframes fadeInModal { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes zoomInModal { from { transform: scale(0.95); opacity: 0.8; } to { transform: scale(1); opacity: 1; } }
+
+        .modal-content h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        /* Quiz Styles */
+        .quiz-container {
+            width: 100%;
+            max-width: 700px;
+        }
+        .question-container {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background-color: var(--bg-color);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .question-text {
+            font-size: 1.2rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+        
+        .options-list li label {
+            display: block;
+            padding: 0.8rem 1rem;
+            margin-bottom: 0.5rem;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s var(--easing), border-color 0.2s var(--easing);
+            position: relative;
+            padding-left: 2.5rem;
+        }
+        
+        .options-list li label::before {
+            content: '';
+            position: absolute;
+            left: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            transition: all 0.2s var(--easing);
+        }
+        
+        .options-list li label::after {
+            content: '';
+            position: absolute;
+            left: 1.15rem;
+            top: 50%;
+            transform: translateY(-50%) scale(0);
+            width: 10px;
+            height: 10px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.2s var(--easing);
+        }
+        
+        .options-list li input[type="radio"] {
+            display: none;
+        }
+
+        .options-list li input[type="radio"]:checked + label {
+            background-color: var(--secondary-color);
+            border-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .options-list li input[type="radio"]:checked + label::before {
+            border-color: var(--primary-color);
+            background-color: var(--primary-color);
+        }
+        
+        .options-list li input[type="radio"]:checked + label::after {
+            transform: translateY(-50%) scale(1);
+        }
+        
+        .text-input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-color);
+            font-size: 1rem;
+            font-family: var(--font-main);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 5px var(--primary-glow);
+        }
+
+        /* Drag and Drop */
+        .drag-drop-container { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; }
+        .drag-list, .drop-list { list-style: none; padding: 1rem; border-radius: 8px; background: var(--bg-color); width: 100%; min-height: 150px; }
+        @media (min-width: 600px) { .drag-list, .drop-list { width: 48%; } }
+        .drag-item { padding: 0.8rem; margin-bottom: 0.8rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; cursor: grab; transition: background-color 0.2s, box-shadow 0.2s; }
+        .drag-item:active { cursor: grabbing; background: var(--secondary-color); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .drop-zone { display: flex; align-items: center; margin-bottom: 0.8rem; }
+        .drop-target { width: 100%; height: 50px; background: #21262d; border: 2px dashed var(--border-color); border-radius: 6px; transition: background-color 0.2s, border-color 0.2s; display: flex; align-items: center; justify-content: center; }
+        .drop-target.over { background: var(--secondary-color); border-color: var(--primary-color); }
+        .drop-target.filled { border-style: solid; border-color: var(--green-color); background: var(--bg-color);}
+        .drop-description { width: 100%; text-align: left; padding-left: 1rem; }
+
+        .feedback { margin-top: 1rem; padding: 0.8rem; border-radius: 6px; font-weight: 500; display: none; text-align: left; animation: fadeIn 0.3s; }
+        .feedback.correct { background-color: var(--green-glow); color: var(--green-color); border: 1px solid var(--green-color); }
+        .feedback.incorrect { background-color: var(--red-glow); color: var(--red-color); border: 1px solid var(--red-color); }
+        
+        .results-score { font-size: 2.5rem; font-weight: 700; color: var(--primary-color); margin-bottom: 1.5rem; position: relative; }
+        .results-feedback { text-align: left; width: 100%; max-width: 600px; }
+        .results-feedback h3 { color: var(--primary-color); margin-top: 1.5rem; margin-bottom: 0.5rem; }
+
+    </style>
+</head>
+<body>
+
+    <div class="simulation-container">
+        <div class="main-content">
+            <header class="simulation-header">
+                <h1>Library Programs: An Interactive Simulation</h1>
+            </header>
+
+            <main id="main-container">
+                <!-- Step 1: Introduction -->
+                <section class="step active" data-step="1">
+                    <h2>What is a Library Routine?</h2>
+                    <p>Imagine you're building a complex project. Instead of making every single component from scratch, you use pre-made, expertly crafted parts. In programming, these parts are called <strong>library routines</strong>.</p>
+                    <p>They are pre-written, pre-tested, and compiled blocks of code that perform common or complex tasks. You can simply 'link' or 'import' them into your program.</p>
+                    <p>This simulation will guide you through why, and when, we use them. Click 'Next' to begin.</p>
+                </section>
+
+                <!-- Step 2: The Task -->
+                <section class="step" data-step="2">
+                    <h2>The Programmer's Task</h2>
+                    <p>A programmer needs to write a program that sorts a list of 10,000 numbers. This is a common but complex task. There are two ways to approach this...</p>
+                    <div class="code-block-container">
+                        <div class="code-block">
+                            <div class="line" style="--line-index: 1;"><span class="comment">// Task: Sort a large array of numbers</span></div>
+                            <div class="line" style="--line-index: 2;"><span class="keyword">let</span> <span class="variable">hugeArray</span> = [<span class="variable">934</span>, <span class="variable">102</span>, <span class="variable">5</span>, ...]; <span class="comment">// 10,000 numbers</span></div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Step 3: From Scratch -->
+                <section class="step" data-step="3">
+                    <h2>Approach 1: Code from Scratch</h2>
+                    <p>The programmer could write their own sorting algorithm. This requires deep knowledge, a lot of code, and extensive testing.</p>
+                    <div class="code-block-container">
+                        <div class="code-block small" id="from-scratch-code">
+                            <div class="line" style="--line-index: 1;"><span class="keyword">function</span> <span class="function">bubbleSort</span>(<span class="variable">arr</span>) {</div>
+                            <div class="line" style="--line-index: 2;">&nbsp;&nbsp;<span class="keyword">let</span> <span class="variable">n</span> = <span class="variable">arr.length</span>;</div>
+                            <div class="line" style="--line-index: 3;">&nbsp;&nbsp;<span class="keyword">for</span> (<span class="keyword">let</span> i = <span class="variable">0</span>; i < n - <span class="variable">1</span>; i++) {</div>
+                            <div class="line" style="--line-index: 4;">&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">for</span> (<span class="keyword">let</span> j = <span class="variable">0</span>; j < n - i - <span class="variable">1</span>; j++) {</div>
+                            <div class="line" style="--line-index: 5;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span> (<span class="variable">arr</span>[j] > <span class="variable">arr</span>[j + <span class="variable">1</span>]) {</div>
+                            <div class="line" style="--line-index: 6;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span> <span class="variable">temp</span> = <span class="variable">arr</span>[j];</div>
+                            <div class="line" style="--line-index: 7;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="variable">arr</span>[j] = <span class="variable">arr</span>[j + <span class="variable">1</span>];</div>
+                            <div class="line" style="--line-index: 8;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="variable">arr</span>[j + <span class="variable">1</span>] = <span class="variable">temp</span>;</div>
+                            <div class="line" style="--line-index: 9;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}</div>
+                            <div class="line" style="--line-index: 10;">&nbsp;&nbsp;&nbsp;&nbsp;}</div>
+                            <div class="line" style="--line-index: 11;">&nbsp;&nbsp;}</div>
+                            <div class="line" style="--line-index: 12;">&nbsp;&nbsp;<span class="keyword">return</span> <span class="variable">arr</span>;</div>
+                            <div class="line" style="--line-index: 13;">}</div>
+                            <div class="line" style="--line-index: 14;"><span class="comment">// And this is just ONE simple algorithm...</span></div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Step 4: Using Library -->
+                <section class="step" data-step="4">
+                    <h2>Approach 2: Use a Library Routine</h2>
+                    <p>Or, the programmer can import a pre-written, highly optimized sorting function from a library. The complex code is replaced by a single, simple function call.</p>
+                     <div class="code-block-container">
+                        <div class="code-block" id="complex-code-container">
+                            <!-- This will be populated by JS -->
+                        </div>
+                        <div class="arrow-visual" id="arrow-step4">→</div>
+                        <div class="code-block" id="library-code-container">
+                            <div class="line" style="--line-index: 1;"><span class="comment">// Import routine from a trusted library</span></div>
+                            <div class="line" style="--line-index: 2;"><span class="keyword">import</span> { <span class="function">sort</span> } <span class="keyword">from</span> <span class="string">'optimised-routines'</span>;</div>
+                            <br>
+                            <div class="line" style="--line-index: 3;"><span class="comment">// Call the routine</span></div>
+                            <div class="line" style="--line-index: 4;"><span class="keyword">let</span> <span class="variable">sortedArray</span> = <span class="function">sort</span>(<span class="variable">hugeArray</span>);</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Step 5: Reflection (NEW) -->
+                <section class="step" data-step="5">
+                    <h2>Time to Reflect</h2>
+                    <p>You've just seen two different approaches to solving the same problem. Before we continue, take a moment to think.</p>
+                    <p>Based on the demonstration, what do you think are the main <strong>benefits</strong> of using the library routine? What about the potential <strong>drawbacks</strong> or risks? Consider aspects like development time, code complexity, and reliance on others' work.</p>
+                    <p>Click 'Next' when you have a few ideas in mind.</p>
+                </section>
+                
+                <!-- Step 6: Benefits -->
+                <section class="step" data-step="6">
+                    <h2>Benefits of Library Programs</h2>
+                    <p>Using libraries has significant advantages. Let's see how they match your ideas. Click on each card to learn more.</p>
+                    <div class="benefits-drawbacks-grid" id="benefits-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </section>
+                
+                <!-- Step 7: Drawbacks -->
+                <section class="step" data-step="7">
+                    <h2>Drawbacks of Library Programs</h2>
+                    <p>However, they aren't always a perfect solution. There are potential downsides to consider. Click on each card to learn more.</p>
+                    <div class="benefits-drawbacks-grid" id="drawbacks-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </section>
+                
+                <!-- Step 8: Quiz -->
+                <section class="step" data-step="8">
+                    <h2>Knowledge Check</h2>
+                    <p>Time to test your understanding! Answer the questions below.</p>
+                    <div class="quiz-container" id="quiz-container">
+                        <!-- Quiz questions will be injected here by JS -->
+                    </div>
+                    <button class="quiz-btn" id="submit-quiz-btn">Mark Quiz</button>
+                </section>
+                
+                <!-- Step 9: Results -->
+                <section class="step" data-step="9">
+                    <h2>Quiz Results</h2>
+                    <div id="results-score" class="results-score"></div>
+                    <div id="results-feedback" class="results-feedback"></div>
+                    <button class="action-btn" id="reset-btn">Try Again</button>
+                </section>
+            </main>
+
+            <footer class="navigation">
+                <button class="nav-btn" id="prev-btn" disabled>← Previous</button>
+                <span class="step-counter" id="step-counter">Step 1 of 9</span>
+                <button class="nav-btn" id="next-btn">Next →</button>
+            </footer>
+
+        </div>
+    </div>
+    
+    <!-- Modal for Info Cards -->
+    <div id="info-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title"></h3>
+            <p id="modal-text"></p>
+            <button class="action-btn" id="close-modal-btn">Got it</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Caching ---
+            const mainContainer = document.getElementById('main-container');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const stepCounter = document.getElementById('step-counter');
+            const steps = document.querySelectorAll('.step');
+            const infoModal = document.getElementById('info-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalText = document.getElementById('modal-text');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const fromScratchCode = document.getElementById('from-scratch-code').innerHTML;
+
+            // --- State ---
+            let currentStep = 1;
+            const totalSteps = steps.length;
+            let isModalOpen = false;
+            let isAnimating = false;
+            let userAnswers = {};
+            let quizMarked = false;
+
+            // --- Data Definitions ---
+            const benefitsData = [
+                { title: 'Saves Time', text: 'Less code needs to be written by the programmer, which significantly speeds up the development process.' },
+                { title: 'Pre-Tested', text: 'Popular libraries are used by many developers, meaning they have been tested in countless real-world scenarios. This reduces testing time and increases reliability.' },
+                { title: 'Simplifies the Program', text: 'Complex logic is hidden away. The main program code becomes cleaner and easier to read, as it only contains a simple function call.' },
+                { title: 'Expert Algorithms', text: 'Libraries often contain highly complex or specialized algorithms (e.g., for graphics, maths, AI) that the programmer may not know how to write themselves.' },
+                { title: 'Language Specialisms', text: 'A library can be written in a different programming language that is better suited for a specific task (e.g., C++ for performance), making those features available in your program.' },
+                { title: 'Collaborative Specialisms', text: 'Allows many expert programmers to contribute their specialized knowledge to a single shared resource, benefiting the entire developer community.' }
+            ];
+
+            const drawbacksData = [
+                { title: 'Compatibility Issues', text: 'The library routine may not work correctly with other parts of the program or the operating system, potentially requiring changes to your code to make it compatible.' },
+                { title: 'May Not Meet Exact Needs', text: 'A library routine is built for a general purpose. It may not do precisely what you need, or it might do more than you need, leading to inefficiency or unexpected results.' },
+                { title: 'Potential for Bugs/Viruses', text: 'Although often well-tested, no software is guaranteed to be bug-free. The library could contain unknown bugs or, in rare cases, malicious code (a virus).' },
+                { title: 'Unexpected Updates', text: 'If the library is updated by its creators, the changes could break your program. Functions might be removed or behave differently, causing unexpected errors.' },
+            ];
+            
+            const quizData = [
+                {
+                    type: 'mcq',
+                    question: 'A developer uses a library to add encryption to their application. What is the most likely reason they chose to use a library for this task?',
+                    options: [ 'To make the program file size smaller.', 'To use a complex algorithm they might not know how to write.', 'To ensure the program runs faster on all computers.', 'Because it is the only way to add new features.' ],
+                    answer: 'To use a complex algorithm they might not know how to write.',
+                    point: 'Can be complex algorithms'
+                },
+                {
+                    type: 'text',
+                    question: 'A pre-made routine is too general and produces slightly incorrect results for a specific task. What is this drawback called?',
+                    answer: 'not meeting exact needs',
+                    point: 'May not meet exact needs'
+                },
+                 {
+                    type: 'mcq',
+                    question: 'A games developer writing in Python needs to perform a highly demanding physics calculation. They use a library routine written in C++. What is the primary advantage of this approach?',
+                    options: [ 'The C++ code is easier to read for Python developers.', 'It allows the program to leverage the superior performance of C++ for that specific task.', 'It makes the final program smaller in file size.', 'Python programs cannot perform physics calculations without C++ libraries.' ],
+                    answer: 'It allows the program to leverage the superior performance of C++ for that specific task.',
+                    point: 'Can be written in a different language'
+                },
+                {
+                    type: 'mcq',
+                    question: 'An open-source maths library is maintained by hundreds of specialist mathematicians and programmers. This best illustrates which benefit?',
+                    options: [ 'Individual programmers contributing their specialisms.', 'The library is guaranteed to have no bugs.', 'The library was written in a different language.', 'The program code is simplified.' ],
+                    answer: 'Individual programmers contributing their specialisms.',
+                    point: 'Programmers contribute specialisms'
+                },
+                {
+                    type: 'drag-drop',
+                    question: 'Match the concept to its correct description.',
+                    pairs: [
+                        { draggable: 'Pre-Tested', description: 'Reduces the time a programmer needs to spend on testing.' },
+                        { draggable: 'Compatibility Issues', description: 'The routine may not work with the programmer\'s other code.' },
+                        { draggable: 'Simplifies Program', description: 'The source code is shorter and easier to understand.' }
+                    ],
+                    point: 'Multiple concepts'
+                },
+                {
+                    type: 'mcq',
+                    question: 'A programmer updates a library used in their project. Afterwards, their program no longer works because a function name was changed in the update. This is an example of which drawback?',
+                    options: [ 'Compatibility Issues', 'Not meeting exact needs', 'Unexpected results from library changes', 'Simplified program structure' ],
+                    answer: 'Unexpected results from library changes',
+                    point: 'If library routine is changed'
+                },
+                 {
+                    type: 'text',
+                    question: 'What is the term for the process of including a library routine so that it can be used by the main program?',
+                    answer: 'linking',
+                    point: 'Can be linked/imported'
+                },
+                {
+                    type: 'mcq',
+                    question: 'Which statement about library testing is most accurate?',
+                    options: [
+                        'Libraries from major companies are guaranteed to be bug-free.',
+                        'Using a library means a programmer does not need to do any testing at all.',
+                        'Even well-tested libraries might contain unknown bugs or security flaws.',
+                        'Library code is always less secure than code you write yourself.'
+                    ],
+                    answer: 'Even well-tested libraries might contain unknown bugs or security flaws.',
+                    point: 'Not guaranteed thorough testing'
+                }
+            ];
+            
+            // --- Core Functions ---
+            const updateUI = () => {
+                const activeStep = document.querySelector('.step.active');
+                const nextStepEl = document.querySelector(`.step[data-step="${currentStep}"]`);
+                
+                isAnimating = true;
+
+                if (activeStep && activeStep !== nextStepEl) {
+                    activeStep.classList.add('exiting');
+                    activeStep.addEventListener('animationend', () => {
+                        activeStep.classList.remove('active', 'exiting');
+                        nextStepEl.classList.add('active');
+                        runAnimationsForStep(currentStep);
+                        isAnimating = false;
+                    }, { once: true });
+                } else if (!activeStep) {
+                     nextStepEl.classList.add('active');
+                     runAnimationsForStep(currentStep);
+                     isAnimating = false;
+                } else {
+                    isAnimating = false;
+                }
+                
+                stepCounter.textContent = `Step ${currentStep} of ${totalSteps}`;
+                prevBtn.disabled = currentStep === 1;
+                nextBtn.disabled = currentStep === totalSteps || (currentStep === 8 && !quizMarked);
+            };
+            
+            const changeStep = (direction) => {
+                if (isAnimating || isModalOpen) return;
+                const newStep = currentStep + direction;
+                if (newStep >= 1 && newStep <= totalSteps) {
+                    if (currentStep === 8 && direction > 0 && !quizMarked) return;
+                    currentStep = newStep;
+                    updateUI();
+                }
+            };
+            
+            const showModal = (title, text) => {
+                if (isModalOpen) return;
+                isModalOpen = true;
+                modalTitle.textContent = title;
+                modalText.textContent = text;
+                infoModal.classList.add('active');
+            };
+
+            const hideModal = () => {
+                isModalOpen = false;
+                infoModal.classList.remove('active');
+                runAnimationsForStep(currentStep);
+            };
+            
+            const createInfoCards = (containerId, data) => {
+                const container = document.getElementById(containerId);
+                container.innerHTML = '';
+                data.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'info-card';
+                    card.dataset.title = item.title;
+                    card.dataset.text = item.text;
+                    card.innerHTML = `<h3>${item.title}</h3>`;
+                    container.appendChild(card);
+                });
+            };
+
+            // --- Initialization & Reset ---
+            const initializeSimulation = () => {
+                currentStep = 1;
+                userAnswers = {};
+                quizMarked = false;
+                
+                createInfoCards('benefits-grid', benefitsData);
+                createInfoCards('drawbacks-grid', drawbacksData);
+                createQuiz();
+                
+                steps.forEach((step, i) => step.classList.toggle('active', i === 0));
+                
+                updateUI();
+            };
+
+            // --- Event Handlers ---
+            const handleNavClick = (e, direction) => {
+                if(e.currentTarget.disabled) return;
+                addRippleEffect(e);
+                changeStep(direction);
+            };
+
+            const addRippleEffect = (e) => {
+                const btn = e.currentTarget;
+                btn.classList.add("ripple");
+                btn.addEventListener("animationend", () => btn.classList.remove("ripple"), { once: true });
+            };
+            
+            const handleCardGridClick = (e) => {
+                const card = e.target.closest('.info-card');
+                if (card) {
+                    showModal(card.dataset.title, card.dataset.text);
+                }
+            };
+            
+            // --- Animation Logic ---
+            const runAnimationsForStep = (step) => {
+                if (isModalOpen) return;
+
+                if (step === 4) {
+                    const complexCodeContainer = document.getElementById('complex-code-container');
+                    const libraryCodeContainer = document.getElementById('library-code-container');
+                    const arrow = document.getElementById('arrow-step4');
+                    
+                    complexCodeContainer.innerHTML = fromScratchCode;
+                    complexCodeContainer.classList.remove('shrink-anim');
+                    libraryCodeContainer.style.opacity = 0;
+                    arrow.style.opacity = 0;
+                    
+                    requestAnimationFrame(() => {
+                        setTimeout(() => {
+                            if (isModalOpen) return;
+                            complexCodeContainer.classList.add('shrink-anim');
+                            setTimeout(() => {
+                                if (isModalOpen) return;
+                               libraryCodeContainer.style.transition = 'opacity 0.5s 0.2s';
+                               libraryCodeContainer.style.opacity = 1;
+                               arrow.style.animation = 'pop-in 0.5s 0.5s forwards cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                            }, 800);
+                        }, 500);
+                    });
+                }
+            };
+
+            // --- Quiz Logic ---
+            const createQuiz = () => {
+                const container = document.getElementById('quiz-container');
+                container.innerHTML = '';
+                
+                quizData.forEach((q, index) => {
+                    const questionDiv = document.createElement('div');
+                    questionDiv.className = 'question-container';
+                    questionDiv.innerHTML = `<p class="question-text">${index + 1}. ${q.question}</p>`;
+
+                    if (q.type === 'mcq') {
+                        const optionsList = document.createElement('ul');
+                        optionsList.className = 'options-list';
+                        optionsList.style.listStyle = 'none';
+                        q.options.forEach(option => {
+                            const li = document.createElement('li');
+                            const id = `q${index}_${option.replace(/[^a-zA-Z0-9]/g, '')}`;
+                            li.innerHTML = `<input type="radio" id="${id}" name="q${index}" value="${option}"><label for="${id}">${option}</label>`;
+                            optionsList.appendChild(li);
+                        });
+                        questionDiv.appendChild(optionsList);
+                    } else if (q.type === 'text') {
+                        questionDiv.innerHTML += `<input type="text" class="text-input" name="q${index}" placeholder="Type your answer here..." autocomplete="off">`;
+                    } else if (q.type === 'drag-drop') {
+                        const dndContainer = document.createElement('div');
+                        dndContainer.className = 'drag-drop-container';
+                        const shuffledDraggables = [...q.pairs].sort(() => Math.random() - 0.5);
+                        dndContainer.innerHTML = `
+                            <ul class="drag-list">
+                                ${shuffledDraggables.map(p => `<li class="drag-item" draggable="true" id="drag_${p.draggable.replace(/\s+/g, '')}">${p.draggable}</li>`).join('')}
+                            </ul>
+                            <ul class="drop-list">
+                                ${q.pairs.map(p => `<li class="drop-zone"><div class="drop-target" data-answer="${p.draggable}"></div><p class="drop-description">${p.description}</p></li>`).join('')}
+                            </ul>
+                        `;
+                        questionDiv.appendChild(dndContainer);
+                    }
+                    
+                    questionDiv.innerHTML += `<div class="feedback" id="feedback_${index}"></div>`;
+                    container.appendChild(questionDiv);
+                });
+                
+                addDragDropListeners();
+            };
+
+            let draggedItem = null;
+            function addDragDropListeners() {
+                mainContainer.addEventListener('dragstart', e => {
+                    if (e.target.classList.contains('drag-item')) {
+                        draggedItem = e.target;
+                        setTimeout(() => e.target.style.display = 'none', 0);
+                    }
+                });
+
+                mainContainer.addEventListener('dragend', e => {
+                    if (e.target.classList.contains('drag-item')) {
+                        setTimeout(() => {
+                           if(draggedItem) {
+                             draggedItem.style.display = 'block';
+                             draggedItem = null;
+                           }
+                        }, 0);
+                    }
+                });
+                
+                mainContainer.addEventListener('dragover', e => {
+                    const dropTarget = e.target.closest('.drop-target');
+                    if(dropTarget) e.preventDefault();
+                });
+                
+                mainContainer.addEventListener('dragenter', e => {
+                    const dropTarget = e.target.closest('.drop-target');
+                    if(dropTarget) dropTarget.classList.add('over');
+                });
+                
+                mainContainer.addEventListener('dragleave', e => {
+                    const dropTarget = e.target.closest('.drop-target');
+                    if(dropTarget) dropTarget.classList.remove('over');
+                });
+                
+                mainContainer.addEventListener('drop', e => {
+                    const dropTarget = e.target.closest('.drop-target');
+                    if (dropTarget) {
+                        e.preventDefault();
+                        dropTarget.classList.remove('over');
+                        if (draggedItem && !dropTarget.hasChildNodes()) {
+                            dropTarget.appendChild(draggedItem);
+                            dropTarget.classList.add('filled');
+                            draggedItem.style.cursor = 'default';
+                        }
+                    }
+                });
+            }
+
+            const handleQuizSubmit = (e) => {
+                addRippleEffect(e);
+                let score = 0;
+                quizMarked = true;
+                
+                quizData.forEach((q, index) => {
+                    const feedbackEl = document.getElementById(`feedback_${index}`);
+                    let isCorrect = false;
+
+                    if (q.type === 'mcq') {
+                        const selected = document.querySelector(`input[name="q${index}"]:checked`);
+                        isCorrect = selected && selected.value === q.answer;
+                        userAnswers[index] = selected ? selected.value : 'Not answered';
+                    } else if (q.type === 'text') {
+                        const input = document.querySelector(`input[name="q${index}"]`);
+                        const answerText = input.value.trim().toLowerCase();
+                        isCorrect = answerText.length > 2 && (q.answer.includes(answerText) || answerText.includes(q.answer));
+                        userAnswers[index] = input.value;
+                    } else if (q.type === 'drag-drop') {
+                        const dropTargets = document.querySelectorAll(`.question-container:nth-child(${index + 1}) .drop-target`);
+                        let correctDrops = 0;
+                        userAnswers[index] = {};
+                        dropTargets.forEach(target => {
+                            const droppedItem = target.querySelector('.drag-item');
+                            if (droppedItem && droppedItem.textContent === target.dataset.answer) correctDrops++;
+                            userAnswers[index][target.nextElementSibling.textContent] = droppedItem ? droppedItem.textContent : 'Empty';
+                        });
+                        isCorrect = correctDrops === q.pairs.length;
+                    }
+                    
+                    if(isCorrect) score++;
+
+                    feedbackEl.style.display = 'block';
+                    feedbackEl.classList.add(isCorrect ? 'correct' : 'incorrect');
+                    feedbackEl.innerHTML = isCorrect ? '<strong>Correct!</strong>' : `<strong>Incorrect.</strong> The answer relates to: ${q.type === 'mcq' ? `"${q.answer}"` : `"${q.answer}" or matching the pairs correctly.`}`;
+                });
+                
+                e.target.style.display = 'none';
+                nextBtn.disabled = false;
+                
+                setTimeout(() => {
+                    displayResults(score, quizData.length);
+                }, 1500);
+            };
+
+            const displayResults = (score, total) => {
+                changeStep(1); // Advance to results page
+                
+                document.getElementById('results-score').textContent = `${score} / ${total}`;
+                const feedbackContainer = document.getElementById('results-feedback');
+                feedbackContainer.innerHTML = '<h3>Review Your Answers:</h3>';
+                
+                quizData.forEach((q, i) => {
+                    let userAnswerText = 'N/A';
+                    if (q.type === 'mcq' || q.type === 'text') {
+                        userAnswerText = `Your answer: "<em>${userAnswers[i] || 'Not answered'}</em>"`;
+                    } else if (q.type === 'drag-drop') {
+                       const pairs = Object.entries(userAnswers[i]).map(([desc, term]) => `<li>${desc} → <strong>${term}</strong></li>`).join('');
+                       userAnswerText = `Your matches:<ul>${pairs}</ul>`;
+                    }
+                    const isCorrect = document.getElementById(`feedback_${i}`).classList.contains('correct');
+                    const statusIcon = isCorrect ? '<span style="color: var(--green-color);">✔</span>' : '<span style="color: var(--red-color);">✖</span>';
+                    feedbackContainer.innerHTML += `
+                        <div style="margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color);">
+                            <p><strong>Question ${i+1}:</strong> ${statusIcon} ${q.question}</p>
+                            <p style="padding-left: 20px;">${userAnswerText}</p>
+                        </div>
+                    `;
+                });
+            };
+            
+            // --- Event Listeners Setup ---
+            prevBtn.addEventListener('click', (e) => handleNavClick(e, -1));
+            nextBtn.addEventListener('click', (e) => handleNavClick(e, 1));
+            
+            document.addEventListener('keydown', (e) => {
+                if (isModalOpen || isAnimating || e.target.tagName === 'INPUT') return;
+                if (e.key === 'ArrowRight') nextBtn.click();
+                if (e.key === 'ArrowLeft') prevBtn.click();
+            });
+
+            closeModalBtn.addEventListener('click', hideModal);
+            infoModal.addEventListener('click', (e) => { if (e.target === infoModal) hideModal(); });
+
+            document.getElementById('benefits-grid').addEventListener('click', handleCardGridClick);
+            document.getElementById('drawbacks-grid').addEventListener('click', handleCardGridClick);
+            
+            mainContainer.addEventListener('click', e => {
+                if(e.target.id === 'submit-quiz-btn') handleQuizSubmit(e);
+                if(e.target.id === 'reset-btn') {
+                    addRippleEffect(e);
+                    initializeSimulation();
+                }
+            });
+
+            // --- Initialise ---
+            initializeSimulation();
+        });
+    </script>
+
+</body>
+</html>

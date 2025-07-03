@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Data Dictionary Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #d97706; /* Amber for Dictionary */
+            --secondary-color: #0369a1; /* Cyan for contrast */
+            --bg-color: #f3f4f6;
+            --text-color: #1f2937;
+            --card-bg: #ffffff;
+            --border-color: #d1d5db;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+        .step { display: none; }
+        .active-step { display: block; }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #b45309;
+        }
+        .btn-secondary {
+            background-color: var(--card-bg);
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .btn-secondary:hover {
+            background-color: #fffbeb;
+        }
+        .modal {
+            display: none; position: fixed; z-index: 100; left: 0; top: 0;
+            width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);
+            align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background-color: var(--card-bg); margin: auto; padding: 2rem; border-radius: 0.75rem;
+            width: 90%; max-width: 500px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .progress-bar-bg { background-color: var(--border-color); border-radius: 9999px; height: 8px; }
+        .progress-bar-fill {
+            background-color: var(--primary-color); border-radius: 9999px; height: 8px;
+            transition: width 0.5s ease-in-out;
+        }
+        .quiz-option {
+            border: 2px solid var(--border-color); padding: 1rem; border-radius: 0.5rem;
+            cursor: pointer; transition: all 0.2s ease;
+        }
+        .quiz-option:hover { border-color: var(--primary-color); background-color: #fffbeb; }
+        .quiz-option.correct { border-color: var(--secondary-color) !important; background-color: #e0f2fe !important; }
+        .quiz-option.incorrect { border-color: #ef4444 !important; background-color: #fee2e2 !important; }
+
+        .popover {
+            cursor: pointer; color: var(--primary-color); font-weight: 600;
+            text-decoration: underline; text-decoration-style: dotted;
+        }
+        
+        /* Animation specific styles */
+        .dba-icon, .user-icon {
+            width: 80px; height: 80px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .dba-icon { background: #d1fae5; color: #065f46; }
+        .user-icon { background: #fee2e2; color: #b91c1c; }
+        .dba-icon svg, .user-icon svg { width: 50%; height: 50%; }
+
+        .file-cabinet {
+            display: flex; flex-direction: column; gap: 5px; width: 150px; height: 200px;
+            background: #a3a3a3; border-radius: 8px; padding: 8px; margin: 1rem auto;
+            border: 4px solid #737373; flex-shrink: 0;
+        }
+        .drawer {
+            background: #d4d4d4; height: 40px; border-radius: 4px; display: flex;
+            align-items: center; justify-content: center; position: relative;
+            font-weight: 600; color: #404040; transition: all 0.3s ease;
+        }
+        #locked-drawer { background-color: #f59e0b; border: 2px solid #92400e; }
+        .lock-icon { position: absolute; right: 5px; top: 10px; color: #92400e; }
+        .key-icon { font-size: 2rem; color: var(--primary-color); transition: transform 1s ease-out; }
+
+        .dictionary-table {
+            border-collapse: collapse; width: 100%; max-width: 800px; margin: 1rem auto;
+            font-size: 0.9rem; background: white; border-radius: 8px; overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .dictionary-table th, .dictionary-table td {
+            border: 1px solid var(--border-color); padding: 0.75rem; text-align: left;
+        }
+        .dictionary-table th { background-color: #fef3c7; color: #78350f; }
+        .highlight-row { background-color: #fffbeb; transition: background-color 0.5s; }
+        .pk-icon, .fk-icon {
+             font-size: 0.8rem; font-weight: bold; padding: 2px 6px; border-radius: 4px;
+             margin-left: 8px; color: white; display: inline-block;
+        }
+        .pk-icon { background-color: #16a34a; } /* Green */
+        .fk-icon { background-color: #2563eb; } /* Blue */
+        
+        #relationship-svg {
+             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+             pointer-events: none; opacity: 0; transition: opacity 0.5s;
+        }
+        #relationship-svg line { stroke: #d97706; stroke-width: 3; stroke-dasharray: 8; animation: dash 1s linear infinite; }
+        @keyframes dash { to { stroke-dashoffset: -16; } }
+
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow-2xl">
+        
+        <div id="simulation-header">
+            <h1 class="text-2xl sm:text-3xl font-bold text-center text-gray-800 mb-2">Interactive Data Dictionary Simulation</h1>
+            <p id="step-title" class="text-center text-lg text-gray-600 font-semibold mb-4"></p>
+            <div class="progress-bar-bg w-full">
+                <div id="progress-bar" class="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <div id="simulation-content" class="mt-6 text-center">
+            <!-- Steps injected here -->
+        </div>
+
+        <div id="instructions" class="text-center text-sm text-gray-500 mt-6 bg-gray-100 p-2 rounded-lg">
+            <p>Use 'Previous'/'Next' buttons or your keyboard's <strong>Left (←)</strong> and <strong>Right (→)</strong> arrows to navigate.</p>
+        </div>
+
+        <div id="navigation" class="flex justify-between items-center mt-6">
+            <button id="prev-btn" class="btn btn-secondary">Previous</button>
+            <span id="step-counter" class="text-gray-600 font-semibold"></span>
+            <button id="next-btn" class="btn btn-primary">Next</button>
+        </div>
+        
+        <div id="quiz-results" class="hidden text-center mt-6">
+             <h2 class="text-2xl font-bold mb-4">Quiz Complete!</h2>
+             <p id="quiz-score" class="text-xl mb-4"></p>
+             <p id="quiz-feedback" class="text-lg mb-6"></p>
+             <button id="reset-btn" class="btn btn-primary">Start Over</button>
+        </div>
+    </div>
+    
+    <div id="info-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-xl font-bold mb-4"></h3>
+            <p id="modal-text" class="text-gray-700 mb-6"></p>
+            <button id="modal-close" class="btn btn-primary float-right">Close</button>
+        </div>
+    </div>
+
+<script>
+const steps = [
+    {
+        title: "What is a Data Dictionary?",
+        content: `
+            <p class="mb-4">Every database has a hidden, vital component: the <strong>Data Dictionary</strong>. It is a file or a set of tables that stores <span class="popover" data-term="metadata">metadata</span> - that is, data about the data.</p>
+            <p class="mb-4">Think of it as the database's "blueprint" or "instruction manual".</p>
+            <div class="flex justify-center items-center gap-4">
+                <div class="file-cabinet">
+                    <div class="drawer">Customers</div>
+                    <div class="drawer">Orders</div>
+                    <div id="locked-drawer" class="drawer">
+                        Blueprints
+                        <svg class="lock-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg>
+                    </div>
+                </div>
+            </div>
+            <p class="mt-4">It contains all the details of the database's design, like table names, field names, data types, and more.</p>
+        `,
+        action: () => {}
+    },
+    {
+        title: "Access is Restricted",
+        content: `
+            <p class="mb-4">The Data Dictionary is crucial for the DBMS to function, but it's hidden from everyday users. Only the <span class="popover" data-term="dba">DBA</span> and developers typically have access.</p>
+            <div class="flex justify-around items-center gap-4 flex-wrap">
+                <div class="flex flex-col items-center">
+                    <div class="user-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10 8a3 3 0 100-6 3 3 0 000 6zM3.465 14.493a1.23 1.23 0 00.41 1.412A9.957 9.957 0 0010 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.41a7.002 7.002 0 00-13.074.003z" /></svg>
+                    </div>
+                    <span class="font-semibold mt-1">User</span>
+                    <span class="text-red-600 font-bold mt-2">Access Denied &rarr;</span>
+                </div>
+                <div id="locked-drawer-2" class="drawer" style="background-color: #f59e0b; border: 2px solid #92400e;">
+                    Data Dictionary
+                    <svg class="lock-icon w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span id="key-animation" class="key-icon">🔑</span>
+                    <div class="dba-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286zm0 13.036h.008v.008h-.008v-.008z" /></svg>
+                    </div>
+                    <span class="font-semibold mt-1">DBA</span>
+                </div>
+            </div>
+            <p class="mt-4">This prevents accidental changes that could corrupt the entire database.</p>
+        `,
+        action: () => {
+             const key = document.getElementById('key-animation');
+             const drawer = document.getElementById('locked-drawer-2');
+             if(key && drawer){
+                 setTimeout(() => {
+                    const drawerRect = drawer.getBoundingClientRect();
+                    const keyRect = key.getBoundingClientRect();
+                    const transX = drawerRect.left - keyRect.left + (drawerRect.width / 2);
+                    const transY = drawerRect.top - keyRect.top + (drawerRect.height / 2);
+                    key.style.transform = `translate(${transX}px, ${transY}px) rotate(360deg)`;
+                 }, 100);
+             }
+        }
+    },
+    {
+        title: "Content: Table & Field Definitions",
+        content: `
+            <p class="mb-4">Let's look inside a data dictionary. For each table, it specifies every field's properties.</p>
+            <p class="mb-2 font-bold text-lg">Table: Customers</p>
+            <table class="dictionary-table">
+                <thead><tr><th>Field Name</th><th>Data Type</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr id="dd_row_1"><td>CustomerID</td><td>INTEGER</td><td>Unique ID for each customer.</td></tr>
+                    <tr id="dd_row_2"><td>FirstName</td><td>VARCHAR(50)</td><td>Customer's first name.</td></tr>
+                    <tr id="dd_row_3"><td>LastName</td><td>VARCHAR(50)</td><td>Customer's last name.</td></tr>
+                    <tr id="dd_row_4"><td>JoinDate</td><td>DATE</td><td>Date the customer registered.</td></tr>
+                </tbody>
+            </table>
+            <p class="mt-4">This ensures that all data stored in the 'FirstName' field, for example, is text and no longer than 50 characters.</p>
+        `,
+        action: () => {
+             ['dd_row_1', 'dd_row_2', 'dd_row_3', 'dd_row_4'].forEach((id, index) => {
+                setTimeout(() => {
+                    const row = document.getElementById(id);
+                    if(row) row.classList.add('highlight-row');
+                    setTimeout(() => {
+                        if(row) row.classList.remove('highlight-row');
+                    }, 1000)
+                }, index * 500);
+            });
+        }
+    },
+    {
+        title: "Content: Keys and Validation",
+        content: `
+            <p class="mb-4">The dictionary also defines critical constraints like keys and validation rules.</p>
+            <p class="mb-2 font-bold text-lg">Table: Customers</p>
+            <table class="dictionary-table">
+                <thead><tr><th>Field Name</th><th>Data Type</th><th>Constraints & Validation</th></tr></thead>
+                <tbody>
+                    <tr><td>CustomerID</td><td>INTEGER</td><td><span class="popover" data-term="pk">PRIMARY KEY</span>, NOT NULL</td></tr>
+                    <tr><td>FirstName</td><td>VARCHAR(50)</td><td>NOT NULL</td></tr>
+                    <tr><td>Email</td><td>VARCHAR(100)</td><td>UNIQUE, Must contain '@' symbol</td></tr>
+                    <tr><td>Age</td><td>INTEGER</td><td>CHECK (Age >= 18)</td></tr>
+                </tbody>
+            </table>
+            <p class="mt-4">These rules are enforced automatically by the DBMS. It couldn't do this without the data dictionary!</p>
+        `,
+        action: () => {}
+    },
+    {
+        title: "Content: Relationships (Foreign Keys)",
+        content: `
+            <p class="mb-4">A crucial role of the data dictionary is to define the relationships between tables using <span class="popover" data-term="fk">foreign keys</span>.</p>
+            <div class="relative">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
+                    <div>
+                        <p class="mb-2 font-bold">Table: Customers</p>
+                        <table class="dictionary-table">
+                            <thead><tr><th>Field Name</th></tr></thead>
+                            <tbody><tr id="pk_row"><td>CustomerID <span class="pk-icon">PK</span></td></tr><tr><td>FirstName</td></tr></tbody>
+                        </table>
+                    </div>
+                    <div>
+                        <p class="mb-2 font-bold">Table: Orders</p>
+                        <table class="dictionary-table">
+                            <thead><tr><th>Field Name</th></tr></thead>
+                            <tbody><tr><td>OrderID <span class="pk-icon">PK</span></td></tr><tr id="fk_row"><td>CustomerID <span class="fk-icon">FK</span></td></tr><tr><td>OrderDate</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+                <svg id="relationship-svg"><line id="relationship-line" x1="0" y1="0" x2="0" y2="0"/></svg>
+            </div>
+            <p class="mt-4">The dictionary documents that the 'CustomerID' in the Orders table must match a valid 'CustomerID' in the Customers table.</p>
+        `,
+        action: () => {
+             setTimeout(() => {
+                const pkRow = document.getElementById('pk_row').cells[0];
+                const fkRow = document.getElementById('fk_row').cells[0];
+                const svg = document.getElementById('relationship-svg');
+                const line = document.getElementById('relationship-line');
+
+                const pkRect = pkRow.getBoundingClientRect();
+                const fkRect = fkRow.getBoundingClientRect();
+                const svgRect = svg.getBoundingClientRect();
+
+                line.setAttribute('x1', pkRect.right - svgRect.left);
+                line.setAttribute('y1', pkRect.top + pkRect.height / 2 - svgRect.top);
+                line.setAttribute('x2', fkRect.left - svgRect.left);
+                line.setAttribute('y2', fkRect.top + fkRect.height / 2 - svgRect.top);
+                svg.style.opacity = '1';
+             }, 200);
+        }
+    },
+    {
+        title: "Why is the Data Dictionary Important?",
+        content: `
+            <p class="mb-4">It provides a single source of truth for the database structure, which has many benefits.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                <div class="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
+                    <h4 class="font-bold text-lg text-green-800">Enforces Consistency</h4>
+                    <p class="text-sm mt-1">Prevents developers from using incorrect field names or data types. The DBMS will reject any operation that violates the dictionary's rules.</p>
+                </div>
+                 <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                    <h4 class="font-bold text-lg text-blue-800">Aids Development</h4>
+                    <p class="text-sm mt-1">Programmers can consult the data dictionary to understand the database schema without needing to ask the DBA.</p>
+                </div>
+            </div>
+            <p class="mt-6">Essentially, the data dictionary is the foundation of data independence, allowing the database structure to change without necessarily breaking the applications that use it.</p>
+        `,
+        action: () => {}
+    },
+    {
+        title: "Quiz Time!",
+        content: `
+            <p class="mb-6">You've learned about the database's blueprints. Now test your knowledge!</p>
+            <div id="quiz-container"></div>
+        `,
+        action: () => { displayQuizQuestion(); }
+    }
+];
+
+const popoverContent = {
+    metadata: "Metadata is 'data about data'. It describes the structure, data types, constraints, and other characteristics of the actual user data.",
+    dba: "The Database Administrator (DBA) is the person responsible for managing the entire database system. They have full access to the data dictionary.",
+    pk: "A Primary Key (PK) is a field (or set of fields) that uniquely identifies each record in a table. It must contain unique values and cannot contain NULL values.",
+    fk: "A Foreign Key (FK) is a field in one table that refers to the Primary Key in another table. It is used to create a link between the two tables."
+};
+
+const quizQuestions = [
+    {
+        question: "What is the primary purpose of a data dictionary?",
+        options: [ "To store all of the company's customer and order data.", "To store metadata, which describes the structure and design of the database.", "To provide a user-friendly interface for data entry.", "To store backups of the database." ],
+        answer: 1
+    },
+    {
+        question: "Which of the following would you NOT expect to find in a data dictionary?",
+        options: [ "The names of the tables in the database.", "The data types for each field (e.g., INTEGER, VARCHAR).", "The actual data for a specific customer, like 'John Smith'.", "The validation rules applied to a field (e.g., Age > 18)." ],
+        answer: 2
+    },
+    {
+        question: "A field in the 'Orders' table called 'ProductID' links to the 'ProductID' primary key in the 'Products' table. What is this 'ProductID' field in the 'Orders' table called?",
+        options: [ "A candidate key", "A primary key", "A super key", "A foreign key" ],
+        answer: 3
+    },
+    {
+        question: "Who is typically the main person responsible for creating and maintaining the data dictionary?",
+        options: [ "The end-user", "The project manager", "The Database Administrator (DBA)", "The network engineer" ],
+        answer: 2
+    },
+    {
+        question: "How does the data dictionary help to enforce data consistency?",
+        options: [ "It provides helpful suggestions to users as they type.", "It allows the DBMS to automatically reject data that doesn't conform to the defined rules (e.g., wrong data type).", "It automatically corrects spelling mistakes in the data.", "It encrypts the data so no one can change it." ],
+        answer: 1
+    }
+];
+
+let currentStep = 0, currentQuestionIndex = 0, score = 0, quizAnswered = false;
+
+// Element selectors
+const getEl = (id) => document.getElementById(id);
+const prevBtn = getEl('prev-btn'), nextBtn = getEl('next-btn'), stepCounter = getEl('step-counter');
+const progressBar = getEl('progress-bar'), stepTitleEl = getEl('step-title'), simulationContent = getEl('simulation-content');
+const quizResultsEl = getEl('quiz-results'), navigationEl = getEl('navigation'), instructionsEl = getEl('instructions'), headerEl = getEl('simulation-header');
+const modal = getEl('info-modal'), modalTitle = getEl('modal-title'), modalText = getEl('modal-text'), modalClose = getEl('modal-close');
+
+function renderStep() {
+    quizResultsEl.classList.add('hidden');
+    navigationEl.style.display = 'flex';
+    instructionsEl.style.display = 'block';
+    headerEl.style.display = 'block';
+
+    const step = steps[currentStep];
+    simulationContent.innerHTML = `<div class="step active-step min-h-[350px] flex flex-col justify-center">${step.content}</div>`;
+    stepTitleEl.textContent = step.title;
+
+    stepCounter.textContent = `Step ${currentStep + 1} / ${steps.length}`;
+    progressBar.style.width = `${((currentStep + 1) / steps.length) * 100}%`;
+    
+    prevBtn.disabled = currentStep === 0;
+    prevBtn.classList.toggle('opacity-50', currentStep === 0);
+    prevBtn.classList.toggle('cursor-not-allowed', currentStep === 0);
+    
+    nextBtn.textContent = (currentStep === steps.length - 1) ? "Take Quiz" : "Next";
+    nextBtn.disabled = false;
+    nextBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+    if (step.action) setTimeout(step.action, 50);
+    attachPopoverListeners();
+}
+
+function attachPopoverListeners() {
+    document.querySelectorAll('.popover').forEach(el => {
+        el.addEventListener('click', e => {
+            const term = e.target.dataset.term;
+            if (popoverContent[term]) showModal(e.target.textContent, popoverContent[term]);
+        });
+    });
+}
+
+function displayQuizQuestion() {
+    quizAnswered = false;
+    const quizContainer = getEl('quiz-container');
+    if (!quizContainer) return;
+    
+    const q = quizQuestions[currentQuestionIndex];
+    quizContainer.innerHTML = `
+        <h3 class="text-xl font-semibold mb-4 text-left">${currentQuestionIndex + 1}. ${q.question}</h3>
+        <div class="space-y-3">${q.options.map((o, i) => `<div class="quiz-option text-left" data-index="${i}">${o}</div>`).join('')}</div>
+        <div id="feedback" class="mt-4 text-left font-semibold"></div>
+    `;
+
+    document.querySelectorAll('.quiz-option').forEach(option => option.addEventListener('click', handleQuizAnswer));
+}
+
+function handleQuizAnswer(e) {
+    if (quizAnswered) return;
+    quizAnswered = true;
+
+    const selected = e.currentTarget;
+    const selectedAnswer = parseInt(selected.dataset.index);
+    const correctAnswer = quizQuestions[currentQuestionIndex].answer;
+    const feedbackEl = getEl('feedback');
+
+    document.querySelectorAll('.quiz-option').forEach(opt => opt.style.cursor = 'default');
+    
+    if (selectedAnswer === correctAnswer) {
+        selected.classList.add('correct');
+        feedbackEl.textContent = 'Correct! Excellent understanding.';
+        feedbackEl.className = 'mt-4 text-left font-semibold text-cyan-700';
+        score++;
+    } else {
+        selected.classList.add('incorrect');
+        feedbackEl.textContent = 'Not quite. The correct answer is highlighted.';
+        feedbackEl.className = 'mt-4 text-left font-semibold text-red-600';
+        document.querySelector(`.quiz-option[data-index="${correctAnswer}"]`).classList.add('correct');
+    }
+    
+    setTimeout(() => {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < quizQuestions.length) {
+            displayQuizQuestion();
+        } else {
+            showResults();
+        }
+    }, 2000);
+}
+
+function showResults() {
+    quizResultsEl.classList.remove('hidden');
+    navigationEl.style.display = 'none';
+    instructionsEl.style.display = 'none';
+    headerEl.style.display = 'none';
+    simulationContent.innerHTML = '';
+    
+    getEl('quiz-score').textContent = `You scored ${score} out of ${quizQuestions.length}.`;
+    const percentage = (score / quizQuestions.length) * 100;
+    let feedbackText;
+    if (percentage === 100) feedbackText = "Fantastic! You've mastered the concept of the data dictionary.";
+    else if (percentage >= 75) feedbackText = "Great work! You have a strong understanding of this topic.";
+    else if (percentage >= 50) feedbackText = "Good effort. A quick review of the simulation will help reinforce the key ideas.";
+    else feedbackText = "No problem. This is a detailed topic. Going through the simulation again will be very helpful.";
+    getEl('quiz-feedback').textContent = feedbackText;
+}
+
+function showModal(title, text) {
+    modalTitle.textContent = title;
+    modalText.textContent = text;
+    modal.style.display = 'flex';
+}
+
+function closeModal() { modal.style.display = 'none'; }
+function resetSimulation() {
+    currentStep = 0; currentQuestionIndex = 0; score = 0; quizAnswered = false;
+    renderStep();
+}
+
+// Event Listeners
+prevBtn.addEventListener('click', () => { if (currentStep > 0) { currentStep--; renderStep(); } });
+nextBtn.addEventListener('click', () => { if (currentStep < steps.length - 1) { currentStep++; renderStep(); } });
+getEl('reset-btn').addEventListener('click', resetSimulation);
+modalClose.addEventListener('click', closeModal);
+window.addEventListener('click', e => { if (e.target == modal) closeModal(); });
+document.addEventListener('keydown', e => {
+    if (modal.style.display === 'flex') { if (e.key === 'Escape') closeModal(); return; }
+    if (e.key === 'ArrowRight' && !nextBtn.disabled) nextBtn.click();
+    else if (e.key === 'ArrowLeft' && !prevBtn.disabled) prevBtn.click();
+});
+
+// Initial load
+renderStep();
+
+</script>
+</body>
+</html>

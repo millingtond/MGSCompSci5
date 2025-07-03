@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Capacitive Touchscreen Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --primary-color: #8b5cf6; /* Violet */
+            --text-color: #e2e8f0;
+            --glass-bg: rgba(30, 41, 59, 0.6);
+            --border-color: rgba(255, 255, 255, 0.15);
+            --highlight-color: #a78bfa;
+            --green-glow: #34d399;
+            --red-glow: #f87171;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+        }
+        
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            box-shadow: 0 0 40px rgba(0,0,0,0.2), 0 0 0 1px var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .animated-gradient {
+            background: linear-gradient(-45deg, #6d28d9, #8b5cf6, #a78bfa, #8b5cf6);
+            background-size: 400% 400%;
+            animation: gradient-animation 10s ease infinite;
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform: translateZ(0);
+            border: 1px solid transparent;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:active {
+            transform: translateY(-1px) scale(0.98);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        /* Section transitions */
+        .sim-section {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            will-change: opacity;
+        }
+        
+        .sim-section.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* --- Capacitive Specific Styles --- */
+        
+        #cap-sim-diagram {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            height: 300px;
+            margin: 2rem auto;
+        }
+        
+        .cap-layer {
+            position: absolute;
+            left: 0;
+            right: 0;
+            border-radius: 8px;
+            transition: all 0.8s cubic-bezier(0.25, 0.8, 0.25, 1);
+            opacity: 0;
+            transform: translateY(30px);
+            will-change: transform, opacity;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .layer-label {
+            position: absolute;
+            left: 105%;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        #cap-layer-substrate { background-color: rgba(153, 204, 255, 0.5); height: 100px; bottom: 20px; }
+        #cap-layer-electrode { background-color: transparent; height: 20px; bottom: 120px; overflow: hidden; }
+        #cap-layer-cover { background-color: rgba(209, 213, 219, 0.2); height: 30px; bottom: 140px; }
+
+        .grid-line { position: absolute; background-color: rgba(209, 213, 219, 0.6); }
+        #grid-x { top: 0; left: 0; width: 0%; height: 100%; animation: wipe-x 0.5s forwards; }
+        #grid-y { top: 0; left: 0; width: 100%; height: 0%; animation: wipe-y 0.5s 0.3s forwards; }
+        @keyframes wipe-x { from { width: 0%; } to { width: 100%; } }
+        @keyframes wipe-y { from { height: 0%; } to { height: 100%; } }
+
+        #electrode-grid-zoom {
+            position: absolute;
+            bottom: 20px;
+            left: -120px;
+            width: 100px;
+            height: 100px;
+            border: 2px dashed var(--highlight-color);
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 8px;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.5s ease;
+            overflow: hidden;
+            padding: 5px;
+        }
+
+        #electrode-grid-zoom.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .electrode-grid {
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(45deg, #34d39988 25%, transparent 25%),
+                linear-gradient(-45deg, #34d39988 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #a78bfa88 75%),
+                linear-gradient(-45deg, transparent 75%, #a78bfa88 75%);
+            background-size: 20px 20px;
+        }
+        
+        #touch-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: none;
+        }
+
+        .finger-cursor {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            opacity: 0.8;
+            border: 2px solid white;
+            transform: translate(-50%, -50%) scale(0);
+            pointer-events: none;
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+
+        #glove-cursor {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            transform: translate(-10px, -10px) scale(0);
+            pointer-events: none;
+            transition: transform 0.3s ease;
+            z-index: 100;
+            opacity: 0.8;
+        }
+
+        .quiz-option {
+            border: 2px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        .quiz-option:not(:disabled):hover {
+            border-color: var(--highlight-color);
+            background-color: var(--primary-color);
+            transform: scale(1.02);
+        }
+        .quiz-option.correct {
+            background-color: var(--green-glow);
+            border-color: #059669;
+            color: #fff;
+            box-shadow: 0 0 15px var(--green-glow);
+        }
+        .quiz-option.incorrect {
+            background-color: var(--red-glow);
+            border-color: #dc2626;
+            color: #fff;
+            box-shadow: 0 0 15px var(--red-glow);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <canvas id="particle-canvas"></canvas>
+
+    <div id="simulation-container" class="w-full max-w-4xl mx-auto p-4 md:p-8">
+
+        <header class="text-center mb-4">
+            <h1 class="text-3xl md:text-4xl font-bold animated-gradient text-transparent bg-clip-text">Capacitive Touchscreen Simulation</h1>
+            <p class="text-gray-400">Cambridge 9618 A-Level Computer Science</p>
+        </header>
+        
+        <div class="w-full bg-gray-700 rounded-full h-2.5 mb-4">
+            <div id="progress-bar" class="bg-purple-500 h-2.5 rounded-full transition-all duration-500 ease-out"></div>
+        </div>
+
+        <main id="main-content" class="glass-card p-6 md:p-8 min-h-[500px] flex flex-col justify-between">
+            <!-- Start Screen -->
+            <section id="step-0" class="sim-section active text-center">
+                <h2 class="text-2xl font-bold mb-4 text-purple-300">Welcome!</h2>
+                <p class="mb-6">This interactive simulation explains how a modern **Capacitive** touchscreen works. <br> You'll learn about its structure, the electric field it uses, and its pros and cons.</p>
+                <p class="mb-8 text-sm text-gray-400">Use the 'Next' and 'Previous' buttons or your keyboard's arrow keys to navigate.</p>
+                <button onclick="startSimulation()" class="btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg">Start Simulation</button>
+            </section>
+
+            <!-- Step 1: Anatomy -->
+            <section id="step-1" class="sim-section">
+                <h2 class="text-2xl font-bold mb-2 text-purple-300">Step 1: Anatomy of a Capacitive Screen</h2>
+                <p class="mb-4 text-gray-300">A capacitive screen is simpler than a resistive one. The key is a grid of electrodes. The layers will now assemble.</p>
+                <div id="cap-sim-diagram">
+                    <div id="electrode-grid-zoom"><div class="electrode-grid"></div></div>
+                    <div id="cap-layer-substrate" class="cap-layer"><span class="layer-label">Glass Substrate</span></div>
+                    <div id="cap-layer-electrode" class="cap-layer">
+                         <div id="grid-x" class="grid-line"></div>
+                         <div id="grid-y" class="grid-line"></div>
+                        <span class="layer-label">Electrode Pattern Layer</span>
+                    </div>
+                    <div id="cap-layer-cover" class="cap-layer"><span class="layer-label">Protective Cover</span></div>
+                </div>
+            </section>
+
+            <!-- Step 2: Touch Detection -->
+            <section id="step-2" class="sim-section">
+                 <h2 class="text-2xl font-bold mb-2 text-purple-300">Step 2: Detecting a Touch</h2>
+                 <div class="flex justify-between items-center mb-4">
+                    <p class="text-gray-300">Move your mouse over the screen and click. Hold <kbd class="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Shift</kbd> to multi-touch.</p>
+                    <div class="flex items-center space-x-2">
+                        <label for="glove-toggle" class="text-sm font-medium">Glove Mode</label>
+                        <button id="glove-toggle" role="switch" aria-checked="false" class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-600">
+                            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition"></span>
+                        </button>
+                    </div>
+                 </div>
+                <div class="relative w-full max-w-2xl h-[300px] mx-auto bg-gray-900/50 rounded-lg overflow-hidden">
+                    <canvas id="touch-canvas"></canvas>
+                    <div id="finger-cap-1" class="finger-cursor"></div>
+                    <div id="finger-cap-2" class="finger-cursor"></div>
+                    <div id="glove-cursor">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                            <path d="M19.87,8.23,14.63,3,12.5,5.12,17.75,10.37ZM12.12,4.4,5,11.53V21.43h8.9L21.07,14.26ZM6.4,12.92,11.5,7.83l5.08,5.09-2.2,2.2L13.5,14.26,11.71,16l-1.77-1.77-1.77,1.77L6.4,14.3Z"/>
+                        </svg>
+                    </div>
+                    <div class="absolute top-2 left-2 w-4 h-4 bg-gray-500 rounded-full sensor"></div>
+                    <div class="absolute top-2 right-2 w-4 h-4 bg-gray-500 rounded-full sensor"></div>
+                    <div class="absolute bottom-2 left-2 w-4 h-4 bg-gray-500 rounded-full sensor"></div>
+                    <div class="absolute bottom-2 right-2 w-4 h-4 bg-gray-500 rounded-full sensor"></div>
+                </div>
+            </section>
+            
+            <!-- Step 3: Reflection -->
+            <section id="step-3" class="sim-section">
+                <h2 class="text-2xl font-bold mb-4 text-purple-300">Step 3: Your Turn to Reflect</h2>
+                <p class="mb-6 text-gray-300">Based on this design, what do you think are the main benefits and drawbacks of a capacitive screen?</p>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-3 text-green-400">Potential Benefits?</h3>
+                        <textarea id="benefits-reflection" class="reflection-area w-full h-40 p-3 rounded-lg text-base" placeholder="What are the advantages?"></textarea>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold mb-3 text-red-400">Potential Drawbacks?</h3>
+                        <textarea id="drawbacks-reflection" class="reflection-area w-full h-40 p-3 rounded-lg text-base" placeholder="What are the disadvantages?"></textarea>
+                    </div>
+                </div>
+                <div class="text-center mt-6">
+                    <p class="text-sm text-gray-400">Jot down your thoughts, then proceed to the next step to compare.</p>
+                </div>
+            </section>
+            
+            <!-- Step 4: Pros and Cons -->
+            <section id="step-4" class="sim-section">
+                <h2 class="text-2xl font-bold mb-4 text-purple-300">Benefits and Drawbacks</h2>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="glass-card p-6 border-l-4 border-green-500">
+                        <h3 class="text-xl font-semibold mb-3 text-green-400">Benefits</h3>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><strong>Excellent Visibility:</strong> Fewer layers mean a brighter and clearer image.</li>
+                            <li><strong>Multi-Touch Support:</strong> Can detect multiple touch points simultaneously.</li>
+                            <li><strong>High Durability:</strong> The outer layer is often toughened glass.</li>
+                            <li><strong>Very Sensitive:</strong> Requires only a light touch, no pressure needed.</li>
+                        </ul>
+                    </div>
+                    <div class="glass-card p-6 border-l-4 border-red-500">
+                        <h3 class="text-xl font-semibold mb-3 text-red-400">Drawbacks</h3>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><strong>Requires Conductive Input:</strong> Will not work with a standard gloved finger or most styluses.</li>
+                             <li><strong>Higher Cost:</strong> Generally more expensive to manufacture than resistive screens.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 5: Quiz -->
+            <section id="step-5" class="sim-section">
+                <h2 class="text-2xl font-bold mb-4 text-purple-300">Quiz: Test Your Knowledge!</h2>
+                <div id="quiz-content"></div>
+                <div id="quiz-feedback" class="mt-4 text-center font-bold h-6"></div>
+                <div id="quiz-results" class="hidden text-center mt-6">
+                    <h3 class="text-2xl font-bold">Quiz Complete!</h3>
+                    <p class="text-xl mt-2">Your score: <span id="quiz-score" class="font-bold text-green-400"></span></p>
+                    <button onclick="resetSimulation()" class="btn mt-6 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg">Restart Simulation</button>
+                </div>
+            </section>
+
+        </main>
+
+        <footer class="flex justify-between items-center mt-4">
+            <button id="prev-btn" onclick="prevStep()" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-5 rounded-lg invisible">Previous</button>
+            <div id="step-indicator" class="text-gray-400"></div>
+            <button id="next-btn" onclick="nextStep()" class="btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg invisible">Next</button>
+        </footer>
+    </div>
+
+    <div id="modal" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 z-50 justify-center items-center hidden opacity-0 transition-opacity duration-300">
+        <div id="modal-content" class="glass-card p-8 rounded-lg max-w-md w-full text-center">
+            <h3 id="modal-title" class="text-xl font-bold mb-4"></h3>
+            <p id="modal-text" class="mb-6"></p>
+            <button onclick="closeModal()" class="btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-5 rounded-lg">Close</button>
+        </div>
+    </div>
+
+<script>
+    // --- Global State ---
+    let currentStep = 0;
+    let isModalOpen = false;
+    let particles = [];
+    let animationFrameId;
+
+    // --- DOM Elements ---
+    const sections = document.querySelectorAll('.sim-section');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const stepIndicator = document.getElementById('step-indicator');
+    const progressBar = document.getElementById('progress-bar');
+    const modal = document.getElementById('modal');
+    const particleCanvas = document.getElementById('particle-canvas');
+    const pCtx = particleCanvas.getContext('2d');
+    
+    // --- Capacitive Sim Specific Elements ---
+    const touchCanvas = document.getElementById('touch-canvas');
+    const finger1 = document.getElementById('finger-cap-1');
+    const finger2 = document.getElementById('finger-cap-2');
+    const gloveCursor = document.getElementById('glove-cursor');
+    const sensors = document.querySelectorAll('.sensor');
+    const gloveToggle = document.getElementById('glove-toggle');
+    
+    let canvasCtx, fieldPoints, touchPoints = [], isGloveMode = false;
+
+    // --- Quiz State ---
+    const quizData = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+
+    // --- Particle System ---
+    function initParticles() {
+        particleCanvas.width = window.innerWidth;
+        particleCanvas.height = window.innerHeight;
+        animateParticles();
+        window.addEventListener('resize', () => {
+            particleCanvas.width = window.innerWidth;
+            particleCanvas.height = window.innerHeight;
+        });
+    }
+
+    function createParticles(x, y, color) {
+        for (let i = 0; i < 30; i++) {
+            particles.push({ x, y, color, radius: Math.random() * 2 + 1, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.5) * 4, life: 60 });
+        }
+    }
+
+    function animateParticles() {
+        pCtx.clearRect(0, 0, pCtx.canvas.width, pCtx.canvas.height);
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.05;
+            p.life--;
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+            } else {
+                pCtx.beginPath();
+                pCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                pCtx.fillStyle = p.color;
+                pCtx.globalAlpha = p.life / 60;
+                pCtx.fill();
+                pCtx.globalAlpha = 1;
+            }
+        }
+        requestAnimationFrame(animateParticles);
+    }
+    
+    // --- Core Simulation Logic ---
+    function updateNav() {
+        progressBar.style.backgroundColor = 'var(--primary-color)';
+        const progress = currentStep > 0 ? (currentStep / (sections.length - 1)) * 100 : 0;
+        progressBar.style.width = `${progress}%`;
+        stepIndicator.textContent = currentStep > 0 ? `Step ${currentStep} of ${sections.length - 1}` : '';
+        prevBtn.classList.toggle('invisible', currentStep <= 0);
+        nextBtn.classList.toggle('invisible', currentStep >= sections.length - 1);
+        prevBtn.style.visibility = currentStep > 0 ? 'visible' : 'hidden';
+        nextBtn.style.visibility = currentStep > 0 && currentStep < sections.length - 1 ? 'visible' : 'hidden';
+    }
+    
+    function showStep(stepIndex) {
+        if (isModalOpen) return;
+        
+        cleanupStep(currentStep);
+        sections.forEach((section, index) => section.classList.toggle('active', index === stepIndex));
+        currentStep = stepIndex;
+        updateNav();
+        setupStep(currentStep);
+    }
+    
+    function nextStep() { if (currentStep < sections.length - 1) showStep(currentStep + 1); }
+    function prevStep() { if (currentStep > 0) showStep(currentStep - 1); }
+    function startSimulation() { showStep(1); }
+
+    function resetSimulation() {
+        currentQuestionIndex = 0;
+        score = 0;
+        document.getElementById('quiz-results').classList.add('hidden');
+        document.getElementById('quiz-feedback').innerHTML = '';
+        document.getElementById('benefits-reflection').value = '';
+        document.getElementById('drawbacks-reflection').value = '';
+        showStep(0);
+    }
+
+    // --- Step Setup and Cleanup ---
+    function setupStep(stepIndex) {
+        if (stepIndex === 1) animateCapacitiveAnatomy();
+        if (stepIndex === 2) {
+            initTouchCanvas();
+            const touchArea = touchCanvas;
+            touchArea.addEventListener('mouseenter', handleCapMouseEnter);
+            touchArea.addEventListener('mouseleave', handleCapMouseLeave);
+            touchArea.addEventListener('mousemove', handleCapMouseMove);
+            touchArea.addEventListener('mousedown', handleCapMouseDown);
+            window.addEventListener('mouseup', handleCapMouseUp); // Use window for mouseup
+            touchArea.addEventListener('touchstart', handleTouchStart, { passive: false });
+            touchArea.addEventListener('touchmove', handleTouchMove, { passive: false });
+            touchArea.addEventListener('touchend', handleTouchEnd);
+            gloveToggle.addEventListener('click', toggleGloveMode);
+        }
+        if (stepIndex === sections.length - 1) loadQuestion();
+    }
+
+    function cleanupStep(stepIndex) {
+        if (stepIndex === 1) resetCapacitiveAnatomy();
+        if (stepIndex === 2) {
+            if(animationFrameId) cancelAnimationFrame(animationFrameId);
+            const touchArea = touchCanvas;
+            touchArea.removeEventListener('mouseenter', handleCapMouseEnter);
+            touchArea.removeEventListener('mouseleave', handleCapMouseLeave);
+            touchArea.removeEventListener('mousemove', handleCapMouseMove);
+            touchArea.removeEventListener('mousedown', handleCapMouseDown);
+            window.removeEventListener('mouseup', handleCapMouseUp);
+            touchArea.removeEventListener('touchstart', handleTouchStart);
+            touchArea.removeEventListener('touchmove', handleTouchMove);
+            touchArea.removeEventListener('touchend', handleTouchEnd);
+            gloveToggle.removeEventListener('click', toggleGloveMode);
+        }
+    }
+
+    // --- Step-specific Animations & Logic ---
+    function animateCapacitiveAnatomy() {
+        const layers = document.querySelectorAll('.cap-layer');
+        const gridZoom = document.getElementById('electrode-grid-zoom');
+        const gridX = document.getElementById('grid-x');
+        const gridY = document.getElementById('grid-y');
+
+        gridX.style.animation = 'none';
+        gridY.style.animation = 'none';
+        
+        setTimeout(() => { layers[0].style.opacity = '1'; layers[0].style.transform = 'translateY(0)'; }, 200);
+        setTimeout(() => { 
+            layers[1].style.opacity = '1'; 
+            layers[1].style.transform = 'translateY(0)'; 
+            gridX.style.animation = 'wipe-x 0.5s forwards';
+            gridY.style.animation = 'wipe-y 0.5s 0.3s forwards';
+        }, 600);
+        setTimeout(() => { layers[2].style.opacity = '1'; layers[2].style.transform = 'translateY(0)'; }, 1400);
+        setTimeout(() => { gridZoom.classList.add('visible'); }, 1600);
+        
+        setTimeout(() => showModal('Structure of a Capacitive Screen', 'A glass substrate is coated with a transparent conductive material (like Indium Tin Oxide) in a grid pattern. It\'s all protected by a top layer of glass.'), 2200);
+    }
+
+    function resetCapacitiveAnatomy() {
+         document.querySelectorAll('.cap-layer').forEach(layer => {
+            layer.style.opacity = '0';
+            layer.style.transform = 'translateY(30px)';
+        });
+        document.getElementById('electrode-grid-zoom').classList.remove('visible');
+    }
+    
+    // --- Interactive Touch Canvas Logic ---
+    function initTouchCanvas() {
+        canvasCtx = touchCanvas.getContext('2d');
+        const rect = touchCanvas.getBoundingClientRect();
+        touchCanvas.width = rect.width;
+        touchCanvas.height = rect.height;
+
+        fieldPoints = [];
+        for(let i = 0; i < 40; i++) {
+            fieldPoints.push({
+                ox: (i/39) * touchCanvas.width,
+                oy: 0, x: (i/39) * touchCanvas.width, y: 0
+            });
+        }
+        drawField();
+    }
+
+    function drawField() {
+        if (!canvasCtx) return;
+        canvasCtx.clearRect(0, 0, touchCanvas.width, touchCanvas.height);
+        canvasCtx.strokeStyle = 'rgba(167, 139, 250, 0.4)';
+        canvasCtx.lineWidth = 1;
+
+        fieldPoints.forEach(p => {
+            let totalDX = 0, totalDY = 0;
+            touchPoints.forEach(touch => {
+                const dx = p.ox - touch.x;
+                const dy = p.oy - touch.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const maxDist = 150;
+                const influence = Math.max(0, (maxDist - dist) / maxDist);
+                totalDX += dx * influence * 0.3;
+                totalDY += dy * influence * 0.3;
+            });
+            p.x = p.ox + totalDX;
+            p.y = p.oy + totalDY;
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(p.x, p.y);
+            canvasCtx.lineTo(p.x, touchCanvas.height);
+            canvasCtx.stroke();
+        });
+        animationFrameId = requestAnimationFrame(drawField);
+    }
+
+    function updateTouchPoints(event) {
+        if (isGloveMode) return;
+        const rect = touchCanvas.getBoundingClientRect();
+        touchPoints = [];
+
+        if (event.touches) { // Touch events
+            for (let i = 0; i < Math.min(event.touches.length, 2); i++) {
+                touchPoints.push({ x: event.touches[i].clientX - rect.left, y: event.touches[i].clientY - rect.top });
+            }
+        } else { // Mouse events
+            if(event.type === 'mousedown' || (event.type === 'mousemove' && event.buttons === 1)) {
+                touchPoints.push({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+                if (event.shiftKey && touchPoints.length === 1) { // Add second touch point on shift+click
+                    touchPoints.push({ x: event.clientX - rect.left + 60, y: event.clientY - rect.top });
+                }
+            }
+        }
+        updateVisuals();
+    }
+
+    function updateVisuals() {
+        [finger1, finger2].forEach((f, i) => {
+            if (touchPoints[i]) {
+                f.style.left = `${touchPoints[i].x}px`;
+                f.style.top = `${touchPoints[i].y}px`;
+                f.style.transform = 'translate(-50%, -50%) scale(1)';
+            } else {
+                f.style.transform = 'translate(-50%, -50%) scale(0)';
+            }
+        });
+        
+        if(touchPoints.length > 0) {
+            sensors.forEach(s => {
+                s.style.transition = 'all 0.1s';
+                s.style.backgroundColor = 'var(--primary-color)';
+                s.style.boxShadow = '0 0 10px var(--primary-color)';
+            });
+        } else {
+            sensors.forEach(s => {
+                s.style.backgroundColor = '#6b7280';
+                s.style.boxShadow = 'none';
+            });
+        }
+    }
+    
+    function handleCapMouseEnter(e) {
+        const cursor = isGloveMode ? gloveCursor : finger1;
+        cursor.style.transform = isGloveMode ? 'translate(-10px, -10px) scale(1)' : 'translate(-50%, -50%) scale(1)';
+    }
+
+    function handleCapMouseLeave(e) { 
+        gloveCursor.style.transform = 'translate(-10px, -10px) scale(0)';
+        touchPoints = [];
+        updateVisuals();
+    }
+    function handleCapMouseMove(e) {
+        const rect = touchCanvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        finger1.style.left = `${mouseX}px`;
+        finger1.style.top = `${mouseY}px`;
+        gloveCursor.style.left = `${mouseX}px`;
+        gloveCursor.style.top = `${mouseY}px`;
+        if(e.buttons === 1) updateTouchPoints(e);
+    }
+    function handleCapMouseDown(e) { updateTouchPoints(e); }
+    function handleCapMouseUp(e) { touchPoints = []; updateVisuals(); }
+    
+    // Touch Events
+    function handleTouchStart(e) { e.preventDefault(); updateTouchPoints(e); }
+    function handleTouchMove(e) { e.preventDefault(); updateTouchPoints(e); }
+    function handleTouchEnd(e) { e.preventDefault(); updateTouchPoints(e); }
+    
+    function toggleGloveMode() {
+        isGloveMode = !isGloveMode;
+        gloveToggle.setAttribute('aria-checked', isGloveMode);
+        const span = gloveToggle.querySelector('span');
+        span.classList.toggle('translate-x-5', isGloveMode);
+        gloveToggle.classList.toggle('bg-purple-600', isGloveMode);
+        gloveToggle.classList.toggle('bg-gray-600', !isGloveMode);
+        
+        finger1.style.display = isGloveMode ? 'none' : 'block';
+        finger2.style.display = isGloveMode ? 'none' : 'block';
+        gloveCursor.style.display = isGloveMode ? 'block' : 'none';
+    }
+
+
+    // --- Quiz and other helpers ---
+    function loadQuestion() {
+        const quizContent = document.getElementById('quiz-content');
+        const feedback = document.getElementById('quiz-feedback');
+        feedback.innerHTML = '';
+        if (currentQuestionIndex >= quizData.length) {
+            document.getElementById('quiz-content').innerHTML = '';
+            document.getElementById('quiz-results').classList.remove('hidden');
+            document.getElementById('quiz-score').textContent = `${score} / ${quizData.length}`;
+            createParticles(window.innerWidth / 2, window.innerHeight / 2, '#34d399');
+            return;
+        }
+        const q = quizData[currentQuestionIndex];
+        let html = `<h3 class="text-xl font-semibold mb-4">${q.question}</h3>`;
+        if (q.type === 'mcq') {
+            html += `<div id="quiz-options" class="grid grid-cols-1 md:grid-cols-2 gap-4">`;
+            q.options.forEach(option => {
+                html += `<button class="quiz-option p-4 rounded-lg text-left">${option}</button>`;
+            });
+            html += `</div>`;
+        }
+        quizContent.innerHTML = html;
+        addQuizListeners();
+    }
+    function addQuizListeners() {
+        const optionsContainer = document.getElementById('quiz-options');
+        if (optionsContainer) optionsContainer.addEventListener('click', handleMCQAnswer, { once: true });
+    }
+    function handleMCQAnswer(e) {
+        if (e.target.tagName !== 'BUTTON') return;
+        const selectedOption = e.target;
+        const isCorrect = selectedOption.textContent === quizData[currentQuestionIndex].answer;
+        Array.from(e.currentTarget.children).forEach(button => {
+            button.disabled = true;
+            if (button.textContent === quizData[currentQuestionIndex].answer) button.classList.add('correct');
+        });
+        if (isCorrect) {
+            score++;
+            showFeedback('Correct!', '#34d399');
+            createParticles(e.clientX, e.clientY, '#34d399');
+        } else {
+            selectedOption.classList.add('incorrect');
+            showFeedback('Incorrect.', '#f87171');
+        }
+        setTimeout(() => { currentQuestionIndex++; loadQuestion(); }, 2000);
+    }
+    function showFeedback(text, color) {
+        const feedbackEl = document.getElementById('quiz-feedback');
+        feedbackEl.textContent = text;
+        feedbackEl.style.color = color;
+    }
+    function showModal(title, text) {
+        isModalOpen = true;
+        const modal = document.getElementById('modal');
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-text').textContent = text;
+        modal.classList.remove('hidden');
+        setTimeout(() => modal.classList.add('opacity-100'), 10);
+        createParticles(window.innerWidth / 2, window.innerHeight / 2, 'rgba(139, 92, 246, 0.7)');
+    }
+    function closeModal() {
+        isModalOpen = false;
+        const modal = document.getElementById('modal');
+        modal.classList.remove('opacity-100');
+        setTimeout(() => { modal.classList.add('hidden'); }, 300);
+    }
+
+    // --- Event Listeners ---
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isModalOpen) closeModal();
+        if (isModalOpen) return;
+        if (e.key === 'ArrowRight') nextStep();
+        if (e.key === 'ArrowLeft') prevStep();
+    });
+
+    window.onload = () => { 
+        const quizDataCapacitive = [
+            { question: "What does a capacitive touchscreen use to detect a touch?", type: "mcq", options: ["Pressure on flexible layers", "A uniform electric field", "Infrared light beams", "Sound waves"], answer: "A uniform electric field" },
+            { question: "Why doesn't a standard gloved finger work on a capacitive screen?", type: "mcq", options: ["The glove is too soft", "The glove is not conductive", "The glove is too thick", "The glove blocks the light"], answer: "The glove is not conductive" },
+            { question: "What key advantage does a capacitive screen have over a resistive one?", type: "mcq", options: ["It is cheaper to make", "It works with any object", "It supports multi-touch", "It never breaks"], answer: "It supports multi-touch" },
+            { question: "What property must an object have to be detected by a capacitive screen?", type: "mcq", options: ["It must be sharp", "It must be conductive", "It must be heavy", "It must be magnetic"], answer: "It must be conductive"},
+            { question: "What material is typically used for the transparent electrode grid?", type: "mcq", options: ["Copper", "Graphene", "Indium Tin Oxide (ITO)", "Aluminum"], answer: "Indium Tin Oxide (ITO)" },
+            { question: "How does the system calculate the exact location of a touch?", type: "mcq", options: ["By measuring the pressure applied", "By the time it takes for sound to reflect", "By measuring the change in capacitance at each corner", "By detecting a break in the light beam"], answer: "By measuring the change in capacitance at each corner" }
+        ];
+        quizData.push(...quizDataCapacitive);
+        initParticles();
+        showStep(0); 
+    };
+    
+</script>
+</body>
+</html>

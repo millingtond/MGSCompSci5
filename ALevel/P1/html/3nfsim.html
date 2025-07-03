@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Third Normal Form (3NF) Interactive Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #121828;
+            --primary-color: #1a2238;
+            --secondary-color: #2a3a5e;
+            --accent-color: #ff5757;
+            --text-color: #e0e0e0;
+            --highlight-color: #4a6fa5;
+            --success-color: #27ae60;
+            --error-color: #c0392b;
+            --font-family: 'Inter', sans-serif;
+            --border-radius: 12px;
+            --shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            background: var(--bg-color);
+        }
+        
+        #simulation-container {
+            width: 95%;
+            max-width: 1200px;
+            height: 95vh;
+            max-height: 850px;
+            background: rgba(26, 34, 56, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            transform: translateZ(0);
+        }
+
+        .header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: linear-gradient(90deg, var(--secondary-color), var(--highlight-color), var(--secondary-color));
+            background-size: 200% 200%;
+            animation: gradientHeader 8s ease infinite;
+        }
+
+        @keyframes gradientHeader {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            text-align: center;
+            color: #fff;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+        }
+
+        main {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .step {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 2rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transform: translateY(20px) translateZ(0);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            text-align: center;
+            overflow-y: auto;
+        }
+
+        .step.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0) translateZ(0);
+        }
+
+        .step h2 {
+            font-size: 1.7rem;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+        
+        .step h3 {
+             font-size: 1.3rem;
+             color: var(--text-color);
+             margin-bottom: 1rem;
+        }
+
+        .step p, .step li {
+            font-size: 1rem;
+            line-height: 1.7;
+            max-width: 800px;
+        }
+        
+        .step ul {
+            list-style: none;
+            padding: 0;
+            display: inline-block;
+            text-align: left;
+        }
+
+        .table-container {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            align-items: flex-start;
+            width: 100%;
+            transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            will-change: transform;
+        }
+        
+        .arrow-connector {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            color: var(--accent-color);
+            opacity: 0;
+            transition: opacity 0.5s 0.3s ease-in-out;
+        }
+
+        .table-wrapper {
+            background: rgba(42, 58, 94, 0.4);
+            padding: 1.25rem;
+            border-radius: var(--border-radius);
+            transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            will-change: transform, opacity;
+        }
+
+        .table-title {
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #fff;
+            font-size: 1.1rem;
+        }
+
+        table {
+            border-collapse: collapse;
+            background: var(--primary-color);
+            border-radius: 8px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        th, td {
+            padding: 0.8rem 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid var(--secondary-color);
+            transition: background-color 0.3s ease;
+        }
+
+        th {
+            background-color: var(--secondary-color);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .pk {
+            background-color: var(--highlight-color) !important;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .pk-underline {
+            text-decoration: underline;
+            text-decoration-color: var(--accent-color);
+            text-decoration-thickness: 3px;
+            text-underline-offset: 4px;
+        }
+
+        .transitive-dependency {
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .transitive-dependency:hover {
+            background-color: var(--highlight-color);
+        }
+
+        .transitive-dependency::after {
+            content: '?';
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: var(--accent-color);
+            color: #fff;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            font-weight: bold;
+            transition: transform 0.3s ease;
+        }
+        
+        .transitive-dependency:hover::after {
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .highlight-transitive {
+            background-color: rgba(255, 87, 87, 0.4) !important;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .highlight-non-key {
+            background-color: rgba(243, 156, 18, 0.4) !important;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 87, 87, 0.5); }
+            70% { box-shadow: 0 0 0 12px rgba(255, 87, 87, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 87, 87, 0); }
+        }
+
+        .navigation {
+            padding: 1rem 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(26, 34, 56, 0.5);
+            z-index: 10;
+        }
+        
+        .step-indicator {
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .nav-btn, .quiz-btn, .reset-btn {
+            background: linear-gradient(45deg, var(--highlight-color), var(--secondary-color));
+            color: #fff;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-family: var(--font-family);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transform: translateZ(0);
+        }
+
+        .nav-btn:hover, .quiz-btn:hover, .reset-btn:hover {
+            transform: translateY(-4px) translateZ(0);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .nav-btn:disabled {
+            background: #4b5563;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .reset-btn {
+             background: linear-gradient(45deg, var(--accent-color), #a02818);
+        }
+
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple 600ms linear;
+            background-color: rgba(255, 255, 255, 0.7);
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.4s;
+        }
+
+        .modal-content {
+            background: var(--primary-color);
+            padding: 2.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 90%;
+            max-width: 550px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            text-align: center;
+            animation: slideIn 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transform: translateZ(0);
+        }
+
+        .modal-content h3 {
+            margin-bottom: 1.5rem;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+        
+        .close-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.7rem 1.4rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background-color: #c0392b;
+            transform: translateY(-2px);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateY(-50px) scale(0.95); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+
+        /* Quiz Specific Styles */
+        .quiz-container {
+            width: 100%;
+            max-width: 800px;
+        }
+        .question {
+            margin-bottom: 1.5rem;
+            background: rgba(42, 58, 94, 0.4);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .options {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .option {
+            background: var(--secondary-color);
+            padding: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            border: 2px solid transparent;
+            text-align: left;
+        }
+        .option:hover {
+            transform: translateX(5px);
+            border-color: var(--highlight-color);
+        }
+        .option.selected {
+            border-color: var(--accent-color);
+            background-color: var(--highlight-color);
+        }
+        
+        .feedback {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        .feedback.correct {
+            background-color: var(--success-color);
+            color: #fff;
+        }
+        .feedback.incorrect {
+            background-color: var(--error-color);
+            color: #fff;
+        }
+
+        #q2-table th, #q2-table td {
+             cursor: pointer;
+        }
+        #q2-table th:hover, #q2-table td:hover {
+             background-color: var(--highlight-color);
+         }
+        
+        #q3-container {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            gap: 1rem;
+        }
+
+        .q3-box {
+            width: 48%;
+            min-height: 220px;
+            padding: 1rem;
+            border: 2px dashed var(--highlight-color);
+            border-radius: var(--border-radius);
+            background: rgba(0,0,0,0.2);
+            transition: border-color 0.3s, background-color 0.3s;
+        }
+
+        .q3-item {
+            background: var(--secondary-color);
+            color: #fff;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: 8px;
+            cursor: grab;
+            transition: background-color 0.2s, opacity 0.2s;
+        }
+        
+        .q3-item.dragging {
+            opacity: 0.5;
+            background: var(--highlight-color);
+        }
+
+        .drag-over {
+            border-style: solid;
+            background-color: rgba(74, 111, 165, 0.2);
+            border-color: var(--success-color);
+        }
+
+        #q4-input {
+            width: 100%;
+            padding: 1rem;
+            background: var(--secondary-color);
+            border: 1px solid var(--highlight-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 1rem;
+            margin-top: 1rem;
+            transition: box-shadow 0.3s;
+        }
+
+        #q4-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px var(--highlight-color);
+        }
+
+        /* Final Score Styles */
+        .score-circle {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: conic-gradient(var(--success-color) 0deg, var(--secondary-color) 0deg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            transition: background 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 0 0 20px rgba(46, 204, 113, 0.3);
+        }
+        .score-text {
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation: none !important;
+            transition: none !important;
+            scroll-behavior: auto !important;
+          }
+        }
+        
+        #particle-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="simulation-container">
+        <canvas id="particle-canvas"></canvas>
+        <header class="header">
+            <h1>Third Normal Form (3NF) Explained</h1>
+        </header>
+
+        <main>
+            <!-- Step 1: Introduction -->
+            <div id="step-1" class="step active">
+                <h2>Welcome! Let's Learn About 3NF</h2>
+                <p>This simulation will guide you through converting a database table to Third Normal Form (3NF).</p>
+                <h3>Instructions:</h3>
+                <ul>
+                    <li>Use the 'Next' and 'Previous' buttons to navigate.</li>
+                    <li>You can also use the Left (←) and Right (→) arrow keys.</li>
+                    <li>Click on interactive elements when prompted to learn more.</li>
+                </ul>
+                <p>A table is in 3NF if it is in <strong>2NF</strong> and contains no <strong>transitive dependencies</strong>.</p>
+                <p>A transitive dependency is when a non-key attribute depends on another non-key attribute, not on the primary key. Let's explore this with an example.</p>
+            </div>
+
+            <!-- Step 2: The Problem Table -->
+            <div id="step-2" class="step">
+                <h2>The Problem: A Non-3NF Table</h2>
+                <p>Below is a table of customer orders. It is in 2NF, but a hidden issue violates 3NF.</p>
+                <div class="table-container" id="step2-table-container">
+                    <div class="table-wrapper">
+                        <p class="table-title">Customer_Orders Table</p>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th class="pk"><span class="pk-underline">OrderID</span></th>
+                                    <th>CustomerID</th>
+                                    <th>CustomerName</th>
+                                    <th class="transitive-dependency" id="manager-header">ManagerName</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td class="pk">101</td><td>C1</td><td>BookEnds Ltd</td><td class="transitive-dependency" id="manager-cell-1">John Smith</td></tr>
+                                <tr><td class="pk">102</td><td>C2</td><td>The Paperback</td><td class="transitive-dependency" id="manager-cell-2">Jane Doe</td></tr>
+                                <tr><td class="pk">103</td><td>C1</td><td>BookEnds Ltd</td><td class="transitive-dependency" id="manager-cell-3">John Smith</td></tr>
+                                <tr><td class="pk">104</td><td>C3</td><td>Readers Corner</td><td class="transitive-dependency" id="manager-cell-4">Peter Jones</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <p><strong>Task:</strong> Click on the 'ManagerName' column to identify the problem.</p>
+            </div>
+
+            <!-- Step 3: Identifying the Transitive Dependency -->
+            <div id="step-3" class="step">
+                <h2>Identifying the Transitive Dependency</h2>
+                <p>The problem is a <strong>transitive dependency</strong>, which can lead to data anomalies.</p>
+                <div class="table-container" id="step3-table-container">
+                    <div class="table-wrapper">
+                         <p class="table-title">Customer_Orders Table</p>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th class="pk"><span class="pk-underline">OrderID</span></th>
+                                    <th class="highlight-non-key">CustomerID</th>
+                                    <th class="highlight-non-key">CustomerName</th>
+                                    <th class="highlight-transitive">ManagerName</th>
+                                </tr>
+                            </thead>
+                           <tbody>
+                                <tr><td class="pk">101</td><td class="highlight-non-key">C1</td><td class="highlight-non-key">BookEnds Ltd</td><td class="highlight-transitive">John Smith</td></tr>
+                                <tr><td class="pk">102</td><td class="highlight-non-key">C2</td><td class="highlight-non-key">The Paperback</td><td class="highlight-transitive">Jane Doe</td></tr>
+                                <tr><td class="pk">103</td><td class="highlight-non-key">C1</td><td class="highlight-non-key">BookEnds Ltd</td><td class="highlight-transitive">John Smith</td></tr>
+                                <tr><td class="pk">104</td><td class="highlight-non-key">C3</td><td class="highlight-non-key">Readers Corner</td><td class="highlight-transitive">Peter Jones</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <p>The dependency path is: <strong>OrderID → CustomerID → ManagerName</strong>. <br> Since <strong>ManagerName</strong> depends on a non-key attribute (CustomerID), it's a transitive dependency.</p>
+            </div>
+
+            <!-- Step 4: The Solution -->
+            <div id="step-4" class="step">
+                <h2>The Solution: Decomposing the Table</h2>
+                <p>We fix this by splitting the table, creating a new one for the attributes in the transitive dependency.</p>
+                <div class="table-container" id="step4-table-container">
+                    <div class="table-wrapper" id="anim-start-table">
+                         <p class="table-title">Customer_Orders Table</p>
+                        <table>
+                           <thead><tr><th class="pk"><span class="pk-underline">OrderID</span></th><th>CustomerID</th><th>CustomerName</th><th>ManagerName</th></tr></thead>
+                           <tbody>
+                               <tr><td class="pk">101</td><td>C1</td><td>BookEnds Ltd</td><td>John Smith</td></tr>
+                               <tr><td class="pk">102</td><td>C2</td><td>The Paperback</td><td>Jane Doe</td></tr>
+                               <tr><td class="pk">103</td><td>C1</td><td>BookEnds Ltd</td><td>John Smith</td></tr>
+                               <tr><td class="pk">104</td><td>C3</td><td>Readers Corner</td><td>Peter Jones</td></tr>
+                           </tbody>
+                        </table>
+                    </div>
+                    <div class="arrow-connector" id="anim-arrow">→</div>
+                    <div class="table-wrapper" id="anim-end-table-1" style="opacity: 0; transform: translateX(-100%)">
+                         <p class="table-title">Orders Table (3NF)</p>
+                        <table>
+                           <thead><tr><th class="pk"><span class="pk-underline">OrderID</span></th><th>CustomerID</th></tr></thead>
+                           <tbody>
+                               <tr><td class="pk">101</td><td>C1</td></tr>
+                               <tr><td class="pk">102</td><td>C2</td></tr>
+                               <tr><td class="pk">103</td><td>C1</td></tr>
+                               <tr><td class="pk">104</td><td>C3</td></tr>
+                           </tbody>
+                        </table>
+                    </div>
+                     <div class="table-wrapper" id="anim-end-table-2" style="opacity: 0; transform: translateX(100%)">
+                         <p class="table-title">Customers Table (3NF)</p>
+                        <table>
+                           <thead><tr><th class="pk"><span class="pk-underline">CustomerID</span></th><th>CustomerName</th><th>ManagerName</th></tr></thead>
+                           <tbody>
+                               <tr><td class="pk">C1</td><td>BookEnds Ltd</td><td>John Smith</td></tr>
+                               <tr><td class="pk">C2</td><td>The Paperback</td><td>Jane Doe</td></tr>
+                               <tr><td class="pk">C3</td><td>Readers Corner</td><td>Peter Jones</td></tr>
+                           </tbody>
+                        </table>
+                    </div>
+                </div>
+                <button id="animate-btn" class="quiz-btn">Animate Decomposition</button>
+            </div>
+
+            <!-- Step 5: The Result -->
+            <div id="step-5" class="step">
+                <h2>The Result: Tables in 3NF</h2>
+                <p>After decomposition, we have two tables where all attributes depend only on their respective primary keys.</p>
+                <div class="table-container">
+                     <div class="table-wrapper">
+                         <p class="table-title">Orders Table</p>
+                         <table>
+                           <thead><tr><th class="pk"><span class="pk-underline">OrderID</span></th><th>CustomerID</th></tr></thead>
+                           <tbody>
+                               <tr><td class="pk">101</td><td>C1</td></tr>
+                               <tr><td class="pk">102</td><td>C2</td></tr>
+                               <tr><td class="pk">103</td><td>C1</td></tr>
+                               <tr><td class="pk">104</td><td>C3</td></tr>
+                           </tbody>
+                         </table>
+                     </div>
+                      <div class="table-wrapper">
+                         <p class="table-title">Customers Table</p>
+                         <table>
+                           <thead><tr><th class="pk"><span class="pk-underline">CustomerID</span></th><th>CustomerName</th><th>ManagerName</th></tr></thead>
+                           <tbody>
+                               <tr><td class="pk">C1</td><td>BookEnds Ltd</td><td>John Smith</td></tr>
+                               <tr><td class="pk">C2</td><td>The Paperback</td><td>Jane Doe</td></tr>
+                               <tr><td class="pk">C3</td><td>Readers Corner</td><td>Peter Jones</td></tr>
+                           </tbody>
+                         </table>
+                      </div>
+                </div>
+                <p>The transitive dependency is removed, preventing data anomalies and achieving 3NF.</p>
+            </div>
+            
+            <!-- Step 6: Quiz -->
+            <div id="step-6" class="step">
+                <h2>Quiz Time!</h2>
+                <p>Let's test your understanding of Third Normal Form.</p>
+                <div class="quiz-container">
+                    <!-- Question 1 -->
+                    <div id="q1" class="question">
+                        <h3>Question 1: What is the primary condition for a table to be in 3NF?</h3>
+                        <div class="options" id="q1-options">
+                            <div class="option" data-answer="a">A) It must have a composite primary key.</div>
+                            <div class="option" data-answer="b">B) All data must be of the same type.</div>
+                            <div class="option" data-answer="c">C) It must be in 2NF and have no transitive dependencies.</div>
+                            <div class="option" data-answer="d">D) It must contain at least three columns.</div>
+                        </div>
+                        <div id="q1-feedback" class="feedback"></div>
+                    </div>
+                    
+                     <!-- Question 2 -->
+                    <div id="q2" class="question" style="display:none;">
+                        <h3>Question 2: In the following 'EmployeeProject' table, which column head represents the transitively dependent attribute? Click on it.</h3>
+                        <div class="table-wrapper">
+                            <table id="q2-table">
+                                <thead><tr><th class="pk" data-col="EmployeeID"><span class="pk-underline">EmployeeID</span></th><th data-col="ProjectID">ProjectID</th><th data-col="DepartmentID">DepartmentID</th><th data-col="DepartmentHead">DepartmentHead</th></tr></thead>
+                                <tbody>
+                                    <tr><td class="pk" data-col="EmployeeID">E101</td><td data-col="ProjectID">P1</td><td data-col="DepartmentID">D1</td><td data-col="DepartmentHead">S. Jones</td></tr>
+                                    <tr><td class="pk" data-col="EmployeeID">E102</td><td data-col="ProjectID">P2</td><td data-col="DepartmentID">D2</td><td data-col="DepartmentHead">A. Miller</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="q2-feedback" class="feedback"></div>
+                    </div>
+
+                    <!-- Question 3 -->
+                    <div id="q3" class="question" style="display:none;">
+                        <h3>Question 3: Drag the fields to create two 3NF tables from this non-3NF 'Book' table.</h3>
+                         <p class="table-title">Original Table: <span class="pk-underline">BookID</span>, Title, AuthorID, AuthorNationality</p>
+                         <div id="q3-container">
+                            <div class="q3-box" id="q3-source">
+                                <div class="q3-item" draggable="true" data-item="BookID">BookID (PK)</div>
+                                <div class="q3-item" draggable="true" data-item="Title">Title</div>
+                                <div class="q3-item" draggable="true" data-item="AuthorID">AuthorID</div>
+                                <div class="q3-item" draggable="true" data-item="AuthorNationality">AuthorNationality</div>
+                            </div>
+                            <div id="q3-drop-area" style="width: 48%;">
+                               <div class="q3-box" id="q3-target1"><strong>Table 1</strong></div>
+                               <div class="q3-box" id="q3-target2" style="margin-top: 1rem;"><strong>Table 2</strong></div>
+                            </div>
+                         </div>
+                        <button id="q3-submit" class="quiz-btn" style="margin-top: 1rem;">Check Answer</button>
+                        <div id="q3-feedback" class="feedback"></div>
+                    </div>
+                    
+                    <!-- Question 4 -->
+                    <div id="q4" class="question" style="display:none;">
+                         <h3>Question 4: In your own words, explain why `DepartmentHead` caused a transitive dependency in the Question 2 table.</h3>
+                        <input type="text" id="q4-input" placeholder="Explain the dependency path...">
+                         <button id="q4-submit" class="quiz-btn" style="margin-top: 1rem;">Submit Answer</button>
+                        <div id="q4-feedback" class="feedback"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 7: Summary -->
+            <div id="step-7" class="step">
+                <h2>Congratulations!</h2>
+                <p>You've completed the quiz on Third Normal Form.</p>
+                <div class="score-circle" id="score-circle">
+                    <span id="score-text" class="score-text">0/4</span>
+                </div>
+                <h3>Key Takeaways:</h3>
+                <ul>
+                    <li>3NF requires a table to first be in 2NF.</li>
+                    <li>3NF eliminates transitive dependencies.</li>
+                    <li>This is done by decomposing tables to separate the transitive dependencies.</li>
+                    <li>3NF reduces redundancy and prevents data anomalies.</li>
+                </ul>
+                <button id="reset-btn" class="reset-btn">Start Over</button>
+            </div>
+        </main>
+        
+        <div id="transitive-modal" class="modal">
+          <div class="modal-content">
+            <h3>Transitive Dependency Alert!</h3>
+            <p><strong>ManagerName</strong> is determined by <strong>CustomerID</strong>, not the primary key <strong>OrderID</strong>. This is a classic transitive dependency. If the manager for a customer changes, you'd have to update multiple rows, risking data inconsistency. This violates 3NF.</p>
+            <button class="close-btn" id="modal-close-btn">Got it!</button>
+          </div>
+        </div>
+
+        <nav class="navigation">
+            <button id="prev-btn" class="nav-btn" disabled>← Previous</button>
+            <span id="step-indicator" class="step-indicator">Step 1 of 7</span>
+            <button id="next-btn" class="nav-btn">Next →</button>
+        </nav>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Caching ---
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const stepIndicator = document.getElementById('step-indicator');
+        const steps = document.querySelectorAll('.step');
+        const transitiveModal = document.getElementById('transitive-modal');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const managerHeader = document.getElementById('manager-header');
+        const managerCells = [document.getElementById('manager-cell-1'), document.getElementById('manager-cell-2'), document.getElementById('manager-cell-3'), document.getElementById('manager-cell-4')];
+        const animateBtn = document.getElementById('animate-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        
+        // Quiz Elements
+        const q1Options = document.getElementById('q1-options');
+        const q2Table = document.getElementById('q2-table');
+        const q3SubmitBtn = document.getElementById('q3-submit');
+        const q4SubmitBtn = document.getElementById('q4-submit');
+
+        // --- State Variables ---
+        let currentStep = 1;
+        const totalSteps = steps.length;
+        let quizScore = 0;
+        let quizAnswers = { q1: null, q2: null, q3: null, q4: null };
+        let animationPlayed = false;
+        let modalIsOpen = false;
+
+        // --- Particle Animation ---
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+        let particles = [];
+        
+        function createParticle(x, y, color = `rgba(255, 87, 87, ${Math.random()})`) {
+            const size = Math.random() * 4 + 2;
+            const speedX = (Math.random() - 0.5) * 4;
+            const speedY = (Math.random() - 0.5) * 4;
+            const life = Math.random() * 30 + 60;
+            particles.push({ x, y, size, color, speedX, speedY, life, initialLife: life });
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.speedX;
+                p.y += p.speedY;
+                p.life--;
+                
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size * (p.life / p.initialLife), 0, Math.PI * 2);
+                    ctx.fillStyle = p.color.replace(/,\s*\d*\.?\d+\)/, `, ${p.life/p.initialLife * 0.8})`);
+                    ctx.fill();
+                }
+            }
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+        
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                canvas.width = entry.contentRect.width;
+                canvas.height = entry.contentRect.height;
+            }
+        });
+        resizeObserver.observe(document.getElementById('simulation-container'));
+
+
+        // --- Navigation Logic ---
+        const updateStep = (newStep) => {
+            if (modalIsOpen || newStep < 1 || newStep > totalSteps) return;
+
+            currentStep = newStep;
+
+            steps.forEach(step => step.classList.remove('active'));
+            const activeStep = document.getElementById(`step-${currentStep}`);
+            activeStep.classList.add('active');
+            activeStep.scrollTop = 0; // Reset scroll for long content
+
+            stepIndicator.textContent = `Step ${currentStep} of ${totalSteps}`;
+            prevBtn.disabled = currentStep === 1;
+            nextBtn.disabled = currentStep === totalSteps;
+            
+            // Disable 'Next' on animation step if not played
+            if (currentStep === 4 && !animationPlayed) {
+                 nextBtn.disabled = true;
+            } 
+            // Disable 'Next' on quiz step if not completed
+            else if (currentStep === 6 && Object.values(quizAnswers).some(a => a === null)) {
+                nextBtn.disabled = true;
+            }
+
+            if (currentStep === totalSteps) {
+                updateFinalScore();
+            }
+        };
+        
+        // --- Event Handlers ---
+        const handleNext = () => updateStep(currentStep + 1);
+        const handlePrev = () => updateStep(currentStep - 1);
+        
+        nextBtn.addEventListener('click', handleNext);
+        prevBtn.addEventListener('click', handlePrev);
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || modalIsOpen) return;
+            if (e.key === 'ArrowRight' && !nextBtn.disabled) nextBtn.click();
+            if (e.key === 'ArrowLeft' && !prevBtn.disabled) prevBtn.click();
+        });
+
+        // Modal Logic
+        const showModal = () => {
+            if (modalIsOpen) return;
+            modalIsOpen = true;
+            transitiveModal.style.display = 'flex';
+        };
+
+        const closeModal = () => {
+            modalIsOpen = false;
+            transitiveModal.style.display = 'none';
+        };
+        managerHeader.addEventListener('click', showModal);
+        managerCells.forEach(cell => cell.addEventListener('click', showModal));
+        modalCloseBtn.addEventListener('click', closeModal);
+
+        // Animation Logic
+        animateBtn.addEventListener('click', () => {
+            if (animationPlayed) return;
+            animationPlayed = true;
+            
+            const startTable = document.getElementById('anim-start-table');
+            const endTable1 = document.getElementById('anim-end-table-1');
+            const endTable2 = document.getElementById('anim-end-table-2');
+            const arrow = document.getElementById('anim-arrow');
+            
+            startTable.style.opacity = '0';
+            startTable.style.transform = 'scale(0.8)';
+            
+            setTimeout(() => {
+                startTable.style.display = 'none';
+                arrow.style.opacity = '1';
+                endTable1.style.opacity = '1';
+                endTable1.style.transform = 'translateX(0)';
+                endTable2.style.opacity = '1';
+                endTable2.style.transform = 'translateX(0)';
+                
+                const containerRect = document.getElementById('step4-table-container').getBoundingClientRect();
+                const simRect = document.getElementById('simulation-container').getBoundingClientRect();
+                 for (let i = 0; i < 50; i++) {
+                    createParticle(containerRect.left - simRect.left + containerRect.width / 2, containerRect.top - simRect.top + containerRect.height / 2);
+                 }
+
+            }, 600);
+
+            animateBtn.style.display = 'none';
+            nextBtn.disabled = false;
+        });
+
+        // --- Quiz Logic ---
+        const showNextQuestion = (currentQId, nextQId) => {
+             setTimeout(() => {
+                document.getElementById(currentQId).style.display = 'none';
+                if (nextQId) {
+                    document.getElementById(nextQId).style.display = 'block';
+                } else {
+                    nextBtn.disabled = false;
+                    nextBtn.textContent = "See Results →";
+                }
+             }, 1500);
+        };
+        
+        const markAnswer = (isCorrect) => {
+            if(isCorrect) {
+                 quizScore++;
+                 const rect = document.querySelector('.step.active').getBoundingClientRect();
+                 const simRect = document.getElementById('simulation-container').getBoundingClientRect();
+                 for (let i=0; i < 20; i++) {
+                    createParticle(rect.width/2, rect.top - simRect.top + 30, `rgba(39, 174, 96, ${Math.random()})`);
+                 }
+            }
+        }
+
+        // Q1: Multiple Choice (Event Delegation)
+        q1Options.addEventListener('click', (e) => {
+            if (quizAnswers.q1 !== null) return;
+            const selectedOption = e.target.closest('.option');
+            if (!selectedOption) return;
+            
+            quizAnswers.q1 = selectedOption.dataset.answer === 'c';
+            const feedbackEl = document.getElementById('q1-feedback');
+            
+            Array.from(q1Options.children).forEach(opt => opt.classList.remove('selected'));
+            selectedOption.classList.add('selected');
+
+            feedbackEl.textContent = quizAnswers.q1 ? 'Correct! 3NF builds on 2NF and specifically removes transitive dependencies.' : 'Incorrect. The key rule for 3NF is the elimination of transitive dependencies, after ensuring the table is in 2NF.';
+            feedbackEl.className = `feedback ${quizAnswers.q1 ? 'correct' : 'incorrect'}`;
+            feedbackEl.style.display = 'block';
+            markAnswer(quizAnswers.q1);
+            showNextQuestion('q1', 'q2');
+        });
+        
+        // Q2: Click identification (Event Delegation)
+        q2Table.addEventListener('click', (e) => {
+            if(quizAnswers.q2 !== null) return;
+            const selectedCell = e.target.closest('th'); // only check headers
+            if (!selectedCell) return;
+            
+            quizAnswers.q2 = selectedCell.dataset.col === 'DepartmentHead';
+            const feedbackEl = document.getElementById('q2-feedback');
+            
+            feedbackEl.textContent = quizAnswers.q2 ? "Correct! DepartmentHead depends on DepartmentID, which is a non-key attribute." : "Not quite. Look for the attribute that depends on another non-key attribute, not the primary key.";
+            feedbackEl.className = `feedback ${quizAnswers.q2 ? 'correct' : 'incorrect'}`;
+            feedbackEl.style.display = 'block';
+            markAnswer(quizAnswers.q2);
+            showNextQuestion('q2', 'q3');
+        });
+        
+        // Q3: Drag and Drop
+        let draggedItem = null;
+        document.getElementById('q3-source').addEventListener('dragstart', e => {
+            if(e.target.classList.contains('q3-item')) {
+                 draggedItem = e.target;
+                 setTimeout(() => e.target.classList.add('dragging'), 0);
+            }
+        });
+        document.addEventListener('dragend', e => {
+            if(draggedItem) {
+                draggedItem.classList.remove('dragging');
+                draggedItem = null;
+            }
+        });
+        
+        ['q3-source', 'q3-target1', 'q3-target2'].forEach(id => {
+            const box = document.getElementById(id);
+            box.addEventListener('dragover', e => { e.preventDefault(); box.classList.add('drag-over'); });
+            box.addEventListener('dragleave', e => { box.classList.remove('drag-over'); });
+            box.addEventListener('drop', e => {
+                e.preventDefault();
+                if (draggedItem && (e.target.classList.contains('q3-box') || e.target.closest('.q3-box'))) {
+                    e.target.closest('.q3-box').appendChild(draggedItem);
+                }
+                box.classList.remove('drag-over');
+            });
+        });
+
+        q3SubmitBtn.addEventListener('click', () => {
+             if(quizAnswers.q3 !== null) return;
+             
+             const table1Items = new Set(Array.from(document.getElementById('q3-target1').children).map(el => el.dataset.item));
+             const table2Items = new Set(Array.from(document.getElementById('q3-target2').children).map(el => el.dataset.item));
+             const correct1 = new Set(['BookID', 'Title', 'AuthorID']);
+             const correct2 = new Set(['AuthorID', 'AuthorNationality']);
+             
+             const isSol1Correct = (table1Items.size === correct1.size && [...table1Items].every(i => correct1.has(i))) && (table2Items.size === correct2.size && [...table2Items].every(i => correct2.has(i)));
+             const isSol2Correct = (table1Items.size === correct2.size && [...table1Items].every(i => correct2.has(i))) && (table2Items.size === correct1.size && [...table2Items].every(i => correct1.has(i)));
+             
+             quizAnswers.q3 = isSol1Correct || isSol2Correct;
+             const feedbackEl = document.getElementById('q3-feedback');
+             feedbackEl.textContent = quizAnswers.q3 ? 'Correct! You have successfully decomposed the table into 3NF.' : 'Incorrect. Remember to separate the transitive dependency into its own table.';
+             feedbackEl.className = `feedback ${quizAnswers.q3 ? 'correct' : 'incorrect'}`;
+             feedbackEl.style.display = 'block';
+             markAnswer(quizAnswers.q3);
+             showNextQuestion('q3', 'q4');
+        });
+
+        // Q4: Short Answer
+        q4SubmitBtn.addEventListener('click', () => {
+            if(quizAnswers.q4 !== null) return;
+            const answer = document.getElementById('q4-input').value.toLowerCase();
+            const feedbackEl = document.getElementById('q4-feedback');
+            
+            if (answer.length < 20) {
+                feedbackEl.textContent = 'Please provide a more detailed explanation.';
+                feedbackEl.className = 'feedback incorrect';
+                feedbackEl.style.display = 'block';
+                return;
+            }
+            
+            const keywords = ['departmentid', 'non-key', 'non key', 'primary key', 'employeeid'];
+            quizAnswers.q4 = keywords.every(kw => answer.includes(kw));
+            
+            feedbackEl.textContent = quizAnswers.q4 ? 'Excellent explanation! You correctly identified that DepartmentHead depends on DepartmentID (a non-key attribute) rather than the primary key.' : 'Your answer is missing some key concepts. A good answer mentions that DepartmentHead depends on the non-key attribute DepartmentID.';
+            feedbackEl.className = `feedback ${quizAnswers.q4 ? 'correct' : 'incorrect'}`;
+            feedbackEl.style.display = 'block';
+            markAnswer(quizAnswers.q4);
+            showNextQuestion('q4', null);
+        });
+        
+        // --- Final Score & Reset ---
+        const updateFinalScore = () => {
+            const scoreText = document.getElementById('score-text');
+            const scoreCircle = document.getElementById('score-circle');
+            scoreText.textContent = `${quizScore}/4`;
+            scoreCircle.style.background = `conic-gradient(var(--success-color) ${ (quizScore / 4) * 360 }deg, var(--secondary-color) 0deg)`;
+        };
+
+        const resetSimulation = () => {
+            // Reset state variables
+            quizScore = 0;
+            quizAnswers = { q1: null, q2: null, q3: null, q4: null };
+            animationPlayed = false;
+            
+            // Reset UI
+            // Reset quiz question visibility and feedback
+            ['q1', 'q2', 'q3', 'q4'].forEach((q, index) => {
+                const qEl = document.getElementById(q);
+                qEl.style.display = index === 0 ? 'block' : 'none';
+                document.getElementById(`${q}-feedback`).style.display = 'none';
+            });
+            
+            Array.from(q1Options.children).forEach(opt => opt.classList.remove('selected'));
+            document.getElementById('q4-input').value = '';
+            
+            // Reset drag and drop
+            const sourceBox = document.getElementById('q3-source');
+            document.querySelectorAll('.q3-item').forEach(item => sourceBox.appendChild(item));
+            
+            // Reset animation
+            const startTable = document.getElementById('anim-start-table');
+            startTable.style.display = 'block';
+            startTable.style.opacity = '1';
+            startTable.style.transform = 'none';
+            document.getElementById('anim-end-table-1').style.opacity = '0';
+            document.getElementById('anim-end-table-1').style.transform = 'translateX(-100%)';
+            document.getElementById('anim-end-table-2').style.opacity = '0';
+            document.getElementById('anim-end-table-2').style.transform = 'translateX(100%)';
+            document.getElementById('anim-arrow').style.opacity = '0';
+            animateBtn.style.display = 'inline-block';
+            
+            nextBtn.textContent = 'Next →';
+            
+            // Go to first step
+            updateStep(1);
+        };
+
+        resetBtn.addEventListener('click', resetSimulation);
+
+        // Add ripple effect to all buttons
+        document.querySelectorAll('.nav-btn, .quiz-btn, .reset-btn, .close-btn').forEach(button => {
+            button.addEventListener('click', function (e) {
+                const rect = button.getBoundingClientRect();
+                const ripple = document.createElement('span');
+                ripple.className = 'ripple';
+                ripple.style.left = `${e.clientX - rect.left}px`;
+                ripple.style.top = `${e.clientY - rect.top}px`;
+                this.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 600);
+            });
+        });
+        
+        // --- Initialisation ---
+        updateStep(1);
+    });
+
+    </script>
+</body>
+</html>

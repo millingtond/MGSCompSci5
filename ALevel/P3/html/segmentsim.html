@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Segmentation Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #111827;
+            --primary-color: #3b82f6;
+            --secondary-color: #1f2937;
+            --text-color: #f3f4f6;
+            --accent-color: #818cf8;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism Effect */
+        .glassmorphism {
+            background: rgba(31, 41, 55, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+        }
+        
+        /* Animated Gradient Background */
+        .animated-gradient {
+            background: linear-gradient(-45deg, #1e3a8a, #3b82f6, #60a5fa, #1d4ed8);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Transitions and Animations */
+        .transition-all { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .step-content { will-change: transform, opacity; }
+        .segment, .memory-block { will-change: transform, opacity, background-color; }
+        .address-part, .table-lookup { will-change: transform; transform: translateZ(0); }
+
+        /* Custom Button Styles */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Ripple Effect */
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.7);
+            transform: scale(0);
+            animation: ripple 600ms linear;
+            pointer-events: none;
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* Modal Styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 40;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            width: 90%;
+            max-width: 500px;
+        }
+
+        /* Quiz Styles */
+        .quiz-option {
+            border: 2px solid var(--secondary-color);
+        }
+        .quiz-option.selected {
+            border-color: var(--primary-color);
+            background-color: rgba(59, 130, 246, 0.2);
+        }
+        .quiz-option.correct {
+            border-color: var(--success-color);
+            background-color: rgba(34, 197, 94, 0.2);
+        }
+        .quiz-option.incorrect {
+            border-color: var(--error-color);
+            background-color: rgba(239, 68, 68, 0.2);
+        }
+
+        /* Hide inactive sections */
+        .hidden-section {
+            display: none;
+        }
+
+        .explainer-btn {
+            display: inline-block;
+            width: 1.25rem;
+            height: 1.25rem;
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+            border-radius: 50%;
+            text-align: center;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 0.5rem;
+            line-height: 1.25rem;
+            font-style: italic;
+        }
+        
+        /* Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            .transition-all, .btn, .animated-gradient {
+                transition: none;
+                animation: none;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="simulation-container" class="min-h-screen flex flex-col items-center justify-center p-4">
+        <header class="w-full max-w-6xl mb-8 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold animated-gradient text-transparent bg-clip-text">Memory Segmentation: An Interactive Guide</h1>
+            <p class="text-lg text-gray-400 mt-2">A-Level Computer Science (Cambridge 9618)</p>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="w-full max-w-6xl glassmorphism p-4 sm:p-8 shadow-2xl">
+            
+            <!-- Simulation Section -->
+            <div id="simulation-section">
+                <div id="step-container" class="relative min-h-[550px]">
+                    <!-- All steps will be injected here by JavaScript -->
+                </div>
+                <div id="navigation" class="flex justify-between items-center mt-8">
+                    <button id="prev-btn" class="btn btn-primary">Previous Step</button>
+                    <span id="step-indicator" class="text-gray-400 font-semibold">Step 1 / 5</span>
+                    <button id="next-btn" class="btn btn-primary">Next Step</button>
+                </div>
+            </div>
+
+            <!-- Quiz Section -->
+            <div id="quiz-section" class="hidden-section">
+                 <!-- Quiz content will be injected here -->
+            </div>
+            
+             <!-- Results Section -->
+            <div id="results-section" class="hidden-section text-center">
+                <h2 class="text-3xl font-bold text-white mb-4">Quiz Complete!</h2>
+                <p id="results-summary" class="text-xl text-gray-300 mb-6">You scored 3 out of 5.</p>
+                <div id="results-details" class="text-left max-w-2xl mx-auto space-y-4"></div>
+                <button id="reset-btn" class="btn btn-primary mt-8">Restart Simulation</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Explanations and Feedback -->
+    <div id="info-modal" class="modal-backdrop hidden-section">
+        <div class="modal-content glassmorphism p-8 shadow-lg">
+            <h3 id="modal-title" class="text-2xl font-bold text-white mb-4"></h3>
+            <p id="modal-text" class="text-gray-300"></p>
+            <button id="modal-close-btn" class="btn btn-primary mt-6 w-full">Got it!</button>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element Caching ---
+            const stepContainer = document.getElementById('step-container');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const stepIndicator = document.getElementById('step-indicator');
+            const simulationSection = document.getElementById('simulation-section');
+            const quizSection = document.getElementById('quiz-section');
+            const resultsSection = document.getElementById('results-section');
+            const mainContent = document.getElementById('main-content');
+            
+            const infoModal = document.getElementById('info-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalText = document.getElementById('modal-text');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+            const resetBtn = document.getElementById('reset-btn');
+
+            // --- State Management ---
+            let currentStep = 0;
+            let translationSubStep = 0;
+            let currentQuizQuestion = 0;
+            let isModalOpen = false;
+            let userAnswers = [];
+            const TOTAL_STEPS = 5;
+
+            const segmentsData = [
+                { name: 'Code', size: 140, color: 'bg-blue-500' },
+                { name: 'Data', size: 100, color: 'bg-green-500' },
+                { name: 'Stack', size: 120, color: 'bg-purple-500' },
+                { name: 'Heap', size: 80, color: 'bg-yellow-500' }
+            ];
+
+            const physicalMemoryLayout = [
+                { base: 0, size: 150, segmentIndex: 0 },
+                { base: 250, size: 110, segmentIndex: 1 },
+                { base: 400, size: 90, segmentIndex: 3 },
+                { base: 500, size: 130, segmentIndex: 2 }
+            ];
+
+            const segmentTable = physicalMemoryLayout.map((mem, i) => {
+                const segData = segmentsData[mem.segmentIndex];
+                return {
+                    base: mem.base,
+                    limit: segData.size,
+                    name: segData.name
+                };
+            });
+            
+            // --- Simulation Steps Content ---
+            const steps = [
+                // Step 1: Introduction to Logical Address Space
+                {
+                    title: 'The Logical Address Space',
+                    description: 'The CPU generates a logical (or virtual) address. This address exists in a logical address space, which is a continuous block of memory from the program\'s perspective. This space is broken into variable-sized blocks called <strong>segments</strong>.',
+                    setup: () => {
+                        let content = `<div id="step-1-content" class="step-content opacity-0 transform translate-y-4 transition-all duration-500">
+                            <h3 class="text-2xl font-bold text-center mb-6">${steps[0].title}</h3>
+                            <p class="text-center text-gray-300 mb-8">${steps[0].description}</p>
+                            <div class="flex flex-col md:flex-row justify-center items-start space-y-8 md:space-y-0 md:space-x-8">
+                                <div class="w-full md:w-1/2">
+                                    <h4 class="text-lg font-semibold text-center mb-2">Logical Address Space</h4>
+                                    <div id="logical-space" class="relative h-96 bg-gray-700 rounded-lg p-2 border-2 border-gray-600 flex flex-col space-y-2">
+                                        ${segmentsData.map((seg, i) => `
+                                            <div id="logical-segment-${i}" class="segment ${seg.color} text-white font-bold p-2 rounded text-center transition-all duration-500" style="height: ${seg.size / 4.5}%;">
+                                                ${seg.name} (Size: ${seg.size} KB)
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                <div class="w-full md:w-1/2 pt-0 md:pt-16">
+                                    <p class="text-gray-400">Each segment represents a logical part of a program, like code, data, or a stack. They have a name and a size, but the program is unaware of their actual physical location in RAM.</p>
+                                </div>
+                            </div>
+                        </div>`;
+                        stepContainer.innerHTML = content;
+                        requestAnimationFrame(() => {
+                            document.getElementById('step-1-content').classList.remove('opacity-0', 'translate-y-4');
+                        });
+                    }
+                },
+                // Step 2: Physical Memory
+                {
+                    title: 'Physical Memory (RAM)',
+                    description: 'For a program to run, its segments must be loaded into physical memory (RAM). Crucially, these segments <strong>do not need to be contiguous</strong> in physical memory. The operating system finds available partitions to store them.',
+                    setup: () => {
+                        let content = `<div id="step-2-content" class="step-content opacity-0 transform translate-y-4 transition-all duration-500">
+                            <h3 class="text-2xl font-bold text-center mb-6">${steps[1].title}</h3>
+                            <p class="text-center text-gray-300 mb-8">${steps[1].description}</p>
+                            <div class="flex flex-col md:flex-row justify-around items-start space-y-8 md:space-y-0">
+                                <!-- Logical Space (for context) -->
+                                <div class="w-full md:w-1/3">
+                                    <h4 class="text-lg font-semibold text-center mb-2">Logical Address Space</h4>
+                                    <div class="relative h-96 bg-gray-700 rounded-lg p-2 border-2 border-gray-600 flex flex-col space-y-2">
+                                        ${segmentsData.map((seg, i) => `
+                                            <div class="segment ${seg.color} text-white font-bold p-2 rounded text-center" style="height: ${seg.size / 4.5}%;">${seg.name}</div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                <!-- Physical Memory -->
+                                <div class="w-full md:w-1/2">
+                                    <h4 class="text-lg font-semibold text-center mb-2">Physical Memory (RAM)</h4>
+                                    <div id="physical-memory" class="relative h-96 bg-gray-800 rounded-lg p-2 border-2 border-dashed border-gray-500">
+                                        <!-- Blocks will be added here -->
+                                        <div class="absolute top-0 left-0 text-xs text-gray-500">- 0 KB</div>
+                                        <div class="absolute bottom-0 left-0 text-xs text-gray-500">- 650 KB</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                        stepContainer.innerHTML = content;
+                        requestAnimationFrame(() => {
+                            document.getElementById('step-2-content').classList.remove('opacity-0', 'translate-y-4');
+                            setTimeout(() => loadSegmentsIntoMemory(), 500);
+                        });
+                    }
+                },
+                // Step 3: The Segment Map Table
+                {
+                    title: 'The Segment Map Table (SMT)',
+                    description: 'The OS uses a <strong>Segment Map Table</strong> to translate logical addresses. A logical address has two parts: a <strong>segment number</strong> (which segment to use) and an <strong>offset</strong> (the position inside that segment).',
+                    setup: () => {
+                        const segmentNameToIndex = {};
+                        segmentTable.forEach((entry, i) => {
+                            segmentNameToIndex[entry.name] = i;
+                        });
+                        
+                        let content = `<div id="step-3-content" class="step-content opacity-0 transform translate-y-4 transition-all duration-500">
+                            <h3 class="text-2xl font-bold text-center mb-6">${steps[2].title}</h3>
+                            <p class="text-center text-gray-300 mb-8">${steps[2].description}</p>
+                            <div class="flex flex-col md:flex-row justify-center items-center space-y-8 md:space-y-0 md:space-x-8">
+                                <div class="w-full md:w-1/2">
+                                    <h4 class="text-lg font-semibold text-center mb-2">Logical Address</h4>
+                                    <div class="flex justify-center space-x-2 p-4 bg-gray-700 rounded-lg">
+                                        <div class="address-part bg-blue-600 p-4 rounded text-center">
+                                            <div class="font-bold">Segment Number</div>
+                                            <div class="text-2xl">${segmentNameToIndex['Code']}</div>
+                                        </div>
+                                        <div class="address-part bg-green-600 p-4 rounded text-center">
+                                            <div class="font-bold flex items-center">
+                                                Offset
+                                                <span id="offset-explainer-btn" class="explainer-btn">?</span>
+                                            </div>
+                                            <div class="text-2xl">74</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="w-full md:w-1/2">
+                                    <h4 class="text-lg font-semibold text-center mb-2">Segment Map Table</h4>
+                                    <table id="segment-table" class="w-full text-center bg-gray-800 rounded-lg overflow-hidden">
+                                        <thead class="bg-gray-900">
+                                            <tr><th class="p-3">Segment #</th><th class="p-3">Base Address</th><th class="p-3">Limit (Size)</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            ${segmentTable.map((entry, i) => `
+                                                <tr id="table-row-${i}" class="border-b border-gray-700">
+                                                    <td class="p-3">${i} (${entry.name})</td><td class="p-3">${entry.base}</td><td class="p-3">${entry.limit}</td>
+                                                </tr>`).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>`;
+                        stepContainer.innerHTML = content;
+                        requestAnimationFrame(() => {
+                            const stepContent = document.getElementById('step-3-content');
+                            stepContent.classList.remove('opacity-0', 'translate-y-4');
+                            
+                            document.getElementById('offset-explainer-btn').addEventListener('click', () => {
+                                showInfo('What is an Offset?', "Think of a segment as a <strong>drawer in a filing cabinet</strong>. The <strong>offset</strong> tells you <em>how far into that drawer to reach</em> to find a specific file. It's a position relative to the start of its own segment. For example, an offset of 74 means '74 memory units from the beginning of this segment'.");
+                            });
+
+                            setTimeout(() => {
+                                if (currentStep === 2) {
+                                    showInfo('Segment Map Table', 'The SMT stores the <strong>Base Address</strong> (the starting physical address of the segment) and the <strong>Limit</strong> (the length of the segment). This table is crucial for address translation.');
+                                }
+                            }, 500);
+                        });
+                    }
+                },
+                // Step 4: Address Translation Process (INTERACTIVE)
+                {
+                    title: 'Address Translation in Action',
+                    description: 'Let\'s translate the logical address <strong>(Segment Stack, Offset 50)</strong> to a physical address. Click the button to step through the process.',
+                    setup: () => {
+                        translationSubStep = 0; // Reset sub-step
+                        const segmentNameToIndex = {};
+                        segmentTable.forEach((entry, i) => {
+                            segmentNameToIndex[entry.name] = i;
+                        });
+                        const segmentNum = segmentNameToIndex['Stack'];
+                        const offset = 50;
+                        const entry = segmentTable[segmentNum];
+                        const physicalAddress = entry.base + offset;
+
+                        let content = `<div id="step-4-content" class="step-content opacity-0 transform translate-y-4 transition-all duration-500">
+                            <h3 class="text-2xl font-bold text-center mb-6">${steps[3].title}</h3>
+                            <p class="text-center text-gray-300 mb-8">${steps[3].description}</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                                <!-- Left side: Tables and Calculation -->
+                                <div class="space-y-6">
+                                    <div>
+                                        <h4 class="text-lg font-semibold mb-2">1. Logical Address</h4>
+                                        <div class="flex justify-center space-x-2 p-4 bg-gray-700 rounded-lg">
+                                            <div id="addr-seg" class="address-part bg-purple-600 p-4 rounded text-center transition-all duration-500">
+                                                <div class="font-bold">Segment Number</div><div class="text-2xl">${segmentNum} (Stack)</div>
+                                            </div>
+                                            <div id="addr-off" class="address-part bg-yellow-500 p-4 rounded text-center">
+                                                <div class="font-bold">Offset</div><div class="text-2xl">${offset}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-semibold mb-2">2. Look up in Segment Table</h4>
+                                        <table id="segment-table-2" class="w-full text-center bg-gray-800 rounded-lg">
+                                             <thead class="bg-gray-900"><tr><th class="p-2">Seg #</th><th class="p-2">Base</th><th class="p-2">Limit</th></tr></thead>
+                                             <tbody>
+                                                ${segmentTable.map((e, i) => `<tr id="table-row-2-${i}" class="border-b border-gray-700 transition-all duration-300"><td class="p-2">${i} (${e.name})</td><td class="p-2">${e.base}</td><td class="p-2">${e.limit}</td></tr>`).join('')}
+                                             </tbody>
+                                        </table>
+                                    </div>
+                                    <div id="calculation" class="opacity-0 transition-opacity duration-500">
+                                        <h4 class="text-lg font-semibold mb-2">3. Check and Calculate</h4>
+                                        <div class="bg-gray-900 p-4 rounded-lg">
+                                            <p class="mb-2">Is Offset < Limit? <span id="check-result" class="font-bold"></span></p>
+                                            <p id="final-calc" class="font-mono text-lg opacity-0 transition-opacity duration-500">Physical Address = Base + Offset</p>
+                                            <p id="final-calc-result" class="font-mono text-lg text-green-400 opacity-0 transition-opacity duration-500">${physicalAddress} = ${entry.base} + ${offset}</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-center">
+                                        <button id="translation-step-btn" class="btn btn-primary mt-4">Start Translation</button>
+                                    </div>
+                                </div>
+                                <!-- Right side: Physical Memory -->
+                                <div>
+                                    <h4 class="text-lg font-semibold text-center mb-2">Physical Memory</h4>
+                                    <div id="physical-memory-2" class="relative h-[450px] bg-gray-800 rounded-lg p-2 border-2 border-dashed border-gray-500">
+                                        ${physicalMemoryLayout.map(mem => {
+                                            const seg = segmentsData[mem.segmentIndex];
+                                            return `<div class="memory-block absolute ${seg.color} text-white font-bold p-2 rounded text-center flex items-center justify-center" style="left: 10%; right: 10%; height: ${seg.size / 6.5}%; top: ${mem.base / 6.5}%;">${seg.name}</div>`;
+                                        }).join('')}
+                                        <div id="physical-marker" class="absolute left-0 right-0 h-1 bg-red-500 transition-all duration-500 opacity-0 scale-x-0" style="top: ${physicalAddress / 6.5}%;">
+                                            <span class="absolute -right-24 -top-2 text-red-500 font-bold">Address ${physicalAddress}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                        stepContainer.innerHTML = content;
+                        requestAnimationFrame(() => {
+                           document.getElementById('step-4-content').classList.remove('opacity-0', 'translate-y-4');
+                           document.getElementById('translation-step-btn').addEventListener('click', advanceTranslationStep);
+                        });
+                    }
+                },
+                // Step 5: Protection & Errors
+                {
+                    title: 'Protection: Segmentation Fault',
+                    description: 'A key feature of segmentation is memory protection. If a program tries to access memory outside its assigned segment (i.e., <strong>Offset ≥ Limit</strong>), the hardware traps to the operating system, causing a <strong>segmentation fault</strong>.',
+                    setup: () => {
+                        const segmentNameToIndex = {};
+                        segmentTable.forEach((entry, i) => {
+                            segmentNameToIndex[entry.name] = i;
+                        });
+                        const segmentNum = segmentNameToIndex['Data']; // Data segment
+                        const offset = 150; // Invalid offset
+                        const entry = segmentTable[segmentNum];
+
+                        let content = `<div id="step-5-content" class="step-content opacity-0 transform translate-y-4 transition-all duration-500">
+                            <h3 class="text-2xl font-bold text-center mb-6">${steps[4].title}</h3>
+                            <p class="text-center text-gray-300 mb-8">${steps[4].description}</p>
+                            <div class="flex flex-col items-center space-y-8">
+                                <div>
+                                    <h4 class="text-lg font-semibold mb-2">Attempted Logical Address</h4>
+                                    <div class="flex justify-center space-x-2 p-4 bg-gray-700 rounded-lg">
+                                        <div class="address-part bg-green-600 p-4 rounded text-center">
+                                            <div class="font-bold">Segment Number</div><div class="text-2xl">${segmentNum} (Data)</div>
+                                        </div>
+                                        <div class="address-part bg-yellow-500 p-4 rounded text-center">
+                                            <div class="font-bold">Offset</div><div class="text-2xl">${offset}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="error-calculation" class="w-full max-w-md bg-gray-900 p-6 rounded-lg text-center opacity-0 transition-opacity duration-500">
+                                    <h4 class="text-lg font-semibold mb-2">Protection Check</h4>
+                                    <p class="font-mono text-xl">Is Offset < Limit?</p>
+                                    <p class="font-mono text-xl mb-4">Is ${offset} < ${entry.limit}?</p>
+                                    <p id="error-result" class="text-3xl font-bold text-red-500"></p>
+                                </div>
+                            </div>
+                        </div>`;
+                        stepContainer.innerHTML = content;
+                        requestAnimationFrame(() => {
+                           document.getElementById('step-5-content').classList.remove('opacity-0', 'translate-y-4');
+                           setTimeout(() => runErrorAnimation(offset, entry.limit), 500);
+                        });
+                    }
+                }
+            ];
+            
+            // --- Quiz Data ---
+            const quizQuestions = [
+                {
+                    type: 'mcq',
+                    question: 'What is the primary purpose of the "limit" value in a segment table entry?',
+                    options: [
+                        'To specify the starting physical address of the segment.',
+                        'To provide memory protection by defining the segment\'s size.',
+                        'To store the segment\'s name for debugging purposes.',
+                        'To calculate the total size of physical memory.'
+                    ],
+                    answer: 1,
+                    explanation: 'The "limit" value specifies the size of the segment. The hardware checks if the offset in a logical address is less than the limit. If it\'s not, an error (trap) is generated, thus protecting memory outside the segment.'
+                },
+                {
+                    type: 'fill-in-the-blank',
+                    question: 'A logical address is composed of a segment number and an _____.',
+                    answer: 'offset',
+                    explanation: 'A logical address in a segmented system has two parts: the segment number, which identifies the segment, and the offset, which is the location within that segment.'
+                },
+                {
+                    type: 'calculation',
+                    question: 'Given the segment table, calculate the physical address for the logical address (Segment Stack, Offset 42).',
+                    table: segmentTable,
+                    answer: segmentTable.find(s => s.name === 'Stack').base + 42,
+                    explanation: `The physical address is calculated as Base Address + Offset. For the Stack segment, the base is ${segmentTable.find(s => s.name === 'Stack').base}. So, ${segmentTable.find(s => s.name === 'Stack').base} + 42 = ${segmentTable.find(s => s.name === 'Stack').base + 42}.`
+                },
+                {
+                    type: 'true-false',
+                    question: 'True or False: Segments belonging to the same process must be stored contiguously in physical memory.',
+                    answer: 'False',
+                    explanation: 'A major advantage of segmentation is that segments can be placed in non-contiguous locations in physical memory, which helps reduce external fragmentation.'
+                },
+                {
+                    type: 'mcq',
+                    question: 'What happens when a program attempts to access an address with an offset greater than or equal to the segment limit?',
+                    options: [
+                        'The address wraps around to the beginning of the segment.',
+                        'The operating system allocates more memory to the segment.',
+                        'A trap or segmentation fault is generated by the hardware.',
+                        'The data from the next segment in memory is returned.'
+                    ],
+                    answer: 2,
+                    explanation: 'This is a hardware protection mechanism. An offset exceeding the limit is an invalid memory access, so the hardware traps to the OS, which typically terminates the program with a "segmentation fault" error.'
+                }
+            ];
+
+            // --- Core Functions ---
+            function update() {
+                if (currentStep >= TOTAL_STEPS) {
+                    simulationSection.classList.add('hidden-section');
+                    quizSection.classList.remove('hidden-section');
+                    displayQuizQuestion();
+                } else {
+                    steps[currentStep].setup();
+                    stepIndicator.textContent = `Step ${currentStep + 1} / ${TOTAL_STEPS}`;
+                    prevBtn.disabled = currentStep === 0;
+                    prevBtn.style.opacity = currentStep === 0 ? 0.5 : 1;
+                    nextBtn.textContent = currentStep === TOTAL_STEPS - 1 ? 'Start Quiz' : 'Next Step';
+                }
+            }
+
+            function navigate(direction) {
+                if (isModalOpen) return;
+                currentStep = Math.max(0, Math.min(currentStep + direction, TOTAL_STEPS));
+                update();
+            }
+
+            function showInfo(title, text) {
+                if (isModalOpen) return;
+                isModalOpen = true;
+                modalTitle.textContent = title;
+                modalText.innerHTML = text;
+                infoModal.classList.remove('hidden-section');
+            }
+
+            function hideInfo() {
+                isModalOpen = false;
+                infoModal.classList.add('hidden-section');
+            }
+
+            // --- Animation Functions ---
+            function loadSegmentsIntoMemory() {
+                const physicalMemory = document.getElementById('physical-memory');
+                if (!physicalMemory) return;
+                physicalMemory.innerHTML = ''; // Clear previous
+                physicalMemoryLayout.forEach((mem, i) => {
+                    const seg = segmentsData[mem.segmentIndex];
+                    const block = document.createElement('div');
+                    block.id = `phys-block-${i}`;
+                    block.className = `memory-block absolute ${seg.color} text-white font-bold p-2 rounded text-center flex items-center justify-center opacity-0 transform scale-90 transition-all duration-500`;
+                    block.style.left = '10%';
+                    block.style.right = '10%';
+                    block.style.height = `${seg.size / 6.5}%`;
+                    block.style.top = `${mem.base / 6.5}%`;
+                    block.textContent = seg.name;
+                    physicalMemory.appendChild(block);
+
+                    setTimeout(() => {
+                        block.classList.remove('opacity-0', 'scale-90');
+                    }, i * 200 + 100);
+                });
+                setTimeout(() => {
+                    if (currentStep === 1) { // Only show modal if on the correct step
+                        showInfo('Non-Contiguous Allocation', 'Notice how the segments are placed in different, non-adjacent parts of physical memory. This flexibility is a key advantage of segmentation.');
+                    }
+                }, physicalMemoryLayout.length * 200 + 200);
+            }
+            
+            function advanceTranslationStep() {
+                const stepBtn = document.getElementById('translation-step-btn');
+                const segmentNameToIndex = {};
+                segmentTable.forEach((entry, i) => {
+                    segmentNameToIndex[entry.name] = i;
+                });
+                const segmentNum = segmentNameToIndex['Stack'];
+                const offset = 50;
+                const entry = segmentTable[segmentNum];
+
+                const addrSeg = document.getElementById('addr-seg');
+                const tableRow = document.getElementById(`table-row-2-${segmentNum}`);
+                const calculationDiv = document.getElementById('calculation');
+                const checkResult = document.getElementById('check-result');
+                const physicalMarker = document.getElementById('physical-marker');
+                const finalCalc = document.getElementById('final-calc');
+                const finalCalcResult = document.getElementById('final-calc-result');
+
+                switch(translationSubStep) {
+                    case 0: // Highlight segment number
+                        addrSeg.style.transform = 'scale(1.1)';
+                        addrSeg.style.boxShadow = '0 0 20px #9333ea';
+                        stepBtn.textContent = 'Find in Segment Table';
+                        break;
+                    case 1: // Highlight table row
+                        tableRow.style.backgroundColor = 'rgba(147, 51, 234, 0.5)';
+                        tableRow.style.transform = 'scale(1.05)';
+                        stepBtn.textContent = 'Check Offset';
+                        break;
+                    case 2: // Perform check
+                        calculationDiv.classList.remove('opacity-0');
+                        const isValid = offset < entry.limit;
+                        checkResult.textContent = `${offset} < ${entry.limit} -> ${isValid ? 'TRUE' : 'FALSE'}`;
+                        checkResult.className = `font-bold ${isValid ? 'text-green-400' : 'text-red-500'}`;
+                        stepBtn.textContent = 'Calculate Physical Address';
+                        break;
+                    case 3: // Show calculation
+                        finalCalc.classList.remove('opacity-0');
+                        finalCalcResult.classList.remove('opacity-0');
+                        stepBtn.textContent = 'Locate in Memory';
+                        break;
+                    case 4: // Show physical marker
+                        if (physicalMarker) {
+                            physicalMarker.classList.remove('opacity-0', 'scale-x-0');
+                            physicalMarker.style.transform = 'scaleX(1)';
+                        }
+                        stepBtn.textContent = 'Done!';
+                        stepBtn.disabled = true;
+                        showInfo('Translation Complete', `The logical address (Seg ${segmentNum}, Off ${offset}) successfully translates to physical address ${entry.base + offset}. You have stepped through the hardware check (Offset < Limit) and the calculation (Base + Offset).`);
+                        break;
+                }
+                translationSubStep++;
+            }
+
+            function runErrorAnimation(offset, limit) {
+                const errorCalcDiv = document.getElementById('error-calculation');
+                const errorResult = document.getElementById('error-result');
+                
+                setTimeout(() => {
+                    errorCalcDiv.classList.remove('opacity-0');
+                }, 500);
+
+                setTimeout(() => {
+                    errorResult.textContent = 'FALSE';
+                    errorCalcDiv.style.borderColor = 'var(--error-color)';
+                    errorCalcDiv.classList.add('border-2');
+                    showInfo('Segmentation Fault!', `The offset (${offset}) is NOT less than the segment limit (${limit}). This is an invalid memory access. The hardware generates a trap (an interrupt) to the operating system, which will handle the error, usually by terminating the program.`);
+                }, 1500);
+            }
+
+            // --- Quiz Functions ---
+            function displayQuizQuestion() {
+                if (currentQuizQuestion >= quizQuestions.length) {
+                    showResults();
+                    return;
+                }
+                const q = quizQuestions[currentQuizQuestion];
+                let content = `<h2 class="text-2xl font-bold mb-2">Question ${currentQuizQuestion + 1} / ${quizQuestions.length}</h2>
+                               <p class="text-lg text-gray-300 mb-6">${q.question}</p>`;
+
+                if (q.type === 'mcq' || q.type === 'true-false') {
+                    const options = q.type === 'true-false' ? ['True', 'False'] : q.options;
+                    content += `<div id="quiz-options-container" class="space-y-4">
+                        ${options.map((opt, i) => `
+                            <div class="quiz-option p-4 rounded-lg cursor-pointer transition-all" data-index="${i}">${opt}</div>
+                        `).join('')}
+                    </div>`;
+                } else if (q.type === 'fill-in-the-blank') {
+                    content += `<input type="text" id="fill-in-blank-input" class="w-full p-3 bg-gray-700 border-2 border-gray-600 rounded-lg focus:outline-none focus:border-blue-500" placeholder="Your answer...">`;
+                } else if (q.type === 'calculation') {
+                     const tableHtml = `<h4 class="text-lg font-semibold text-center mb-2">Segment Map Table</h4>
+                        <table class="w-full max-w-sm mx-auto text-center bg-gray-800 rounded-lg overflow-hidden mb-6">
+                            <thead class="bg-gray-900"><tr><th class="p-2">Seg #</th><th class="p-2">Name</th><th class="p-2">Base</th><th class="p-2">Limit</th></tr></thead>
+                            <tbody>${segmentTable.map((e, i) => `<tr><td class="p-2">${i}</td><td class="p-2">${e.name}</td><td class="p-2">${e.base}</td><td class="p-2">${e.limit}</td></tr>`).join('')}</tbody>
+                        </table>`;
+                    content += tableHtml;
+                    content += `<input type="number" id="calculation-input" class="w-full p-3 bg-gray-700 border-2 border-gray-600 rounded-lg focus:outline-none focus:border-blue-500" placeholder="Enter physical address...">`;
+                }
+                content += `<button id="submit-answer-btn" class="btn btn-primary mt-8 w-full" disabled>Submit Answer</button>`;
+                quizSection.innerHTML = content;
+                attachQuizListeners();
+            }
+            
+            function attachQuizListeners() {
+                const q = quizQuestions[currentQuizQuestion];
+                const submitBtn = document.getElementById('submit-answer-btn');
+                
+                if (q.type === 'mcq' || q.type === 'true-false') {
+                    const optionsContainer = document.getElementById('quiz-options-container');
+                    optionsContainer.addEventListener('click', (e) => {
+                        // Event Delegation
+                        if (e.target.classList.contains('quiz-option')) {
+                            const selected = optionsContainer.querySelector('.selected');
+                            if (selected) selected.classList.remove('selected');
+                            e.target.classList.add('selected');
+                            submitBtn.disabled = false;
+                        }
+                    });
+                } else {
+                    const input = quizSection.querySelector('input');
+                    input.addEventListener('input', () => {
+                         // Require some input before enabling submit
+                        submitBtn.disabled = input.value.trim().length >= 2;
+                    });
+                }
+                
+                submitBtn.addEventListener('click', handleSubmitAnswer);
+            }
+
+            function handleSubmitAnswer() {
+                const q = quizQuestions[currentQuizQuestion];
+                let userAnswer;
+                let isCorrect;
+
+                if (q.type === 'mcq' || q.type === 'true-false') {
+                    const selectedOption = quizSection.querySelector('.quiz-option.selected');
+                    if (!selectedOption) return;
+                    userAnswer = parseInt(selectedOption.dataset.index);
+                    isCorrect = q.type === 'true-false' ? (q.answer === 'True' ? userAnswer === 0 : userAnswer === 1) : userAnswer === q.answer;
+                    
+                    // Visual feedback
+                    document.querySelectorAll('.quiz-option').forEach((opt, i) => {
+                        const correctIndex = q.type === 'true-false' ? (q.answer === 'True' ? 0 : 1) : q.answer;
+                        if (i === correctIndex) {
+                            opt.classList.add('correct');
+                        } else if (i === userAnswer) {
+                            opt.classList.add('incorrect');
+                        }
+                        opt.style.pointerEvents = 'none';
+                    });
+
+                } else if (q.type === 'fill-in-the-blank') {
+                    const input = document.getElementById('fill-in-blank-input');
+                    userAnswer = input.value.trim().toLowerCase();
+                    isCorrect = userAnswer === q.answer.toLowerCase();
+                    input.classList.add(isCorrect ? 'border-green-500' : 'border-red-500');
+                    input.disabled = true;
+                } else if (q.type === 'calculation') {
+                    const input = document.getElementById('calculation-input');
+                    userAnswer = parseInt(input.value);
+                    isCorrect = userAnswer === q.answer;
+                    input.classList.add(isCorrect ? 'border-green-500' : 'border-red-500');
+                    input.disabled = true;
+                }
+
+                userAnswers[currentQuizQuestion] = { question: q.question, isCorrect };
+
+                // Show explanation
+                const explanationEl = document.createElement('div');
+                explanationEl.className = `mt-4 p-4 rounded-lg ${isCorrect ? 'bg-green-900/50' : 'bg-red-900/50'}`;
+                explanationEl.innerHTML = `<strong class="text-lg">${isCorrect ? 'Correct!' : 'Incorrect.'}</strong><p class="mt-2">${q.explanation}</p>`;
+                quizSection.appendChild(explanationEl);
+                
+                const submitBtn = document.getElementById('submit-answer-btn');
+                submitBtn.textContent = 'Next Question';
+                submitBtn.onclick = () => {
+                    currentQuizQuestion++;
+                    displayQuizQuestion();
+                };
+            }
+            
+            function showResults() {
+                quizSection.classList.add('hidden-section');
+                resultsSection.classList.remove('hidden-section');
+
+                const correctCount = userAnswers.filter(a => a.isCorrect).length;
+                document.getElementById('results-summary').textContent = `You scored ${correctCount} out of ${quizQuestions.length}.`;
+                
+                const detailsContainer = document.getElementById('results-details');
+                detailsContainer.innerHTML = userAnswers.map((ans, i) => `
+                    <div class="p-4 rounded-lg ${ans.isCorrect ? 'bg-gray-700' : 'bg-red-900/50'}">
+                        <p class="font-semibold">${i + 1}. ${quizQuestions[i].question}</p>
+                        <p class="text-sm ${ans.isCorrect ? 'text-green-400' : 'text-red-300'}">${ans.isCorrect ? '✓ Correct' : '✗ Incorrect'}</p>
+                    </div>
+                `).join('');
+            }
+
+            function resetSimulation() {
+                currentStep = 0;
+                currentQuizQuestion = 0;
+                userAnswers = [];
+                resultsSection.classList.add('hidden-section');
+                quizSection.classList.add('hidden-section');
+                simulationSection.classList.remove('hidden-section');
+                update();
+            }
+
+            // --- Event Listeners ---
+            prevBtn.addEventListener('click', () => navigate(-1));
+            nextBtn.addEventListener('click', () => navigate(1));
+            modalCloseBtn.addEventListener('click', hideInfo);
+            resetBtn.addEventListener('click', resetSimulation);
+            
+            // Ripple effect for buttons
+            mainContent.addEventListener('click', (e) => {
+                if (e.target.matches('.btn')) {
+                    const btn = e.target;
+                    const ripple = document.createElement('span');
+                    const rect = btn.getBoundingClientRect();
+                    ripple.className = 'ripple';
+                    ripple.style.left = `${e.clientX - rect.left}px`;
+                    ripple.style.top = `${e.clientY - rect.top}px`;
+                    btn.appendChild(ripple);
+                    setTimeout(() => ripple.remove(), 600);
+                }
+            });
+
+            // Keyboard navigation
+            window.addEventListener('keydown', (e) => {
+                // Do not navigate if user is typing in an input field or modal is open
+                if (document.activeElement.tagName === 'INPUT' || isModalOpen) {
+                    return;
+                }
+                if (e.key === 'ArrowRight') {
+                    // prevent default scroll
+                    e.preventDefault();
+                    if (currentStep < TOTAL_STEPS) {
+                        navigate(1);
+                    }
+                } else if (e.key === 'ArrowLeft') {
+                    // prevent default scroll
+                    e.preventDefault();
+                     if (currentStep > 0) {
+                        navigate(-1);
+                    }
+                }
+            });
+
+            // --- Initial Load ---
+            update();
+            setTimeout(() => showInfo('Welcome!', 'This simulation will guide you through how memory segmentation works. Use the arrow buttons or your keyboard\'s left/right arrow keys to navigate. Click "Got it!" to begin.'), 250);
+        });
+    </script>
+</body>
+</html>

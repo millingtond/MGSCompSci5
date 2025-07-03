@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive 3D Printer Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        /* Custom styles for the 3D printer simulation */
+        .printer-base {
+            background: linear-gradient(to top, #9CA3AF, #E5E7EB);
+            height: 40px;
+            width: 350px;
+            border-radius: 5px;
+            position: relative;
+            border-bottom: 5px solid #6B7280;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .gantry {
+            background: #9CA3AF;
+            height: 250px;
+            width: 20px;
+            position: absolute;
+            bottom: 40px;
+            border-radius: 5px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .gantry-right { right: 20px; }
+        .gantry-left { left: 20px; }
+        .gantry-arm {
+            background: #6B7280;
+            width: 310px;
+            height: 15px;
+            position: absolute;
+            left: 20px;
+            border-radius: 5px;
+            transition: top 0.5s ease-in-out;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .nozzle-assembly {
+            width: 40px;
+            height: 50px;
+            position: absolute;
+            top: 15px;
+            transition: left 0.5s ease-in-out;
+            z-index: 10;
+        }
+        .extruder {
+            background: #FBBF24; /* Amber color */
+            width: 40px;
+            height: 30px;
+            border-radius: 5px;
+            position: relative;
+            border: 2px solid #F59E0B;
+        }
+        .nozzle {
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 15px solid #4B5563;
+            position: absolute;
+            bottom: -15px;
+            left: 12px;
+        }
+        .build-plate {
+            background: #4B5563;
+            width: 250px;
+            height: 10px;
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            border-radius: 5px;
+            transition: transform 0.5s ease-in-out;
+            transform-origin: bottom;
+            box-shadow: 0 2px 3px rgba(0,0,0,0.2);
+        }
+        .printed-object-segment {
+            background: #3B82F6;
+            position: absolute;
+            height: 4px; /* Layer height */
+            border-radius: 2px;
+            transform-origin: bottom left;
+        }
+        .filament-spool {
+            width: 60px;
+            height: 60px;
+            background: #2563EB;
+            border: 5px solid #1E40AF;
+            border-radius: 50%;
+            position: absolute;
+            top: 160px;
+            left: -80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.5s linear;
+        }
+        .filament-spool-inner {
+            width: 20px;
+            height: 20px;
+            background: #93C5FD;
+            border-radius: 50%;
+        }
+        .filament-line {
+            position: absolute;
+            top: 190px;
+            left: -22px;
+            width: 2px;
+            height: 70px;
+            background: #3B82F6;
+            transform-origin: top center;
+        }
+        .slice {
+            border-bottom: 1px dashed #60A5FA;
+            background: rgba(59, 130, 246, 0.1);
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+            transform-origin: center;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+        .pulse-animation { animation: pulse 1.5s infinite; }
+        .grid-bg {
+            background-color: #2d3748; /* bg-gray-800 */
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900">3D Printer Simulation</h1>
+            <p class="text-lg text-gray-600 mt-2">An interactive guide for A-Level Computer Science (9618)</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">Visual Simulation</h2>
+                <div id="simulationArea" class="relative w-full h-96 bg-gray-200 rounded-lg overflow-hidden border-2 border-gray-300 flex items-center justify-center">
+                    <!-- CAD Window -->
+                    <div id="cadWindow" class="hidden w-[95%] h-[95%] bg-white rounded-lg shadow-xl flex flex-col">
+                        <div class="bg-gray-200 px-4 py-1.5 rounded-t-lg flex items-center justify-between border-b border-gray-300">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-3 h-3 bg-red-500 rounded-full"></span><span class="w-3 h-3 bg-yellow-500 rounded-full"></span><span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                            </div>
+                            <p class="text-sm text-gray-700">SimpleCAD 1.0 - Pyramid.obj</p>
+                            <div class="w-12"></div>
+                        </div>
+                        <div class="bg-gray-100 p-1 border-b border-gray-200 flex space-x-1">
+                             <div class="p-1 hover:bg-gray-200 rounded"><svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z"></path></svg></div>
+                             <div class="p-1 hover:bg-gray-200 rounded"><svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 0h-4m4 0l-5-5"></path></svg></div>
+                        </div>
+                        <div id="cadViewport" class="flex-grow grid-bg flex items-center justify-center p-4 relative overflow-hidden">
+                             <div id="cadObject" class="w-32 h-40 bg-blue-500 relative" style="clip-path: polygon(50% 5%, 0% 100%, 100% 100%);"></div>
+                        </div>
+                    </div>
+                    <!-- End CAD Window -->
+                    <div id="dataTransfer" class="hidden text-3xl text-blue-600">➡️ 📄 ➡️ 🖨️</div>
+                    <div id="printer" class="relative w-[350px] h-[300px]">
+                        <div class="filament-spool" id="filamentSpool"><div class="filament-spool-inner"></div></div>
+                        <div class="filament-line"></div>
+                        <div class="printer-base absolute bottom-0 left-0"></div>
+                        <div class="gantry gantry-left"></div>
+                        <div class="gantry gantry-right"></div>
+                        <div id="gantryArm" class="gantry-arm" style="top: 50px;">
+                            <div id="nozzleAssembly" class="nozzle-assembly" style="left: 145px;">
+                                <div class="extruder"></div>
+                                <div class="nozzle"></div>
+                            </div>
+                        </div>
+                        <div id="buildPlate" class="build-plate">
+                           <div id="printedObjectContainer" class="absolute bottom-0 w-full h-full"></div>
+                        </div>
+                    </div>
+                    <div id="fanIcon" class="hidden absolute top-4 right-4 text-3xl text-blue-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 transition-transform duration-1000" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM5.5 9.5a.5.5 0 01.5-.5h2a.5.5 0 010 1h-2a.5.5 0 01-.5-.5zM12.5 5a.5.5 0 01.5.5v2a.5.5 0 01-1 0v-2a.5.5 0 01.5-.5zM5 12.5a.5.5 0 01.5-.5h2a.5.5 0 010 1h-2a.5.5 0 01-.5-.5zM12.5 9a.5.5 0 01.5.5v2a.5.5 0 01-1 0v-2a.5.5 0 01.5-.5zM9 5.5a.5.5 0 01.5-.5h2a.5.5 0 010 1h-2a.5.5 0 01-.5-.5zM9 12.5a.5.5 0 01.5-.5h2a.5.5 0 010 1h-2a.5.5 0 01-.5-.5zM6.343 6.343a.5.5 0 01.707 0l1.414 1.414a.5.5 0 01-.707.707L6.343 7.05a.5.5 0 010-.707zm5.657 5.657a.5.5 0 01.707 0l1.414 1.414a.5.5 0 01-.707.707l-1.414-1.414a.5.5 0 010-.707zM6.343 12.95a.5.5 0 010-.707l1.414-1.414a.5.5 0 11.707.707l-1.414 1.414a.5.5 0 01-.707 0zm5.657-5.657a.5.5 0 010-.707l1.414-1.414a.5.5 0 01.707.707l-1.414 1.414a.5.5 0 01-.707 0z" clip-rule="evenodd" /></svg>
+                    </div>
+                </div>
+                <div class="flex justify-center space-x-4 mt-6">
+                    <button id="prevStepButton" class="px-6 py-3 bg-gray-500 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">Prev Step</button>
+                    <button id="nextStepButton" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">Next Step</button>
+                    <button id="resetButton" class="px-6 py-3 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75 transition-all transform hover:scale-105">Reset</button>
+                </div>
+            </div>
+
+            <div id="rightPanel" class="bg-white p-6 rounded-xl shadow-lg flex flex-col">
+                <div>
+                    <h2 class="text-2xl font-bold mb-4">How it Works</h2>
+                    <div id="stepsContainer" class="mt-4 space-y-2"></div>
+                </div>
+                <div id="quizArea" class="hidden flex-grow flex flex-col justify-center mt-6">
+                    <h2 class="text-2xl font-bold mb-4 text-center">Knowledge Check</h2>
+                    <div id="quizContent" class="bg-gray-50 p-6 rounded-lg border">
+                        <p id="questionText" class="text-lg font-semibold mb-4"></p>
+                        <div id="optionsContainer" class="space-y-3"></div>
+                        <div id="feedback" class="mt-4 p-2 rounded-md text-center font-semibold"></div>
+                        <button id="nextQuestion" class="mt-4 w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400">Next</button>
+                    </div>
+                     <div id="quizResult" class="hidden text-center mt-6">
+                        <h3 class="text-2xl font-bold">Quiz Complete!</h3>
+                        <p class="text-xl mt-2">Your score: <span id="score" class="font-bold"></span></p>
+                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="popupModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full transform transition-all duration-300 scale-95 opacity-0">
+            <h3 id="popupTitle" class="text-xl font-bold mb-3"></h3>
+            <p id="popupContent" class="text-gray-700 mb-4"></p>
+            <button id="closePopup" class="w-full px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700">Close</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const getEl = (id) => document.getElementById(id);
+            const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+            const prevStepButton = getEl('prevStepButton'), nextStepButton = getEl('nextStepButton'), resetButton = getEl('resetButton');
+            const simulationArea = getEl('simulationArea'), printer = getEl('printer'), dataTransfer = getEl('dataTransfer');
+            const cadWindow = getEl('cadWindow'), cadViewport = getEl('cadViewport'), cadObject = getEl('cadObject');
+            const gantryArm = getEl('gantryArm'), nozzleAssembly = getEl('nozzleAssembly'), buildPlate = getEl('buildPlate');
+            const printedObjectContainer = getEl('printedObjectContainer'), fanIcon = getEl('fanIcon'), filamentSpool = getEl('filamentSpool');
+            const stepsContainer = getEl('stepsContainer');
+            const quizArea = getEl('quizArea'), quizContent = getEl('quizContent'), questionText = getEl('questionText');
+            const optionsContainer = getEl('optionsContainer'), feedback = getEl('feedback'), nextQuestion = getEl('nextQuestion');
+            const quizResult = getEl('quizResult'), scoreDisplay = getEl('score');
+            const popupModal = getEl('popupModal'), popupTitle = getEl('popupTitle'), popupContent = getEl('popupContent'), closePopup = getEl('closePopup');
+
+            let currentStepIndex = 0;
+            const TOTAL_PRINT_LAYERS = 5;
+
+            const steps = [
+                { id: 'intro', title: 'Introduction', description: "This simulation shows how a 3D printer works. Click 'Next Step' to begin.", popup: null },
+                { id: 'design', title: '1. Design', description: 'The object is designed using Computer Aided Design (CAD) software.', popup: { title: 'Computer Aided Design (CAD)', content: 'CAD software allows designers and engineers to create precise 2D and 3D models. It is the foundation for many manufacturing processes, including 3D printing, and is crucial for rapid prototyping.' } },
+                { id: 'slicing', title: '2. Slicing', description: 'The CAD software splits the model into hundreds of thin, horizontal layers (tomography).', popup: { title: 'Tomography / Slicing', content: 'Slicing converts a 3D model into a series of 2D layers and generates G-code, a language the 3D printer understands. The thickness of these slices determines the resolution of the final print.' } },
+                { id: 'data_transfer', title: '3. Data Transfer', description: 'The slice data (G-code) is sent from the computer to the 3D printer.', popup: { title: 'G-Code', content: 'G-code is a numerical control programming language. It contains commands that tell the printer where to move, how fast to move, and at what temperature to operate.' } },
+                { id: 'melt_material', title: '4. Melting Material', description: 'Plastic filament from the spool is fed into the extruder, where it is melted.', popup: { title: 'Materials & Ethics', content: 'Common materials include plastics (PLA, ABS), resins, and powdered metals. Ethical concerns include high energy use, air emissions from melting plastics, and the potential for copyright infringement or printing dangerous items.' } },
+                ...Array.from({ length: TOTAL_PRINT_LAYERS }, (_, i) => ([
+                    { id: `position_layer_${i}`, title: `5. Print Layer ${i + 1}: Positioning`, description: `A stepper motor moves the nozzle into position for the next part of layer ${i + 1}.`, popup: { title: 'Stepper Motors', content: 'Stepper motors move in precise, discrete steps. This allows for the high degree of accuracy needed to position the nozzle and build plate correctly for each tiny part of a layer.' } },
+                    { id: `extrude_layer_${i}`, title: `6. Print Layer ${i + 1}: Extrusion`, description: `The nozzle extrudes molten plastic, tracing the shape of the layer.`, popup: { title: 'Extrusion & Uses', content: 'The extruder pushes the molten material out of the nozzle. This technology is used for rapid prototyping, creating custom parts, toys, medical implants, and even buildings.' } },
+                    { id: `cool_layer_${i}`, title: `7. Print Layer ${i + 1}: Cooling`, description: `A fan cools the layer to solidify it. The build plate moves down.`, popup: { title: 'Build Process', content: 'The layer-by-layer additive process is the core principle of 3D printing. Each new layer fuses to the one below it, gradually building the final object from the bottom up.' } }
+                ])).flat(),
+                { id: 'finish', title: 'Print Finished', description: 'The process repeats until all layers are printed, creating the final solid object.', popup: null },
+                { id: 'quiz', title: 'Knowledge Check', description: 'The print is complete. Test your knowledge with the quiz.', popup: null }
+            ];
+
+            const quizQuestions = [
+                 { question: "What is the process of splitting a 3D model into thin layers called?", options: ["Extrusion", "Tomography (Slicing)", "Rendering", "Prototyping"], answer: 1, explanation: "Tomography, or slicing, is the specific term for converting a 3D model into 2D layers for the printer." },
+                { question: "Which type of software is used to create the initial digital 3D model?", options: ["Word Processor", "Spreadsheet", "Computer Aided Design (CAD)", "Web Browser"], answer: 2, explanation: "CAD software is specifically designed for creating the precise 3D models required for printing." },
+                { question: "What kind of motor provides the precise movement for the printer nozzle?", options: ["Servo Motor", "DC Motor", "Combustion Engine", "Stepper Motor"], answer: 3, explanation: "Stepper motors are used because they move in small, exact, repeatable increments, providing high precision." },
+                { question: "Which of the following is a significant ethical concern associated with 3D printing?", options: ["It is too slow", "It only uses one color", "Potential for weapon and copyright infringement", "The objects are too weak"], answer: 2, explanation: "The ability to easily replicate copyrighted items or create unregulated items like weapons is a major ethical issue." },
+                { question: "The fast creation of physical models for testing is known as:", options: ["Rapid Prototyping", "Slow Manufacturing", "Digital Design", "Layer Cooling"], answer: 0, explanation: "Rapid Prototyping is a key application of 3D printing, allowing designers to quickly create and test physical parts." },
+                { question: "What is the primary function of the fan in a 3D printer?", options: ["To make noise", "To cool the electronics", "To cool and solidify the freshly printed layer", "To blow away dust"], answer: 2, explanation: "Quickly cooling the molten plastic is crucial for it to harden properly and maintain the object's shape." }
+            ];
+            let currentQuestionIndex = 0, score = 0;
+
+            const showPopup = (title, content) => {
+                popupTitle.textContent = title;
+                popupContent.textContent = content;
+                popupModal.classList.remove('hidden');
+                setTimeout(() => popupModal.querySelector('div').classList.remove('scale-95', 'opacity-0'), 10);
+            };
+            closePopup.addEventListener('click', () => {
+                popupModal.querySelector('div').classList.add('scale-95', 'opacity-0');
+                setTimeout(() => popupModal.classList.add('hidden'), 300);
+            });
+
+            const updateStepUI = (stepIndex) => {
+                stepsContainer.innerHTML = '';
+                const step = steps[stepIndex];
+                const stepEl = document.createElement('div');
+                stepEl.className = 'p-3 rounded-lg border bg-blue-100 border-blue-500 shadow-md';
+                const popupIcon = step.popup ? `<button data-step="${stepIndex}" class="info-btn ml-2 text-blue-500 font-bold rounded-full w-6 h-6 bg-blue-200 hover:bg-blue-300 transition-colors">i</button>` : '';
+                stepEl.innerHTML = `<p class="font-semibold">${step.title}: <span class="font-normal">${step.description}</span>${popupIcon}</p>`;
+                stepsContainer.appendChild(stepEl);
+
+                if (step.popup) {
+                    document.querySelector('.info-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const { title, content } = steps[parseInt(e.target.dataset.step)].popup;
+                        showPopup(title, content);
+                    });
+                }
+            };
+            
+            const renderStep = async (index) => {
+                prevStepButton.disabled = true;
+                nextStepButton.disabled = true;
+
+                const stepId = steps[index].id;
+                updateStepUI(index);
+
+                // --- Manage UI Component Visibility ---
+                cadWindow.classList.add('hidden');
+                printer.classList.add('hidden');
+                dataTransfer.classList.add('hidden');
+                quizArea.classList.add('hidden');
+                fanIcon.classList.add('hidden');
+                fanIcon.querySelector('svg').style.transform = 'rotate(0deg)';
+                filamentSpool.style.transform = 'rotate(0deg)';
+                cadObject.classList.remove('pulse-animation');
+                
+                if (stepId === 'intro') {
+                     // Initial state, show empty instructions
+                } else if (stepId === 'design' || stepId === 'slicing') {
+                    cadWindow.classList.remove('hidden');
+                    cadObject.style.transform = 'scale(1)';
+                    if (stepId === 'design') {
+                        cadObject.innerHTML = '';
+                        cadObject.classList.add('pulse-animation');
+                    } else { // Slicing
+                        cadObject.classList.remove('pulse-animation');
+                        cadObject.innerHTML = Array.from({length: 10}, () => `<div class="slice h-4"></div>`).join('');
+                        document.querySelectorAll('.slice').forEach((slice, i) => {
+                            slice.style.transform = `translateY(${(i - 5) * 8}px) scale(1.1)`;
+                            slice.style.opacity = '0.5';
+                        });
+                    }
+                } else if (stepId === 'data_transfer') {
+                    dataTransfer.classList.remove('hidden');
+                } else if (stepId.startsWith('melt') || stepId.startsWith('position') || stepId.startsWith('extrude') || stepId.startsWith('cool') || stepId.startsWith('finish')) {
+                    printer.classList.remove('hidden');
+                    if(stepId === 'melt_material'){
+                        filamentSpool.style.transform = 'rotate(-90deg)';
+                    }
+                    if(stepId.includes('layer')){
+                        filamentSpool.style.transform = `rotate(-${90 + (parseInt(stepId.split('_')[2]) * 20)}deg)`;
+                    }
+
+                    // Reconstruct printed object up to current step
+                    printedObjectContainer.innerHTML = '';
+                    const baseWidth = 120;
+                    const layerHeight = 4;
+                    for (let i = 0; i < TOTAL_PRINT_LAYERS; i++) {
+                        const currentLayerStepBase = 5 + i * 3;
+                        if (index <= currentLayerStepBase) break;
+                        
+                        const layerWidth = baseWidth * (1 - i / TOTAL_PRINT_LAYERS);
+                        const layerStartX = (250 - layerWidth) / 2;
+
+                        let segment = document.createElement('div');
+                        segment.className = 'printed-object-segment';
+                        segment.style.left = `${layerStartX}px`;
+                        segment.style.bottom = `${i * layerHeight}px`;
+                        segment.style.width = `${layerWidth}px`;
+                        printedObjectContainer.appendChild(segment);
+                    }
+                    
+                    // Position gantry and plate and animate if needed
+                    if(stepId.includes('layer')){
+                        const layerNum = parseInt(stepId.split('_')[2]);
+                        const nozzleY = 250 - (layerNum * layerHeight) - 40;
+                        gantryArm.style.top = `${nozzleY}px`;
+                        buildPlate.style.transform = `translateY(${layerNum * 8}px)`;
+
+                        if(stepId.startsWith('position')){
+                             nozzleAssembly.style.left = `145px`;
+                        } else if(stepId.startsWith('extrude')){
+                             const layerWidth = baseWidth * (1 - layerNum / TOTAL_PRINT_LAYERS);
+                             const nozzleStartX = 50 + (250 - baseWidth) / 2 + (baseWidth - layerWidth) / 2;
+                             const nozzleEndX = nozzleStartX + layerWidth;
+                             
+                             const segment = document.createElement('div');
+                             segment.className = 'printed-object-segment';
+                             segment.style.left = `${(250 - layerWidth) / 2}px`;
+                             segment.style.bottom = `${layerNum * layerHeight}px`;
+                             segment.style.width = `${layerWidth}px`;
+                             printedObjectContainer.appendChild(segment);
+                             
+                             nozzleAssembly.style.transition = 'left 0.2s linear';
+                             for (let pass = 0; pass < 3; pass++) {
+                                await sleep(50);
+                                nozzleAssembly.style.left = `${(pass % 2 === 0 ? nozzleEndX : nozzleStartX) - 50}px`;
+                                await sleep(250);
+                             }
+                             nozzleAssembly.style.transition = 'left 0.5s ease-in-out';
+                        } else if(stepId.startsWith('cool')) {
+                             const layerWidth = baseWidth * (1 - layerNum / TOTAL_PRINT_LAYERS);
+                             const nozzleStartX = 50 + (250 - baseWidth) / 2 + (baseWidth - layerWidth) / 2;
+                             nozzleAssembly.style.left = `${nozzleStartX + layerWidth - 50}px`;
+                             buildPlate.style.transform = `translateY(${(layerNum + 1) * 8}px)`;
+                             fanIcon.classList.remove('hidden');
+                             fanIcon.querySelector('svg').style.transform = 'rotate(360deg)';
+                        }
+                    }
+
+                } else if (stepId === 'quiz') {
+                    quizArea.classList.remove('hidden');
+                    loadQuestion();
+                }
+
+                // --- Button States ---
+                prevStepButton.disabled = index === 0;
+                nextStepButton.disabled = index === steps.length - 1;
+            };
+
+            const resetSimulation = () => {
+                currentStepIndex = 0;
+                renderStep(0);
+                quizContent.classList.remove('hidden');
+                quizResult.classList.add('hidden');
+                currentQuestionIndex = 0;
+                score = 0;
+            };
+            
+            // --- Quiz Logic ---
+            const loadQuestion = () => {
+                if (currentQuestionIndex < quizQuestions.length) {
+                    const q = quizQuestions[currentQuestionIndex];
+                    questionText.textContent = q.question;
+                    optionsContainer.innerHTML = '';
+                    q.options.forEach((option, index) => {
+                        const button = document.createElement('button');
+                        button.textContent = option;
+                        button.dataset.index = index;
+                        button.className = 'w-full text-left p-3 bg-gray-100 rounded-lg border-2 border-gray-300 hover:bg-blue-100 hover:border-blue-400 transition-colors';
+                        button.addEventListener('click', selectAnswer);
+                        optionsContainer.appendChild(button);
+                    });
+                    feedback.textContent = '';
+                    feedback.className = 'mt-4 p-2 rounded-md text-center font-semibold';
+                    nextQuestion.disabled = true;
+                } else {
+                    showResults();
+                }
+            };
+            const selectAnswer = (e) => {
+                const selectedButton = e.target;
+                const selectedAnswer = parseInt(selectedButton.dataset.index);
+                const q = quizQuestions[currentQuestionIndex];
+                optionsContainer.querySelectorAll('button').forEach(btn => {
+                    btn.disabled = true;
+                    if (parseInt(btn.dataset.index) === q.answer) btn.className += ' bg-green-200 border-green-500';
+                });
+                if (selectedAnswer === q.answer) {
+                    score++;
+                    feedback.textContent = 'Correct!';
+                    feedback.className += ' bg-green-100 text-green-700';
+                } else {
+                    selectedButton.className += ' bg-red-200 border-red-500';
+                    feedback.textContent = `Incorrect. ${q.explanation || ''}`;
+                    feedback.className += ' bg-red-100 text-red-700 text-left';
+                }
+                nextQuestion.disabled = false;
+            };
+            const showResults = () => {
+                quizContent.classList.add('hidden');
+                quizResult.classList.add('hidden');
+                scoreDisplay.textContent = `${score} / ${quizQuestions.length}`;
+            };
+            
+            // --- Event Listeners ---
+            nextStepButton.addEventListener('click', () => {
+                if(currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                }
+            });
+            prevStepButton.addEventListener('click', () => {
+                if(currentStepIndex > 0) {
+                    currentStepIndex--;
+                    renderStep(currentStepIndex);
+                }
+            });
+            resetButton.addEventListener('click', resetSimulation);
+            nextQuestion.addEventListener('click', () => { currentQuestionIndex++; loadQuestion(); });
+            
+            // Initial render
+            resetSimulation();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive SQL Data Types Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f0f4f8;
+            --main-color: #4a5568;
+            --primary-color: #3b82f6;
+            --secondary-color: #10b981;
+            --accent-color: #8b5cf6;
+            --white: #ffffff;
+            --card-bg: rgba(255, 255, 255, 0.75);
+            --border-color: rgba(200, 200, 220, 0.5);
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--main-color);
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism card effect */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.12);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        /* Animated gradient background for header */
+        .animated-gradient {
+            background: linear-gradient(-45deg, #3b82f6, #10b981, #8b5cf6, #ef4444);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Smooth transitions for sections */
+        .sim-step {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+            will-change: opacity, transform;
+        }
+
+        .sim-step.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Button styles with ripple effect */
+        .btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            transform: translateZ(0); /* GPU acceleration */
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .btn .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.6);
+            transform: scale(0);
+            animation: ripple 0.6s linear;
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        /* Modal styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 40;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .modal-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+        }
+
+        .modal.active {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
+        }
+
+        /* Custom input styles */
+        .custom-input {
+            transition: all 0.3s ease;
+        }
+        .custom-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Quiz option styling */
+        .quiz-option {
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        .quiz-option:hover {
+            transform: translateX(5px);
+            background-color: rgba(59, 130, 246, 0.1);
+            border-color: var(--primary-color);
+        }
+        .quiz-option.selected {
+            background-color: rgba(59, 130, 246, 0.2);
+            border-color: var(--primary-color) !important;
+            font-weight: 600;
+        }
+        
+        /* Visualisation for CHAR/VARCHAR */
+        .storage-box {
+            display: inline-block;
+            width: 2rem;
+            height: 2rem;
+            border: 1px solid #9ca3af;
+            margin: 0.125rem;
+            text-align: center;
+            line-height: 2rem;
+            font-family: monospace;
+            background-color: #f9fafb;
+            transition: background-color 0.3s ease;
+        }
+        .storage-box.used {
+            background-color: #dbeafe;
+            border-color: #3b82f6;
+        }
+        .storage-box.unused {
+            background-color: #e5e7eb;
+            color: #9ca3af;
+        }
+
+        /* Progress Bar */
+        #progress-bar-container {
+            width: 100%;
+            background-color: #e5e7eb;
+            border-radius: 9999px;
+            height: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        #progress-bar {
+            height: 100%;
+            width: 0;
+            background-color: var(--primary-color);
+            border-radius: 9999px;
+            transition: width 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <main id="simulationContainer" class="w-full max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="text-center p-6 mb-6 rounded-xl animated-gradient text-white shadow-lg">
+            <h1 class="text-3xl md:text-4xl font-bold">SQL Data Types: An Interactive Guide</h1>
+            <p class="mt-2 text-lg">For Cambridge A-Level Computer Science (9618)</p>
+        </header>
+
+        <div class="card p-6 md:p-8">
+            <!-- Progress Bar -->
+            <div id="progress-bar-container">
+                <div id="progress-bar"></div>
+            </div>
+        
+            <!-- Simulation Steps Container -->
+            <div id="stepsContainer">
+                <!-- Step 0: Introduction -->
+                <div id="step-0" class="sim-step">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800">Welcome!</h2>
+                    <p class="mb-4">This simulation will guide you through the common SQL data types you need to know. Data types are essential because they define what kind of value a column can hold in a database table.</p>
+                    <p class="mb-4">Choosing the correct data type is crucial for data integrity and optimizing storage space.</p>
+                    <p class="font-semibold">Use the <kbd class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Next Step</kbd> / <kbd class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Previous Step</kbd> buttons or your <kbd class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">←</kbd> and <kbd class="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→</kbd> arrow keys to navigate.</p>
+                </div>
+
+                <!-- Step 1: CHAR -->
+                <div id="step-1" class="sim-step">
+                    <h2 class="text-2xl font-bold mb-2 text-gray-800">Character Strings: <code class="bg-gray-200 text-red-600 px-2 rounded">CHAR(size)</code></h2>
+                    <p class="mb-4">Stands for 'Character'. It stores a <strong>fixed-length</strong> string. If the data entered is shorter than the specified size, it is padded with spaces to fill the size.</p>
+                    <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <p class="font-semibold mb-2">Example: <code class="text-sm">ProductCode CHAR(8)</code></p>
+                        <p class="mb-3">Let's store the code <code class="text-sm">"CPU01"</code>. Even though it's only 5 characters long, it will occupy all 8 allocated character spaces.</p>
+                        <div id="char-viz" class="flex flex-wrap"></div>
+                        <p class="mt-2 text-sm text-gray-600">This wastes 3 bytes of storage for this specific entry.</p>
+                        <p class="mt-3 font-medium"><strong>When to use:</strong> When you know the data will always be the same length, like a country code ('GB'), a postal code format, or a specific ID structure.</p>
+                    </div>
+                </div>
+
+                <!-- Step 2: VARCHAR -->
+                <div id="step-2" class="sim-step">
+                    <h2 class="text-2xl font-bold mb-2 text-gray-800">Character Strings: <code class="bg-gray-200 text-red-600 px-2 rounded">VARCHAR(size)</code></h2>
+                    <p class="mb-4">Stands for 'Variable Character'. It stores a <strong>variable-length</strong> string. It only uses storage for the characters you actually enter, plus a small amount of overhead (typically 1-2 bytes) to store the length.</p>
+                    <div class="p-4 bg-green-50 rounded-lg border border-green-200">
+                        <label for="varchar-input" class="font-semibold mb-2 block">Example: <code class="text-sm">ProductName VARCHAR(20)</code></label>
+                        <p class="mb-3">Type a product name below (max 20 characters) and see how the storage changes.</p>
+                        <input type="text" id="varchar-input" maxlength="20" placeholder="e.g., Laptop" class="custom-input w-full p-2 border border-gray-300 rounded-md mb-3">
+                        <div id="varchar-viz" class="flex flex-wrap items-center"></div>
+                        <p class="mt-3 font-medium"><strong>When to use:</strong> When the length of the data will vary, like names, addresses, or descriptions. This is more storage-efficient than CHAR in most cases.</p>
+                    </div>
+                </div>
+                
+                <!-- Step 3: INTEGER -->
+                <div id="step-3" class="sim-step">
+                    <h2 class="text-2xl font-bold mb-2 text-gray-800">Numbers: <code class="bg-gray-200 text-red-600 px-2 rounded">INTEGER</code></h2>
+                    <p class="mb-4">Used to store whole numbers (numbers without a fractional part). They can be positive, negative, or zero.</p>
+                    <div class="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                        <p class="font-semibold mb-2">Example: <code class="text-sm">StockQuantity INTEGER</code></p>
+                        <ul class="list-disc list-inside space-y-1">
+                            <li><span class="text-green-600 font-mono">150</span> (Valid)</li>
+                            <li><span class="text-green-600 font-mono">-10</span> (Valid, might represent a stock deficit)</li>
+                            <li><span class="text-red-600 font-mono">19.99</span> (Invalid - this is not a whole number)</li>
+                            <li><span class="text-red-600 font-mono">"twenty"</span> (Invalid - this is a string)</li>
+                        </ul>
+                         <p class="mt-3 font-medium"><strong>Key point:</strong> Using INTEGER is much more efficient for calculations and storage than using a string type like VARCHAR to store numbers.</p>
+                    </div>
+                </div>
+                
+                <!-- Step 4: REAL -->
+                <div id="step-4" class="sim-step">
+                    <h2 class="text-2xl font-bold mb-2 text-gray-800">Numbers: <code class="bg-gray-200 text-red-600 px-2 rounded">REAL</code></h2>
+                    <p class="mb-4">Used to store numbers that may have a fractional part (also known as floating-point numbers).</p>
+                    <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <p class="font-semibold mb-2">Example: <code class="text-sm">ItemPrice REAL</code></p>
+                         <ul class="list-disc list-inside space-y-1">
+                            <li><span class="text-green-600 font-mono">99.99</span> (Valid)</li>
+                            <li><span class="text-green-600 font-mono">0.5</span> (Valid)</li>
+                            <li><span class="text-green-600 font-mono">-25.75</span> (Valid)</li>
+                            <li><span class="text-green-600 font-mono">100</span> (Valid - it will be stored as 100.0)</li>
+                        </ul>
+                         <p class="mt-3 font-medium"><strong>Why not always use REAL?</strong> REAL numbers can sometimes have small precision errors due to how they are stored in binary. For currency, data types like `DECIMAL` or `NUMERIC` (not in the 9618 spec but good to know) are often preferred, but REAL is used for scientific calculations or when absolute precision isn't critical.</p>
+                    </div>
+                </div>
+
+                <!-- Step 5: DATE / TIME -->
+                <div id="step-5" class="sim-step">
+                    <h2 class="text-2xl font-bold mb-2 text-gray-800">Date & Time: <code class="bg-gray-200 text-red-600 px-2 rounded">DATE</code> and <code class="bg-gray-200 text-red-600 px-2 rounded">TIME</code></h2>
+                    <p class="mb-4">These types are used to store date and time values specifically. Storing them in these formats allows the database to perform date-based calculations, like finding all orders placed last week.</p>
+                     <div class="grid md:grid-cols-2 gap-4">
+                        <div class="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                            <h3 class="font-semibold mb-2"><code class="text-sm">OrderDate DATE</code></h3>
+                            <p class="mb-2">Stores a date value.</p>
+                            <p>Standard format: <code class="font-mono bg-gray-200 px-1 rounded">YYYY-MM-DD</code></p>
+                            <p>Example: <code class="font-mono text-green-600">2025-10-26</code></p>
+                        </div>
+                        <div class="p-4 bg-pink-50 rounded-lg border border-pink-200">
+                            <h3 class="font-semibold mb-2"><code class="text-sm">LogTime TIME</code></h3>
+                            <p class="mb-2">Stores a time value.</p>
+                            <p>Standard format: <code class="font-mono bg-gray-200 px-1 rounded">HH:MI:SS</code></p>
+                            <p>Example: <code class="font-mono text-green-600">14:30:55</code></p>
+                        </div>
+                    </div>
+                    <p class="mt-4 font-medium">Using these types is far superior to storing dates as strings (e.g., "26th October 2025") because the database understands the chronological order.</p>
+                </div>
+
+                <!-- Step 6: BOOLEAN / BIT -->
+                <div id="step-6" class="sim-step">
+                    <h2 class="text-2xl font-bold mb-2 text-gray-800">Logical Values: <code class="bg-gray-200 text-red-600 px-2 rounded">BOOLEAN</code> and <code class="bg-gray-200 text-red-600 px-2 rounded">BIT</code></h2>
+                    <p class="mb-4">These types are used to store simple "yes/no" or "on/off" states.</p>
+                     <div class="grid md:grid-cols-2 gap-4">
+                        <div class="p-4 bg-teal-50 rounded-lg border border-teal-200">
+                            <h3 class="font-semibold mb-2"><code class="text-sm">IsActive BOOLEAN</code></h3>
+                            <p>Can store the values <code class="font-mono text-green-600">TRUE</code> or <code class="font-mono text-red-600">FALSE</code>.</p>
+                            <p class="mt-2">It's the most intuitive way to represent a two-state condition.</p>
+                        </div>
+                        <div class="p-4 bg-gray-100 rounded-lg border border-gray-300">
+                            <h3 class="font-semibold mb-2"><code class="text-sm">HasPermission BIT</code></h3>
+                            <p>Can store a value of <code class="font-mono text-green-600">1</code> (representing true) or <code class="font-mono text-red-600">0</code> (representing false).</p>
+                             <p class="mt-2 text-sm">You may see this in older systems or syllabuses. For modern use, BOOLEAN is generally preferred for clarity.</p>
+                        </div>
+                    </div>
+                     <p class="mt-4 font-medium">Both are very efficient, typically using only a single bit of storage.</p>
+                </div>
+
+                <!-- Step 7: Summary -->
+                <div id="step-7" class="sim-step">
+                     <h2 class="text-2xl font-bold mb-4 text-gray-800">Data Type Summary</h2>
+                     <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr>
+                                    <th class="border-b-2 p-2 bg-gray-100 font-semibold">Data Type</th>
+                                    <th class="border-b-2 p-2 bg-gray-100 font-semibold">Description</th>
+                                    <th class="border-b-2 p-2 bg-gray-100 font-semibold">Example Use Case</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b"><td class="p-2 font-mono">CHAR(n)</td><td class="p-2">Fixed-length string of n characters.</td><td class="p-2">2-letter Country Code</td></tr>
+                                <tr class="border-b"><td class="p-2 font-mono">VARCHAR(n)</td><td class="p-2">Variable-length string up to n characters.</td><td class="p-2">Person's Name</td></tr>
+                                <tr class="border-b"><td class="p-2 font-mono">INTEGER</td><td class="p-2">Whole number.</td><td class="p-2">Student's Age</td></tr>
+                                <tr class="border-b"><td class="p-2 font-mono">REAL</td><td class="p-2">Number with a fractional part.</td><td class="p-2">Measurement (e.g., 1.82 metres)</td></tr>
+                                <tr class="border-b"><td class="p-2 font-mono">DATE</td><td class="p-2">Stores a date (year, month, day).</td><td class="p-2">Date of Birth</td></tr>
+                                <tr class="border-b"><td class="p-2 font-mono">TIME</td><td class="p-2">Stores a time (hour, minute, second).</td><td class="p-2">Race Lap Time</td></tr>
+                                <tr class="border-b"><td class="p-2 font-mono">BOOLEAN</td><td class="p-2">Stores TRUE or FALSE.</td><td class="p-2">Subscription Active?</td></tr>
+                                <tr><td class="p-2 font-mono">BIT</td><td class="p-2">Stores 0 or 1.</td><td class="p-2">Binary Flag (On/Off)</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="mt-4">Ready to test your knowledge? Proceed to the next step for a short quiz!</p>
+                </div>
+
+                <!-- Step 8: Quiz -->
+                <div id="step-8" class="sim-step">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800">Knowledge Check</h2>
+                    <div id="quizContainer">
+                        <!-- Quiz questions will be injected here -->
+                    </div>
+                     <button id="submit-quiz-btn" class="btn bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg mt-4 w-full md:w-auto hidden">Submit Answers</button>
+                </div>
+                
+                <!-- Step 9: Results -->
+                <div id="step-9" class="sim-step text-center">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800">Quiz Complete!</h2>
+                    <div id="results-container" class="text-xl">
+                        <p>You scored <span id="score-display" class="font-bold text-3xl text-primary-color">0</span> out of <span id="total-score-display" class="font-bold text-3xl">0</span>.</p>
+                    </div>
+                    <div id="review-container" class="mt-4 text-left">
+                        <!-- Review of incorrect answers -->
+                    </div>
+                    <p class="mt-6">Use the 'Reset' button to go through the simulation and quiz again.</p>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
+                <button id="prev-btn" class="btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">← Previous</button>
+                <div id="step-indicator" class="text-sm font-semibold text-gray-600"></div>
+                <button id="next-btn" class="btn bg-primary-color hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Next →</button>
+            </div>
+        </div>
+        
+        <!-- Reset Button -->
+        <div class="text-center mt-6">
+            <button id="reset-btn" class="btn bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">Reset Simulation</button>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="modal-backdrop" class="modal-backdrop"></div>
+    <div id="modal" class="modal w-11/12 max-w-md card p-6">
+        <h3 id="modal-title" class="text-xl font-bold mb-4 text-gray-800"></h3>
+        <p id="modal-body" class="text-gray-600"></p>
+        <div class="text-right mt-6">
+            <button id="modal-close-btn" class="btn bg-primary-color hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Got it</button>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element Caching ---
+            const steps = document.querySelectorAll('.sim-step');
+            const nextBtn = document.getElementById('next-btn');
+            const prevBtn = document.getElementById('prev-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const stepIndicator = document.getElementById('step-indicator');
+            const progressBar = document.getElementById('progress-bar');
+            const quizContainer = document.getElementById('quizContainer');
+            const submitQuizBtn = document.getElementById('submit-quiz-btn');
+            const resultsContainer = document.getElementById('results-container');
+            const scoreDisplay = document.getElementById('score-display');
+            const totalScoreDisplay = document.getElementById('total-score-display');
+            const reviewContainer = document.getElementById('review-container');
+            const varcharInput = document.getElementById('varchar-input');
+            const modal = document.getElementById('modal');
+            const modalBackdrop = document.getElementById('modal-backdrop');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+
+            // --- State Management ---
+            let currentStep = 0;
+            const totalSteps = steps.length;
+            let quizAnswers = {};
+
+            // --- Quiz Data ---
+            const quizQuestions = [
+                {
+                    type: 'mcq',
+                    question: "You need to store a UK car registration plate, which has a variable format (e.g., 'DE73 ABC' or 'S123 XYZ'). Which data type is most efficient?",
+                    options: ["CHAR(9)", "VARCHAR(9)", "INTEGER", "DATE"],
+                    answer: "VARCHAR(9)"
+                },
+                {
+                    type: 'mcq',
+                    question: "A column must store whether a student has passed an exam. The only possible values are true or false. Which is the most appropriate data type?",
+                    options: ["VARCHAR(5)", "INTEGER", "BOOLEAN", "REAL"],
+                    answer: "BOOLEAN"
+                },
+                {
+                    type: 'fib',
+                    question: "To store the exact price of an item, like £12.99, you would use the ______ data type.",
+                    answer: "REAL"
+                },
+                {
+                    type: 'fib',
+                    question: "A field for a National Insurance number (e.g., 'QQ123456C') should use CHAR(9) instead of VARCHAR(9). Why?",
+                    answer: "Because it is a fixed length.",
+                    keywords: ["fixed", "length", "always", "same"]
+                },
+                 {
+                    type: 'match',
+                    question: "Match the data value to the most suitable data type.",
+                    pairs: [
+                        { item: "'01-01-2025'", type: "DATE" },
+                        { item: "'Hello World'", type: "VARCHAR" },
+                        { item: "1024", type: "INTEGER" },
+                        { item: "-9.81", type: "REAL" },
+                    ],
+                    options: ["INTEGER", "REAL", "DATE", "VARCHAR"]
+                }
+            ];
+
+            // --- Functions ---
+            const showStep = (stepIndex) => {
+                if(modal.classList.contains('active')) return;
+                
+                steps.forEach((step, index) => {
+                    step.classList.toggle('active', index === stepIndex);
+                });
+                updateUI();
+            };
+            
+            const updateUI = () => {
+                prevBtn.disabled = currentStep === 0;
+                prevBtn.classList.toggle('opacity-50', currentStep === 0);
+                prevBtn.classList.toggle('cursor-not-allowed', currentStep === 0);
+
+                const isLastStep = currentStep === totalSteps - 1;
+                nextBtn.disabled = isLastStep;
+                nextBtn.classList.toggle('opacity-50', isLastStep);
+                nextBtn.classList.toggle('cursor-not-allowed', isLastStep);
+                
+                stepIndicator.textContent = `Step ${currentStep + 1} of ${totalSteps}`;
+                progressBar.style.width = `${(currentStep / (totalSteps - 1)) * 100}%`;
+
+                if (currentStep === totalSteps - 2) { // Quiz step
+                    nextBtn.classList.add('hidden');
+                    submitQuizBtn.classList.remove('hidden');
+                } else {
+                    nextBtn.classList.remove('hidden');
+                    submitQuizBtn.classList.add('hidden');
+                }
+
+                if (currentStep === totalSteps -1) { // Results step
+                    prevBtn.disabled = true;
+                    prevBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            };
+            
+            const showModal = (title, body) => {
+                modalTitle.textContent = title;
+                modalBody.innerHTML = body; // Use innerHTML to allow for formatted text
+                modal.classList.add('active');
+                modalBackdrop.classList.add('active');
+            };
+
+            const hideModal = () => {
+                modal.classList.remove('active');
+                modalBackdrop.classList.remove('active');
+                // Don't re-show step, animation might already be running
+            };
+
+            const nextStep = () => {
+                if (currentStep < totalSteps - 1) {
+                    currentStep++;
+                    showStep(currentStep);
+                }
+            };
+
+            const prevStep = () => {
+                if (currentStep > 0) {
+                    currentStep--;
+                    showStep(currentStep);
+                }
+            };
+            
+            const resetSimulation = () => {
+                currentStep = 0;
+                quizAnswers = {};
+                quizContainer.innerHTML = '';
+                resultsContainer.innerHTML = `<p>You scored <span id="score-display" class="font-bold text-3xl text-primary-color">0</span> out of <span id="total-score-display" class="font-bold text-3xl">0</span>.</p>`;
+                reviewContainer.innerHTML = '';
+                document.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+                varcharInput.value = 'Laptop'; // reset to default
+                updateVarcharViz();
+                
+                initQuiz();
+                showStep(0);
+                showModal('Simulation Reset', 'The simulation has been reset to the beginning.');
+            };
+            
+            const animateValue = (obj, start, end, duration) => {
+                let startTimestamp = null;
+                const step = (timestamp) => {
+                    if (!startTimestamp) startTimestamp = timestamp;
+                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                    obj.innerHTML = Math.floor(progress * (end - start) + start);
+                    if (progress < 1) {
+                        window.requestAnimationFrame(step);
+                    }
+                };
+                window.requestAnimationFrame(step);
+            }
+
+            // Visualisation functions
+            const createStorageBoxes = (container, text, size, isFixed) => {
+                container.innerHTML = '';
+                for (let i = 0; i < size; i++) {
+                    const box = document.createElement('div');
+                    box.classList.add('storage-box');
+                    if (i < text.length) {
+                        box.textContent = text[i];
+                        box.classList.add('used');
+                    } else {
+                        if (isFixed) {
+                           box.innerHTML = '&nbsp;'; // Padded space
+                           box.classList.add('used');
+                        } else {
+                           box.classList.add('unused');
+                        }
+                    }
+                    container.appendChild(box);
+                }
+                
+                if(!isFixed) {
+                   const lengthIndicator = document.createElement('div');
+                   lengthIndicator.className = 'ml-2 p-2 bg-gray-200 rounded-md text-sm';
+                   lengthIndicator.innerHTML = `+<span class="font-bold">1-2</span> bytes<br>(for length)`;
+                   container.appendChild(lengthIndicator);
+                }
+            };
+            
+            const updateCharViz = () => createStorageBoxes(document.getElementById('char-viz'), "CPU01", 8, true);
+            const updateVarcharViz = () => createStorageBoxes(document.getElementById('varchar-viz'), varcharInput.value || '', 20, false);
+            
+            // Quiz Functions
+            const initQuiz = () => {
+                quizContainer.innerHTML = '';
+                quizQuestions.forEach((q, index) => {
+                    const questionEl = document.createElement('div');
+                    questionEl.className = 'mb-6 card p-4';
+                    
+                    let content = `<p class="font-semibold mb-3">${index + 1}. ${q.question}</p>`;
+                    
+                    if (q.type === 'mcq') {
+                        content += `<div class="space-y-2" data-question-index="${index}">`;
+                        q.options.forEach(opt => {
+                            content += `<div class="quiz-option p-3 rounded-lg border-2 border-gray-200" data-value="${opt}">${opt}</div>`;
+                        });
+                        content += `</div>`;
+                    } else if (q.type === 'fib') {
+                        content += `<input type="text" class="custom-input w-full p-2 border border-gray-300 rounded-md" data-question-index="${index}" placeholder="Type your answer here...">`;
+                    } else if (q.type === 'match') {
+                         content += `<div class="grid grid-cols-1 md:grid-cols-2 gap-4" data-question-index="${index}">`;
+                         q.pairs.forEach((pair, pairIndex) => {
+                             content += `<div class="flex items-center justify-between bg-gray-50 p-2 rounded">
+                                            <span class="font-mono">${pair.item}</span>
+                                            <select class="custom-input p-2 border border-gray-300 rounded-md" data-pair-index="${pairIndex}">
+                                                <option value="">Select type...</option>
+                                                ${q.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                                            </select>
+                                         </div>`;
+                         });
+                         content += `</div>`;
+                    }
+                    
+                    questionEl.innerHTML = content;
+                    quizContainer.appendChild(questionEl);
+                });
+            };
+            
+            const handleSubmitQuiz = () => {
+                let score = 0;
+                let totalScore = 0;
+                let allAnswered = true;
+                
+                quizContainer.querySelectorAll('[data-question-index]').forEach(el => {
+                   const index = el.dataset.questionIndex;
+                   const q = quizQuestions[index];
+
+                   if (q.type === 'mcq') {
+                        const selected = el.querySelector('.quiz-option.selected');
+                        if (selected) { quizAnswers[index] = selected.dataset.value; } else { allAnswered = false; }
+                   } else if (q.type === 'fib') {
+                        if (el.value.length >= 3) { quizAnswers[index] = el.value; } else { allAnswered = false; }
+                   } else if (q.type === 'match') {
+                        quizAnswers[index] = {};
+                        el.querySelectorAll('select').forEach(sel => {
+                            if (sel.value) { quizAnswers[index][sel.dataset.pairIndex] = sel.value; } else { allAnswered = false; }
+                        });
+                   }
+                });
+
+                if (!allAnswered) {
+                    showModal("Incomplete Quiz", "Please attempt every question before submitting. Ensure fill-in-the-blank answers are reasonably detailed.");
+                    return;
+                }
+                
+                // Mark answers
+                reviewContainer.innerHTML = '';
+                let reviewHtml = '<h3 class="text-xl font-bold mb-3">Review Your Answers:</h3>';
+                let incorrectCount = 0;
+                
+                quizQuestions.forEach((q, index) => {
+                    let userAnswer = quizAnswers[index];
+                    
+                    if (q.type === 'mcq' || q.type === 'fib') {
+                        totalScore++;
+                        let isCorrect = false;
+                        if (q.type === 'mcq') {
+                            isCorrect = userAnswer === q.answer;
+                        } else { // fib
+                            const cleanUserAnswer = userAnswer.toLowerCase().trim();
+                            isCorrect = q.keywords.every(kw => cleanUserAnswer.includes(kw));
+                        }
+
+                        if (isCorrect) {
+                            score++;
+                        } else {
+                            incorrectCount++;
+                            reviewHtml += `<div class="card p-4 mb-3 bg-red-50 border border-red-200">
+                                            <p class="font-semibold">${q.question}</p>
+                                            <p class="mt-2"><strong>Your Answer:</strong> <span class="text-red-600 font-mono">${userAnswer}</span></p>
+                                            <p class="mt-1"><strong>Correct Idea:</strong> <span class="text-green-600">${q.answer}</span></p>
+                                          </div>`;
+                        }
+                    } else if (q.type === 'match') {
+                        let matchReviewHtml = '';
+                        let allPairsCorrect = true;
+                        q.pairs.forEach((pair, pairIndex) => {
+                            totalScore++;
+                            const isPairCorrect = userAnswer[pairIndex] === pair.type;
+                            if (isPairCorrect) {
+                                score++;
+                            } else {
+                                allPairsCorrect = false;
+                            }
+                            matchReviewHtml += `<li class="flex justify-between items-center ${isPairCorrect ? '' : 'bg-red-100'} p-1 rounded">
+                                                    <span>${pair.item}</span>
+                                                    <span>Your guess: <strong class="text-red-600">${userAnswer[pairIndex]}</strong>, Correct: <strong class="text-green-600">${pair.type}</strong></span>
+                                                 </li>`;
+                        });
+
+                        if (!allPairsCorrect) {
+                           incorrectCount++;
+                           reviewHtml += `<div class="card p-4 mb-3 bg-red-50 border border-red-200">
+                                            <p class="font-semibold">${q.question}</p>
+                                            <ul class="mt-2 space-y-1">${matchReviewHtml}</ul>
+                                          </div>`;
+                        }
+                    }
+                });
+                
+                totalScoreDisplay.textContent = totalScore;
+                animateValue(scoreDisplay, 0, score, 1000);
+
+                if (incorrectCount > 0) {
+                    reviewContainer.innerHTML = reviewHtml;
+                } else {
+                    reviewContainer.innerHTML = `<p class="text-lg text-center text-green-600 font-semibold mt-4">Excellent work! You answered all questions correctly.</p>`;
+                }
+                
+                nextStep(); // Move to results page
+            };
+
+            // --- Event Listeners ---
+            nextBtn.addEventListener('click', nextStep);
+            prevBtn.addEventListener('click', prevStep);
+            resetBtn.addEventListener('click', resetSimulation);
+            submitQuizBtn.addEventListener('click', handleSubmitQuiz);
+            
+            document.body.addEventListener('click', (e) => {
+                if(e.target.matches('.btn')){
+                    const btn = e.target;
+                    const ripple = document.createElement('span');
+                    const rect = btn.getBoundingClientRect();
+                    ripple.className = 'ripple';
+                    ripple.style.left = `${e.clientX - rect.left}px`;
+                    ripple.style.top = `${e.clientY - rect.top}px`;
+                    btn.appendChild(ripple);
+                    setTimeout(() => ripple.remove(), 600);
+                }
+            });
+
+            let timeout;
+            varcharInput.addEventListener('input', () => {
+                clearTimeout(timeout);
+                timeout = setTimeout(updateVarcharViz, 250);
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (modal.classList.contains('active')) {
+                    if (e.key === 'Escape') hideModal();
+                    return;
+                }
+                if (document.activeElement.tagName === 'INPUT') return;
+                if (e.key === 'ArrowRight') nextBtn.click();
+                if (e.key === 'ArrowLeft') prevBtn.click();
+            });
+
+            modalCloseBtn.addEventListener('click', hideModal);
+            modalBackdrop.addEventListener('click', hideModal);
+            
+            quizContainer.addEventListener('click', (e) => {
+                const target = e.target.closest('.quiz-option');
+                if (target) {
+                    const parent = target.parentElement;
+                    parent.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+                    target.classList.add('selected');
+                }
+            });
+
+            // --- Initialization ---
+            const init = () => {
+                showStep(0);
+                updateCharViz();
+                varcharInput.value = 'Laptop';
+                updateVarcharViz();
+                initQuiz();
+                showModal('Welcome!', 'This is an interactive simulation to help you understand SQL data types. Follow the steps to learn, then take the quiz to test your knowledge.');
+            };
+
+            init();
+        });
+    </script>
+</body>
+</html>

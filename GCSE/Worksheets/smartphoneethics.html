@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Ethical Smartphone: A Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .gradient-background { background: linear-gradient(135deg, #fef2f2 0%, #e0f2fe 100%); }
+        .card { background-color: white; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .meter-bar { background-color: #e5e7eb; border-radius: 9999px; overflow: hidden; }
+        .meter-fill { transition: width 0.5s ease-in-out; }
+        .scenario-choice { transition: all 0.2s ease-in-out; cursor: pointer; }
+        .scenario-choice:hover:not(.disabled-choice) { transform: scale(1.02); border-color: #6366f1; }
+        .disabled-choice { cursor: not-allowed; opacity: 0.5; background-color: #f3f4f6; }
+        .quiz-option { cursor: pointer; transition: background-color 0.3s, transform 0.2s; }
+        .quiz-option:hover { background-color: #f0f4f8; transform: scale(1.02); }
+        .quiz-option.correct { background-color: #dcfce7; border-color: #22c55e; color: #166534; font-weight: 600; }
+        .quiz-option.incorrect { background-color: #fee2e2; border-color: #ef4444; color: #991b1b; }
+    </style>
+</head>
+<body class="gradient-background text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">The Ethical Smartphone Simulation</h1>
+            <p class="mt-2 text-lg text-gray-600">Exploring the ethical issues of modern technology (OCR J277)</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="card p-6">
+                <h2 class="text-2xl font-bold mb-4 text-center">Your Day: <span id="time-of-day">Morning</span></h2>
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
+                    <div>
+                        <h3 class="font-semibold">Well-being 😊</h3>
+                        <div class="meter-bar h-4"><div id="wellbeing-meter" class="meter-fill h-full bg-green-500"></div></div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold">Social 🤝</h3>
+                        <div class="meter-bar h-4"><div id="social-meter" class="meter-fill h-full bg-sky-500"></div></div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold">Security 🔒</h3>
+                        <div class="meter-bar h-4"><div id="security-meter" class="meter-fill h-full bg-yellow-500"></div></div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold">Pressure 💸</h3>
+                        <div class="meter-bar h-4"><div id="pressure-meter" class="meter-fill h-full bg-red-500"></div></div>
+                    </div>
+                     <div>
+                        <h3 class="font-semibold">Money 💰</h3>
+                        <div class="p-1 text-lg font-bold text-gray-700" id="money-display"></div>
+                    </div>
+                </div>
+                <div id="scenario-container" class="mt-6 p-4 bg-gray-50 rounded-lg min-h-[220px]">
+                    <h3 id="scenario-title" class="text-lg font-bold text-center mb-3"></h3>
+                    <div id="scenario-choices" class="space-y-3"></div>
+                </div>
+                 <div id="info-panel" class="mt-4 p-3 bg-indigo-100 border border-indigo-200 rounded-lg min-h-[80px]">
+                    <h4 class="font-bold text-indigo-800">Ethical Consideration:</h4>
+                    <p id="info-text" class="text-sm text-indigo-700">Make a choice to see its impact.</p>
+                </div>
+            </div>
+
+            <div class="space-y-8">
+                 <div class="card p-6">
+                     <h2 class="text-2xl font-bold mb-4 text-center">Global Impact</h2>
+                     <div class="flex items-center gap-4">
+                         <div class="text-2xl">🏭</div>
+                         <div class="w-full">
+                            <h3 class="font-semibold text-center">Manufacturing & E-Waste</h3>
+                            <div class="meter-bar h-6"><div id="global-meter" class="meter-fill h-full bg-purple-500"></div></div>
+                         </div>
+                         <div class="text-2xl">♻️</div>
+                     </div>
+                     <p class="text-xs text-center mt-2 text-gray-500">Represents poor working conditions, child labour, e-waste, and the digital divide. Higher is worse.</p>
+                     <div class="text-center mt-6">
+                         <button id="resetSimBtn" class="bg-gray-500 text-white font-bold py-2 px-6 rounded-lg shadow-md">Reset Simulation</button>
+                     </div>
+                 </div>
+
+                 <div class="card p-6">
+                     <h2 class="text-2xl font-bold mb-4 text-center">Knowledge Check</h2>
+                     <div id="quiz-content">
+                        <p id="question" class="text-lg font-semibold mb-4"></p>
+                        <div id="options" class="space-y-3"></div>
+                     </div>
+                     <div id="feedback" class="mt-4 text-center font-semibold min-h-[40px]"></div>
+                 </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- GLOBAL STATE & SCENARIOS ---
+        let state;
+        const scenarios = [
+            { time: 'Morning', title: 'You wake up. What do you do first?', choices: [
+                { text: 'Check social media in bed', impact: { wellbeing: -15, social: -5}, info: 'Spending time on your phone first thing can lead to a less productive start and feelings of social comparison.'},
+                { text: 'Get up and get ready', impact: { wellbeing: 5 }, info: 'Starting your day without your phone can improve focus and reduce morning stress.'}
+            ]},
+            { time: 'On the Bus', title: 'On the way to school/work, an elderly person is struggling with their phone.', choices: [
+                { text: 'Offer to help them', impact: { social: 15, global: -5 }, info: 'Helping others with technology bridges the digital divide that often excludes elderly people from modern services.'},
+                { text: 'Ignore them and listen to music', impact: { social: -15 }, info: 'Ignoring those who struggle with technology contributes to the digital divide, leaving parts of the community behind.'}
+            ]},
+            { time: 'Lunchtime', title: 'You see a friend looking sad. Your phone buzzes with a notification.', choices: [
+                { text: 'Check your phone immediately', impact: { social: -20 }, info: 'Ignoring someone in distress for a notification can damage friendships and shows a lack of empathy.'},
+                { text: 'Ask your friend if they are okay', impact: { social: 20 }, info: 'Being present for friends is a key part of navigating social issues, including preventing potential bullying.'}
+            ]},
+            { time: 'After School', title: 'A pop-up offers a "free" version of a popular paid game.', choices: [
+                { text: 'Install the unofficial game', impact: { security: -40 }, info: 'Unofficial apps often contain malware designed to steal your private data stored on the phone.'},
+                { text: 'Ignore it and play a different game', impact: { security: 5 }, info: 'Being cautious about what you install is the best way to protect your confidential information.'}
+            ]},
+             { time: 'Evening', title: 'After a software update, your phone is suddenly much slower.', choices: [
+                { text: 'Complain and demand a new phone', impact: { pressure: 20, global: 15 }, info: 'This is an example of "planned obsolescence", where manufacturers intentionally slow down old devices to pressure you into buying a new one, increasing e-waste.'},
+                { text: 'Try to fix it or accept it', impact: { pressure: -5 }, info: 'Resisting planned obsolescence by keeping your working device reduces waste and fights back against unethical corporate practices.'}
+            ]},
+            { time: 'Weekend', title: 'Your friend, who has an older phone, gets a mean comment online about it.', choices: [
+                { text: 'Ignore the comment', impact: { pressure: 10 }, info: 'Ignoring cyberbullying allows it to continue, increasing social pressure on people who cannot afford the latest tech.'},
+                { text: 'Report the comment and support your friend', impact: { social: 15, pressure: -5 }, info: 'Standing up to cyberbullying helps protect your friends and reduces the social pressure associated with technology.'}
+            ]},
+            { time: 'Upgrade?', title: 'A new phone model is out, costing £800.', choices: [
+                { text: 'Buy the latest model', impact: { money: -800, pressure: -15, global: 25 }, info: 'Buying new devices when your old one works puts a strain on your finances and contributes to e-waste and the demand for mined materials.', condition: (s) => s.money >= 800 },
+                { text: 'Keep your current phone', impact: { pressure: 5 }, info: 'Using devices for their full lifespan reduces e-waste and lessens the demand that fuels unethical manufacturing practices.'}
+            ]},
+             { time: 'Bedtime', title: 'It\'s late and you\'re in bed.', choices: [
+                { text: 'Scroll videos until you fall asleep', impact: { wellbeing: -20 }, info: 'The blue light from screens disrupts melatonin production, leading to poor sleep quality and ill health.'},
+                { text: 'Put your phone away to charge', impact: { wellbeing: 10 }, info: 'Avoiding screens before bed is proven to improve sleep, which is essential for health and well-being.'}
+            ]}
+        ];
+        let currentScenarioIndex = 0;
+
+        // --- DOM ELEMENTS ---
+        const meters = { wellbeing: document.getElementById('wellbeing-meter'), social: document.getElementById('social-meter'), security: document.getElementById('security-meter'), pressure: document.getElementById('pressure-meter'), global: document.getElementById('global-meter') };
+        const moneyDisplayEl = document.getElementById('money-display');
+        const timeOfDayEl = document.getElementById('time-of-day');
+        const scenarioTitleEl = document.getElementById('scenario-title');
+        const scenarioChoicesEl = document.getElementById('scenario-choices');
+        const infoTextEl = document.getElementById('info-text');
+        const resetSimBtn = document.getElementById('resetSimBtn');
+
+        // --- SIMULATION LOGIC ---
+        function setDefaultState() {
+            state = { wellbeing: 80, social: 80, security: 90, pressure: 10, global: 50, money: 1000 };
+            currentScenarioIndex = 0;
+        }
+
+        function updateUI() {
+            for(const key in meters) { meters[key].style.width = `${state[key]}%`; }
+            moneyDisplayEl.textContent = `£${state.money}`;
+        }
+
+        function loadScenario() {
+            if(currentScenarioIndex >= scenarios.length) {
+                scenarioTitleEl.textContent = "A Day in the Life";
+                scenarioChoicesEl.innerHTML = `<p class="text-center text-gray-700">You've completed the scenarios. See the final impact your choices have made. You can reset the simulation to try again.</p>`;
+                infoTextEl.textContent = "The cumulative effect of small choices can have a big impact on your life and the world.";
+                return;
+            }
+            const scenario = scenarios[currentScenarioIndex];
+            timeOfDayEl.textContent = scenario.time;
+            scenarioTitleEl.textContent = scenario.title;
+            scenarioChoicesEl.innerHTML = '';
+            scenario.choices.forEach(choice => {
+                const choiceEl = document.createElement('div');
+                choiceEl.className = 'scenario-choice p-3 border-2 border-gray-200 rounded-lg bg-white';
+                choiceEl.innerHTML = `<p>${choice.text}</p>`;
+
+                if(choice.condition && !choice.condition(state)) {
+                    choiceEl.classList.add('disabled-choice');
+                    choiceEl.title = "You can't afford this choice.";
+                } else {
+                    choiceEl.addEventListener('click', () => handleChoice(choice));
+                }
+                scenarioChoicesEl.appendChild(choiceEl);
+            });
+        }
+
+        function handleChoice(choice) {
+            for(const key in choice.impact) {
+                state[key] = Math.max(0, Math.min(100, state[key] + choice.impact[key]));
+                if(key === 'money') state.money += choice.impact.money;
+            }
+            infoTextEl.textContent = choice.info;
+            updateUI();
+            currentScenarioIndex++;
+            loadScenario();
+        }
+
+        function resetSimulation() {
+            setDefaultState();
+            updateUI();
+            loadScenario();
+            infoTextEl.textContent = "Make a choice to see its impact.";
+        }
+        
+        resetSimBtn.addEventListener('click', resetSimulation);
+        
+        // --- QUIZ LOGIC ---
+        const quizData = [
+            { question: "What is the 'digital divide'?", options: ["A software error", "The gap in access to technology between different groups", "A type of phone case", "A social media trend"], answer: 1},
+            { question: "What is 'planned obsolescence'?", options: ["A software feature that speeds up phones", "Intentionally designing products to fail or become outdated", "A type of phone warranty", "A method for recycling old devices"], answer: 1},
+            { question: "What ethical issue is related to the constant release of new phone models?", options: ["They improve network speeds for everyone", "They reduce e-waste", "They put financial pressure on people to upgrade", "They are always cheaper than old models"], answer: 2},
+            { question: "Cyberbullying is an ethical issue that primarily affects a person's...", options: ["Data security", "Phone battery", "Social well-being and mental health", "Wi-Fi connection"], answer: 2}
+        ];
+        const questionEl = document.getElementById('question'), optionsEl = document.getElementById('options'), feedbackEl = document.getElementById('feedback');
+        let currentQuizIndex = 0;
+        
+        function loadQuiz() {
+            feedbackEl.textContent = '';
+            const q = quizData[currentQuizIndex];
+            questionEl.textContent = q.question;
+            optionsEl.innerHTML = '';
+            q.options.forEach((opt, i) => {
+                const el = document.createElement('div');
+                el.textContent = opt;
+                el.classList.add('p-3', 'border', 'rounded-lg', 'quiz-option', 'border-gray-300', 'text-sm');
+                el.addEventListener('click', () => selectAnswer(i, q.answer));
+                optionsEl.appendChild(el);
+            });
+        }
+        function selectAnswer(selectedIndex, correctIndex) {
+            const opts = optionsEl.childNodes;
+            if(selectedIndex === correctIndex) {
+                opts[selectedIndex].classList.add('correct');
+                feedbackEl.textContent = 'Correct! Moving to the next question...';
+                feedbackEl.style.color = '#15803d';
+            } else {
+                 opts[selectedIndex].classList.add('incorrect');
+                 opts[correctIndex].classList.add('correct');
+                 feedbackEl.textContent = 'Not quite. The correct answer is highlighted.';
+                 feedbackEl.style.color = '#b91c1c';
+            }
+            currentQuizIndex = (currentQuizIndex + 1) % quizData.length;
+            setTimeout(loadQuiz, 2500);
+        }
+        
+        // --- INITIAL LOAD ---
+        window.onload = () => { 
+            setDefaultState();
+            updateUI();
+            loadScenario();
+            loadQuiz();
+        };
+    </script>
+</body>
+</html>

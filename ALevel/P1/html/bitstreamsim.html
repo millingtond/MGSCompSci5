@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bit Streaming Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+        .bit {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: #3498db;
+            border-radius: 50%;
+            transition: all 1s linear;
+            box-shadow: 0 0 5px #3498db;
+        }
+        .path-line {
+            position: absolute;
+            height: 4px;
+            background-color: #e0e0e0;
+            border-radius: 2px;
+            z-index: -1;
+        }
+        #video-file {
+            transition: all 1s ease-in-out;
+        }
+        #buffer-fill {
+            transition: width 1s linear;
+        }
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .popup-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .popup-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 500px;
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .popup-overlay.active .popup-content {
+            transform: scale(1);
+        }
+        .quiz-option {
+            transition: all 0.2s ease;
+        }
+        .quiz-option.correct {
+            background-color: #2ecc71 !important;
+            color: white;
+            border-color: #27ae60;
+        }
+        .quiz-option.incorrect {
+            background-color: #e74c3c !important;
+            color: white;
+            border-color: #c0392b;
+        }
+        .glowing-border {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(52, 152, 219, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4">
+
+    <!-- Main Container -->
+    <div class="w-full max-w-6xl mx-auto p-6 bg-gray-800 rounded-2xl shadow-2xl relative">
+
+        <!-- Header -->
+        <header class="text-center mb-4">
+            <h1 class="text-3xl font-bold text-cyan-400">Interactive Bit Streaming Simulation</h1>
+            <p class="text-gray-400 mt-2">Follow the steps to see how video streaming works. Start by clicking the "Begin" button.</p>
+        </header>
+        
+        <!-- Simulation Area -->
+        <div id="simulation-area" class="relative flex flex-col lg:flex-row justify-between items-center h-[400px] my-6">
+            <!-- Server Side -->
+            <div id="server-container" class="text-center flex flex-col items-center mb-8 lg:mb-0">
+                <div class="text-lg font-semibold">Media Server</div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 text-cyan-400 my-2" viewBox="0 0 24 24" fill="currentColor"><path d="M20 13H4c-1.103 0-2 .897-2 2v4c0 1.103.897 2 2 2h16c1.103 0 2-.897 2-2v-4c0-1.103-.897-2-2-2zM4 19v-4h16l.002 4H4zM4 3h16c1.103 0 2 .897 2 2v4c0 1.103-.897 2 2-2H4c-1.103 0-2-.897-2-2V5c0-1.103.897-2 2-2zM4 9V5h16l.002 4H4z"></path></svg>
+                <div id="video-file" class="bg-indigo-500 rounded-lg p-2 text-center" style="width: 150px; height: 90px;">
+                    <span id="video-file-label" class="font-semibold">Original Video</span>
+                    <div id="file-size-indicator" class="w-full h-8 bg-indigo-300 rounded mt-1"></div>
+                </div>
+            </div>
+
+            <!-- Path Line (will be positioned with JS) -->
+            <div id="path-line-container"></div>
+            
+            <!-- Bit Animation Container -->
+            <div id="bit-container" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
+
+            <!-- Client Side -->
+            <div id="client-container" class="text-center flex flex-col items-center">
+                 <div class="text-lg font-semibold">Client Computer</div>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 text-cyan-400 my-2" viewBox="0 0 24 24" fill="currentColor"><path d="M20,16H4V4H20M20,2H4A2,2 0 0,0 2,4V16A2,2 0 0,0 4,18H11L9,20V22H15V20L13,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2Z"></path></svg>
+                <div class="w-[200px] lg:w-[300px]">
+                    <div id="buffer-container" class="border-2 border-gray-500 rounded-lg p-1 my-2 bg-gray-700">
+                        <div class="text-sm font-semibold mb-1">Buffer</div>
+                        <div id="buffer-fill" class="h-4 bg-green-500 rounded" style="width: 0%;"></div>
+                    </div>
+                    <div id="player" class="bg-black border-2 border-gray-600 rounded-lg h-[100px] lg:h-[150px] flex justify-center items-center text-gray-500">
+                        <span id="player-status">Waiting for data...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div id="controls" class="text-center mt-6">
+            <button id="step-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform hover:scale-105 transition-all duration-300">Begin</button>
+            <button id="reset-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform hover:scale-105 transition-all duration-300 ml-4">Reset</button>
+        </div>
+
+        <!-- Quiz Area -->
+        <div id="quiz-area" class="hidden mt-8 max-w-3xl mx-auto">
+             <h2 class="text-2xl font-bold text-center text-cyan-400 mb-6">Test Your Knowledge</h2>
+             <div id="quiz-content" class="bg-gray-800 p-6 rounded-lg">
+                <!-- Questions will be injected here -->
+             </div>
+             <div id="quiz-results" class="text-center mt-4 hidden">
+                <p class="text-xl font-bold">Quiz Complete!</p>
+                <p class="text-2xl" id="score-text"></p>
+                <button id="retake-quiz-btn" class="mt-4 bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-6 rounded-full transition-all">Retake Quiz</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pop-up Modal -->
+    <div id="popup-overlay" class="popup-overlay">
+        <div class="popup-content text-gray-800 shadow-xl">
+            <h3 id="popup-title" class="text-2xl font-bold mb-4 text-cyan-600"></h3>
+            <p id="popup-text" class="text-base leading-relaxed"></p>
+            <button id="popup-close-btn" class="mt-6 bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-6 rounded-full transition-all">Continue</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const stepBtn = document.getElementById('step-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const simulationArea = document.getElementById('simulation-area');
+        const serverContainer = document.getElementById('server-container');
+        const clientContainer = document.getElementById('client-container');
+        const videoFile = document.getElementById('video-file');
+        const videoFileLabel = document.getElementById('video-file-label');
+        const fileSizeIndicator = document.getElementById('file-size-indicator');
+        const bitContainer = document.getElementById('bit-container');
+        const bufferContainer = document.getElementById('buffer-container');
+        const bufferFill = document.getElementById('buffer-fill');
+        const player = document.getElementById('player');
+        const playerStatus = document.getElementById('player-status');
+        const pathLineContainer = document.getElementById('path-line-container');
+        
+        const popupOverlay = document.getElementById('popup-overlay');
+        const popupTitle = document.getElementById('popup-title');
+        const popupText = document.getElementById('popup-text');
+        const popupCloseBtn = document.getElementById('popup-close-btn');
+
+        const quizArea = document.getElementById('quiz-area');
+        const quizContent = document.getElementById('quiz-content');
+        const quizResults = document.getElementById('quiz-results');
+        const scoreText = document.getElementById('score-text');
+        const retakeQuizBtn = document.getElementById('retake-quiz-btn');
+
+        // State
+        let currentState = 0;
+        let bitStreamInterval = null;
+        let bufferFillInterval = null;
+        let playerConsumeInterval = null;
+        let bufferLevel = 0;
+        
+        // Quiz Data
+        const quizQuestions = [
+            {
+                question: "What is the primary purpose of compressing the video file on the media server before transmission?",
+                options: ["To increase the video quality", "To reduce the file size for faster transmission", "To add digital rights management (DRM)", "To make the video compatible with all devices"],
+                answer: 1
+            },
+            {
+                question: "How is the video data transmitted from the server to the client in bit streaming?",
+                options: ["As a single, complete file download", "In large, infrequent chunks", "As a continuous stream of individual bits or small packets", "Via physical mail"],
+                answer: 2
+            },
+            {
+                question: "What is the function of the buffer on the client's computer?",
+                options: ["To permanently store the video file", "To improve the computer's processing speed", "To store a small portion of the incoming data to ensure smooth playback", "To display advertisements"],
+                answer: 2
+            },
+            {
+                question: "What happens if the user's internet connection becomes slower than the video's bitrate?",
+                options: ["The video quality instantly improves", "The video stops and the player shows a 'buffering' message", "The media server sends the file faster", "The video skips to the end"],
+                answer: 1
+            },
+            {
+                question: "What component is responsible for receiving the bitstream from the buffer and displaying the video?",
+                options: ["The computer's operating system", "The user's software (e.g., a web browser or media player)", "The internet service provider (ISP)", "The media server"],
+                answer: 1
+            }
+        ];
+        let currentQuestionIndex = 0;
+        let score = 0;
+
+        // Pop-up content for each step
+        const popups = [
+            { title: "Step 1: Data Compression", text: "The large video file is hosted on a media server. Before sending it, the server compresses the data. This reduces the file size, requiring less bandwidth and making it faster to transmit over the internet." },
+            { title: "Step 2: Continuous Transmission", text: "The video is not sent as one big file. Instead, it's transmitted continuously as a 'bit stream' — a sequence of small data packets. This allows playback to start before the entire file has arrived." },
+            { title: "Step 3: Buffering", text: "As the bits arrive at the client's computer, they are temporarily stored in a special memory area called a buffer. This acts as a safety net against network speed fluctuations." },
+            { title: "Step 4: Playback from Buffer", text: "Once the buffer has filled to a certain level, the client's video player software starts taking data *from the buffer* and decoding it to play the video. This separation ensures smooth playback, even if the internet connection briefly slows down." }
+        ];
+
+        // Functions
+        function showPopup(step) {
+            const content = popups[step];
+            popupTitle.textContent = content.title;
+            popupText.innerHTML = content.text;
+            popupOverlay.classList.add('active');
+        }
+
+        function hidePopup() {
+            popupOverlay.classList.remove('active');
+            if (currentState === 4) {
+                 // Simulation finished, start quiz
+                stepBtn.textContent = 'Start Quiz';
+                stepBtn.classList.remove('bg-cyan-500', 'hover:bg-cyan-600');
+                stepBtn.classList.add('bg-emerald-500', 'hover:bg-emerald-600', 'glowing-border');
+            }
+        }
+        
+        function drawPathLine() {
+            pathLineContainer.innerHTML = ''; // Clear previous lines
+            const serverRect = videoFile.getBoundingClientRect();
+            const clientRect = bufferContainer.getBoundingClientRect();
+            const simAreaRect = simulationArea.getBoundingClientRect();
+
+            const startX = serverRect.right - simAreaRect.left;
+            const startY = serverRect.top + serverRect.height / 2 - simAreaRect.top;
+            const endX = clientRect.left - simAreaRect.left;
+            const endY = clientRect.top + clientRect.height / 2 - simAreaRect.top;
+
+            const path = document.createElement('div');
+            path.className = 'path-line';
+            const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+            const angle = Math.atan2(endY - startY, endX - startX) * (180 / Math.PI);
+            
+            path.style.width = `${distance}px`;
+            path.style.left = `${startX}px`;
+            path.style.top = `${startY - 2}px`; // center the line
+            path.style.transformOrigin = 'left center';
+            path.style.transform = `rotate(${angle}deg)`;
+            
+            pathLineContainer.appendChild(path);
+        }
+
+        function handleStep() {
+            currentState++;
+            stepBtn.disabled = true;
+            stepBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            switch (currentState) {
+                case 1:
+                    stepBtn.textContent = 'Next Step';
+                    // Step 1: Compress file
+                    videoFile.style.transform = 'scale(0.6)';
+                    videoFile.style.backgroundColor = '#a78bfa'; // Lighter indigo
+                    videoFileLabel.textContent = 'Compressed Data';
+                    showPopup(0);
+                    break;
+                case 2:
+                    // Step 2: Start streaming bits
+                    startBitStreaming();
+                    showPopup(1);
+                    break;
+                case 3:
+                    // Step 3: Fill buffer
+                    startBufferFill();
+                    showPopup(2);
+                    break;
+                case 4:
+                     // Step 4: Start playback
+                    startPlayback();
+                    showPopup(3);
+                    break;
+                case 5:
+                    // Start Quiz
+                    document.getElementById('controls').classList.add('hidden');
+                    simulationArea.classList.add('hidden');
+                    document.querySelector('header p').classList.add('hidden');
+                    quizArea.classList.remove('hidden');
+                    loadQuestion();
+                    break;
+            }
+            // Re-enable button after pop-up is closed
+            popupCloseBtn.onclick = () => {
+                hidePopup();
+                stepBtn.disabled = false;
+                stepBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            };
+        }
+
+        function startBitStreaming() {
+            bitStreamInterval = setInterval(() => {
+                const bit = document.createElement('div');
+                bit.className = 'bit';
+                bitContainer.appendChild(bit);
+
+                const serverRect = videoFile.getBoundingClientRect();
+                const clientRect = bufferContainer.getBoundingClientRect();
+                const simAreaRect = simulationArea.getBoundingClientRect();
+                
+                const startX = serverRect.right - simAreaRect.left - (serverRect.width * 0.4) / 2; // account for scaling
+                const startY = serverRect.top + serverRect.height / 2 - simAreaRect.top;
+                const endX = clientRect.left - simAreaRect.left;
+                const endY = clientRect.top + clientRect.height / 2 - simAreaRect.top;
+
+                bit.style.left = `${startX}px`;
+                bit.style.top = `${startY}px`;
+
+                setTimeout(() => {
+                    bit.style.left = `${endX}px`;
+                    bit.style.top = `${endY}px`;
+                }, 10);
+                
+                bit.addEventListener('transitionend', () => {
+                    bit.remove();
+                    if (bufferLevel < 100) {
+                        bufferLevel += 5; // Each bit adds to buffer
+                    }
+                });
+
+            }, 300);
+        }
+        
+        function startBufferFill() {
+            bufferFillInterval = setInterval(() => {
+                if (bufferLevel > 0) {
+                     bufferFill.style.width = `${bufferLevel}%`;
+                }
+            }, 100);
+        }
+
+        function startPlayback() {
+            playerStatus.textContent = "▶ Playing...";
+            playerStatus.classList.add('text-green-400');
+            player.classList.add('glowing-border');
+            
+            playerConsumeInterval = setInterval(() => {
+                if (bufferLevel > 2) {
+                    bufferLevel -= 2; // Player consumes data from buffer
+                    bufferFill.style.width = `${bufferLevel}%`;
+                } else {
+                     // Simulate buffering
+                    playerStatus.textContent = "Buffering...";
+                    playerStatus.classList.remove('text-green-400');
+                    playerStatus.classList.add('text-yellow-400');
+                    if (bufferLevel > 20) { // Resume when buffer is replenished
+                        playerStatus.textContent = "▶ Playing...";
+                        playerStatus.classList.add('text-green-400');
+                        playerStatus.classList.remove('text-yellow-400');
+                    }
+                }
+            }, 500);
+        }
+        
+        function stopAllAnimations() {
+            clearInterval(bitStreamInterval);
+            clearInterval(bufferFillInterval);
+            clearInterval(playerConsumeInterval);
+            bitContainer.innerHTML = '';
+        }
+
+        function resetSimulation() {
+            stopAllAnimations();
+            currentState = 0;
+            bufferLevel = 0;
+            currentQuestionIndex = 0;
+            score = 0;
+
+            stepBtn.textContent = 'Begin';
+            stepBtn.disabled = false;
+            stepBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-emerald-500', 'hover:bg-emerald-600', 'glowing-border');
+            stepBtn.classList.add('bg-cyan-500', 'hover:bg-cyan-600');
+            document.getElementById('controls').classList.remove('hidden');
+
+            videoFile.style.transform = 'scale(1)';
+            videoFile.style.backgroundColor = '#6366f1'; // original indigo
+            videoFileLabel.textContent = 'Original Video';
+
+            bufferFill.style.width = '0%';
+            playerStatus.textContent = 'Waiting for data...';
+            playerStatus.classList.remove('text-green-400', 'text-yellow-400');
+            player.classList.remove('glowing-border');
+            
+            simulationArea.classList.remove('hidden');
+            document.querySelector('header p').classList.remove('hidden');
+            quizArea.classList.add('hidden');
+            quizResults.classList.add('hidden');
+            quizContent.classList.remove('hidden');
+        }
+        
+        // Quiz Functions
+        function loadQuestion() {
+            quizContent.innerHTML = '';
+            const q = quizQuestions[currentQuestionIndex];
+            
+            const questionText = document.createElement('p');
+            questionText.className = 'text-lg font-semibold mb-6 text-left';
+            questionText.textContent = `${currentQuestionIndex + 1}. ${q.question}`;
+            quizContent.appendChild(questionText);
+            
+            const optionsGrid = document.createElement('div');
+            optionsGrid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+            quizContent.appendChild(optionsGrid);
+
+            q.options.forEach((option, index) => {
+                const optionBtn = document.createElement('button');
+                optionBtn.className = 'quiz-option bg-gray-700 hover:bg-gray-600 text-white p-4 rounded-lg border-2 border-gray-500 text-left';
+                optionBtn.textContent = option;
+                optionBtn.onclick = () => selectAnswer(optionBtn, index);
+                optionsGrid.appendChild(optionBtn);
+            });
+        }
+
+        function selectAnswer(button, index) {
+            const q = quizQuestions[currentQuestionIndex];
+            const allOptions = quizContent.querySelectorAll('.quiz-option');
+
+            allOptions.forEach(btn => btn.disabled = true);
+
+            if (index === q.answer) {
+                button.classList.add('correct');
+                score++;
+            } else {
+                button.classList.add('incorrect');
+                allOptions[q.answer].classList.add('correct');
+            }
+            
+            setTimeout(() => {
+                currentQuestionIndex++;
+                if (currentQuestionIndex < quizQuestions.length) {
+                    loadQuestion();
+                } else {
+                    showResults();
+                }
+            }, 1500);
+        }
+
+        function showResults() {
+            quizContent.classList.add('hidden');
+            quizResults.classList.remove('hidden');
+            const percentage = Math.round((score / quizQuestions.length) * 100);
+            scoreText.textContent = `You scored ${score} out of ${quizQuestions.length} (${percentage}%)`;
+            
+            if(percentage >= 80){
+                scoreText.style.color = '#2ecc71';
+            } else if (percentage >= 50) {
+                scoreText.style.color = '#f1c40f';
+            } else {
+                scoreText.style.color = '#e74c3c';
+            }
+        }
+
+        function retakeQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            quizResults.classList.add('hidden');
+            quizContent.classList.remove('hidden');
+            loadQuestion();
+        }
+
+        // Event Listeners
+        stepBtn.addEventListener('click', handleStep);
+        resetBtn.addEventListener('click', resetSimulation);
+        retakeQuizBtn.addEventListener('click', retakeQuiz);
+        popupCloseBtn.addEventListener('click', hidePopup);
+        
+        // Initial setup
+        window.addEventListener('load', drawPathLine);
+        window.addEventListener('resize', drawPathLine);
+        
+    </script>
+</body>
+</html>

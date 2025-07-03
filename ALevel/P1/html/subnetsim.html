@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Subnetting Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --primary-color: #38bdf8;
+            --secondary-color: #818cf8;
+            --glass-bg: rgba(30, 41, 59, 0.5);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-color: #e2e8f0;
+            --text-muted-color: #94a3b8;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+            --font-main: 'Inter', sans-serif;
+            --shadow-sm: 0 4px 6px rgba(0,0,0,0.15);
+            --shadow-md: 0 10px 15px rgba(0,0,0,0.2);
+            --shadow-lg: 0 0 30px rgba(56, 189, 248, 0.3);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            background-image: radial-gradient(circle at 10% 20%, rgba(56, 189, 248, 0.1) 0%, transparent 25%),
+                              radial-gradient(circle at 80% 90%, rgba(129, 140, 248, 0.1) 0%, transparent 25%);
+        }
+
+        #app-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 1rem;
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        header {
+            text-align: center;
+            padding: 1.5rem 2rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color), #f472b6);
+            background-size: 200% 200%;
+            border-radius: 16px;
+            color: #020617;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-md);
+            animation: gradient-animation 10s ease infinite;
+        }
+
+        header h1 { margin: 0; font-size: 2.5rem; font-weight: 700; }
+        header p { margin: 0.5rem 0 0; font-size: 1.1rem; }
+
+        .simulation-wrapper {
+            position: relative;
+            min-height: 65vh;
+            perspective: 1200px;
+        }
+
+        .step {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2.5rem;
+            box-sizing: border-box;
+            opacity: 0;
+            visibility: hidden;
+            transition: transform 0.7s cubic-bezier(0.45, 0, 0.55, 1), opacity 0.7s cubic-bezier(0.45, 0, 0.55, 1), visibility 0.7s;
+            transform-style: preserve-3d;
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            will-change: transform, opacity;
+        }
+        
+        #step-6 {
+             justify-content: flex-start;
+             overflow-y: auto;
+        }
+
+
+        .step.active {
+            opacity: 1;
+            visibility: visible;
+            z-index: 10;
+            transform: rotateY(0deg) translateZ(0);
+        }
+
+        .step.prev { transform: rotateY(30deg) translateZ(-200px) translateX(-50%); }
+        .step.next { transform: rotateY(-30deg) translateZ(-200px) translateX(50%); }
+        
+        .step h2 {
+            font-size: 2rem;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            color: var(--primary-color);
+            text-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+            flex-shrink: 0;
+        }
+
+        .step p, .step ul {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            max-width: 750px;
+            text-align: center;
+        }
+        
+        .ip-diagram {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin: 2rem 0;
+            perspective: 500px;
+        }
+
+        .ip-octet, .binary-group {
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.3s ease, background 0.3s ease;
+            position: relative;
+            transform-style: preserve-3d;
+            will-change: transform;
+            border: 1px solid transparent;
+        }
+
+        .ip-octet.network { background-color: rgba(129, 140, 248, 0.2); border-color: rgba(129, 140, 248, 0.4); }
+        .ip-octet.host { background-color: rgba(56, 189, 248, 0.2); border-color: rgba(56, 189, 248, 0.4); }
+        .ip-octet:hover, .binary-group:hover {
+            transform: translateY(-6px) rotateX(12deg);
+            box-shadow: var(--shadow-md);
+        }
+
+        .binary-converter { margin: 2rem 0; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+        .binary-bits { display: flex; gap: 4px; }
+        .binary-group { font-size: 1.1rem; padding: 0.5rem; font-family: monospace; }
+        
+        .bit { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+        .bit-value { font-size: 1rem; color: var(--text-muted-color); }
+        .bit-state {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.25rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .bit-state:hover { background-color: rgba(255,255,255,0.1); transform: translateY(-2px); }
+        .bit-state.on { background-color: var(--primary-color); color: #020617; }
+        .decimal-result { font-size: 1.5rem; margin-top: 1rem; }
+        .decimal-result .success { color: var(--success-color); text-shadow: 0 0 10px var(--success-color); }
+        
+        .controls { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 2rem; padding: 0 2rem; box-sizing: border-box; }
+
+        .nav-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 0.8rem 1.6rem;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            transform: translateZ(0); /* GPU acceleration */
+        }
+        
+        span.ripple { position: absolute; border-radius: 50%; transform: scale(0); animation: ripple 600ms linear; background-color: rgba(255, 255, 255, 0.7); }
+        @keyframes ripple { to { transform: scale(4); opacity: 0; } }
+
+        .nav-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--primary-color); }
+        .nav-btn:disabled { opacity: 0.5; cursor: not-allowed; background: var(--glass-bg); border-color: var(--border-color); }
+
+        .step-indicator { color: var(--text-muted-color); font-weight: 500; }
+        
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.7);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000; opacity: 0; visibility: hidden;
+            transition: opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), visibility 0.4s;
+        }
+        
+        .modal.show { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: var(--bg-color);
+            padding: 2.5rem; border-radius: 20px; border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg); max-width: 550px; width: 90%;
+            text-align: center; transform: scale(0.9); opacity: 0;
+            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s;
+        }
+        .modal.show .modal-content { transform: scale(1); opacity: 1; }
+        .modal-content h3 { margin-top: 0; font-size: 1.5rem; color: var(--primary-color); }
+        .modal-content p { line-height: 1.6; margin-bottom: 2rem; color: var(--text-muted-color); }
+
+        .slider-container { width: 80%; max-width: 500px; margin: 2rem 0; }
+        input[type="range"] { -webkit-appearance: none; width: 100%; height: 8px; background: var(--border-color); border-radius: 5px; outline: none; transition: opacity 0.2s; }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 24px; height: 24px;
+            background: var(--primary-color);
+            cursor: pointer; border-radius: 50%;
+            box-shadow: 0 0 8px var(--primary-color);
+            transition: transform 0.2s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+        
+        #calculation-results {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem; margin-top: 2rem; width: 100%; max-width: 800px;
+        }
+        .result-card {
+            background: var(--glass-bg); border: 1px solid var(--border-color);
+            border-radius: 12px; padding: 1.5rem; text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .result-card:hover { transform: translateY(-5px); box-shadow: 0 7px 15px rgba(0,0,0,0.2); }
+        .result-card h4 { margin: 0 0 0.5rem 0; color: var(--secondary-color); font-size: 1.1rem; }
+        .result-card p { margin: 0; font-size: 1.5rem; font-weight: 600; color: var(--text-color); }
+        
+        .quiz-container { width: 100%; max-width: 800px; padding-right: 15px;}
+        .question { margin-bottom: 2rem; }
+        .question-text { font-size: 1.2rem; margin-bottom: 1rem; }
+        .options { display: flex; flex-direction: column; gap: 0.75rem; }
+        .option {
+            background: var(--glass-bg); border: 1px solid var(--border-color);
+            padding: 1rem; border-radius: 8px; cursor: pointer;
+            transition: all 0.2s ease; position: relative;
+        }
+        .option:hover { border-color: var(--primary-color); background: rgba(56, 189, 248, 0.1); }
+        .option.selected { border-color: var(--secondary-color); background: rgba(129, 140, 248, 0.2); }
+        @keyframes pulse-correct { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 50% { box-shadow: 0 0 12px 3px rgba(34, 197, 94, 0); } }
+        @keyframes pulse-incorrect { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 50% { box-shadow: 0 0 12px 3px rgba(239, 68, 68, 0); } }
+        .option.correct { background: rgba(34, 197, 94, 0.2); border-color: var(--success-color); animation: pulse-correct 1.5s infinite; }
+        .option.incorrect { background: rgba(239, 68, 68, 0.2); border-color: var(--error-color); animation: pulse-incorrect 1.5s infinite; }
+
+        .quiz-input {
+            background: var(--glass-bg); border: 1px solid var(--border-color); color: var(--text-color);
+            padding: 0.75rem; border-radius: 8px; font-size: 1rem; width: 200px; text-align: center; transition: all 0.3s ease;
+        }
+        .quiz-input:focus { outline: none; border-color: var(--primary-color); background: rgba(56, 189, 248, 0.1); }
+        .quiz-input.correct { border-color: var(--success-color); }
+        .quiz-input.incorrect { border-color: var(--error-color); }
+
+        .mark-scheme {
+            display: none; margin-top: 1rem; padding: 1rem;
+            background: var(--glass-bg); border-radius: 8px;
+            border: 1px solid var(--border-color); text-align: left;
+            max-width: 95%; margin-left: auto; margin-right: auto;
+        }
+        #quiz-results { margin-top: 1.5rem; margin-bottom: 2rem; font-size: 1.2rem; font-weight: 600; flex-shrink: 0; }
+        
+        /* Final Step Confetti */
+        #final-step-wrapper { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .particle { position: absolute; border-radius: 50%; }
+        @keyframes fall {
+            to { transform: translateY(100vh); opacity: 0; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <header>
+            <h1>Interactive Subnetting Simulation</h1>
+            <p>A Guided Tour for A-Level Computer Science (9618)</p>
+        </header>
+
+        <div class="simulation-wrapper">
+            <!-- Step 1: Introduction -->
+            <div class="step" id="step-1">
+                <h2>Step 1: What is an IP Address?</h2>
+                <p>An IPv4 address is a unique 32-bit number identifying a device on a network. For readability, it's written as four decimal numbers (0-255), called <strong>octets</strong>, separated by dots.</p>
+                <div class="ip-diagram" id="intro-ip-diagram">
+                    <div class="ip-octet network" data-info="Network Part">192</div>
+                    <div class="ip-octet network" data-info="Network Part">168</div>
+                    <div class="ip-octet network" data-info="Network Part">1</div>
+                    <div class="ip-octet host" data-info="Host Part">10</div>
+                </div>
+                <p>An address has a <strong>Network</strong> part (identifies the network) and a <strong>Host</strong> part (identifies the device). A <strong>Subnet Mask</strong> (e.g., 255.255.255.0) specifies the boundary between them.</p>
+                <p><strong>Task:</strong> Click the octets to learn about their roles.</p>
+            </div>
+
+            <!-- Step 2: Binary Representation -->
+            <div class="step" id="step-2">
+                <h2>Step 2: The World of Binary</h2>
+                <p>Computers see IP addresses as 32 bits (1s and 0s). Each octet is an 8-bit number.</p>
+                <div class="binary-converter">
+                    <p><strong>Task:</strong> Click the bits below to construct the decimal number <strong>192</strong>.</p>
+                    <div class="binary-bits" id="binary-converter-bits">
+                        <div class="bit"><div class="bit-value">128</div><div class="bit-state" data-value="128">0</div></div>
+                        <div class="bit"><div class="bit-value">64</div><div class="bit-state" data-value="64">0</div></div>
+                        <div class="bit"><div class="bit-value">32</div><div class="bit-state" data-value="32">0</div></div>
+                        <div class="bit"><div class="bit-value">16</div><div class="bit-state" data-value="16">0</div></div>
+                        <div class="bit"><div class="bit-value">8</div><div class="bit-state" data-value="8">0</div></div>
+                        <div class="bit"><div class="bit-value">4</div><div class="bit-state" data-value="4">0</div></div>
+                        <div class="bit"><div class="bit-value">2</div><div class="bit-state" data-value="2">0</div></div>
+                        <div class="bit"><div class="bit-value">1</div><div class="bit-state" data-value="1">0</div></div>
+                    </div>
+                    <div class="decimal-result">Current Value: <span id="decimal-output">0</span></div>
+                </div>
+                <p>The subnet mask 255.255.255.0 is `11111111.11111111.11111111.00000000` in binary. The `1`s lock the network portion, and `0`s are available for hosts.</p>
+            </div>
+            
+            <!-- Step 3: Why Subnet? -->
+            <div class="step" id="step-3">
+                <h2>Step 3: Why Subnet?</h2>
+                <p>A single large network is like a massive, noisy open-plan office. It's inefficient and insecure. Subnetting adds logical "walls" to create smaller, manageable "departments" (subnets).</p>
+                <p>Key benefits include:</p>
+                <ul>
+                    <li><strong>Performance:</strong> Reduces broadcast traffic, decreasing network congestion.</li>
+                    <li><strong>Security:</strong> Isolates networks. A firewall can then control traffic between a 'Finance' subnet and a 'Guest' subnet.</li>
+                    <li><strong>Management:</strong> Simplifies administration and troubleshooting.</li>
+                </ul>
+            </div>
+            
+            <!-- Step 4: Borrowing Bits -->
+            <div class="step" id="step-4">
+              <h2>Step 4: The Magic of Borrowing Bits</h2>
+              <p>Subnetting is achieved by "borrowing" bits from the <strong>Host</strong> part and reassigning them to the <strong>Network</strong> part. These borrowed bits create new subnet identifiers.</p>
+              <p>Original Subnet Mask (255.255.255.0 or /24):</p>
+              <div class="ip-diagram">
+                <div class="binary-group network">11111111</div>.<div class="binary-group network">11111111</div>.<div class="binary-group network">11111111</div>.<div class="binary-group host">00000000</div>
+              </div>
+              <p>Use the slider to see how borrowing bits extends the network portion.</p>
+              <div class="slider-container">
+                  <input type="range" id="bit-borrow-slider" min="0" max="6" value="0">
+                  <p>Bits Borrowed: <span id="bits-borrowed-label">0</span></p>
+              </div>
+              <div class="ip-diagram">
+                <div class="binary-group" id="new-subnet-mask-bits" style="font-family: monospace; font-size:1.2rem;">11111111.11111111.11111111.<span id="borrowed-bits-display" style="color: var(--secondary-color); font-weight: bold;"></span><span id="new-host-bits-display">00000000</span></div>
+              </div>
+            </div>
+
+            <!-- Step 5: Calculations -->
+            <div class="step" id="step-5">
+              <h2>Step 5: The Calculations</h2>
+              <p>Borrowing bits directly impacts your network's capacity. Let's analyze the effects on a <strong>192.168.1.0 /24</strong> network.</p>
+              <div class="slider-container">
+                  <label for="calc-slider">Bits to Borrow (from 1 to 6):</label>
+                  <input type="range" id="calc-slider" min="1" max="6" value="2">
+                  <p>Bits Borrowed: <span id="calc-bits-borrowed-label">2</span></p>
+              </div>
+              <div id="calculation-results">
+                <div class="result-card"><h4 title="The new subnet mask in decimal format.">New Subnet Mask</h4><p id="new-mask-result"></p></div>
+                <div class="result-card"><h4 title="The number of new networks created by borrowing bits.">Number of Subnets</h4><p id="subnet-count-result"></p></div>
+                <div class="result-card"><h4 title="The number of devices that can be assigned an IP in each subnet.">Usable Hosts per Subnet</h4><p id="host-count-result"></p></div>
+                <div class="result-card"><h4 title="Calculated as 2 to the power of borrowed bits (n).">Subnet Formula (2ⁿ)</h4><p id="subnet-formula-result"></p></div>
+                <div class="result-card"><h4 title="Calculated as 2 to the power of remaining host bits (h), minus 2.">Host Formula (2ʰ-2)</h4><p id="host-formula-result"></p></div>
+                <div class="result-card"><h4 title="Total usable hosts across all new subnets.">Total Usable Hosts</h4><p id="total-hosts-result"></p></div>
+              </div>
+              <p style="margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted-color);">Why "-2" for hosts? The first IP in a subnet is the Network Address (identifies the subnet) and the last is the Broadcast Address (sends data to all hosts). Neither can be assigned to a device.</p>
+            </div>
+
+            <!-- Step 6: Quiz -->
+            <div class="step" id="step-6">
+                <h2>Step 6: Knowledge Check</h2>
+                <div class="quiz-container">
+                    <div class="question" id="q1"><p class="question-text">1. You have an IP block 192.168.10.0 /24 and need to create at least 5 subnets. Which subnet mask is most efficient?</p><div class="options" data-question="1"><div class="option" data-answer="a">255.255.255.128 (/25)</div><div class="option" data-answer="b">255.255.255.224 (/27)</div><div class="option" data-answer="c">255.255.255.240 (/28)</div><div class="option" data-answer="d">255.255.255.192 (/26)</div></div><div class="mark-scheme" id="ms1"><strong>Explanation:</strong> To get at least 5 subnets, you must borrow enough bits (n) so that 2ⁿ ≥ 5. If n=2, 2²=4 (not enough). If n=3, 2³=8 (this works). Borrowing 3 bits from the host portion makes the last octet `11100000` in binary, which is 128+64+32 = 224. The resulting mask is 255.255.255.224.</div></div>
+                    <div class="question" id="q2"><p class="question-text">2. Given the subnet mask 255.255.255.248, how many usable host addresses are available per subnet?</p><input type="text" id="q2-input" class="quiz-input" placeholder="Enter number"><div class="mark-scheme" id="ms2"><strong>Explanation:</strong> The mask 255.255.255.248 in binary is `...11111000`. This leaves 3 bits for the host portion (the trailing zeros). The formula for usable hosts is 2ʰ - 2, where h is the number of host bits. So, 2³ - 2 = 8 - 2 = 6 usable hosts.</div></div>
+                    <div class="question" id="q3"><p class="question-text">3. The IP Address 172.16.10.70 /26 belongs to which network address?</p><div class="options" data-question="3"><div class="option" data-answer="a">172.16.10.0</div><div class="option" data-answer="b">172.16.10.32</div><div class="option" data-answer="c">172.16.10.64</div><div class="option" data-answer="d">172.16.10.128</div></div><div class="mark-scheme" id="ms3"><strong>Explanation:</strong> A /26 mask is 255.255.255.192. The "block size" or "magic number" is 256 - 192 = 64. This means subnets increment by 64 in the last octet: 172.16.10.0, 172.16.10.64, 172.16.10.128, etc. The IP 172.16.10.70 falls within the range of the .64 network (which spans from .64 to .127).</div></div>
+                    <div class="question" id="q4"><p class="question-text">4. What is the broadcast address for the network 198.51.100.128 /28?</p><div class="options" data-question="4"><div class="option" data-answer="a">198.51.100.132</div><div class="option" data-answer="b">198.51.100.143</div><div class="option" data-answer="c">198.51.100.144</div><div class="option" data-answer="d">198.51.100.255</div></div><div class="mark-scheme" id="ms4"><strong>Explanation:</strong> A /28 mask leaves 4 host bits (32-28=4). The block size is 2⁴ = 16. Subnets are .0, .16, .32, ..., .128, .144, etc. The network 198.51.100.128 ends just before the next network starts. The next network is 198.51.100.144, so the broadcast address for the .128 network is 198.51.100.143.</div></div>
+                    <div class="question" id="q5"><p class="question-text">5. A network requires capacity for 25 hosts. What is the most efficient subnet mask in CIDR notation?</p><input type="text" id="q5-input" class="quiz-input" placeholder="/nn"><div class="mark-scheme" id="ms5"><strong>Explanation:</strong> We need to find the number of host bits (h) where 2ʰ - 2 ≥ 25. If h=4, 2⁴-2=14 (too small). If h=5, 2⁵-2=30 (sufficient). This means we need 5 host bits. Since an IPv4 address has 32 bits, the network portion will have 32 - 5 = 27 bits. This is written as /27 in CIDR notation.</div></div>
+                    <button id="submit-quiz-btn" class="nav-btn">Submit Answers</button>
+                    <div id="quiz-results" aria-live="polite"></div>
+                </div>
+            </div>
+            
+            <!-- Final Step -->
+            <div class="step" id="step-7">
+                <div id="final-step-wrapper">
+                    <h2>Congratulations!</h2>
+                    <p>You've completed the subnetting simulation. You now have a solid foundation in how to divide networks for efficiency and security.</p>
+                    <p>Key Takeaways:
+                    <ol style="text-align: left; max-width: 450px; margin: 1rem auto; list-style-position: inside;">
+                        <li>Identify required subnets/hosts.</li>
+                        <li>Calculate bits to borrow (n for subnets, h for hosts).</li>
+                        <li>Determine the new subnet mask (/CIDR).</li>
+                        <li>Calculate ranges: Network, Broadcast, and valid host IPs.</li>
+                    </ol>
+                    </p>
+                    <button id="reset-btn" class="nav-btn">Restart Simulation</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="prev-btn" class="nav-btn">Previous Step</button>
+            <div id="step-indicator" class="step-indicator" aria-live="polite">Step 1 of 7</div>
+            <button id="next-btn" class="nav-btn">Next Step</button>
+        </div>
+    </div>
+
+    <!-- Modal for explanations -->
+    <div id="info-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title"></h3>
+            <p id="modal-text"></p>
+            <button id="modal-close-btn" class="nav-btn">Got it</button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Encapsulates the entire subnetting simulation logic to avoid global scope pollution.
+         * Follows a modular pattern for better structure and maintainability.
+         */
+        const SubnettingSim = {
+            // --- Configuration & State ---
+            currentStep: 0,
+            totalSteps: 7,
+            isModalOpen: false,
+            userAnswers: {},
+            correctAnswers: { q1: 'b', q2: '6', q3: 'c', q4: 'b', q5: '/27' },
+            elements: {},
+
+            /**
+             * Initializes the application. Caches DOM elements and binds all event listeners.
+             */
+            init() {
+                this.cacheDOMElements();
+                this.bindEvents();
+                this.updateCalculations();
+                this.goToStep(0);
+            },
+
+            /**
+             * Caches frequently accessed DOM elements for performance.
+             */
+            cacheDOMElements() {
+                this.elements.steps = document.querySelectorAll('.step');
+                this.elements.nextBtn = document.getElementById('next-btn');
+                this.elements.prevBtn = document.getElementById('prev-btn');
+                this.elements.stepIndicator = document.getElementById('step-indicator');
+                this.elements.infoModal = document.getElementById('info-modal');
+                this.elements.modalTitle = document.getElementById('modal-title');
+                this.elements.modalText = document.getElementById('modal-text');
+                this.elements.modalCloseBtn = document.getElementById('modal-close-btn');
+                this.elements.resetBtn = document.getElementById('reset-btn');
+                this.elements.ipDiagramOctets = document.querySelectorAll('#intro-ip-diagram .ip-octet');
+                this.elements.binaryConverter = document.getElementById('binary-converter-bits');
+                this.elements.decimalOutput = document.getElementById('decimal-output');
+                this.elements.borrowSlider = document.getElementById('bit-borrow-slider');
+                this.elements.bitsBorrowedLabel = document.getElementById('bits-borrowed-label');
+                this.elements.borrowedBitsDisplay = document.getElementById('borrowed-bits-display');
+                this.elements.newHostBitsDisplay = document.getElementById('new-host-bits-display');
+                this.elements.calcSlider = document.getElementById('calc-slider');
+                this.elements.quizContainer = document.querySelector('.quiz-container');
+                this.elements.submitQuizBtn = document.getElementById('submit-quiz-btn');
+                this.elements.finalStepWrapper = document.getElementById('final-step-wrapper');
+            },
+
+            /**
+             * Binds all necessary event listeners for the simulation.
+             */
+            bindEvents() {
+                this.elements.nextBtn.addEventListener('click', () => this.goToStep(this.currentStep + 1));
+                this.elements.prevBtn.addEventListener('click', () => this.goToStep(this.currentStep - 1));
+                document.addEventListener('keydown', this.handleKeyPress.bind(this));
+
+                this.elements.modalCloseBtn.addEventListener('click', this.hideModal.bind(this));
+                this.elements.infoModal.addEventListener('click', (e) => e.target === this.elements.infoModal && this.hideModal());
+                
+                // Button ripple effect
+                document.querySelectorAll('.nav-btn').forEach(button => {
+                    button.addEventListener('click', this.createRipple);
+                });
+
+                // --- Step-specific events ---
+                this.elements.ipDiagramOctets.forEach(octet => {
+                    octet.addEventListener('click', (e) => this.handleOctetClick(e));
+                });
+                
+                // Event delegation for binary converter
+                this.elements.binaryConverter.addEventListener('click', (e) => this.handleBitClick(e));
+                
+                this.elements.borrowSlider.addEventListener('input', this.updateBorrowVisual.bind(this));
+                this.elements.calcSlider.addEventListener('input', this.updateCalculations.bind(this));
+                
+                // Event delegation for quiz
+                this.elements.quizContainer.addEventListener('click', (e) => this.handleQuizInteraction(e));
+                
+                this.elements.resetBtn.addEventListener('click', this.reset.bind(this));
+            },
+
+            // --- Core Logic & Handlers ---
+
+            /**
+             * Navigates to a specific step in the simulation.
+             * @param {number} stepIndex - The index of the step to navigate to.
+             */
+            goToStep(stepIndex) {
+                if (stepIndex < 0 || stepIndex >= this.totalSteps || this.isModalOpen) return;
+                
+                this.currentStep = stepIndex;
+
+                this.elements.steps.forEach((step, index) => {
+                    step.classList.remove('active', 'prev', 'next');
+                    if (index === this.currentStep) step.classList.add('active');
+                    else if (index < this.currentStep) step.classList.add('prev');
+                    else step.classList.add('next');
+                });
+                
+                this.updateButtons();
+
+                if (this.currentStep === this.totalSteps - 1) {
+                    this.triggerConfetti();
+                }
+            },
+            
+            updateButtons() {
+                this.elements.prevBtn.disabled = this.currentStep === 0;
+                this.elements.nextBtn.disabled = this.currentStep === this.totalSteps - 1;
+                this.elements.stepIndicator.textContent = `Step ${this.currentStep + 1} of ${this.totalSteps}`;
+            },
+
+            handleKeyPress(e) {
+                if (this.isModalOpen) return;
+                if (e.key === 'ArrowRight') this.goToStep(this.currentStep + 1);
+                else if (e.key === 'ArrowLeft') this.goToStep(this.currentStep - 1);
+            },
+
+            // --- Modal ---
+            showModal(title, text) {
+                this.isModalOpen = true;
+                this.elements.modalTitle.textContent = title;
+                this.elements.modalText.textContent = text;
+                this.elements.infoModal.classList.add('show');
+            },
+
+            hideModal() {
+                this.isModalOpen = false;
+                this.elements.infoModal.classList.remove('show');
+            },
+            
+            // --- Visual Effects ---
+            createRipple(event) {
+                const button = event.currentTarget;
+                const circle = document.createElement("span");
+                const diameter = Math.max(button.clientWidth, button.clientHeight);
+                const radius = diameter / 2;
+
+                circle.style.width = circle.style.height = `${diameter}px`;
+                circle.style.left = `${event.clientX - button.offsetLeft - radius}px`;
+                circle.style.top = `${event.clientY - button.offsetTop - radius}px`;
+                circle.classList.add("ripple");
+
+                const ripple = button.getElementsByClassName("ripple")[0];
+                if (ripple) ripple.remove();
+                
+                button.appendChild(circle);
+            },
+
+            triggerConfetti() {
+                this.elements.finalStepWrapper.innerHTML = this.elements.finalStepWrapper.innerHTML; // Clear old particles
+                const colors = ['#38bdf8', '#818cf8', '#f472b6', '#a78bfa', '#e2e8f0'];
+                for (let i = 0; i < 100; i++) {
+                    const particle = document.createElement('div');
+                    particle.classList.add('particle');
+                    particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    const size = Math.random() * 10 + 5;
+                    particle.style.width = `${size}px`;
+                    particle.style.height = `${size}px`;
+                    particle.style.left = `${Math.random() * 100}%`;
+                    particle.style.animation = `fall ${Math.random() * 2 + 3}s linear ${Math.random() * 3}s forwards`;
+                    this.elements.finalStepWrapper.appendChild(particle);
+                }
+            },
+            
+            // --- Interactive Steps Logic ---
+            handleOctetClick(e) {
+                const octet = e.target.closest('.ip-octet');
+                if (!octet) return;
+                
+                const type = octet.classList.contains('network') ? 'Network Part' : 'Host Part';
+                const explanation = type === 'Network Part' 
+                    ? 'This part of the address, identified by the leading `1`s in the subnet mask, defines the specific network. All devices on the same local network share this same network ID.'
+                    : 'This part of the address, identified by the trailing `0`s in the subnet mask, uniquely identifies the device (host) within its network. No two devices on the same network can share a host ID.';
+                this.showModal(type, explanation);
+            },
+
+            handleBitClick(e) {
+                const bitState = e.target.closest('.bit-state');
+                if (!bitState) return;
+                
+                bitState.classList.toggle('on');
+                bitState.textContent = bitState.classList.contains('on') ? '1' : '0';
+                this.calculateBinaryDecimal();
+            },
+
+            calculateBinaryDecimal() {
+                let total = 0;
+                this.elements.binaryConverter.querySelectorAll('.bit-state').forEach(bit => {
+                    if (bit.classList.contains('on')) {
+                        total += parseInt(bit.dataset.value, 10);
+                    }
+                });
+                this.elements.decimalOutput.innerHTML = (total === 192) 
+                    ? `<span class="success">${total}</span>` 
+                    : total;
+            },
+            
+            updateBorrowVisual() {
+                const bits = parseInt(this.elements.borrowSlider.value, 10);
+                this.elements.bitsBorrowedLabel.textContent = bits;
+                this.elements.borrowedBitsDisplay.textContent = '1'.repeat(bits);
+                this.elements.newHostBitsDisplay.textContent = '0'.repeat(8 - bits);
+            },
+            
+            updateCalculations() {
+                const borrowedBits = parseInt(this.elements.calcSlider.value, 10);
+                document.getElementById('calc-bits-borrowed-label').textContent = borrowedBits;
+                
+                const hostBits = 8 - borrowedBits;
+                const subnets = Math.pow(2, borrowedBits);
+                const hosts = Math.pow(2, hostBits) - 2;
+
+                let lastOctet = 0;
+                for (let i = 7; i > 7 - borrowedBits; i--) {
+                    lastOctet += Math.pow(2, i);
+                }
+                
+                document.getElementById('new-mask-result').textContent = `255.255.255.${lastOctet}`;
+                document.getElementById('subnet-count-result').textContent = subnets;
+                document.getElementById('host-count-result').textContent = hosts > 0 ? hosts : 0;
+                document.getElementById('total-hosts-result').textContent = hosts > 0 ? subnets * hosts : 0;
+                document.getElementById('subnet-formula-result').innerHTML = `2<sup>${borrowedBits}</sup>`;
+                document.getElementById('host-formula-result').innerHTML = `2<sup>${hostBits}</sup> - 2`;
+            },
+            
+            // --- Quiz Logic ---
+            handleQuizInteraction(e) {
+                if (e.target.classList.contains('option')) {
+                    const questionDiv = e.target.closest('.options');
+                    const qNum = questionDiv.dataset.question;
+                    this.userAnswers[`q${qNum}`] = e.target.dataset.answer;
+                    
+                    questionDiv.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+                    e.target.classList.add('selected');
+                } else if (e.target.id === 'submit-quiz-btn') {
+                    this.submitQuiz();
+                }
+            },
+
+            submitQuiz() {
+                let score = 0;
+                const totalQuestions = Object.keys(this.correctAnswers).length;
+                
+                // Process Questions 1-4 (MCQ)
+                for(let i=1; i<=4; i++) {
+                    if (i === 2) continue; // Skip text input question
+                    const qAnswer = this.userAnswers[`q${i}`];
+                    this.markMcq(`${i}`, qAnswer);
+                    if (qAnswer === this.correctAnswers[`q${i}`]) score++;
+                }
+                
+                // Process Text Input Questions
+                const q2Input = document.getElementById('q2-input');
+                this.markInput(q2Input, this.correctAnswers.q2);
+                if (q2Input.value.trim() === this.correctAnswers.q2) score++;
+                
+                const q5Input = document.getElementById('q5-input');
+                this.markInput(q5Input, this.correctAnswers.q5);
+                if (q5Input.value.trim() === this.correctAnswers.q5) score++;
+
+
+                const quizResults = document.getElementById('quiz-results');
+                quizResults.textContent = `You scored ${score} out of ${totalQuestions}.`;
+                quizResults.style.color = (score === totalQuestions) ? 'var(--success-color)' : 'var(--error-color)';
+            },
+
+            markMcq(qNum, answer) {
+                const options = document.querySelectorAll(`[data-question="${qNum}"] .option`);
+                options.forEach(opt => {
+                    opt.classList.remove('correct', 'incorrect');
+                    opt.style.animation = 'none'; // Reset animation
+                    // Use requestAnimationFrame to restart animation
+                    void opt.offsetWidth; 
+                    if (opt.dataset.answer === this.correctAnswers[`q${qNum}`]) {
+                        opt.classList.add('correct');
+                    } else if (opt.dataset.answer === answer) {
+                        opt.classList.add('incorrect');
+                    }
+                });
+                if (answer) {
+                    document.getElementById(`ms${qNum}`).style.display = 'block';
+                }
+            },
+
+            markInput(inputEl, correctAnswer) {
+                inputEl.classList.remove('correct', 'incorrect');
+                const value = inputEl.value.trim();
+                if (value.length > 0) {
+                    if (value === correctAnswer) {
+                        inputEl.classList.add('correct');
+                    } else {
+                        inputEl.classList.add('incorrect');
+                    }
+                    document.getElementById(`ms${inputEl.id.replace('-input', '')}`).style.display = 'block';
+                }
+            },
+
+            // --- Reset ---
+            reset() {
+                // Reset quiz
+                document.querySelectorAll('.option').forEach(o => {
+                     o.classList.remove('selected', 'correct', 'incorrect');
+                     o.style.animation = 'none';
+                });
+                document.querySelectorAll('.quiz-input').forEach(i => {
+                  i.value = '';
+                  i.classList.remove('correct', 'incorrect');
+                });
+                document.querySelectorAll('.mark-scheme').forEach(ms => ms.style.display = 'none');
+                document.getElementById('quiz-results').textContent = '';
+                this.userAnswers = {};
+
+                // Reset interactive elements
+                this.elements.borrowSlider.value = 0;
+                this.elements.borrowSlider.dispatchEvent(new Event('input'));
+                this.elements.calcSlider.value = 2;
+                this.elements.calcSlider.dispatchEvent(new Event('input'));
+                this.elements.binaryConverter.querySelectorAll('.bit-state').forEach(bit => {
+                    bit.classList.remove('on');
+                    bit.textContent = '0';
+                });
+                this.calculateBinaryDecimal();
+
+                // Go to first step
+                this.goToStep(0);
+            },
+        };
+
+        // Run the simulation once the DOM is fully loaded.
+        document.addEventListener('DOMContentLoaded', () => SubnettingSim.init());
+    </script>
+</body>
+</html>

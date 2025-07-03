@@ -1,0 +1,4043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A* Pathfinding Algorithm | Interactive Lesson</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1d4ed8;
+            --primary-light: #60a5fa;
+            --secondary-color: #7c3aed;
+            --secondary-dark: #6d28d9;
+            --success-color: #10b981;
+            --success-dark: #059669;
+            --error-color: #ef4444;
+            --error-dark: #dc2626;
+            --warning-color: #f59e0b;
+            --warning-dark: #d97706;
+            --bg-color: #ffffff;
+            --bg-secondary: #f3f4f6;
+            --text-color: #1f2937;
+            --text-secondary: #6b7280;
+            --card-bg: #ffffff;
+            --border-color: #e5e7eb;
+            --highlight-color: #fef3c7;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+            --gradient-primary: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            --gradient-success: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+            --gradient-gold: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            --animation-duration: 0.3s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Performance optimizations */
+        * {
+            will-change: auto;
+        }
+
+        /* High Contrast Mode */
+        body.high-contrast {
+            --bg-color: #000000;
+            --bg-secondary: #0a0a0a;
+            --text-color: #ffffff;
+            --text-secondary: #e0e0e0;
+            --card-bg: #1a1a1a;
+            --border-color: #ffffff;
+            --primary-color: #00ff00;
+            --secondary-color: #ffff00;
+        }
+
+        /* Dyslexia Font */
+        body.dyslexia-font {
+            font-family: 'Comic Sans MS', 'OpenDyslexic', sans-serif;
+            letter-spacing: 0.05em;
+            word-spacing: 0.1em;
+            line-height: 1.8;
+        }
+
+        /* Header */
+        .header {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 1.5rem 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.1) 100%);
+            pointer-events: none;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* XP Container */
+        .xp-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(255,255,255,0.15);
+            padding: 0.5rem 1.5rem;
+            border-radius: 2rem;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+            transition: transform var(--animation-duration) ease;
+        }
+
+        .xp-container:hover {
+            transform: translateY(-2px);
+        }
+
+        .xp-bar {
+            width: 200px;
+            height: 24px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+        }
+
+        .xp-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .level-badge {
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 1.5rem;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        /* Navigation */
+        .nav-container {
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(20px);
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 80px;
+            z-index: 999;
+            box-shadow: var(--shadow-md);
+        }
+
+        .nav-pills {
+            display: flex;
+            gap: 0.75rem;
+            overflow-x: auto;
+            padding: 0.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .nav-pills::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-pill {
+            padding: 0.625rem 1.25rem;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 2rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.875rem;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-pill::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: var(--primary-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .nav-pill:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .nav-pill:hover::before {
+            width: 100%;
+            height: 100%;
+        }
+
+        .nav-pill.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .nav-pill.completed {
+            border-color: var(--success-color);
+            position: relative;
+        }
+
+        .nav-pill.completed::after {
+            content: '✓';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--gradient-success);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            box-shadow: var(--shadow-md);
+            animation: bounceIn 0.5s ease;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            min-height: calc(100vh - 200px);
+        }
+
+        .section {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .section.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            transition: transform var(--animation-duration) ease, box-shadow var(--animation-duration) ease;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.6s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .card-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-title span {
+            font-size: 2rem;
+            -webkit-text-fill-color: initial;
+        }
+
+        /* Interactive Areas */
+        .interactive-area {
+            background: var(--bg-secondary);
+            border: 2px dashed var(--border-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            min-height: 120px;
+            position: relative;
+            transition: all var(--animation-duration) ease;
+        }
+
+        .interactive-area:hover {
+            border-color: var(--primary-light);
+            background: rgba(37, 99, 235, 0.02);
+        }
+
+        .highlight-active {
+            border-color: var(--primary-color);
+            background: rgba(37, 99, 235, 0.05);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+            50% { box-shadow: 0 0 0 12px rgba(37, 99, 235, 0); }
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            text-transform: none;
+            letter-spacing: 0.025em;
+            touch-action: manipulation;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--card-bg);
+            color: var(--text-color);
+            border: 2px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-secondary);
+            border-color: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success-color), var(--success-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        /* Achievement Popup */
+        .achievement-popup {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: white;
+            border-radius: 1.5rem;
+            padding: 1.5rem 2rem;
+            box-shadow: var(--shadow-xl);
+            transform: translateX(400px);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2000;
+            max-width: 320px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .achievement-popup::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-gold);
+        }
+
+        .achievement-popup.show {
+            transform: translateX(0);
+        }
+
+        .achievement-icon {
+            font-size: 3.5rem;
+            text-align: center;
+            margin-bottom: 0.75rem;
+            animation: bounceRotate 0.6s ease;
+        }
+
+        @keyframes bounceRotate {
+            0% { transform: scale(0) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(180deg); }
+            100% { transform: scale(1) rotate(360deg); }
+        }
+
+        /* Quiz Elements */
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 1.25rem;
+            margin: 0.75rem 0;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            font-weight: 500;
+        }
+
+        .quiz-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .quiz-option:hover {
+            background: var(--bg-secondary);
+            border-color: var(--primary-light);
+            transform: translateX(8px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .quiz-option:hover::before {
+            left: 100%;
+        }
+
+        .quiz-option.selected {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .quiz-option.correct {
+            background: linear-gradient(135deg, var(--success-color), var(--success-dark));
+            color: white;
+            border-color: var(--success-color);
+            animation: correctAnswer 0.6s ease;
+        }
+
+        .quiz-option.incorrect {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            border-color: var(--error-color);
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes correctAnswer {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        /* Input Fields */
+        .input-field {
+            width: 100%;
+            padding: 0.875rem 1.25rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            transition: all var(--animation-duration) ease;
+            background: var(--card-bg);
+            font-family: inherit;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+            background: white;
+        }
+
+        .input-field::placeholder {
+            color: var(--text-secondary);
+        }
+
+        /* Grid Pathfinding */
+        .grid-container {
+            display: inline-block;
+            margin: 1.5rem 0;
+            border: 3px solid var(--border-color);
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(10, 50px);
+            grid-template-rows: repeat(8, 50px);
+            gap: 1px;
+            background: var(--border-color);
+            padding: 1px;
+        }
+
+        .grid-cell {
+            background: var(--card-bg);
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .grid-cell:hover {
+            background: var(--bg-secondary);
+            transform: scale(1.05);
+            z-index: 10;
+            box-shadow: var(--shadow-md);
+        }
+
+        .grid-cell.start {
+            background: var(--success-color);
+            color: white;
+            animation: pulseStart 2s infinite;
+        }
+
+        @keyframes pulseStart {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+        }
+
+        .grid-cell.end {
+            background: var(--error-color);
+            color: white;
+            animation: pulseEnd 2s infinite;
+        }
+
+        @keyframes pulseEnd {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+        }
+
+        .grid-cell.wall {
+            background: var(--text-color);
+            color: var(--bg-color);
+        }
+
+        .grid-cell.open {
+            background: rgba(124, 58, 237, 0.2);
+            border-color: var(--secondary-color);
+        }
+
+        .grid-cell.closed {
+            background: rgba(37, 99, 235, 0.2);
+            border-color: var(--primary-color);
+        }
+
+        .grid-cell.path {
+            background: var(--gradient-gold);
+            color: white;
+            animation: pathReveal 0.5s ease;
+        }
+
+        @keyframes pathReveal {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .grid-cell.current {
+            background: var(--warning-color);
+            color: white;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+            z-index: 20;
+            transform: scale(1.1);
+        }
+
+        /* Code Editor */
+        .code-editor {
+            background: #1a1b26;
+            color: #a9b1d6;
+            padding: 1.75rem;
+            border-radius: 1rem;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.95rem;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            line-height: 1.6;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+        }
+
+        .code-editor::before {
+            content: 'PSEUDOCODE';
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            font-size: 0.75rem;
+            color: #565f89;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .code-editor .keyword {
+            color: #bb9af7;
+            font-weight: 600;
+        }
+
+        .code-editor .string {
+            color: #9ece6a;
+        }
+
+        .code-editor .comment {
+            color: #565f89;
+            font-style: italic;
+        }
+
+        .code-editor .number {
+            color: #ff9e64;
+        }
+
+        /* Drawing Canvas */
+        .drawing-canvas {
+            border: 3px solid var(--border-color);
+            border-radius: 1rem;
+            background: white;
+            touch-action: none;
+            cursor: crosshair;
+            margin: 1.5rem 0;
+            box-shadow: var(--shadow-md);
+            transition: border-color var(--animation-duration) ease;
+        }
+
+        .drawing-canvas:hover {
+            border-color: var(--primary-light);
+        }
+
+        /* Matching Container */
+        .matching-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .draggable-item, .drop-zone {
+            padding: 1.25rem;
+            margin: 0.75rem 0;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            cursor: pointer;
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            touch-action: manipulation;
+            position: relative;
+            font-weight: 500;
+        }
+
+        .draggable-item:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .draggable-item.selected {
+            background: var(--gradient-primary);
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .draggable-item.matched {
+            opacity: 0.5;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+
+        .drop-zone {
+            min-height: 80px;
+            border-style: dashed;
+            border-width: 3px;
+            background: var(--bg-secondary);
+        }
+
+        .drop-zone.highlight {
+            background: rgba(37, 99, 235, 0.1);
+            border-color: var(--primary-color);
+            animation: dropZonePulse 1s infinite;
+        }
+
+        @keyframes dropZonePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .drop-zone.correct {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            border-color: var(--success-color);
+        }
+
+        /* Hint Container */
+        .hint-container {
+            margin-top: 1rem;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+            border-left: 4px solid var(--warning-color);
+            border-radius: 0.75rem;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        .hint-container.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Simulation Controls */
+        .sim-controls {
+            display: flex;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .speed-slider {
+            width: 150px;
+        }
+
+        /* Progress Indicator */
+        .progress-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--border-color);
+            transition: all var(--animation-duration) ease;
+            cursor: pointer;
+        }
+
+        .progress-dot:hover {
+            transform: scale(1.2);
+        }
+
+        .progress-dot.active {
+            background: var(--primary-color);
+            transform: scale(1.5);
+            box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);
+        }
+
+        .progress-dot.completed {
+            background: var(--success-color);
+            position: relative;
+        }
+
+        .progress-dot.completed::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 0.6rem;
+            font-weight: bold;
+        }
+
+        /* Tables */
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: var(--card-bg);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+
+        .info-table th {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .info-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .info-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .info-table tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        /* Mark Scheme */
+        .mark-scheme {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            border: 2px solid var(--success-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-top: 1.5rem;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .mark-scheme.show {
+            display: block;
+        }
+
+        .mark-scheme h5 {
+            color: var(--success-dark);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        /* Feedback Button */
+        .feedback-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            font-size: 1.5rem;
+        }
+
+        .feedback-btn:hover {
+            transform: scale(1.1) rotate(15deg);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .feedback-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Feedback Modal */
+        .feedback-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .feedback-content {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Accessibility Controls */
+        .accessibility-controls {
+            position: fixed;
+            top: 150px;
+            right: 20px;
+            background: white;
+            border-radius: 1rem;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            border: 1px solid var(--border-color);
+            transition: transform var(--animation-duration) ease;
+        }
+
+        .accessibility-controls:hover {
+            transform: translateX(-5px);
+        }
+
+        .accessibility-controls h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .accessibility-controls button {
+            display: block;
+            width: 100%;
+            margin: 0.5rem 0;
+            padding: 0.625rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all var(--animation-duration) ease;
+            font-weight: 500;
+        }
+
+        .accessibility-controls button:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            transform: translateX(-2px);
+        }
+
+        /* Font Size Controls */
+        .font-size-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+
+        .font-size-controls button {
+            padding: 0.5rem 0.75rem;
+            margin: 0;
+        }
+
+        body.font-small { font-size: 14px; }
+        body.font-large { font-size: 18px; }
+        body.font-xlarge { font-size: 20px; }
+
+        /* Shame Message */
+        .shame-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            padding: 2rem 3rem;
+            border-radius: 1.5rem;
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-align: center;
+            z-index: 3000;
+            box-shadow: var(--shadow-xl);
+            animation: shameAnimation 3s ease forwards;
+        }
+
+        @keyframes shameAnimation {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+            20% { transform: translate(-50%, -50%) scale(1.2) rotate(-5deg); }
+            40% { transform: translate(-50%, -50%) scale(0.9) rotate(5deg); }
+            60% { transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
+            80% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+        }
+
+        /* Particle Container */
+        #particle-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2999;
+        }
+
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFall 2s linear forwards;
+        }
+
+        @keyframes particleFall {
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+
+        /* Quiz Question Styling */
+        .quiz-question {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .quiz-question p {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        /* Algorithm Steps */
+        .algorithm-step {
+            margin: 1rem 0;
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--primary-color);
+            border-radius: 0.5rem;
+            transition: all var(--animation-duration) ease;
+        }
+
+        .algorithm-step.active {
+            background: rgba(37, 99, 235, 0.1);
+            transform: translateX(10px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Success Animation */
+        @keyframes successPulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .success-animation {
+            animation: successPulse 1s ease;
+        }
+
+        /* Loading State */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid transparent;
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Performance Optimizations */
+        .section:not(.active) {
+            visibility: hidden;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .xp-container {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .xp-bar {
+                width: 150px;
+            }
+
+            .matching-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .grid {
+                grid-template-columns: repeat(8, 40px);
+                grid-template-rows: repeat(6, 40px);
+            }
+
+            .nav-container {
+                top: 140px;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .accessibility-controls {
+                top: auto;
+                bottom: 90px;
+                right: 10px;
+                padding: 1rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .achievement-popup {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+
+            .interactive-area {
+                padding: 1.5rem;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            .header, .nav-container, .feedback-btn, .accessibility-controls, .btn {
+                display: none !important;
+            }
+
+            .section {
+                display: block !important;
+                opacity: 1 !important;
+                transform: none !important;
+                page-break-after: always;
+            }
+
+            .card {
+                box-shadow: none;
+                border: 1px solid #000;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 6px;
+            border: 2px solid var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-color);
+        }
+
+        /* iframe support */
+        iframe {
+            width: 100%;
+            height: 80vh;
+            border: none;
+            display: block;
+        }
+
+        /* Additional Grid Styles */
+        .grid-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .grid-info-item {
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 0.75rem;
+            text-align: center;
+            border: 2px solid var(--border-color);
+            transition: all var(--animation-duration) ease;
+        }
+
+        .grid-info-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .grid-info-item strong {
+            display: block;
+            color: var(--primary-color);
+            font-size: 1.25rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Formula Display */
+        .formula {
+            background: var(--bg-secondary);
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 1.1rem;
+            text-align: center;
+            margin: 1.5rem 0;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Comparison Table */
+        .comparison-table {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .comparison-column {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 2px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            transition: all var(--animation-duration) ease;
+        }
+
+        .comparison-column:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .comparison-column h4 {
+            text-align: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .comparison-column.astar h4 {
+            color: var(--primary-color);
+        }
+
+        .comparison-column.dijkstra h4 {
+            color: var(--secondary-color);
+        }
+
+        .comparison-column ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .comparison-column li {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .comparison-column li:last-child {
+            border-bottom: none;
+        }
+
+        .comparison-column li::before {
+            content: '→';
+            color: var(--primary-color);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        /* Step Counter */
+        .step-counter {
+            display: inline-flex;
+            align-items: center;
+            gap: 1rem;
+            background: var(--bg-secondary);
+            padding: 0.75rem 1.5rem;
+            border-radius: 2rem;
+            border: 2px solid var(--border-color);
+            font-weight: 600;
+            margin: 1rem 0;
+        }
+
+        .step-counter span {
+            color: var(--primary-color);
+            font-size: 1.25rem;
+        }
+
+        /* Animation for algorithm visualization */
+        @keyframes nodeExplore {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .exploring {
+            animation: nodeExplore 1s ease infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="header-content">
+            <h1>A* Pathfinding Algorithm</h1>
+            <div class="xp-container" role="status" aria-live="polite">
+                <span class="level-badge">Level <span id="current-level">1</span></span>
+                <div class="xp-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
+                </div>
+                <span id="xp-text">0 / 100 XP</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-container" role="navigation" aria-label="Lesson sections">
+        <div class="nav-pills" id="nav-pills">
+            <button class="nav-pill active" data-section="intro" aria-current="page">Introduction</button>
+            <button class="nav-pill" data-section="starter">Starter Activity</button>
+            <button class="nav-pill" data-section="fundamentals">A* Fundamentals</button>
+            <button class="nav-pill" data-section="heuristics">Heuristics</button>
+            <button class="nav-pill" data-section="comparison">A* vs Dijkstra</button>
+            <button class="nav-pill" data-section="simulation">Step-by-Step</button>
+            <button class="nav-pill" data-section="implementation">Implementation</button>
+            <button class="nav-pill" data-section="applications">Applications</button>
+            <button class="nav-pill" data-section="optimization">Optimization</button>
+            <button class="nav-pill" data-section="summary">Summary & Quiz</button>
+            <button class="nav-pill" data-section="exam">Exam Practice</button>
+            <button class="nav-pill" data-section="extension">Extension</button>
+            <button class="nav-pill" data-section="videos">Videos</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" role="main">
+        <!-- Introduction Section -->
+        <section id="intro" class="section active">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🗺️</span> Welcome to A* Pathfinding!
+                </h2>
+                <div class="progress-indicator" role="group" aria-label="Section progress">
+                    <span class="progress-dot active" title="Current section"></span>
+                    <span class="progress-dot" title="Not started"></span>
+                    <span class="progress-dot" title="Not started"></span>
+                    <span class="progress-dot" title="Not started"></span>
+                    <span class="progress-dot" title="Not started"></span>
+                </div>
+                
+                <h3>Learning Outcomes</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem; line-height: 1.8;">
+                    <li>Understand how A* builds upon Dijkstra's algorithm</li>
+                    <li>Explain how heuristics improve pathfinding efficiency</li>
+                    <li>Calculate f(n) = g(n) + h(n) for nodes in a graph</li>
+                    <li>Trace through the A* algorithm step-by-step</li>
+                    <li>Compare A* with Dijkstra's algorithm</li>
+                    <li>Apply A* to real-world pathfinding problems</li>
+                    <li>Evaluate the advantages and limitations of A*</li>
+                </ul>
+
+                <div class="interactive-area highlight-active">
+                    <h4>Pre-Assessment: Test Your Knowledge</h4>
+                    <p>Let's see what you already know about pathfinding algorithms!</p>
+                    
+                    <div id="pre-quiz">
+                        <p><strong>Question 1:</strong> What is the main advantage of A* over Dijkstra's algorithm?</p>
+                        <button class="quiz-option" data-answer="a">A* always finds the shortest path</button>
+                        <button class="quiz-option" data-answer="b">A* is generally faster due to heuristics</button>
+                        <button class="quiz-option" data-answer="c">A* uses less memory</button>
+                        <button class="quiz-option" data-answer="d">A* works on all graph types</button>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkPreQuiz()" style="margin-top: 1rem;">
+                        Check Answer
+                    </button>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="navigateSection('next')">
+                        Start Learning →
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Starter Activity -->
+        <section id="starter" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎯</span> Starter Activity: Algorithm Characteristics
+                </h2>
+                
+                <p>Match each characteristic to the correct pathfinding algorithm by clicking items to connect them!</p>
+                
+                <div class="matching-container" id="starter-matching">
+                    <div>
+                        <h4>Characteristics</h4>
+                        <div class="draggable-item" data-id="1">Uses heuristic estimation</div>
+                        <div class="draggable-item" data-id="2">Explores all nodes equally</div>
+                        <div class="draggable-item" data-id="3">f(n) = g(n) + h(n)</div>
+                        <div class="draggable-item" data-id="4">Guarantees shortest path in all cases</div>
+                        <div class="draggable-item" data-id="5">Faster in practice</div>
+                        <div class="draggable-item" data-id="6">Priority based on distance only</div>
+                    </div>
+                    <div>
+                        <h4>Algorithm</h4>
+                        <div class="drop-zone" data-type="astar">
+                            <strong>A* Algorithm</strong>
+                            <div class="dropped-items"></div>
+                        </div>
+                        <div class="drop-zone" data-type="dijkstra">
+                            <strong>Dijkstra's Algorithm</strong>
+                            <div class="dropped-items"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetStarterActivity()">Reset Activity</button>
+                <button class="btn btn-primary" onclick="checkStarterActivity()">Check Answers</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- A* Fundamentals -->
+        <section id="fundamentals" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🔧</span> A* Fundamentals
+                </h2>
+                
+                <h3>The A* Formula</h3>
+                <div class="formula">
+                    f(n) = g(n) + h(n)
+                </div>
+                
+                <div class="grid-info">
+                    <div class="grid-info-item">
+                        <h5>f(n)</h5>
+                        <strong>Total Cost</strong>
+                        <p>Estimated total cost of path through node n</p>
+                    </div>
+                    <div class="grid-info-item">
+                        <h5>g(n)</h5>
+                        <strong>Path Cost</strong>
+                        <p>Actual cost from start to node n</p>
+                    </div>
+                    <div class="grid-info-item">
+                        <h5>h(n)</h5>
+                        <strong>Heuristic</strong>
+                        <p>Estimated cost from n to goal</p>
+                    </div>
+                </div>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Interactive Calculator</h4>
+                    <p>Calculate f(n) values for different nodes:</p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0;">
+                        <div>
+                            <label>g(n) - Path cost:</label>
+                            <input type="number" id="g-value" class="input-field" value="5" min="0" max="100">
+                        </div>
+                        <div>
+                            <label>h(n) - Heuristic:</label>
+                            <input type="number" id="h-value" class="input-field" value="8" min="0" max="100">
+                        </div>
+                        <div>
+                            <label>f(n) - Total:</label>
+                            <input type="text" id="f-value" class="input-field" readonly style="background: var(--highlight-color); font-weight: bold;">
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="calculateF()">Calculate f(n)</button>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Quick Check</h4>
+                    <p>If g(n) = 12 and h(n) = 7, what is f(n)?</p>
+                    
+                    <input type="number" id="fcheck" class="input-field" style="width: 150px; display: inline-block;" placeholder="Enter value">
+                    <button class="btn btn-secondary" onclick="checkFValue()">Check</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Heuristics -->
+        <section id="heuristics" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📐</span> Understanding Heuristics
+                </h2>
+                
+                <p>A heuristic is an estimation of the cost from a node to the goal. Good heuristics make A* efficient!</p>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Common Heuristic Functions</h4>
+                    
+                    <table class="info-table">
+                        <thead>
+                            <tr>
+                                <th>Heuristic</th>
+                                <th>Formula</th>
+                                <th>Best Use Case</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Manhattan Distance</td>
+                                <td>|x₁ - x₂| + |y₁ - y₂|</td>
+                                <td>Grid with 4-way movement</td>
+                            </tr>
+                            <tr>
+                                <td>Euclidean Distance</td>
+                                <td>√((x₁ - x₂)² + (y₁ - y₂)²)</td>
+                                <td>Any direction movement</td>
+                            </tr>
+                            <tr>
+                                <td>Diagonal Distance</td>
+                                <td>max(|x₁ - x₂|, |y₁ - y₂|)</td>
+                                <td>8-way grid movement</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Calculate Heuristics</h4>
+                    <p>Calculate the Manhattan distance between two points:</p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem;">
+                        <div>
+                            <h5>Point A</h5>
+                            <label>X: <input type="number" id="x1" class="input-field" style="width: 80px;" value="2"></label>
+                            <label>Y: <input type="number" id="y1" class="input-field" style="width: 80px;" value="3"></label>
+                        </div>
+                        <div>
+                            <h5>Point B</h5>
+                            <label>X: <input type="number" id="x2" class="input-field" style="width: 80px;" value="7"></label>
+                            <label>Y: <input type="number" id="y2" class="input-field" style="width: 80px;" value="9"></label>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="calculateManhattan()" style="margin-top: 1rem;">Calculate Manhattan Distance</button>
+                    <div id="manhattan-result" style="margin-top: 1rem; font-weight: bold;"></div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>True or False: Heuristic Properties</h4>
+                    <div style="margin: 1rem 0;">
+                        <p>1. A heuristic must never overestimate the actual cost (for optimal path)
+                            <select class="input-field" style="width: 100px; display: inline-block;" id="heur1">
+                                <option value="">Select...</option>
+                                <option value="true">True</option>
+                                <option value="false">False</option>
+                            </select>
+                        </p>
+                        
+                        <p>2. Manhattan distance is always less than Euclidean distance
+                            <select class="input-field" style="width: 100px; display: inline-block;" id="heur2">
+                                <option value="">Select...</option>
+                                <option value="true">True</option>
+                                <option value="false">False</option>
+                            </select>
+                        </p>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkHeuristics()">Check Answers</button>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="showHint('heuristics')">Need a Hint?</button>
+                
+                <div class="hint-container" id="heuristics-hint">
+                    <p>💡 Hint: An admissible heuristic never overestimates. Think about the shortest possible path!</p>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- A* vs Dijkstra Comparison -->
+        <section id="comparison" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>⚖️</span> A* vs Dijkstra's Algorithm
+                </h2>
+                
+                <div class="comparison-table">
+                    <div class="comparison-column astar">
+                        <h4>A* Algorithm</h4>
+                        <ul>
+                            <li>Uses heuristic function h(n)</li>
+                            <li>Explores fewer nodes</li>
+                            <li>Faster in practice</li>
+                            <li>Requires goal knowledge</li>
+                            <li>Best for single target</li>
+                            <li>f(n) = g(n) + h(n)</li>
+                        </ul>
+                    </div>
+                    <div class="comparison-column dijkstra">
+                        <h4>Dijkstra's Algorithm</h4>
+                        <ul>
+                            <li>No heuristic used</li>
+                            <li>Explores all directions</li>
+                            <li>Slower but thorough</li>
+                            <li>No goal knowledge needed</li>
+                            <li>Finds all shortest paths</li>
+                            <li>Priority = g(n) only</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Visual Comparison</h4>
+                    <p>Click to see how each algorithm explores a grid:</p>
+                    
+                    <div style="display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="showExploration('dijkstra')">Show Dijkstra</button>
+                        <button class="btn btn-primary" onclick="showExploration('astar')">Show A*</button>
+                    </div>
+                    
+                    <div id="exploration-grid" style="margin-top: 2rem; text-align: center;">
+                        <!-- Grid will be dynamically created -->
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Scenario Analysis</h4>
+                    <p>Which algorithm would be better for each scenario?</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>1. GPS navigation from London to Manchester:
+                            <select class="input-field" style="width: 150px; display: inline-block;" id="scenario1">
+                                <option value="">Choose...</option>
+                                <option value="astar">A*</option>
+                                <option value="dijkstra">Dijkstra</option>
+                            </select>
+                        </p>
+                        
+                        <p>2. Finding nearest hospital from current location:
+                            <select class="input-field" style="width: 150px; display: inline-block;" id="scenario2">
+                                <option value="">Choose...</option>
+                                <option value="astar">A*</option>
+                                <option value="dijkstra">Dijkstra</option>
+                            </select>
+                        </p>
+                        
+                        <p>3. Video game enemy pathfinding to player:
+                            <select class="input-field" style="width: 150px; display: inline-block;" id="scenario3">
+                                <option value="">Choose...</option>
+                                <option value="dijkstra">Dijkstra</option>
+                                <option value="astar">A*</option>
+                            </select>
+                        </p>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkScenarios()">Check Answers</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step-by-Step Simulation -->
+        <section id="simulation" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎮</span> A* Algorithm Step-by-Step
+                </h2>
+                
+                <p>Watch how A* finds the optimal path! Click cells to add walls, then run the simulation.</p>
+                
+                <div class="sim-controls">
+                    <button class="btn btn-primary" onclick="startSimulation()">
+                        <span id="sim-btn-text">Start Simulation</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="stepSimulation()">Step →</button>
+                    <button class="btn btn-secondary" onclick="resetGrid()">Reset Grid</button>
+                    <button class="btn btn-danger" onclick="clearWalls()">Clear Walls</button>
+                    
+                    <div class="speed-control">
+                        <label>Speed:</label>
+                        <input type="range" id="speed-slider" class="speed-slider" min="1" max="10" value="5">
+                        <span id="speed-value">5</span>
+                    </div>
+                </div>
+                
+                <div class="step-counter">
+                    Step: <span id="step-count">0</span>
+                </div>
+                
+                <div class="grid-container">
+                    <div class="grid" id="pathfinding-grid">
+                        <!-- Grid cells will be created dynamically -->
+                    </div>
+                </div>
+                
+                <div class="grid-info">
+                    <div class="grid-info-item">
+                        <small>Start</small>
+                        <strong style="background: var(--success-color); color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">Green</strong>
+                    </div>
+                    <div class="grid-info-item">
+                        <small>Goal</small>
+                        <strong style="background: var(--error-color); color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">Red</strong>
+                    </div>
+                    <div class="grid-info-item">
+                        <small>Open List</small>
+                        <strong style="background: rgba(124, 58, 237, 0.2); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">Purple</strong>
+                    </div>
+                    <div class="grid-info-item">
+                        <small>Closed List</small>
+                        <strong style="background: rgba(37, 99, 235, 0.2); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">Blue</strong>
+                    </div>
+                    <div class="grid-info-item">
+                        <small>Current</small>
+                        <strong style="background: var(--warning-color); color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">Orange</strong>
+                    </div>
+                    <div class="grid-info-item">
+                        <small>Path</small>
+                        <strong style="background: linear-gradient(135deg, #fbbf24, #f59e0b); color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem;">Gold</strong>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Algorithm Status</h4>
+                    <div id="algorithm-status">
+                        <p>Click "Start Simulation" to begin the pathfinding process.</p>
+                    </div>
+                    
+                    <div class="algorithm-step" id="step-description">
+                        <strong>Current Step:</strong> <span id="current-step-desc">Ready to start</span>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Implementation -->
+        <section id="implementation" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>💻</span> A* Implementation
+                </h2>
+                
+                <h3>Pseudocode</h3>
+                <div class="code-editor">
+                    <span class="comment">// A* Pathfinding Algorithm</span><br>
+                    <span class="keyword">FUNCTION</span> AStar(start, goal):<br>
+                    &nbsp;&nbsp;openList = [start]<br>
+                    &nbsp;&nbsp;closedList = []<br>
+                    &nbsp;&nbsp;start.g = <span class="number">0</span><br>
+                    &nbsp;&nbsp;start.h = <span class="keyword">HEURISTIC</span>(start, goal)<br>
+                    &nbsp;&nbsp;start.f = start.g + start.h<br><br>
+                    
+                    &nbsp;&nbsp;<span class="keyword">WHILE</span> openList is not empty:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;current = node with lowest f in openList<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">IF</span> current == goal:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">RETURN</span> reconstructPath(current)<br><br>
+                    
+                    &nbsp;&nbsp;&nbsp;&nbsp;openList.<span class="keyword">REMOVE</span>(current)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;closedList.<span class="keyword">ADD</span>(current)<br><br>
+                    
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">FOR EACH</span> neighbor of current:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">IF</span> neighbor in closedList:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">CONTINUE</span><br><br>
+                    
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tentative_g = current.g + distance(current, neighbor)<br><br>
+                    
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">IF</span> neighbor not in openList:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;openList.<span class="keyword">ADD</span>(neighbor)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">ELSE IF</span> tentative_g >= neighbor.g:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">CONTINUE</span><br><br>
+                    
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;neighbor.parent = current<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;neighbor.g = tentative_g<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;neighbor.h = <span class="keyword">HEURISTIC</span>(neighbor, goal)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;neighbor.f = neighbor.g + neighbor.h<br><br>
+                    
+                    &nbsp;&nbsp;<span class="keyword">RETURN</span> failure
+                </div>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Fill in the Blanks</h4>
+                    <p>Complete the key steps of the A* algorithm:</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>1. The A* algorithm uses two lists: the 
+                            <select class="input-field" style="width: 120px; display: inline-block;" id="impl1">
+                                <option value="">Choose...</option>
+                                <option value="closed">closed</option>
+                                <option value="open">open</option>
+                                <option value="visited">visited</option>
+                                <option value="explored">explored</option>
+                            </select>
+                            list and the closed list.
+                        </p>
+                        
+                        <p>2. We always select the node with the lowest 
+                            <select class="input-field" style="width: 80px; display: inline-block;" id="impl2">
+                                <option value="">Choose...</option>
+                                <option value="g">g</option>
+                                <option value="h">h</option>
+                                <option value="f">f</option>
+                                <option value="d">d</option>
+                            </select>
+                            value from the open list.
+                        </p>
+                        
+                        <p>3. The heuristic function estimates the cost from the current node to the 
+                            <select class="input-field" style="width: 120px; display: inline-block;" id="impl3">
+                                <option value="">Choose...</option>
+                                <option value="start">start</option>
+                                <option value="neighbor">neighbor</option>
+                                <option value="goal">goal</option>
+                                <option value="parent">parent</option>
+                            </select>
+                            .
+                        </p>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkImplementation()">Check Answers</button>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Sequencing Activity</h4>
+                    <p>Put these A* steps in the correct order:</p>
+                    
+                    <div id="sequence-items">
+                        <div class="draggable-item" data-id="seq1">Calculate f(n) for neighbors</div>
+                        <div class="draggable-item" data-id="seq2">Add start node to open list</div>
+                        <div class="draggable-item" data-id="seq3">Select node with lowest f(n)</div>
+                        <div class="draggable-item" data-id="seq4">Check if current node is goal</div>
+                        <div class="draggable-item" data-id="seq5">Move current to closed list</div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkSequence()" style="margin-top: 1rem;">Check Order</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Real-World Applications -->
+        <section id="applications" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🌍</span> Real-World Applications
+                </h2>
+                
+                <div class="grid-info">
+                    <div class="grid-info-item">
+                        <h5>🚗 GPS Navigation</h5>
+                        <p>Finding fastest routes considering traffic</p>
+                    </div>
+                    <div class="grid-info-item">
+                        <h5>🎮 Video Games</h5>
+                        <p>NPC pathfinding and AI movement</p>
+                    </div>
+                    <div class="grid-info-item">
+                        <h5>🤖 Robotics</h5>
+                        <p>Autonomous navigation and obstacle avoidance</p>
+                    </div>
+                    <div class="grid-info-item">
+                        <h5>📦 Logistics</h5>
+                        <p>Warehouse routing and delivery optimization</p>
+                    </div>
+                </div>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Case Study: Video Game Pathfinding</h4>
+                    <p>An enemy needs to chase a player in a game. The map has obstacles.</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p><strong>Question 1:</strong> Why is A* better than Dijkstra for this scenario?</p>
+                        <textarea class="input-field" id="case1" rows="3" placeholder="Consider speed and efficiency..."></textarea>
+                        
+                        <p style="margin-top: 1rem;"><strong>Question 2:</strong> What heuristic would work best for diagonal movement?</p>
+                        <button class="quiz-option" onclick="checkCase2('a')">Manhattan Distance</button>
+                        <button class="quiz-option" onclick="checkCase2('b')">Euclidean Distance</button>
+                        <button class="quiz-option" onclick="checkCase2('c')">Chebyshev Distance</button>
+                        <button class="quiz-option" onclick="checkCase2('d')">Random Distance</button>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkCaseStudy()">Submit Answers</button>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Common Mistakes</h4>
+                    <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                        <li>Using an inadmissible heuristic (overestimating)</li>
+                        <li>Not updating g values when finding better paths</li>
+                        <li>Forgetting to check the closed list</li>
+                        <li>Using wrong distance calculation for grid type</li>
+                    </ul>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Optimization -->
+        <section id="optimization" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>⚡</span> Optimization & Advanced Concepts
+                </h2>
+                
+                <h3>Time Complexity</h3>
+                <div class="info-table" style="margin: 1.5rem 0;">
+                    <table style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Algorithm</th>
+                                <th>Time Complexity</th>
+                                <th>Space Complexity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>A* (with good heuristic)</td>
+                                <td>O(b^d)</td>
+                                <td>O(b^d)</td>
+                            </tr>
+                            <tr>
+                                <td>Dijkstra</td>
+                                <td>O(V²)</td>
+                                <td>O(V)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <p>Where b = branching factor, d = depth of solution, V = vertices</p>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Admissible Heuristics</h4>
+                    <p>For A* to guarantee the optimal path, the heuristic must be admissible.</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p><strong>Which of these are admissible heuristics for a grid?</strong></p>
+                        
+                        <label style="display: block; margin: 0.5rem 0;">
+                            <input type="checkbox" id="adm1"> Straight-line distance
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0;">
+                            <input type="checkbox" id="adm2"> 2 × Manhattan distance
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0;">
+                            <input type="checkbox" id="adm3"> Zero (h(n) = 0)
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0;">
+                            <input type="checkbox" id="adm4"> Random value 0-10
+                        </label>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkAdmissible()">Check Answers</button>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Problem Solving</h4>
+                    <p>A robot needs to navigate a 20×20 grid. Using Manhattan distance, if the start is (0,0) and goal is (15,18), what is the heuristic value h(start)?</p>
+                    
+                    <input type="number" id="problem1" class="input-field" style="width: 150px;" placeholder="Enter value">
+                    <button class="btn btn-secondary" onclick="checkProblem1()">Check</button>
+                    
+                    <p style="margin-top: 1rem;">If each move costs 1, and the robot has moved to (5,7), what is the new f(n)?</p>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary);">Hint: g(n) = actual cost so far, h(n) = Manhattan distance to goal</p>
+                    
+                    <input type="number" id="problem2" class="input-field" style="width: 150px;" placeholder="Enter f(n)">
+                    <button class="btn btn-secondary" onclick="checkProblem2()">Check</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary & Quiz -->
+        <section id="summary" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📝</span> Summary & Final Quiz
+                </h2>
+                
+                <h3>Key Takeaways</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li><strong>A* combines</strong> actual cost g(n) with heuristic h(n)</li>
+                    <li><strong>f(n) = g(n) + h(n)</strong> determines node priority</li>
+                    <li><strong>Heuristics</strong> guide search toward the goal</li>
+                    <li><strong>Admissible heuristics</strong> never overestimate</li>
+                    <li><strong>A* is faster</strong> than Dijkstra for single targets</li>
+                    <li><strong>Trade-off:</strong> Speed vs completeness</li>
+                </ul>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Final Assessment</h4>
+                    <div id="final-quiz">
+                        <!-- Question 1 -->
+                        <div class="quiz-question">
+                            <p><strong>1. What does h(n) represent in A*?</strong></p>
+                            <button class="quiz-option" data-q="1" data-a="a">Actual cost from start to n</button>
+                            <button class="quiz-option" data-q="1" data-a="b">Estimated cost from n to goal</button>
+                            <button class="quiz-option" data-q="1" data-a="c">Total path cost</button>
+                            <button class="quiz-option" data-q="1" data-a="d">Number of nodes explored</button>
+                        </div>
+                        
+                        <!-- Question 2 -->
+                        <div class="quiz-question">
+                            <p><strong>2. Which statement about A* is FALSE?</strong></p>
+                            <button class="quiz-option" data-q="2" data-a="a">It uses a heuristic function</button>
+                            <button class="quiz-option" data-q="2" data-a="b">It always explores fewer nodes than Dijkstra</button>
+                            <button class="quiz-option" data-q="2" data-a="c">It can find optimal paths</button>
+                            <button class="quiz-option" data-q="2" data-a="d">It maintains open and closed lists</button>
+                        </div>
+                        
+                        <!-- Question 3 -->
+                        <div class="quiz-question">
+                            <p><strong>3. For A* to guarantee the shortest path, the heuristic must be:</strong></p>
+                            <button class="quiz-option" data-q="3" data-a="a">Consistent</button>
+                            <button class="quiz-option" data-q="3" data-a="b">Overestimating</button>
+                            <button class="quiz-option" data-q="3" data-a="c">Admissible</button>
+                            <button class="quiz-option" data-q="3" data-a="d">Random</button>
+                        </div>
+                        
+                        <!-- Question 4 -->
+                        <div class="quiz-question">
+                            <p><strong>4. If g(n) = 15 and h(n) = 8, what is f(n)?</strong></p>
+                            <button class="quiz-option" data-q="4" data-a="a">7</button>
+                            <button class="quiz-option" data-q="4" data-a="b">23</button>
+                            <button class="quiz-option" data-q="4" data-a="c">120</button>
+                            <button class="quiz-option" data-q="4" data-a="d">1.875</button>
+                        </div>
+                        
+                        <!-- Question 5 -->
+                        <div class="quiz-question">
+                            <p><strong>5. Which heuristic is best for 4-directional grid movement?</strong></p>
+                            <button class="quiz-option" data-q="5" data-a="a">Euclidean distance</button>
+                            <button class="quiz-option" data-q="5" data-a="b">Diagonal distance</button>
+                            <button class="quiz-option" data-q="5" data-a="c">Manhattan distance</button>
+                            <button class="quiz-option" data-q="5" data-a="d">Chebyshev distance</button>
+                        </div>
+                        
+                        <!-- Question 6 -->
+                        <div class="quiz-question">
+                            <p><strong>6. What happens if h(n) = 0 for all nodes?</strong></p>
+                            <button class="quiz-option" data-q="6" data-a="a">A* fails to find a path</button>
+                            <button class="quiz-option" data-q="6" data-a="b">A* becomes Dijkstra's algorithm</button>
+                            <button class="quiz-option" data-q="6" data-a="c">A* finds paths faster</button>
+                            <button class="quiz-option" data-q="6" data-a="d">A* uses more memory</button>
+                        </div>
+                        
+                        <!-- Question 7 -->
+                        <div class="quiz-question">
+                            <p><strong>7. True or False: A* always finds the optimal path</strong></p>
+                            <button class="quiz-option" data-q="7" data-a="a">True</button>
+                            <button class="quiz-option" data-q="7" data-a="b">False</button>
+                        </div>
+                        
+                        <!-- Question 8 -->
+                        <div class="quiz-question">
+                            <p><strong>8. The main advantage of A* over Dijkstra is:</strong></p>
+                            <button class="quiz-option" data-q="8" data-a="a">It uses less memory</button>
+                            <button class="quiz-option" data-q="8" data-a="b">It's generally faster for single targets</button>
+                            <button class="quiz-option" data-q="8" data-a="c">It works on negative weights</button>
+                            <button class="quiz-option" data-q="8" data-a="d">It's simpler to implement</button>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="submitFinalQuiz()">Submit Quiz</button>
+                    
+                    <div id="quiz-results" style="margin-top: 2rem; display: none;">
+                        <h4>Your Results:</h4>
+                        <p id="quiz-score"></p>
+                        <div id="quiz-feedback"></div>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exam Practice -->
+        <section id="exam" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📋</span> Exam Practice Questions
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Question 1 (6 marks)</h4>
+                    <p>Explain how the A* algorithm differs from Dijkstra's algorithm. Include:</p>
+                    <ol style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>The key difference in approach (2 marks)</li>
+                        <li>The formula used by A* (2 marks)</li>
+                        <li>One advantage and one disadvantage (2 marks)</li>
+                    </ol>
+                    
+                    <textarea class="input-field" id="exam-q1" rows="8" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q1" min="0" max="6" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q1')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="mark-scheme" id="mark-scheme-q1">
+                        <h5>Mark Scheme:</h5>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>A* uses a heuristic function to estimate distance to goal (1 mark)</li>
+                            <li>This guides the search toward the goal more efficiently (1 mark)</li>
+                            <li>Formula: f(n) = g(n) + h(n) correctly stated (1 mark)</li>
+                            <li>Explanation of g(n) and h(n) (1 mark)</li>
+                            <li>Advantage: Faster/explores fewer nodes (1 mark)</li>
+                            <li>Disadvantage: Requires goal knowledge/heuristic design (1 mark)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Question 2 (8 marks)</h4>
+                    <p>Given the grid below, trace through the A* algorithm to find the path from S to G. Use Manhattan distance as your heuristic. Show your working.</p>
+                    
+                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem; font-family: monospace; margin: 1rem 0;">
+                        S . . . .<br>
+                        . # # . .<br>
+                        . . . . G<br>
+                        . . # . .<br>
+                    </div>
+                    
+                    <p>For each step, show: current node, f(n) values, open list, closed list</p>
+                    
+                    <h5>Working Space:</h5>
+                    <canvas id="drawing-canvas" class="drawing-canvas" width="600" height="400"></canvas>
+                    <button class="btn btn-secondary" onclick="clearCanvas()">Clear Canvas</button>
+                    
+                    <textarea class="input-field" id="exam-q2" rows="10" placeholder="Write your trace here..." style="margin-top: 1rem;"></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q2" min="0" max="8" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q2')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="mark-scheme" id="mark-scheme-q2">
+                        <h5>Mark Scheme:</h5>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>Correct initial setup with S in open list (1 mark)</li>
+                            <li>Correct calculation of g, h, and f values (2 marks)</li>
+                            <li>Proper maintenance of open and closed lists (2 marks)</li>
+                            <li>Correct neighbor exploration (1 mark)</li>
+                            <li>Finding optimal path (1 mark)</li>
+                            <li>Clear working shown (1 mark)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Extension Activities -->
+        <section id="extension" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🌟</span> Extension Activities
+                </h2>
+                
+                <h3>Beyond the Specification</h3>
+                
+                <div class="interactive-area">
+                    <h4>Bidirectional A*</h4>
+                    <p>Research bidirectional A* search. How does it work and when is it beneficial?</p>
+                    
+                    <textarea class="input-field" rows="4" placeholder="Explain bidirectional A*..."></textarea>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Jump Point Search</h4>
+                    <p>JPS is an optimization of A* for uniform grids. Research and describe how it prunes the search space:</p>
+                    
+                    <textarea class="input-field" rows="4" placeholder="Describe Jump Point Search..."></textarea>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Dynamic A* (D*)</h4>
+                    <p>How would you modify A* to handle dynamic environments where obstacles can appear during pathfinding?</p>
+                    
+                    <textarea class="input-field" rows="6" placeholder="Your approach to dynamic pathfinding..."></textarea>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Implementation Challenge</h4>
+                    <p>Write pseudocode for a weighted A* that handles different terrain costs (e.g., road = 1, grass = 2, mud = 5):</p>
+                    
+                    <textarea class="input-field" rows="8" placeholder="Your weighted A* pseudocode..."></textarea>
+                </div>
+                
+                <button class="btn btn-primary" onclick="submitExtension()">Submit Extension Work</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Videos Section -->
+        <section id="videos" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎥</span> Video Resources
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Supplementary Videos</h4>
+                    <p>Your teacher will add video links here to support your learning:</p>
+                    
+                    <div style="background: var(--bg-secondary); padding: 3rem; border-radius: 1rem; text-align: center; margin: 2rem 0;">
+                        <p style="color: var(--text-secondary); font-size: 4rem;">📹</p>
+                        <p style="color: var(--text-secondary);">Video content will be added here</p>
+                    </div>
+                </div>
+                
+                <h4>Additional Resources</h4>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li>Cambridge 9618 Specification - Graph Algorithms</li>
+                    <li>A* Pathfinding Visualizers</li>
+                    <li>Game Development Pathfinding Tutorials</li>
+                    <li>Research Papers on Heuristic Search</li>
+                </ul>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('intro')">Start Over</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Achievement Popup -->
+    <div class="achievement-popup" id="achievement-popup">
+        <div class="achievement-icon" id="achievement-icon">🏆</div>
+        <h4 id="achievement-title">Achievement Unlocked!</h4>
+        <p id="achievement-desc">You've earned a new achievement</p>
+    </div>
+
+    <!-- Shame Message -->
+    <div class="shame-message" id="shame-message">
+        🚫 No pasting allowed! Do your own work! 🚫
+    </div>
+
+    <!-- Particle Container -->
+    <div id="particle-container"></div>
+
+    <!-- Feedback Button & Modal -->
+    <button class="feedback-btn" onclick="openFeedback()" aria-label="Send feedback">
+        <span>💬</span>
+    </button>
+
+    <div class="feedback-modal" id="feedback-modal">
+        <div class="feedback-content">
+            <h3 style="margin-bottom: 1rem; color: var(--primary-color);">Send Feedback</h3>
+            <p>Found a bug or have a suggestion? Let us know!</p>
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                Current page: <span id="feedback-page" style="font-weight: 600;"></span>
+            </p>
+            <textarea class="input-field" id="feedback-text" rows="5" placeholder="Describe the issue or suggestion..." style="margin-top: 1rem;"></textarea>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeFeedback()">Cancel</button>
+                <button class="btn btn-primary" onclick="sendFeedback()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accessibility Controls -->
+    <div class="accessibility-controls">
+        <h4>Accessibility</h4>
+        <button onclick="toggleHighContrast()">High Contrast</button>
+        <button onclick="toggleDyslexiaFont()">Dyslexia Font</button>
+        <div class="font-size-controls">
+            <button onclick="changeFontSize('small')">A-</button>
+            <button onclick="changeFontSize('normal')">A</button>
+            <button onclick="changeFontSize('large')">A+</button>
+        </div>
+    </div>
+
+    <script>
+        // Performance optimization: Cache DOM elements
+        const DOM = {
+            xpFill: null,
+            xpText: null,
+            currentLevel: null,
+            navPills: null,
+            sections: null,
+            achievementPopup: null,
+            shameMessage: null,
+            feedbackModal: null,
+            feedbackPage: null,
+            feedbackText: null,
+            particleContainer: null,
+            pathfindingGrid: null,
+            speedSlider: null,
+            speedValue: null,
+            simBtnText: null,
+            stepCount: null,
+            currentStepDesc: null,
+            algorithmStatus: null
+        };
+
+        // Initialize DOM cache
+        function initializeDOM() {
+            DOM.xpFill = document.getElementById('xp-fill');
+            DOM.xpText = document.getElementById('xp-text');
+            DOM.currentLevel = document.getElementById('current-level');
+            DOM.navPills = document.querySelectorAll('.nav-pill');
+            DOM.sections = document.querySelectorAll('.section');
+            DOM.achievementPopup = document.getElementById('achievement-popup');
+            DOM.shameMessage = document.getElementById('shame-message');
+            DOM.feedbackModal = document.getElementById('feedback-modal');
+            DOM.feedbackPage = document.getElementById('feedback-page');
+            DOM.feedbackText = document.getElementById('feedback-text');
+            DOM.particleContainer = document.getElementById('particle-container');
+            DOM.pathfindingGrid = document.getElementById('pathfinding-grid');
+            DOM.speedSlider = document.getElementById('speed-slider');
+            DOM.speedValue = document.getElementById('speed-value');
+            DOM.simBtnText = document.getElementById('sim-btn-text');
+            DOM.stepCount = document.getElementById('step-count');
+            DOM.currentStepDesc = document.getElementById('current-step-desc');
+            DOM.algorithmStatus = document.getElementById('algorithm-status');
+        }
+
+        // Game State
+        let gameState = {
+            xp: 0,
+            level: 1,
+            completedSections: new Set(),
+            achievements: new Set(),
+            actionsPerformed: new Set(),
+            currentSection: 'intro',
+            sectionScores: {},
+            selectedItems: {},
+            hintUsage: {},
+            gridState: null,
+            simulation: null
+        };
+
+        // Grid State for pathfinding
+        let gridState = {
+            cells: [],
+            startPos: { x: 0, y: 0 },
+            endPos: { x: 9, y: 7 },
+            walls: new Set(),
+            openList: new Set(),
+            closedList: new Set(),
+            currentNode: null,
+            path: [],
+            width: 10,
+            height: 8
+        };
+
+        // Simulation state
+        let simulation = {
+            running: false,
+            step: 0,
+            speed: 5,
+            interval: null,
+            algorithm: 'astar'
+        };
+
+        // XP Requirements per level
+        const XP_PER_LEVEL = [0, 100, 250, 450, 700, 1000];
+
+        // Performance: Debounce function
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Performance: Throttle function
+        function throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDOM();
+            setupEventListeners();
+            loadProgress();
+            updateXPDisplay();
+            initializeGrid();
+            
+            // Initialize matching activities
+            setTimeout(setupMatchingActivities, 200);
+            
+            // Initialize canvas when exam section is activated
+            const observer = new MutationObserver(function(mutations) {
+                const canvas = document.getElementById('drawing-canvas');
+                if (canvas && !canvas.hasAttribute('data-initialized')) {
+                    initializeCanvas();
+                    canvas.setAttribute('data-initialized', 'true');
+                }
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+            
+            // Try to initialize immediately if canvas exists
+            setTimeout(() => {
+                const canvas = document.getElementById('drawing-canvas');
+                if (canvas && !canvas.hasAttribute('data-initialized')) {
+                    initializeCanvas();
+                    canvas.setAttribute('data-initialized', 'true');
+                }
+            }, 100);
+
+            // Speed slider
+            if (DOM.speedSlider) {
+                DOM.speedSlider.addEventListener('input', function() {
+                    simulation.speed = parseInt(this.value);
+                    if (DOM.speedValue) DOM.speedValue.textContent = this.value;
+                });
+            }
+        });
+
+        // Grid Initialization
+        function initializeGrid() {
+            if (!DOM.pathfindingGrid) return;
+            
+            DOM.pathfindingGrid.innerHTML = '';
+            gridState.cells = [];
+            
+            for (let y = 0; y < gridState.height; y++) {
+                for (let x = 0; x < gridState.width; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    cell.addEventListener('click', handleCellClick);
+                    
+                    if (x === gridState.startPos.x && y === gridState.startPos.y) {
+                        cell.classList.add('start');
+                        cell.textContent = 'S';
+                    } else if (x === gridState.endPos.x && y === gridState.endPos.y) {
+                        cell.classList.add('end');
+                        cell.textContent = 'G';
+                    }
+                    
+                    DOM.pathfindingGrid.appendChild(cell);
+                    gridState.cells.push(cell);
+                }
+            }
+        }
+
+        function handleCellClick(e) {
+            const cell = e.target;
+            const x = parseInt(cell.dataset.x);
+            const y = parseInt(cell.dataset.y);
+            const key = `${x},${y}`;
+            
+            if (simulation.running) return;
+            
+            if (cell.classList.contains('start') || cell.classList.contains('end')) return;
+            
+            if (cell.classList.contains('wall')) {
+                cell.classList.remove('wall');
+                gridState.walls.delete(key);
+            } else {
+                cell.classList.add('wall');
+                gridState.walls.add(key);
+            }
+        }
+
+        // A* Pathfinding Implementation
+        class Node {
+            constructor(x, y, g, h, parent = null) {
+                this.x = x;
+                this.y = y;
+                this.g = g;
+                this.h = h;
+                this.f = g + h;
+                this.parent = parent;
+            }
+        }
+
+        function manhattanDistance(x1, y1, x2, y2) {
+            return Math.abs(x1 - x2) + Math.abs(y1 - y2);
+        }
+
+        function getNeighbors(x, y) {
+            const neighbors = [];
+            const directions = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // N, E, S, W
+            
+            for (const [dx, dy] of directions) {
+                const nx = x + dx;
+                const ny = y + dy;
+                
+                if (nx >= 0 && nx < gridState.width && ny >= 0 && ny < gridState.height) {
+                    if (!gridState.walls.has(`${nx},${ny}`)) {
+                        neighbors.push([nx, ny]);
+                    }
+                }
+            }
+            
+            return neighbors;
+        }
+
+        function getCellAt(x, y) {
+            return gridState.cells[y * gridState.width + x];
+        }
+
+        function updateCellVisual(x, y, type) {
+            const cell = getCellAt(x, y);
+            if (!cell) return;
+            
+            if (type === 'current') {
+                cell.classList.add('current', 'exploring');
+            } else if (type === 'open') {
+                cell.classList.add('open');
+                cell.classList.remove('current', 'exploring');
+            } else if (type === 'closed') {
+                cell.classList.add('closed');
+                cell.classList.remove('open', 'current', 'exploring');
+            } else if (type === 'path') {
+                cell.classList.add('path');
+            }
+            
+            // Show f value for non-start/end cells
+            if (!cell.classList.contains('start') && !cell.classList.contains('end') && type !== 'path') {
+                const node = gridState.nodeMap && gridState.nodeMap[`${x},${y}`];
+                if (node) {
+                    cell.textContent = node.f;
+                }
+            }
+        }
+
+        async function runAStarStep() {
+            if (!gridState.openList || gridState.openList.length === 0) {
+                // Initialize
+                const startNode = new Node(
+                    gridState.startPos.x,
+                    gridState.startPos.y,
+                    0,
+                    manhattanDistance(gridState.startPos.x, gridState.startPos.y, gridState.endPos.x, gridState.endPos.y)
+                );
+                
+                gridState.openList = [startNode];
+                gridState.closedList = [];
+                gridState.nodeMap = {};
+                gridState.nodeMap[`${startNode.x},${startNode.y}`] = startNode;
+                
+                updateStatus("Starting A* algorithm. Added start node to open list.");
+                return false;
+            }
+            
+            // Find node with lowest f value
+            let currentNode = gridState.openList[0];
+            let currentIndex = 0;
+            
+            for (let i = 1; i < gridState.openList.length; i++) {
+                if (gridState.openList[i].f < currentNode.f) {
+                    currentNode = gridState.openList[i];
+                    currentIndex = i;
+                }
+            }
+            
+            // Update visual
+            updateCellVisual(currentNode.x, currentNode.y, 'current');
+            updateStatus(`Exploring node (${currentNode.x}, ${currentNode.y}) with f=${currentNode.f}`);
+            
+            // Check if we reached the goal
+            if (currentNode.x === gridState.endPos.x && currentNode.y === gridState.endPos.y) {
+                // Reconstruct path
+                let node = currentNode;
+                gridState.path = [];
+                while (node) {
+                    gridState.path.unshift([node.x, node.y]);
+                    node = node.parent;
+                }
+                
+                // Visualize path
+                for (let i = 1; i < gridState.path.length - 1; i++) {
+                    const [x, y] = gridState.path[i];
+                    updateCellVisual(x, y, 'path');
+                }
+                
+                updateStatus(`Path found! Length: ${gridState.path.length - 1} steps`);
+                return true; // Finished
+            }
+            
+            // Move current node from open to closed
+            gridState.openList.splice(currentIndex, 1);
+            gridState.closedList.push(currentNode);
+            updateCellVisual(currentNode.x, currentNode.y, 'closed');
+            
+            // Check neighbors
+            const neighbors = getNeighbors(currentNode.x, currentNode.y);
+            
+            for (const [nx, ny] of neighbors) {
+                const key = `${nx},${ny}`;
+                
+                // Skip if in closed list
+                if (gridState.closedList.some(n => n.x === nx && n.y === ny)) {
+                    continue;
+                }
+                
+                const g = currentNode.g + 1;
+                const h = manhattanDistance(nx, ny, gridState.endPos.x, gridState.endPos.y);
+                
+                // Check if already in open list
+                const existingNode = gridState.openList.find(n => n.x === nx && n.y === ny);
+                
+                if (!existingNode) {
+                    // Add new node
+                    const newNode = new Node(nx, ny, g, h, currentNode);
+                    gridState.openList.push(newNode);
+                    gridState.nodeMap[key] = newNode;
+                    updateCellVisual(nx, ny, 'open');
+                } else if (g < existingNode.g) {
+                    // Update existing node with better path
+                    existingNode.g = g;
+                    existingNode.f = g + h;
+                    existingNode.parent = currentNode;
+                }
+            }
+            
+            return false; // Not finished
+        }
+
+        function updateStatus(message) {
+            if (DOM.algorithmStatus) {
+                DOM.algorithmStatus.innerHTML = `<p>${message}</p>`;
+            }
+            if (DOM.currentStepDesc) {
+                DOM.currentStepDesc.textContent = message;
+            }
+        }
+
+        // Simulation Controls
+        function startSimulation() {
+            if (simulation.running) {
+                pauseSimulation();
+                return;
+            }
+            
+            resetGrid(false); // Keep walls
+            simulation.running = true;
+            simulation.step = 0;
+            
+            if (DOM.simBtnText) DOM.simBtnText.textContent = 'Pause';
+            
+            const delay = 1000 / simulation.speed;
+            
+            simulation.interval = setInterval(async () => {
+                simulation.step++;
+                if (DOM.stepCount) DOM.stepCount.textContent = simulation.step;
+                
+                const finished = await runAStarStep();
+                
+                if (finished) {
+                    pauseSimulation();
+                    showAchievement('Pathfinder', 'Completed A* simulation!', '🗺️');
+                    awardXP(30, 'A* Simulation Complete', 'astar_simulation');
+                }
+            }, delay);
+        }
+
+        function pauseSimulation() {
+            simulation.running = false;
+            if (simulation.interval) {
+                clearInterval(simulation.interval);
+                simulation.interval = null;
+            }
+            if (DOM.simBtnText) DOM.simBtnText.textContent = 'Resume';
+        }
+
+        async function stepSimulation() {
+            if (simulation.running) {
+                pauseSimulation();
+            }
+            
+            simulation.step++;
+            if (DOM.stepCount) DOM.stepCount.textContent = simulation.step;
+            
+            const finished = await runAStarStep();
+            
+            if (finished) {
+                showAchievement('Step Master', 'Traced through A* step by step!', '👣');
+                awardXP(20, 'Step-by-Step', 'astar_step');
+            }
+        }
+
+        function resetGrid(clearWalls = true) {
+            simulation.running = false;
+            simulation.step = 0;
+            
+            if (simulation.interval) {
+                clearInterval(simulation.interval);
+                simulation.interval = null;
+            }
+            
+            if (DOM.simBtnText) DOM.simBtnText.textContent = 'Start Simulation';
+            if (DOM.stepCount) DOM.stepCount.textContent = '0';
+            if (DOM.currentStepDesc) DOM.currentStepDesc.textContent = 'Ready to start';
+            
+            gridState.openList = null;
+            gridState.closedList = [];
+            gridState.path = [];
+            gridState.nodeMap = {};
+            
+            if (clearWalls) {
+                gridState.walls.clear();
+            }
+            
+            // Reset visual state
+            gridState.cells.forEach(cell => {
+                cell.classList.remove('open', 'closed', 'path', 'current', 'exploring');
+                if (!cell.classList.contains('start') && !cell.classList.contains('end')) {
+                    cell.textContent = '';
+                    if (clearWalls) {
+                        cell.classList.remove('wall');
+                    }
+                }
+            });
+            
+            updateStatus('Grid reset. Click cells to add walls, then start simulation.');
+        }
+
+        function clearWalls() {
+            gridState.walls.clear();
+            gridState.cells.forEach(cell => {
+                if (!cell.classList.contains('start') && !cell.classList.contains('end')) {
+                    cell.classList.remove('wall');
+                }
+            });
+        }
+
+        // Exploration visualization
+        function showExploration(algorithm) {
+            const container = document.getElementById('exploration-grid');
+            if (!container) return;
+            
+            container.innerHTML = '<div class="loading">Generating visualization...</div>';
+            
+            setTimeout(() => {
+                if (algorithm === 'dijkstra') {
+                    container.innerHTML = `
+                        <h5>Dijkstra's Exploration Pattern</h5>
+                        <p style="margin: 1rem 0;">Explores uniformly in all directions (like ripples in water)</p>
+                        <div style="display: inline-block; background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem;">
+                            <pre style="margin: 0; font-family: monospace;">
+  3 2 3
+  2 1 2
+3 2 S 2 3
+  2 1 2
+  3 2 3
+                            </pre>
+                        </div>
+                        <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
+                            Numbers show order of exploration from Start (S)
+                        </p>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <h5>A* Exploration Pattern</h5>
+                        <p style="margin: 1rem 0;">Explores directed toward goal (G)</p>
+                        <div style="display: inline-block; background: var(--bg-secondary); padding: 1rem; border-radius: 0.5rem;">
+                            <pre style="margin: 0; font-family: monospace;">
+      G
+    3 ↑
+  2 ↗
+1 → S
+                            </pre>
+                        </div>
+                        <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
+                            Prioritizes nodes closer to goal using heuristic
+                        </p>
+                    `;
+                }
+                
+                awardXP(5, 'Exploration Viewed', `view_${algorithm}`);
+            }, 500);
+        }
+
+        // Starter Activity Functions
+        function setupMatchingActivities() {
+            setupMatching('starter-matching', {
+                '1': 'astar', '2': 'dijkstra', '3': 'astar',
+                '4': 'dijkstra', '5': 'astar', '6': 'dijkstra'
+            });
+        }
+
+        function setupMatching(containerId, answers) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            const items = container.querySelectorAll('.draggable-item');
+            const zones = container.querySelectorAll('.drop-zone');
+            
+            items.forEach(item => {
+                item.addEventListener('click', function() {
+                    if (this.classList.contains('matched')) return;
+                    
+                    items.forEach(i => i.classList.remove('selected'));
+                    this.classList.add('selected');
+                    gameState.selectedItems[containerId] = this;
+                });
+            });
+            
+            zones.forEach(zone => {
+                zone.addEventListener('click', function() {
+                    const selected = gameState.selectedItems[containerId];
+                    if (!selected || selected.classList.contains('matched')) return;
+                    
+                    const itemId = selected.dataset.id;
+                    const zoneType = this.dataset.type || this.dataset.match;
+                    
+                    if (answers[itemId] === zoneType) {
+                        selected.classList.add('matched');
+                        selected.classList.remove('selected');
+                        const droppedArea = this.querySelector('.dropped-items') || this;
+                        droppedArea.appendChild(selected.cloneNode(true));
+                        this.classList.add('correct');
+                        awardXP(5, 'Correct Match', `match_${containerId}_${itemId}`);
+                    } else {
+                        this.classList.add('highlight');
+                        setTimeout(() => this.classList.remove('highlight'), 1000);
+                    }
+                });
+            });
+        }
+
+        function resetStarterActivity() {
+            resetMatching('starter-matching');
+        }
+
+        function resetMatching(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            container.querySelectorAll('.draggable-item').forEach(item => {
+                item.classList.remove('matched', 'selected');
+            });
+            
+            container.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.classList.remove('correct', 'highlight');
+                const droppedItems = zone.querySelector('.dropped-items');
+                if (droppedItems) droppedItems.innerHTML = '';
+            });
+        }
+
+        function checkStarterActivity() {
+            const matchingContainer = document.getElementById('starter-matching');
+            if (!matchingContainer) return;
+            
+            const correct = matchingContainer.querySelectorAll('.drop-zone.correct').length;
+            if (correct === 2) {
+                awardXP(20, 'Starter Complete', 'starter_activity');
+                markSectionComplete('starter');
+                showAchievement('Quick Learner', 'Completed the starter activity!', '🎯');
+            }
+        }
+
+        // Pre-Quiz
+        function checkPreQuiz() {
+            const selected = document.querySelector('#pre-quiz .quiz-option.selected');
+            if (!selected) return;
+            
+            const correct = selected.dataset.answer === 'b';
+            if (correct) {
+                selected.classList.add('correct');
+                awardXP(10, 'Correct Answer', 'pre_quiz');
+                gameState.actionsPerformed.add('correct_answer');
+            } else {
+                selected.classList.add('incorrect');
+                document.querySelector('#pre-quiz .quiz-option[data-answer="b"]').classList.add('correct');
+            }
+        }
+
+        // Fundamentals Functions
+        function calculateF() {
+            const g = parseInt(document.getElementById('g-value').value) || 0;
+            const h = parseInt(document.getElementById('h-value').value) || 0;
+            const f = g + h;
+            
+            document.getElementById('f-value').value = f;
+            
+            // Animate the result
+            const fField = document.getElementById('f-value');
+            fField.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                fField.style.transform = 'scale(1)';
+            }, 300);
+            
+            awardXP(5, 'Formula Calculated', 'calculate_f');
+        }
+
+        function checkFValue() {
+            const userAnswer = parseInt(document.getElementById('fcheck').value);
+            const correct = 19; // 12 + 7
+            
+            if (userAnswer === correct) {
+                alert('✓ Correct! f(n) = g(n) + h(n) = 12 + 7 = 19');
+                awardXP(10, 'F Value Correct', 'f_check');
+                markSectionComplete('fundamentals');
+            } else {
+                alert('Not quite. Remember: f(n) = g(n) + h(n)');
+            }
+        }
+
+        // Heuristics Functions
+        function calculateManhattan() {
+            const x1 = parseInt(document.getElementById('x1').value) || 0;
+            const y1 = parseInt(document.getElementById('y1').value) || 0;
+            const x2 = parseInt(document.getElementById('x2').value) || 0;
+            const y2 = parseInt(document.getElementById('y2').value) || 0;
+            
+            const distance = Math.abs(x1 - x2) + Math.abs(y1 - y2);
+            
+            const result = document.getElementById('manhattan-result');
+            if (result) {
+                result.innerHTML = `
+                    <p>Manhattan Distance = |${x1} - ${x2}| + |${y1} - ${y2}|</p>
+                    <p>Manhattan Distance = ${Math.abs(x1 - x2)} + ${Math.abs(y1 - y2)}</p>
+                    <p><strong>Manhattan Distance = ${distance}</strong></p>
+                `;
+            }
+            
+            awardXP(10, 'Manhattan Calculated', 'manhattan_calc');
+        }
+
+        function checkHeuristics() {
+            const answers = {
+                'heur1': 'true',
+                'heur2': 'false'
+            };
+            
+            let correct = 0;
+            Object.keys(answers).forEach(id => {
+                const select = document.getElementById(id);
+                if (!select) return;
+                
+                if (select.value === answers[id]) {
+                    select.style.borderColor = 'var(--success-color)';
+                    correct++;
+                } else {
+                    select.style.borderColor = 'var(--error-color)';
+                }
+            });
+            
+            if (correct === 2) {
+                awardXP(15, 'Heuristics Understood', 'heuristics_tf');
+                markSectionComplete('heuristics');
+            }
+        }
+
+        function showHint(section) {
+            const hint = document.getElementById(section + '-hint');
+            if (!hint) return;
+            
+            hint.classList.add('show');
+            const xpReduction = gameState.hintUsage[section] ? 0 : -5;
+            gameState.hintUsage[section] = true;
+            if (xpReduction < 0) {
+                gameState.xp = Math.max(0, gameState.xp + xpReduction);
+                updateXPDisplay();
+            }
+        }
+
+        // Comparison Functions
+        function checkScenarios() {
+            const answers = {
+                'scenario1': 'astar',
+                'scenario2': 'dijkstra',
+                'scenario3': 'astar'
+            };
+            
+            let correct = 0;
+            Object.keys(answers).forEach(id => {
+                const select = document.getElementById(id);
+                if (!select) return;
+                
+                if (select.value === answers[id]) {
+                    select.style.borderColor = 'var(--success-color)';
+                    correct++;
+                } else {
+                    select.style.borderColor = 'var(--error-color)';
+                }
+            });
+            
+            if (correct === 3) {
+                awardXP(20, 'Scenarios Analyzed', 'scenarios_correct');
+                markSectionComplete('comparison');
+            }
+        }
+
+        // Implementation Functions
+        function checkImplementation() {
+            const answers = {
+                'impl1': 'open',
+                'impl2': 'f',
+                'impl3': 'goal'
+            };
+            
+            let correct = 0;
+            Object.keys(answers).forEach(id => {
+                const select = document.getElementById(id);
+                if (!select) return;
+                
+                if (select.value === answers[id]) {
+                    select.style.borderColor = 'var(--success-color)';
+                    correct++;
+                } else {
+                    select.style.borderColor = 'var(--error-color)';
+                }
+            });
+            
+            if (correct === 3) {
+                awardXP(15, 'Implementation Knowledge', 'implementation_blanks');
+                markSectionComplete('implementation');
+            }
+        }
+
+        function checkSequence() {
+            const items = document.querySelectorAll('#sequence-items .draggable-item');
+            const correctOrder = ['seq2', 'seq3', 'seq4', 'seq5', 'seq1'];
+            
+            // For simplicity, checking if they selected in roughly correct order
+            // In a full implementation, this would be drag-and-drop reordering
+            alert('Check the mark scheme for the correct order:\n1. Add start node to open list\n2. Select node with lowest f(n)\n3. Check if current node is goal\n4. Move current to closed list\n5. Calculate f(n) for neighbors');
+            
+            awardXP(10, 'Sequence Attempted', 'sequence_attempt');
+        }
+
+        // Applications Functions
+        function checkCase2(answer) {
+            const target = event.target;
+            if (!target) return;
+            
+            const options = target.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.classList.remove('correct', 'incorrect'));
+            
+            if (answer === 'c') {
+                options[2].classList.add('correct');
+                awardXP(10, 'Case Study Q2', 'case_q2');
+            } else {
+                target.classList.add('incorrect');
+                options[2].classList.add('correct');
+            }
+        }
+
+        function checkCaseStudy() {
+            const case1 = document.getElementById('case1').value.trim();
+            
+            if (case1.length > 50) {
+                const keywords = ['faster', 'efficient', 'heuristic', 'direct', 'goal'];
+                let matches = 0;
+                keywords.forEach(keyword => {
+                    if (case1.toLowerCase().includes(keyword)) matches++;
+                });
+                
+                const xp = Math.min(matches * 5, 15);
+                awardXP(xp, 'Case Study Analysis', 'case_study');
+                
+                if (matches >= 3) {
+                    markSectionComplete('applications');
+                }
+            } else {
+                alert('Please provide a more detailed answer (at least 50 characters)');
+            }
+        }
+
+        // Optimization Functions
+        function checkAdmissible() {
+            const correct = {
+                'adm1': true,  // Straight-line is admissible
+                'adm2': false, // 2x Manhattan overestimates
+                'adm3': true,  // Zero is admissible (becomes Dijkstra)
+                'adm4': false  // Random is not admissible
+            };
+            
+            let score = 0;
+            Object.keys(correct).forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox && checkbox.checked === correct[id]) {
+                    score++;
+                }
+            });
+            
+            if (score === 4) {
+                alert('Perfect! You understand admissible heuristics.');
+                awardXP(20, 'Admissible Heuristics', 'admissible_correct');
+                markSectionComplete('optimization');
+            } else {
+                alert(`${score}/4 correct. Remember: admissible heuristics never overestimate.`);
+            }
+        }
+
+        function checkProblem1() {
+            const answer = parseInt(document.getElementById('problem1').value);
+            const correct = Math.abs(0 - 15) + Math.abs(0 - 18); // 33
+            
+            if (answer === correct) {
+                alert('✓ Correct! Manhattan distance = |0-15| + |0-18| = 15 + 18 = 33');
+                awardXP(10, 'Problem 1 Solved', 'problem1');
+            } else {
+                alert('Not quite. Manhattan distance = |x₁-x₂| + |y₁-y₂|');
+            }
+        }
+
+        function checkProblem2() {
+            const answer = parseInt(document.getElementById('problem2').value);
+            // g(n) = 5+7 = 12 (moves to reach 5,7)
+            // h(n) = |5-15| + |7-18| = 10 + 11 = 21
+            // f(n) = 12 + 21 = 33
+            const correct = 33;
+            
+            if (answer === correct) {
+                alert('✓ Correct! g(n)=12, h(n)=21, so f(n)=33');
+                awardXP(15, 'Problem 2 Solved', 'problem2');
+            } else {
+                alert('Hint: g(n) is the path cost (12), h(n) is Manhattan distance from (5,7) to (15,18)');
+            }
+        }
+
+        // Final Quiz Functions
+        function submitFinalQuiz() {
+            const answers = {
+                '1': 'b', '2': 'b', '3': 'c', '4': 'b',
+                '5': 'c', '6': 'b', '7': 'b', '8': 'b'
+            };
+            
+            let score = 0;
+            const feedback = [];
+            
+            Object.keys(answers).forEach(q => {
+                const selected = document.querySelector(`.quiz-option[data-q="${q}"].selected`);
+                if (selected && selected.dataset.a === answers[q]) {
+                    selected.classList.add('correct');
+                    score++;
+                } else {
+                    if (selected) selected.classList.add('incorrect');
+                    const correctOption = document.querySelector(`.quiz-option[data-q="${q}"][data-a="${answers[q]}"]`);
+                    if (correctOption) correctOption.classList.add('correct');
+                    
+                    // Add feedback
+                    const topics = {
+                        '1': 'h(n) is the heuristic - estimated cost to goal',
+                        '2': 'A* doesn\'t always explore fewer nodes (depends on heuristic)',
+                        '3': 'Admissible heuristics guarantee optimal paths',
+                        '4': 'f(n) = g(n) + h(n) = 15 + 8 = 23',
+                        '5': 'Manhattan distance for 4-directional movement',
+                        '6': 'h(n)=0 makes A* behave like Dijkstra',
+                        '7': 'Only with admissible heuristics',
+                        '8': 'A* is faster due to directed search'
+                    };
+                    feedback.push(`Q${q}: ${topics[q]}`);
+                }
+            });
+            
+            gameState.sectionScores.finalQuiz = score;
+            
+            const scoreEl = document.getElementById('quiz-score');
+            const feedbackEl = document.getElementById('quiz-feedback');
+            const resultsEl = document.getElementById('quiz-results');
+            
+            if (scoreEl) scoreEl.textContent = `You scored ${score}/8 (${Math.round(score/8*100)}%)`;
+            
+            if (feedbackEl) {
+                if (feedback.length > 0) {
+                    feedbackEl.innerHTML = 
+                        '<h5>Review these topics:</h5><ul>' + 
+                        feedback.map(f => `<li>${f}</li>`).join('') + 
+                        '</ul>';
+                } else {
+                    feedbackEl.innerHTML = '<p style="color: var(--success-color);">Perfect score! You\'ve mastered A* pathfinding!</p>';
+                }
+            }
+            
+            if (resultsEl) resultsEl.style.display = 'block';
+            
+            awardXP(score * 10, 'Final Quiz', 'final_quiz_complete');
+            markSectionComplete('summary');
+            
+            if (score === 8) {
+                showAchievement('A* Master', 'Perfect score on the final quiz!', '💯');
+                checkAchievements();
+            }
+        }
+
+        // Exam Practice Functions
+        function showMarkScheme(question) {
+            const textarea = document.getElementById(`exam-${question}`);
+            const marks = document.getElementById(`marks-${question}`);
+            const scheme = document.getElementById(`mark-scheme-${question}`);
+            
+            if (!textarea || !marks || !scheme) return;
+            
+            const minLength = question === 'q1' ? 100 : 150;
+            
+            if (textarea.value.length < minLength || !marks.value) {
+                alert(`Please write a more detailed answer (minimum ${minLength} characters) and enter predicted marks`);
+                return;
+            }
+            
+            scheme.classList.add('show');
+            awardXP(10, 'Exam Practice', `exam_${question}`);
+        }
+
+        // Canvas initialization
+        function initializeCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            
+            // Set canvas size
+            canvas.width = 600;
+            canvas.height = 400;
+            
+            function getCoordinates(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                
+                if (e.touches) {
+                    return {
+                        x: (e.touches[0].clientX - rect.left) * scaleX,
+                        y: (e.touches[0].clientY - rect.top) * scaleY
+                    };
+                } else {
+                    return {
+                        x: (e.clientX - rect.left) * scaleX,
+                        y: (e.clientY - rect.top) * scaleY
+                    };
+                }
+            }
+            
+            function startDrawing(e) {
+                isDrawing = true;
+                const coords = getCoordinates(e);
+                lastX = coords.x;
+                lastY = coords.y;
+                e.preventDefault();
+            }
+            
+            function draw(e) {
+                if (!isDrawing) return;
+                
+                const coords = getCoordinates(e);
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(coords.x, coords.y);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+                
+                lastX = coords.x;
+                lastY = coords.y;
+                e.preventDefault();
+            }
+            
+            function stopDrawing(e) {
+                isDrawing = false;
+                e.preventDefault();
+            }
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events
+            canvas.addEventListener('touchstart', startDrawing, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing, { passive: false });
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Extension Functions
+        function submitExtension() {
+            const textareas = document.querySelectorAll('#extension .input-field');
+            let totalWords = 0;
+            
+            textareas.forEach(ta => {
+                totalWords += ta.value.split(' ').filter(word => word.length > 0).length;
+            });
+            
+            if (totalWords > 50) {
+                awardXP(30, 'Extension Work', 'extension_complete');
+                markSectionComplete('extension');
+                showAchievement('Going Beyond', 'Completed extension activities!', '🌟');
+                alert('Excellent extension work! Your teacher will review your responses.');
+            } else {
+                alert('Please provide more detailed responses for the extension activities.');
+            }
+        }
+
+        // Final Quiz Event Setup
+        document.addEventListener('click', function(e) {
+            if (e.target.matches('#final-quiz .quiz-option')) {
+                const option = e.target;
+                const question = option.dataset.q;
+                const siblings = document.querySelectorAll(`.quiz-option[data-q="${question}"]`);
+                siblings.forEach(s => s.classList.remove('selected'));
+                option.classList.add('selected');
+            }
+        });
+
+        // Optimized Event Listeners
+        function setupEventListeners() {
+            // Navigation with event delegation
+            const navContainer = document.querySelector('.nav-pills');
+            if (navContainer) {
+                navContainer.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('nav-pill')) {
+                        navigateToSection(e.target.dataset.section);
+                    }
+                });
+            }
+
+            // Quiz options with event delegation
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('quiz-option')) {
+                    if (!e.target.classList.contains('correct') && !e.target.classList.contains('incorrect')) {
+                        selectQuizOption(e.target);
+                    }
+                }
+            });
+
+            // Prevent paste with better performance
+            document.addEventListener('paste', function(e) {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showShameMessage();
+                    return false;
+                }
+            });
+
+            // Keyboard navigation
+            document.addEventListener('keydown', throttle(function(e) {
+                if (e.key === 'ArrowLeft') navigateSection('prev');
+                if (e.key === 'ArrowRight') navigateSection('next');
+                if (e.ctrlKey && e.key === 'v') {
+                    e.preventDefault();
+                    showShameMessage();
+                }
+            }, 100));
+
+            // Touch support with improved performance
+            let touchStartX = 0;
+            let touchStartY = 0;
+            
+            document.addEventListener('touchstart', function(e) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            document.addEventListener('touchend', function(e) {
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const diffX = touchStartX - touchEndX;
+                const diffY = Math.abs(touchStartY - touchEndY);
+                
+                if (Math.abs(diffX) > 50 && diffY < 100) {
+                    if (diffX > 0) navigateSection('next');
+                    else navigateSection('prev');
+                }
+            }, { passive: true });
+
+            // Optimized scroll handler
+            window.addEventListener('scroll', debounce(function() {
+                if (!DOM.sections) return;
+                
+                const scrollY = window.scrollY;
+                const windowHeight = window.innerHeight;
+                
+                DOM.sections.forEach(section => {
+                    if (section && section.classList.contains('active')) {
+                        const rect = section.getBoundingClientRect();
+                        section.style.visibility = 
+                            (rect.bottom > 0 && rect.top < windowHeight) ? 'visible' : 'hidden';
+                    }
+                });
+            }, 100));
+        }
+
+        // Navigation with performance optimization
+        function navigateToSection(sectionId) {
+            if (!DOM.sections || !DOM.navPills) return;
+            
+            // Use CSS classes instead of inline styles for better performance
+            DOM.sections.forEach(s => {
+                if (s) {
+                    s.classList.remove('active');
+                    s.style.visibility = 'hidden';
+                }
+            });
+            DOM.navPills.forEach(p => {
+                if (p) p.classList.remove('active');
+            });
+            
+            const targetSection = document.getElementById(sectionId);
+            const targetPill = document.querySelector(`[data-section="${sectionId}"]`);
+            
+            if (targetSection) {
+                targetSection.classList.add('active');
+                targetSection.style.visibility = 'visible';
+            }
+            if (targetPill) {
+                targetPill.classList.add('active');
+            }
+            
+            gameState.currentSection = sectionId;
+            updateFeedbackPage();
+            
+            if (!gameState.completedSections.has(sectionId)) {
+                awardXP(5, 'Section Visit', `section_${sectionId}`);
+            }
+            
+            // Smooth scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function navigateSection(direction) {
+            if (!DOM.navPills) return;
+            
+            const sections = Array.from(DOM.navPills).filter(p => p).map(p => p.dataset.section);
+            const currentIndex = sections.indexOf(gameState.currentSection);
+            
+            if (direction === 'next' && currentIndex < sections.length - 1) {
+                navigateToSection(sections[currentIndex + 1]);
+            } else if (direction === 'prev' && currentIndex > 0) {
+                navigateToSection(sections[currentIndex - 1]);
+            }
+        }
+
+        // Optimized XP System
+        function awardXP(amount, action, actionId = null) {
+            if (actionId && gameState.actionsPerformed.has(actionId)) return;
+            if (actionId) gameState.actionsPerformed.add(actionId);
+            
+            gameState.xp += amount;
+            updateXPDisplay();
+            checkLevelUp();
+            checkAchievements();
+            saveProgress();
+            
+            // Create floating XP indicator
+            createFloatingXP(amount);
+        }
+
+        function createFloatingXP(amount) {
+            try {
+                const xpFloat = document.createElement('div');
+                xpFloat.style.cssText = `
+                    position: fixed;
+                    top: 120px;
+                    right: 100px;
+                    color: var(--warning-color);
+                    font-weight: bold;
+                    font-size: 1.5rem;
+                    pointer-events: none;
+                    z-index: 3000;
+                    animation: floatUp 2s ease-out forwards;
+                `;
+                xpFloat.textContent = `+${amount} XP`;
+                document.body.appendChild(xpFloat);
+                
+                setTimeout(() => {
+                    if (xpFloat && xpFloat.parentNode) {
+                        xpFloat.remove();
+                    }
+                }, 2000);
+            } catch (e) {
+                console.warn('Could not create floating XP indicator:', e);
+            }
+        }
+
+        // Add floating animation
+        try {
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes floatUp {
+                    0% { transform: translateY(0); opacity: 1; }
+                    100% { transform: translateY(-50px); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        } catch (e) {
+            console.warn('Could not add floating animation style:', e);
+        }
+
+        function updateXPDisplay() {
+            if (!DOM.xpFill || !DOM.xpText || !DOM.currentLevel) return;
+            
+            const xpForNextLevel = XP_PER_LEVEL[gameState.level] || XP_PER_LEVEL[XP_PER_LEVEL.length - 1];
+            const xpProgress = Math.min((gameState.xp / xpForNextLevel) * 100, 100);
+            
+            DOM.xpFill.style.width = xpProgress + '%';
+            DOM.xpText.textContent = `${gameState.xp} / ${xpForNextLevel} XP`;
+            DOM.currentLevel.textContent = gameState.level;
+        }
+
+        function checkLevelUp() {
+            if (gameState.level < 5 && gameState.xp >= XP_PER_LEVEL[gameState.level]) {
+                gameState.level++;
+                showAchievement('Level Up!', `You reached Level ${gameState.level}!`, '⬆️');
+                createParticleEffect();
+            }
+        }
+
+        // Enhanced particle effect
+        function createParticleEffect() {
+            if (!DOM.particleContainer) return;
+            
+            const colors = ['#fbbf24', '#f59e0b', '#2563eb', '#7c3aed', '#10b981'];
+            const particleCount = 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.cssText = `
+                        left: ${Math.random() * window.innerWidth}px;
+                        top: -10px;
+                        background: ${colors[Math.floor(Math.random() * colors.length)]};
+                        animation-duration: ${2 + Math.random() * 2}s;
+                        animation-delay: ${Math.random() * 0.5}s;
+                    `;
+                    DOM.particleContainer.appendChild(particle);
+                    
+                    particle.addEventListener('animationend', () => particle.remove());
+                }, i * 50);
+            }
+        }
+
+        function checkAchievements() {
+            // First correct answer
+            if (!gameState.achievements.has('first_correct') && gameState.actionsPerformed.has('correct_answer')) {
+                gameState.achievements.add('first_correct');
+                showAchievement('First Steps', 'Got your first correct answer!', '✅');
+            }
+            
+            // Pathfinding Expert
+            if (!gameState.achievements.has('pathfinding_expert') && gameState.completedSections.size >= 8) {
+                gameState.achievements.add('pathfinding_expert');
+                showAchievement('Pathfinding Expert', 'Completed most sections!', '🧭');
+            }
+            
+            // Perfect Quiz
+            if (!gameState.achievements.has('perfect_quiz') && gameState.sectionScores.finalQuiz === 8) {
+                gameState.achievements.add('perfect_quiz');
+                showAchievement('Perfect Score', 'Aced the final quiz!', '💯');
+            }
+            
+            // Speed Learner
+            if (!gameState.achievements.has('speed_learner') && gameState.completedSections.size >= 5 && Date.now() - startTime < 600000) {
+                gameState.achievements.add('speed_learner');
+                showAchievement('Speed Learner', 'Completed 5 sections in under 10 minutes!', '⚡');
+            }
+            
+            // A* Master
+            if (!gameState.achievements.has('astar_master') && gameState.level === 5) {
+                gameState.achievements.add('astar_master');
+                showAchievement('A* Master', 'Reached maximum level!', '🌟');
+            }
+        }
+
+        function showAchievement(title, desc, icon) {
+            if (!DOM.achievementPopup) return;
+            
+            const titleEl = DOM.achievementPopup.querySelector('#achievement-title');
+            const descEl = DOM.achievementPopup.querySelector('#achievement-desc');
+            const iconEl = DOM.achievementPopup.querySelector('#achievement-icon');
+            
+            if (titleEl) titleEl.textContent = title;
+            if (descEl) descEl.textContent = desc;
+            if (iconEl) iconEl.textContent = icon;
+            
+            DOM.achievementPopup.classList.add('show');
+            setTimeout(() => {
+                if (DOM.achievementPopup) DOM.achievementPopup.classList.remove('show');
+            }, 3000);
+            
+            awardXP(50, 'Achievement');
+            
+            // Haptic feedback for mobile
+            if ('vibrate' in navigator) {
+                navigator.vibrate([100, 50, 100]);
+            }
+        }
+
+        // Quiz Functions with improved performance
+        function selectQuizOption(option) {
+            const siblings = option.parentElement.querySelectorAll('.quiz-option');
+            siblings.forEach(s => s.classList.remove('selected'));
+            option.classList.add('selected');
+        }
+
+        // Utility Functions
+        function markSectionComplete(section) {
+            gameState.completedSections.add(section);
+            const pill = document.querySelector(`[data-section="${section}"]`);
+            if (pill) pill.classList.add('completed');
+            updateProgressDots(section);
+            saveProgress();
+        }
+
+        function updateProgressDots(section) {
+            const sectionIndex = Array.from(DOM.navPills).findIndex(p => p && p.dataset && p.dataset.section === section);
+            const dots = document.querySelectorAll(`#${section} .progress-dot`);
+            if (dots.length > 0) {
+                dots.forEach((dot, index) => {
+                    if (dot && index <= sectionIndex) {
+                        dot.classList.add('completed');
+                    }
+                });
+            }
+        }
+
+        function showShameMessage() {
+            if (!DOM.shameMessage) return;
+            
+            DOM.shameMessage.style.display = 'block';
+            DOM.shameMessage.style.animation = 'shameAnimation 3s ease forwards';
+            
+            // Remove XP for trying to paste
+            gameState.xp = Math.max(0, gameState.xp - 10);
+            updateXPDisplay();
+            
+            setTimeout(() => {
+                if (DOM.shameMessage) DOM.shameMessage.style.display = 'none';
+            }, 3000);
+        }
+
+        // Feedback System
+        function openFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'flex';
+                updateFeedbackPage();
+            }
+        }
+
+        function closeFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'none';
+            }
+            if (DOM.feedbackText) {
+                DOM.feedbackText.value = '';
+            }
+        }
+
+        function updateFeedbackPage() {
+            const sectionTitles = {
+                'intro': 'Introduction',
+                'starter': 'Starter Activity',
+                'fundamentals': 'A* Fundamentals',
+                'heuristics': 'Heuristics',
+                'comparison': 'A* vs Dijkstra',
+                'simulation': 'Step-by-Step',
+                'implementation': 'Implementation',
+                'applications': 'Applications',
+                'optimization': 'Optimization',
+                'summary': 'Summary & Quiz',
+                'exam': 'Exam Practice',
+                'extension': 'Extension',
+                'videos': 'Videos'
+            };
+            
+            if (DOM.feedbackPage) {
+                DOM.feedbackPage.textContent = sectionTitles[gameState.currentSection] || 'Unknown';
+            }
+        }
+
+        function sendFeedback() {
+            if (!DOM.feedbackText) return;
+            
+            const text = DOM.feedbackText.value.trim();
+            if (!text) {
+                alert('Please enter your feedback');
+                return;
+            }
+            
+            const subject = encodeURIComponent('A* Pathfinding Lesson Feedback');
+            const body = encodeURIComponent(
+                `Page: ${DOM.feedbackPage ? DOM.feedbackPage.textContent : 'Unknown'}\n\n` +
+                `Feedback: ${text}\n\n` +
+                `Section ID: ${gameState.currentSection}\n` +
+                `Level: ${gameState.level}, XP: ${gameState.xp}`
+            );
+            
+            window.location.href = `mailto:millingtond@mgs.org?subject=${subject}&body=${body}`;
+            closeFeedback();
+            awardXP(5, 'Feedback Sent', 'feedback');
+        }
+
+        // Accessibility Functions
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+            saveProgress();
+        }
+
+        function toggleDyslexiaFont() {
+            document.body.classList.toggle('dyslexia-font');
+            saveProgress();
+        }
+
+        function changeFontSize(size) {
+            document.body.classList.remove('font-small', 'font-large', 'font-xlarge');
+            if (size !== 'normal') {
+                document.body.classList.add('font-' + size);
+            }
+            saveProgress();
+        }
+
+        // Save/Load Progress using sessionStorage
+        function saveProgress() {
+            const data = {
+                gameState: {
+                    xp: gameState.xp,
+                    level: gameState.level,
+                    completedSections: Array.from(gameState.completedSections),
+                    achievements: Array.from(gameState.achievements),
+                    actionsPerformed: Array.from(gameState.actionsPerformed),
+                    currentSection: gameState.currentSection,
+                    sectionScores: gameState.sectionScores,
+                    hintUsage: gameState.hintUsage
+                },
+                accessibility: {
+                    highContrast: document.body.classList.contains('high-contrast'),
+                    dyslexiaFont: document.body.classList.contains('dyslexia-font'),
+                    fontSize: Array.from(document.body.classList).find(c => c.startsWith('font-')) || 'normal'
+                }
+            };
+            
+            try {
+                sessionStorage.setItem('astarLessonProgress', JSON.stringify(data));
+            } catch (e) {
+                console.warn('Could not save progress:', e);
+            }
+        }
+
+        function loadProgress() {
+            try {
+                const saved = sessionStorage.getItem('astarLessonProgress');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    
+                    // Restore game state
+                    gameState.xp = data.gameState.xp || 0;
+                    gameState.level = data.gameState.level || 1;
+                    gameState.completedSections = new Set(data.gameState.completedSections || []);
+                    gameState.achievements = new Set(data.gameState.achievements || []);
+                    gameState.actionsPerformed = new Set(data.gameState.actionsPerformed || []);
+                    gameState.currentSection = data.gameState.currentSection || 'intro';
+                    gameState.sectionScores = data.gameState.sectionScores || {};
+                    gameState.hintUsage = data.gameState.hintUsage || {};
+                    
+                    // Restore accessibility settings
+                    if (data.accessibility) {
+                        if (data.accessibility.highContrast) {
+                            document.body.classList.add('high-contrast');
+                        }
+                        if (data.accessibility.dyslexiaFont) {
+                            document.body.classList.add('dyslexia-font');
+                        }
+                        if (data.accessibility.fontSize && data.accessibility.fontSize !== 'normal') {
+                            document.body.classList.add(data.accessibility.fontSize);
+                        }
+                    }
+                    
+                    // Restore completed sections visual state
+                    gameState.completedSections.forEach(section => {
+                        const pill = document.querySelector(`[data-section="${section}"]`);
+                        if (pill) pill.classList.add('completed');
+                    });
+                }
+            } catch (e) {
+                console.error('Error loading progress:', e);
+            }
+        }
+
+        // Auto-save every 30 seconds
+        setInterval(saveProgress, 30000);
+
+        // Easter egg: Konami code
+        const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+        let konamiIndex = 0;
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === konamiCode[konamiIndex]) {
+                konamiIndex++;
+                if (konamiIndex === konamiCode.length) {
+                    showAchievement('Secret Found!', 'You discovered the Konami code!', '🎮');
+                    awardXP(100, 'Easter Egg', 'konami_code');
+                    konamiIndex = 0;
+                    createParticleEffect();
+                }
+            } else {
+                konamiIndex = 0;
+            }
+        });
+
+        // Performance monitoring
+        const startTime = Date.now();
+        
+        // Log performance metrics
+        window.addEventListener('load', function() {
+            console.log('Page load time:', Date.now() - startTime, 'ms');
+            console.log('A* Pathfinding Lesson initialized successfully');
+        });
+
+        // Prevent right-click
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+    </script>
+</body>
+</html>

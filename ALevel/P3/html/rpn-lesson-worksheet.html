@@ -1,0 +1,3348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reverse Polish Notation - A Level Computer Science</title>
+    <style>
+        :root {
+            --primary-color: #5b21b6;
+            --primary-dark: #4c1d95;
+            --primary-light: #7c3aed;
+            --secondary-color: #06b6d4;
+            --secondary-dark: #0891b2;
+            --success-color: #10b981;
+            --success-dark: #059669;
+            --error-color: #ef4444;
+            --error-dark: #dc2626;
+            --warning-color: #f59e0b;
+            --warning-dark: #d97706;
+            --bg-color: #ffffff;
+            --bg-secondary: #f3f4f6;
+            --text-color: #1f2937;
+            --text-secondary: #6b7280;
+            --card-bg: #ffffff;
+            --border-color: #e5e7eb;
+            --highlight-color: #fef3c7;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+            --gradient-primary: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%);
+            --gradient-success: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+            --gradient-gold: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+            --animation-duration: 0.3s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Performance optimization */
+        * {
+            will-change: auto;
+        }
+
+        /* High Contrast Mode */
+        body.high-contrast {
+            --bg-color: #000000;
+            --bg-secondary: #0a0a0a;
+            --text-color: #ffffff;
+            --text-secondary: #e0e0e0;
+            --card-bg: #1a1a1a;
+            --border-color: #ffffff;
+            --primary-color: #00ff00;
+            --secondary-color: #ffff00;
+            --gradient-primary: linear-gradient(135deg, #00ff00 0%, #ffff00 100%);
+        }
+
+        /* Dyslexia-Friendly Font */
+        body.dyslexia-font {
+            font-family: 'Comic Sans MS', 'OpenDyslexic', sans-serif;
+            letter-spacing: 0.05em;
+            word-spacing: 0.1em;
+            line-height: 1.8;
+        }
+
+        /* Header */
+        .header {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 1.5rem 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.1) 100%);
+            pointer-events: none;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* XP Container */
+        .xp-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(255,255,255,0.15);
+            padding: 0.5rem 1.5rem;
+            border-radius: 2rem;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+            transition: transform var(--animation-duration) ease;
+        }
+
+        .xp-container:hover {
+            transform: translateY(-2px);
+        }
+
+        .xp-bar {
+            width: 200px;
+            height: 24px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: var(--gradient-gold);
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+        }
+
+        .xp-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .level-badge {
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 1.5rem;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        /* Navigation */
+        .nav-container {
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(20px);
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 80px;
+            z-index: 999;
+            box-shadow: var(--shadow-md);
+        }
+
+        .nav-pills {
+            display: flex;
+            gap: 0.75rem;
+            overflow-x: auto;
+            padding: 0.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .nav-pills::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-pill {
+            padding: 0.625rem 1.25rem;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 2rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.875rem;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-pill::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: var(--primary-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .nav-pill:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .nav-pill:hover::before {
+            width: 100%;
+            height: 100%;
+        }
+
+        .nav-pill.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(91, 33, 182, 0.3);
+        }
+
+        .nav-pill.completed {
+            border-color: var(--success-color);
+            position: relative;
+        }
+
+        .nav-pill.completed::after {
+            content: '✓';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--gradient-success);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            box-shadow: var(--shadow-md);
+            animation: bounceIn 0.5s ease;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            min-height: calc(100vh - 200px);
+        }
+
+        .section {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .section.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            transition: transform var(--animation-duration) ease, box-shadow var(--animation-duration) ease;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.6s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .card-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-title span {
+            font-size: 2rem;
+            -webkit-text-fill-color: initial;
+        }
+
+        /* Interactive Areas */
+        .interactive-area {
+            background: var(--bg-secondary);
+            border: 2px dashed var(--border-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            min-height: 120px;
+            position: relative;
+            transition: all var(--animation-duration) ease;
+        }
+
+        .interactive-area:hover {
+            border-color: var(--primary-light);
+            background: rgba(91, 33, 182, 0.02);
+        }
+
+        .highlight-active {
+            border-color: var(--primary-color);
+            background: rgba(91, 33, 182, 0.05);
+            box-shadow: 0 0 0 4px rgba(91, 33, 182, 0.1);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(91, 33, 182, 0.4); }
+            50% { box-shadow: 0 0 0 12px rgba(91, 33, 182, 0); }
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            text-transform: none;
+            letter-spacing: 0.025em;
+            touch-action: manipulation;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(91, 33, 182, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(91, 33, 182, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--card-bg);
+            color: var(--text-color);
+            border: 2px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-secondary);
+            border-color: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-success {
+            background: var(--gradient-success);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        /* Achievement Popup */
+        .achievement-popup {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: white;
+            border-radius: 1.5rem;
+            padding: 1.5rem 2rem;
+            box-shadow: var(--shadow-xl);
+            transform: translateX(400px);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2000;
+            max-width: 320px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .achievement-popup::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-gold);
+        }
+
+        .achievement-popup.show {
+            transform: translateX(0);
+        }
+
+        .achievement-icon {
+            font-size: 3.5rem;
+            text-align: center;
+            margin-bottom: 0.75rem;
+            animation: bounceRotate 0.6s ease;
+        }
+
+        @keyframes bounceRotate {
+            0% { transform: scale(0) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(180deg); }
+            100% { transform: scale(1) rotate(360deg); }
+        }
+
+        /* Quiz Elements */
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 1.25rem;
+            margin: 0.75rem 0;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            font-weight: 500;
+        }
+
+        .quiz-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(91, 33, 182, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .quiz-option:hover {
+            background: var(--bg-secondary);
+            border-color: var(--primary-light);
+            transform: translateX(8px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .quiz-option:hover::before {
+            left: 100%;
+        }
+
+        .quiz-option.selected {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(91, 33, 182, 0.3);
+        }
+
+        .quiz-option.correct {
+            background: var(--gradient-success);
+            color: white;
+            border-color: var(--success-color);
+            animation: correctAnswer 0.6s ease;
+        }
+
+        .quiz-option.incorrect {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            border-color: var(--error-color);
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes correctAnswer {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        /* Input Fields */
+        .input-field {
+            width: 100%;
+            padding: 0.875rem 1.25rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            transition: all var(--animation-duration) ease;
+            background: var(--card-bg);
+            font-family: inherit;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(91, 33, 182, 0.1);
+            background: white;
+        }
+
+        .input-field::placeholder {
+            color: var(--text-secondary);
+        }
+
+        /* Stack Visualization */
+        .stack-container {
+            display: flex;
+            gap: 3rem;
+            align-items: flex-start;
+            justify-content: center;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .stack {
+            background: var(--bg-secondary);
+            border: 3px solid var(--primary-color);
+            border-radius: 1rem;
+            padding: 1rem;
+            min-width: 150px;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+        }
+
+        .stack-label {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
+
+        .stack-item {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            min-width: 80px;
+            text-align: center;
+            animation: stackPush 0.5s ease;
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+        }
+
+        .stack-item.popping {
+            animation: stackPop 0.5s ease forwards;
+        }
+
+        @keyframes stackPush {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes stackPop {
+            to {
+                transform: translateX(100px) translateY(-50px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Expression Display */
+        .expression-display {
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Tree Visualization */
+        .tree-container {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+            min-height: 300px;
+        }
+
+        .tree-node {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 50%;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 50px;
+            min-height: 50px;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .tree-node.highlight {
+            transform: scale(1.2);
+            box-shadow: 0 0 20px rgba(91, 33, 182, 0.5);
+            animation: pulse 1s infinite;
+        }
+
+        /* Matching Container */
+        .matching-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .matching-item {
+            padding: 1.25rem;
+            margin: 0.75rem 0;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            cursor: pointer;
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            touch-action: manipulation;
+            position: relative;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .matching-item:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .matching-item.selected {
+            background: var(--gradient-primary);
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(91, 33, 182, 0.3);
+        }
+
+        .matching-item.matched {
+            opacity: 0.5;
+            transform: scale(0.95);
+            pointer-events: none;
+            background: var(--gradient-success);
+            color: white;
+        }
+
+        /* Drawing Canvas */
+        .drawing-canvas {
+            border: 3px solid var(--border-color);
+            border-radius: 1rem;
+            background: white;
+            touch-action: none;
+            cursor: crosshair;
+            margin: 1.5rem 0;
+            box-shadow: var(--shadow-md);
+            transition: border-color var(--animation-duration) ease;
+        }
+
+        .drawing-canvas:hover {
+            border-color: var(--primary-light);
+        }
+
+        /* Feedback Button */
+        .feedback-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            font-size: 1.5rem;
+        }
+
+        .feedback-btn:hover {
+            transform: scale(1.1) rotate(15deg);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .feedback-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Modal */
+        .feedback-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .feedback-content {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Accessibility Controls */
+        .accessibility-controls {
+            position: fixed;
+            top: 150px;
+            right: 20px;
+            background: white;
+            border-radius: 1rem;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            border: 1px solid var(--border-color);
+            transition: transform var(--animation-duration) ease;
+        }
+
+        .accessibility-controls:hover {
+            transform: translateX(-5px);
+        }
+
+        .accessibility-controls h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .accessibility-controls button {
+            display: block;
+            width: 100%;
+            margin: 0.5rem 0;
+            padding: 0.625rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all var(--animation-duration) ease;
+            font-weight: 500;
+        }
+
+        .accessibility-controls button:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            transform: translateX(-2px);
+        }
+
+        /* Hint Container */
+        .hint-container {
+            margin-top: 1rem;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+            border-left: 4px solid var(--warning-color);
+            border-radius: 0.75rem;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        .hint-container.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Simulation Controls */
+        .simulation-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+
+        .step-indicator {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 0.75rem;
+            text-align: center;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin: 1rem 0;
+            border: 2px solid var(--primary-color);
+        }
+
+        /* Code Display */
+        .code-display {
+            background: #1a1b26;
+            color: #a9b1d6;
+            padding: 1.75rem;
+            border-radius: 1rem;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.95rem;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            line-height: 1.6;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+        }
+
+        .code-display::before {
+            content: 'RPN';
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            font-size: 0.75rem;
+            color: #565f89;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* Mark Scheme */
+        .mark-scheme {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            border: 2px solid var(--success-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-top: 1.5rem;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .mark-scheme.show {
+            display: block;
+        }
+
+        .mark-scheme h5 {
+            color: var(--success-dark);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        /* Shame Message */
+        .shame-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            padding: 2rem 3rem;
+            border-radius: 1.5rem;
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-align: center;
+            z-index: 3000;
+            box-shadow: var(--shadow-xl);
+            animation: shameAnimation 3s ease forwards;
+        }
+
+        @keyframes shameAnimation {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+            20% { transform: translate(-50%, -50%) scale(1.2) rotate(-5deg); }
+            40% { transform: translate(-50%, -50%) scale(0.9) rotate(5deg); }
+            60% { transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
+            80% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+        }
+
+        /* Font Size Controls */
+        .font-size-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+
+        .font-size-controls button {
+            padding: 0.5rem 0.75rem;
+            margin: 0;
+        }
+
+        body.font-small { font-size: 14px; }
+        body.font-large { font-size: 18px; }
+        body.font-xlarge { font-size: 20px; }
+
+        /* Loading State */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid transparent;
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Performance Optimizations */
+        .section:not(.active) {
+            visibility: hidden;
+        }
+
+        /* Particle Container */
+        #particle-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2999;
+        }
+
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFall 2s linear forwards;
+        }
+
+        @keyframes particleFall {
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+
+        /* Quiz Question Styling */
+        .quiz-question {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .quiz-question p {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        /* Success Animation */
+        @keyframes successPulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .success-animation {
+            animation: successPulse 1s ease;
+        }
+
+        /* Table Styles */
+        .comparison-table {
+            width: 100%;
+            margin: 1.5rem 0;
+            border-collapse: collapse;
+            overflow: hidden;
+            border-radius: 1rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .comparison-table th {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .comparison-table td {
+            background: var(--card-bg);
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .comparison-table tr:hover td {
+            background: var(--bg-secondary);
+        }
+
+        /* Algorithm Display */
+        .algorithm-step {
+            background: var(--card-bg);
+            border-left: 4px solid var(--primary-color);
+            padding: 1rem 1.5rem;
+            margin: 0.5rem 0;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .algorithm-step.active {
+            background: var(--highlight-color);
+            transform: translateX(10px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .xp-container {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .xp-bar {
+                width: 150px;
+            }
+
+            .matching-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .nav-container {
+                top: 140px;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .accessibility-controls {
+                top: auto;
+                bottom: 90px;
+                right: 10px;
+                padding: 1rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .achievement-popup {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+
+            .stack-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .simulation-controls {
+                flex-direction: column;
+            }
+
+            .simulation-controls .btn {
+                width: 100%;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            .header, .nav-container, .feedback-btn, .accessibility-controls, .btn {
+                display: none !important;
+            }
+
+            .section {
+                display: block !important;
+                opacity: 1 !important;
+                transform: none !important;
+                page-break-after: always;
+            }
+
+            .card {
+                box-shadow: none;
+                border: 1px solid #000;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 6px;
+            border: 2px solid var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-color);
+        }
+
+        /* Reduced Motion Support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Add floating animation style */
+        @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+
+        /* Iframe support */
+        iframe {
+            width: 100%;
+            height: 80vh;
+            border: none;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="header-content">
+            <h1>Reverse Polish Notation (RPN)</h1>
+            <div class="xp-container" role="status" aria-live="polite">
+                <span class="level-badge">Level <span id="current-level">1</span></span>
+                <div class="xp-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
+                </div>
+                <span id="xp-text">0 / 100 XP</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-container" role="navigation" aria-label="Lesson sections">
+        <div class="nav-pills" id="nav-pills">
+            <button class="nav-pill active" data-section="intro" aria-current="page">Introduction</button>
+            <button class="nav-pill" data-section="starter">Starter Activity</button>
+            <button class="nav-pill" data-section="basics">RPN Basics</button>
+            <button class="nav-pill" data-section="stack">Stack Evaluation</button>
+            <button class="nav-pill" data-section="conversion">Infix to RPN</button>
+            <button class="nav-pill" data-section="trees">Binary Trees</button>
+            <button class="nav-pill" data-section="practice">Practice</button>
+            <button class="nav-pill" data-section="applications">Applications</button>
+            <button class="nav-pill" data-section="summary">Summary & Quiz</button>
+            <button class="nav-pill" data-section="exam">Exam Practice</button>
+            <button class="nav-pill" data-section="extension">Extension</button>
+            <button class="nav-pill" data-section="videos">Videos</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" role="main">
+        <!-- Introduction Section -->
+        <section id="intro" class="section active">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📚</span> Welcome to Reverse Polish Notation!
+                </h2>
+                
+                <h3>Learning Outcomes</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem; line-height: 1.8;">
+                    <li>Understand what Reverse Polish Notation (RPN) is and why it's used</li>
+                    <li>Convert between infix and postfix notation</li>
+                    <li>Evaluate RPN expressions using a stack</li>
+                    <li>Understand how binary trees relate to RPN</li>
+                    <li>Apply RPN concepts in real-world contexts</li>
+                    <li>Recognize the advantages of RPN over infix notation</li>
+                </ul>
+
+                <div class="interactive-area highlight-active">
+                    <h4>Pre-Assessment: Test Your Knowledge</h4>
+                    <p>Which notation does NOT require brackets to show order of operations?</p>
+                    
+                    <div id="pre-quiz">
+                        <button class="quiz-option" data-answer="a">Infix notation (e.g., 3 + 4)</button>
+                        <button class="quiz-option" data-answer="b">Mathematical notation (e.g., 3 + 4 × 5)</button>
+                        <button class="quiz-option" data-answer="c">Postfix notation (e.g., 3 4 +)</button>
+                        <button class="quiz-option" data-answer="d">Standard algebraic notation</button>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkPreQuiz()" style="margin-top: 1rem;">
+                        Check Answer
+                    </button>
+                </div>
+
+                <div class="expression-display" style="margin-top: 2rem;">
+                    <p>In this lesson, you'll learn how expressions like:</p>
+                    <p style="font-size: 1.5rem; margin: 0.5rem 0;">3 + 4 × 5</p>
+                    <p>Can be written as:</p>
+                    <p style="font-size: 1.5rem; margin: 0.5rem 0;">3 4 5 × +</p>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="navigateSection('next')">
+                        Start Learning →
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Starter Activity -->
+        <section id="starter" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎯</span> Starter Activity: Expression Matching
+                </h2>
+                
+                <p>Match each infix expression with its correct RPN (postfix) equivalent. Click on matching pairs!</p>
+                
+                <div class="matching-container" id="starter-matching">
+                    <div>
+                        <h4>Infix Notation</h4>
+                        <div class="matching-item" data-id="1" data-match="a">3 + 4</div>
+                        <div class="matching-item" data-id="2" data-match="b">5 × 2 + 3</div>
+                        <div class="matching-item" data-id="3" data-match="c">(4 + 2) × 3</div>
+                        <div class="matching-item" data-id="4" data-match="d">7 - 3 × 2</div>
+                        <div class="matching-item" data-id="5" data-match="e">8 ÷ 2 ÷ 2</div>
+                    </div>
+                    <div>
+                        <h4>RPN (Postfix)</h4>
+                        <div class="matching-item" data-id="b" data-match="b">5 2 × 3 +</div>
+                        <div class="matching-item" data-id="d" data-match="d">7 3 2 × -</div>
+                        <div class="matching-item" data-id="a" data-match="a">3 4 +</div>
+                        <div class="matching-item" data-id="e" data-match="e">8 2 ÷ 2 ÷</div>
+                        <div class="matching-item" data-id="c" data-match="c">4 2 + 3 ×</div>
+                    </div>
+                </div>
+                
+                <div id="matching-feedback" style="margin-top: 1rem; text-align: center; font-weight: 600; color: var(--primary-color);"></div>
+                
+                <button class="btn btn-secondary" onclick="resetStarterActivity()">Reset Activity</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- RPN Basics -->
+        <section id="basics" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🔧</span> Understanding RPN Basics
+                </h2>
+                
+                <h3>What is Reverse Polish Notation?</h3>
+                <p>Reverse Polish Notation (RPN), also known as postfix notation, is a mathematical notation where operators follow their operands. This eliminates the need for brackets and operator precedence rules.</p>
+                
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Infix Notation</th>
+                            <th>RPN (Postfix)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Operator Position</td>
+                            <td>Between operands (3 + 4)</td>
+                            <td>After operands (3 4 +)</td>
+                        </tr>
+                        <tr>
+                            <td>Brackets Required?</td>
+                            <td>Yes, for complex expressions</td>
+                            <td>Never needed</td>
+                        </tr>
+                        <tr>
+                            <td>Precedence Rules?</td>
+                            <td>Yes (BIDMAS/PEMDAS)</td>
+                            <td>Not needed</td>
+                        </tr>
+                        <tr>
+                            <td>Ambiguity</td>
+                            <td>Can be ambiguous without brackets</td>
+                            <td>Always unambiguous</td>
+                        </tr>
+                        <tr>
+                            <td>Evaluation</td>
+                            <td>Complex parsing required</td>
+                            <td>Simple left-to-right scan</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Key Advantages of RPN</h4>
+                    <p>Select all the TRUE statements about RPN:</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <label style="display: block; margin: 0.5rem 0;">
+                            <input type="checkbox" id="rpn1" style="margin-right: 0.5rem;">
+                            RPN never requires brackets
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0;">
+                            <input type="checkbox" id="rpn2" style="margin-right: 0.5rem;">
+                            RPN uses more symbols than infix
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0;">
+                            <input type="checkbox" id="rpn3" style="margin-right: 0.5rem;">
+                            RPN can be evaluated left-to-right
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0;">
+                            <input type="checkbox" id="rpn4" style="margin-right: 0.5rem;">
+                            RPN requires BIDMAS rules
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0;">
+                            <input type="checkbox" id="rpn5" style="margin-right: 0.5rem;">
+                            RPN is unambiguous
+                        </label>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkRPNAdvantages()">Check Answers</button>
+                    <button class="btn btn-secondary" onclick="showHint('basics')">Need a Hint?</button>
+                </div>
+                
+                <div class="hint-container" id="basics-hint">
+                    <p>💡 Hint: Think about what makes RPN special - it doesn't need brackets or precedence rules because the order of operations is built into the notation itself!</p>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stack Evaluation -->
+        <section id="stack" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📊</span> Stack-Based Evaluation
+                </h2>
+                
+                <p>RPN expressions are evaluated using a stack data structure. Watch how the expression "3 4 + 2 ×" is evaluated step by step:</p>
+                
+                <div class="expression-display">
+                    Current Expression: <span id="current-expression">3 4 + 2 ×</span>
+                </div>
+                
+                <div class="stack-container">
+                    <div class="stack" id="eval-stack">
+                        <span class="stack-label">Stack</span>
+                    </div>
+                    
+                    <div style="text-align: center;">
+                        <div class="step-indicator" id="step-indicator">
+                            Click "Next Step" to begin
+                        </div>
+                        
+                        <div class="simulation-controls">
+                            <button class="btn btn-secondary" onclick="prevStep()" id="prev-btn" disabled>← Previous</button>
+                            <button class="btn btn-primary" onclick="nextStep()" id="next-btn">Next Step →</button>
+                            <button class="btn btn-danger" onclick="resetSimulation()">Reset</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Practice: Evaluate RPN Expression</h4>
+                    <p>What is the result of: 5 3 - 4 × ?</p>
+                    
+                    <input type="number" class="input-field" id="rpn-result" placeholder="Enter your answer" style="width: 200px; margin: 1rem 0;">
+                    
+                    <button class="btn btn-primary" onclick="checkRPNResult()">Check Answer</button>
+                </div>
+                
+                <div class="algorithm-display" style="margin-top: 2rem;">
+                    <h4>RPN Evaluation Algorithm</h4>
+                    <div class="algorithm-step" id="algo1">1. Scan the expression from left to right</div>
+                    <div class="algorithm-step" id="algo2">2. If the symbol is a number, push it onto the stack</div>
+                    <div class="algorithm-step" id="algo3">3. If the symbol is an operator:</div>
+                    <div class="algorithm-step" id="algo4" style="margin-left: 2rem;">a. Pop the required operands (2 for binary operators)</div>
+                    <div class="algorithm-step" id="algo5" style="margin-left: 2rem;">b. Apply the operator (note: order matters for - and ÷)</div>
+                    <div class="algorithm-step" id="algo6" style="margin-left: 2rem;">c. Push the result back onto the stack</div>
+                    <div class="algorithm-step" id="algo7">4. The final result is the only item left on the stack</div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Conversion Section -->
+        <section id="conversion" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🔄</span> Converting Infix to RPN
+                </h2>
+                
+                <h3>The Shunting Yard Algorithm</h3>
+                <p>Converting infix notation to RPN uses the Shunting Yard algorithm, which uses a stack for operators.</p>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Interactive Conversion</h4>
+                    <p>Watch the step-by-step conversion of: <strong>3 + 4 × 2</strong></p>
+                    
+                    <div class="stack-container">
+                        <div style="text-align: center;">
+                            <div class="expression-display" style="margin-bottom: 1rem;">
+                                Input: <span id="conv-input">3 + 4 × 2</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stack" id="operator-stack" style="min-height: 200px;">
+                            <span class="stack-label">Operator Stack</span>
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <div class="expression-display" style="margin-top: 1rem;">
+                                Output: <span id="conv-output"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="step-indicator" id="conv-step-indicator" style="margin-top: 1rem;">
+                        Ready to start conversion
+                    </div>
+                    
+                    <div class="simulation-controls">
+                        <button class="btn btn-secondary" onclick="prevConvStep()" id="conv-prev-btn" disabled>← Previous</button>
+                        <button class="btn btn-primary" onclick="nextConvStep()" id="conv-next-btn">Next Step →</button>
+                        <button class="btn btn-danger" onclick="resetConversion()">Reset</button>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Practice Conversion</h4>
+                    <p>Convert this infix expression to RPN: <strong>(5 + 3) × 2</strong></p>
+                    <p>Enter the tokens separated by spaces:</p>
+                    
+                    <input type="text" class="input-field" id="conversion-answer" placeholder="e.g., 3 4 +" style="margin: 1rem 0;">
+                    
+                    <button class="btn btn-primary" onclick="checkConversion()">Check Answer</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Binary Trees -->
+        <section id="trees" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🌳</span> Binary Trees and RPN
+                </h2>
+                
+                <p>Expressions can be represented as binary trees. Different tree traversal methods give different notations:</p>
+                
+                <div class="tree-container">
+                    <div style="text-align: center;">
+                        <p><strong>Expression Tree for: 3 + 4 × 2</strong></p>
+                        
+                        <svg width="300" height="200" viewBox="0 0 300 200" style="margin: 1rem auto;">
+                            <!-- Tree edges -->
+                            <line x1="150" y1="40" x2="100" y2="100" stroke="var(--primary-color)" stroke-width="2"/>
+                            <line x1="150" y1="40" x2="200" y2="100" stroke="var(--primary-color)" stroke-width="2"/>
+                            <line x1="200" y1="100" x2="170" y2="160" stroke="var(--primary-color)" stroke-width="2"/>
+                            <line x1="200" y1="100" x2="230" y2="160" stroke="var(--primary-color)" stroke-width="2"/>
+                            
+                            <!-- Tree nodes -->
+                            <circle cx="150" cy="40" r="25" fill="var(--gradient-primary)" id="node-plus"/>
+                            <circle cx="100" cy="100" r="25" fill="var(--gradient-primary)" id="node-3"/>
+                            <circle cx="200" cy="100" r="25" fill="var(--gradient-primary)" id="node-times"/>
+                            <circle cx="170" cy="160" r="25" fill="var(--gradient-primary)" id="node-4"/>
+                            <circle cx="230" cy="160" r="25" fill="var(--gradient-primary)" id="node-2"/>
+                            
+                            <!-- Node labels -->
+                            <text x="150" y="45" text-anchor="middle" fill="white" font-weight="bold">+</text>
+                            <text x="100" y="105" text-anchor="middle" fill="white" font-weight="bold">3</text>
+                            <text x="200" y="105" text-anchor="middle" fill="white" font-weight="bold">×</text>
+                            <text x="170" y="165" text-anchor="middle" fill="white" font-weight="bold">4</text>
+                            <text x="230" y="165" text-anchor="middle" fill="white" font-weight="bold">2</text>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="interactive-area">
+                    <h4>Tree Traversal Methods</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1rem 0;">
+                        <button class="btn btn-secondary" onclick="showTraversal('inorder')">In-order (Infix)</button>
+                        <button class="btn btn-secondary" onclick="showTraversal('preorder')">Pre-order (Prefix)</button>
+                        <button class="btn btn-secondary" onclick="showTraversal('postorder')">Post-order (Postfix/RPN)</button>
+                    </div>
+                    
+                    <div class="expression-display" id="traversal-result" style="margin-top: 1rem; display: none;">
+                        <span id="traversal-type"></span>: <span id="traversal-expression"></span>
+                    </div>
+                </div>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Understanding Tree Traversal</h4>
+                    <p>Which traversal method produces RPN?</p>
+                    
+                    <button class="quiz-option" onclick="checkTraversal('a')">Pre-order traversal</button>
+                    <button class="quiz-option" onclick="checkTraversal('b')">In-order traversal</button>
+                    <button class="quiz-option" onclick="checkTraversal('c')">Post-order traversal</button>
+                    <button class="quiz-option" onclick="checkTraversal('d')">Level-order traversal</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Practice Section -->
+        <section id="practice" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>✏️</span> Practice Problems
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Problem 1: Evaluate RPN</h4>
+                    <p>Evaluate: 8 2 ÷ 3 - 5 ×</p>
+                    
+                    <input type="number" class="input-field" id="practice1" placeholder="Enter result" style="width: 200px; margin: 1rem 0;">
+                    <button class="btn btn-primary" onclick="checkPractice1()">Check</button>
+                    
+                    <div id="practice1-feedback" style="margin-top: 1rem;"></div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Problem 2: Convert to RPN</h4>
+                    <p>Convert to RPN: 7 × (3 + 2)</p>
+                    
+                    <input type="text" class="input-field" id="practice2" placeholder="Enter RPN expression" style="margin: 1rem 0;">
+                    <button class="btn btn-primary" onclick="checkPractice2()">Check</button>
+                    
+                    <div id="practice2-feedback" style="margin-top: 1rem;"></div>
+                </div>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Problem 3: Common Mistakes</h4>
+                    <p>Which of these is the correct RPN for: a - b × c?</p>
+                    
+                    <button class="quiz-option" onclick="checkPractice3('a')">a b c × -</button>
+                    <button class="quiz-option" onclick="checkPractice3('b')">a b - c ×</button>
+                    <button class="quiz-option" onclick="checkPractice3('c')">a b × c -</button>
+                    <button class="quiz-option" onclick="checkPractice3('d')">b c × a -</button>
+                </div>
+                
+                <h4 style="margin-top: 2rem;">Drawing Canvas for Calculations</h4>
+                <canvas id="drawing-canvas" class="drawing-canvas" width="600" height="300"></canvas>
+                <button class="btn btn-secondary" onclick="clearCanvas()">Clear Canvas</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Applications -->
+        <section id="applications" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🚀</span> Real-World Applications
+                </h2>
+                
+                <h3>Where is RPN Used?</h3>
+                
+                <div class="interactive-area">
+                    <h4>1. Calculator Design</h4>
+                    <p>Many scientific calculators (especially HP calculators) use RPN because:</p>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>No need for parentheses keys</li>
+                        <li>Fewer keystrokes for complex calculations</li>
+                        <li>See intermediate results</li>
+                        <li>More efficient memory usage</li>
+                    </ul>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 1.5rem;">
+                    <h4>2. Compiler Design</h4>
+                    <p>Compilers convert infix expressions to RPN because:</p>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>Easier to generate machine code</li>
+                        <li>Natural fit for stack-based architectures</li>
+                        <li>No ambiguity in evaluation order</li>
+                        <li>Simplified expression parsing</li>
+                    </ul>
+                </div>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 1.5rem;">
+                    <h4>3. Stack-Based Virtual Machines</h4>
+                    <p>Fill in the blanks about stack-based systems:</p>
+                    
+                    <p style="margin: 1rem 0;">
+                        The Java Virtual Machine (JVM) uses a 
+                        <select class="input-field" id="app1" style="width: 150px; display: inline-block;">
+                            <option value="">Choose...</option>
+                            <option value="register">register-based</option>
+                            <option value="stack">stack-based</option>
+                            <option value="heap">heap-based</option>
+                            <option value="queue">queue-based</option>
+                        </select>
+                        architecture where bytecode instructions operate in 
+                        <select class="input-field" id="app2" style="width: 150px; display: inline-block;">
+                            <option value="">Choose...</option>
+                            <option value="infix">infix</option>
+                            <option value="prefix">prefix</option>
+                            <option value="postfix">postfix</option>
+                            <option value="mixed">mixed</option>
+                        </select>
+                        style.
+                    </p>
+                    
+                    <button class="btn btn-primary" onclick="checkApplications()">Check Answers</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary & Quiz -->
+        <section id="summary" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📝</span> Summary & Final Quiz
+                </h2>
+                
+                <h3>Key Takeaways</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li><strong>RPN</strong> places operators after operands (postfix notation)</li>
+                    <li><strong>No brackets needed</strong> - order is unambiguous</li>
+                    <li><strong>Stack-based evaluation</strong> - scan left to right</li>
+                    <li><strong>Binary trees</strong> - post-order traversal gives RPN</li>
+                    <li><strong>Real applications</strong> - calculators, compilers, VMs</li>
+                </ul>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Final Assessment</h4>
+                    <div id="final-quiz">
+                        <!-- Question 1 -->
+                        <div class="quiz-question">
+                            <p><strong>1. What does RPN eliminate the need for?</strong></p>
+                            <button class="quiz-option" data-q="1" data-a="a">Variables</button>
+                            <button class="quiz-option" data-q="1" data-a="b">Operators</button>
+                            <button class="quiz-option" data-q="1" data-a="c">Numbers</button>
+                            <button class="quiz-option" data-q="1" data-a="d">Brackets and precedence rules</button>
+                        </div>
+                        
+                        <!-- Question 2 -->
+                        <div class="quiz-question">
+                            <p><strong>2. In RPN, where are operators placed?</strong></p>
+                            <button class="quiz-option" data-q="2" data-a="a">Before operands</button>
+                            <button class="quiz-option" data-q="2" data-a="b">After operands</button>
+                            <button class="quiz-option" data-q="2" data-a="c">Between operands</button>
+                            <button class="quiz-option" data-q="2" data-a="d">At the beginning</button>
+                        </div>
+                        
+                        <!-- Question 3 -->
+                        <div class="quiz-question">
+                            <p><strong>3. What data structure is used to evaluate RPN?</strong></p>
+                            <button class="quiz-option" data-q="3" data-a="a">Queue</button>
+                            <button class="quiz-option" data-q="3" data-a="b">Tree</button>
+                            <button class="quiz-option" data-q="3" data-a="c">Stack</button>
+                            <button class="quiz-option" data-q="3" data-a="d">Array</button>
+                        </div>
+                        
+                        <!-- Question 4 -->
+                        <div class="quiz-question">
+                            <p><strong>4. What is 6 3 ÷ 2 + in infix notation?</strong></p>
+                            <button class="quiz-option" data-q="4" data-a="a">6 + 3 ÷ 2</button>
+                            <button class="quiz-option" data-q="4" data-a="b">(6 ÷ 3) + 2</button>
+                            <button class="quiz-option" data-q="4" data-a="c">6 ÷ (3 + 2)</button>
+                            <button class="quiz-option" data-q="4" data-a="d">3 ÷ 6 + 2</button>
+                        </div>
+                        
+                        <!-- Question 5 -->
+                        <div class="quiz-question">
+                            <p><strong>5. Which tree traversal produces RPN?</strong></p>
+                            <button class="quiz-option" data-q="5" data-a="a">Pre-order</button>
+                            <button class="quiz-option" data-q="5" data-a="b">In-order</button>
+                            <button class="quiz-option" data-q="5" data-a="c">Post-order</button>
+                            <button class="quiz-option" data-q="5" data-a="d">Level-order</button>
+                        </div>
+                        
+                        <!-- Question 6 -->
+                        <div class="quiz-question">
+                            <p><strong>6. True or False: RPN expressions can be ambiguous</strong></p>
+                            <button class="quiz-option" data-q="6" data-a="a">True</button>
+                            <button class="quiz-option" data-q="6" data-a="b">False</button>
+                        </div>
+                        
+                        <!-- Question 7 -->
+                        <div class="quiz-question">
+                            <p><strong>7. What is the RPN for: (a + b) × c?</strong></p>
+                            <button class="quiz-option" data-q="7" data-a="a">a b + c ×</button>
+                            <button class="quiz-option" data-q="7" data-a="b">a b c + ×</button>
+                            <button class="quiz-option" data-q="7" data-a="c">a + b × c</button>
+                            <button class="quiz-option" data-q="7" data-a="d">c × a b +</button>
+                        </div>
+                        
+                        <!-- Question 8 -->
+                        <div class="quiz-question">
+                            <p><strong>8. When evaluating RPN, what happens when we encounter an operator?</strong></p>
+                            <button class="quiz-option" data-q="8" data-a="a">Push it onto the stack</button>
+                            <button class="quiz-option" data-q="8" data-a="b">Pop operands, compute, push result</button>
+                            <button class="quiz-option" data-q="8" data-a="c">Skip to the next number</button>
+                            <button class="quiz-option" data-q="8" data-a="d">Clear the stack</button>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="submitFinalQuiz()">Submit Quiz</button>
+                    
+                    <div id="quiz-results" style="margin-top: 2rem; display: none;">
+                        <h4>Your Results:</h4>
+                        <p id="quiz-score"></p>
+                        <div id="quiz-feedback"></div>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exam Practice -->
+        <section id="exam" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📋</span> Exam Practice Questions
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Question 1 (4 marks)</h4>
+                    <p>a) Define Reverse Polish Notation. (2 marks)</p>
+                    <p>b) State TWO advantages of RPN over infix notation. (2 marks)</p>
+                    
+                    <textarea class="input-field" id="exam-q1" rows="6" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q1" min="0" max="4" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q1')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="mark-scheme" id="mark-scheme-q1">
+                        <h5>Mark Scheme:</h5>
+                        <p><strong>a) Definition (2 marks):</strong></p>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>Mathematical notation where operators follow operands (1 mark)</li>
+                            <li>Also known as postfix notation (1 mark)</li>
+                        </ul>
+                        <p><strong>b) Advantages (2 marks - 1 mark each for any two):</strong></p>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>No brackets needed</li>
+                            <li>No precedence rules/BIDMAS required</li>
+                            <li>Unambiguous</li>
+                            <li>Can be evaluated left-to-right</li>
+                            <li>Natural for stack-based evaluation</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Question 2 (6 marks)</h4>
+                    <p>Convert the following infix expression to RPN and show the stack contents at each step of evaluation:</p>
+                    <p style="text-align: center; font-size: 1.2rem; font-weight: bold;">5 × (3 + 2) - 4</p>
+                    
+                    <textarea class="input-field" id="exam-q2" rows="10" placeholder="Show your working..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q2" min="0" max="6" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q2')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="mark-scheme" id="mark-scheme-q2">
+                        <h5>Mark Scheme:</h5>
+                        <p><strong>Conversion (2 marks):</strong></p>
+                        <p>RPN: 5 3 2 + × 4 -</p>
+                        <p><strong>Evaluation steps (4 marks - 0.5 per step):</strong></p>
+                        <ol style="padding-left: 1.5rem;">
+                            <li>Read 5: Stack = [5]</li>
+                            <li>Read 3: Stack = [5, 3]</li>
+                            <li>Read 2: Stack = [5, 3, 2]</li>
+                            <li>Read +: Pop 2,3, push 5: Stack = [5, 5]</li>
+                            <li>Read ×: Pop 5,5, push 25: Stack = [25]</li>
+                            <li>Read 4: Stack = [25, 4]</li>
+                            <li>Read -: Pop 4,25, push 21: Stack = [21]</li>
+                            <li>Result = 21</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 2rem;">Rough Work Canvas</h4>
+                <canvas id="exam-canvas" class="drawing-canvas" width="600" height="300"></canvas>
+                <button class="btn btn-secondary" onclick="clearExamCanvas()">Clear Canvas</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Extension Activities -->
+        <section id="extension" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🌟</span> Extension Activities
+                </h2>
+                
+                <h3>Beyond the Specification</h3>
+                
+                <div class="interactive-area">
+                    <h4>Challenge 1: RPN Calculator Implementation</h4>
+                    <p>Design pseudocode for an RPN calculator that can handle the four basic operations (+, -, ×, ÷). Include error handling for division by zero and insufficient operands.</p>
+                    
+                    <textarea class="input-field" rows="8" placeholder="Write your pseudocode here..."></textarea>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Challenge 2: Advanced Operators</h4>
+                    <p>Research how RPN handles:</p>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>Unary operators (e.g., square root, negation)</li>
+                        <li>Functions with multiple arguments</li>
+                        <li>Conditional operators</li>
+                    </ul>
+                    <p>Explain with examples:</p>
+                    
+                    <textarea class="input-field" rows="6" placeholder="Your explanation..."></textarea>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Challenge 3: Optimization</h4>
+                    <p>Why might RPN be more efficient for computer evaluation than infix? Consider:</p>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>Memory usage</li>
+                        <li>Processing time</li>
+                        <li>Parallelization possibilities</li>
+                    </ul>
+                    
+                    <textarea class="input-field" rows="6" placeholder="Your analysis..."></textarea>
+                </div>
+                
+                <button class="btn btn-primary" onclick="submitExtension()">Submit Extension Work</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Videos Section -->
+        <section id="videos" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎥</span> Video Resources
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Supplementary Videos</h4>
+                    <p>Your teacher will add video links here to support your learning:</p>
+                    
+                    <div style="background: var(--bg-secondary); padding: 3rem; border-radius: 1rem; text-align: center; margin: 2rem 0;">
+                        <p style="color: var(--text-secondary); font-size: 4rem;">📹</p>
+                        <p style="color: var(--text-secondary);">Video content will be added here</p>
+                    </div>
+                </div>
+                
+                <h4>Additional Resources</h4>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li>Cambridge 9618 Specification - Section on RPN</li>
+                    <li>Online RPN Calculator Simulators</li>
+                    <li>Stack Data Structure Visualizers</li>
+                    <li>Past Paper Questions on RPN</li>
+                </ul>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('intro')">Start Over</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Achievement Popup -->
+    <div class="achievement-popup" id="achievement-popup">
+        <div class="achievement-icon" id="achievement-icon">🏆</div>
+        <h4 id="achievement-title">Achievement Unlocked!</h4>
+        <p id="achievement-desc">You've earned a new achievement</p>
+    </div>
+
+    <!-- Shame Message -->
+    <div class="shame-message" id="shame-message">
+        🚫 No pasting allowed! Do your own work! 🚫
+    </div>
+
+    <!-- Particle Container -->
+    <div id="particle-container"></div>
+
+    <!-- Feedback Button & Modal -->
+    <button class="feedback-btn" onclick="openFeedback()" aria-label="Send feedback">
+        <span>💬</span>
+    </button>
+
+    <div class="feedback-modal" id="feedback-modal">
+        <div class="feedback-content">
+            <h3 style="margin-bottom: 1rem; color: var(--primary-color);">Send Feedback</h3>
+            <p>Found a bug or have a suggestion? Let us know!</p>
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                Current page: <span id="feedback-page" style="font-weight: 600;"></span>
+            </p>
+            <textarea class="input-field" id="feedback-text" rows="5" placeholder="Describe the issue or suggestion..." style="margin-top: 1rem;"></textarea>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeFeedback()">Cancel</button>
+                <button class="btn btn-primary" onclick="sendFeedback()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accessibility Controls -->
+    <div class="accessibility-controls">
+        <h4>Accessibility</h4>
+        <button onclick="toggleHighContrast()">High Contrast</button>
+        <button onclick="toggleDyslexiaFont()">Dyslexia Font</button>
+        <div class="font-size-controls">
+            <button onclick="changeFontSize('small')">A-</button>
+            <button onclick="changeFontSize('normal')">A</button>
+            <button onclick="changeFontSize('large')">A+</button>
+        </div>
+    </div>
+
+    <script>
+        // Performance optimization: Cache DOM elements
+        const DOM = {
+            xpFill: null,
+            xpText: null,
+            currentLevel: null,
+            navPills: null,
+            sections: null,
+            achievementPopup: null,
+            shameMessage: null,
+            feedbackModal: null,
+            feedbackPage: null,
+            feedbackText: null,
+            particleContainer: null
+        };
+
+        // Initialize DOM cache
+        function initializeDOM() {
+            DOM.xpFill = document.getElementById('xp-fill');
+            DOM.xpText = document.getElementById('xp-text');
+            DOM.currentLevel = document.getElementById('current-level');
+            DOM.navPills = document.querySelectorAll('.nav-pill');
+            DOM.sections = document.querySelectorAll('.section');
+            DOM.achievementPopup = document.getElementById('achievement-popup');
+            DOM.shameMessage = document.getElementById('shame-message');
+            DOM.feedbackModal = document.getElementById('feedback-modal');
+            DOM.feedbackPage = document.getElementById('feedback-page');
+            DOM.feedbackText = document.getElementById('feedback-text');
+            DOM.particleContainer = document.getElementById('particle-container');
+        }
+
+        // Game State
+        let gameState = {
+            xp: 0,
+            level: 1,
+            completedSections: new Set(),
+            achievements: new Set(),
+            actionsPerformed: new Set(),
+            currentSection: 'intro',
+            sectionScores: {},
+            selectedItems: {},
+            hintUsage: {},
+            matchedPairs: new Set(),
+            simulationStep: 0,
+            conversionStep: 0,
+            stackItems: []
+        };
+
+        // XP Requirements per level
+        const XP_PER_LEVEL = [0, 100, 250, 450, 700, 1000];
+
+        // Performance: Debounce function
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Performance: Throttle function
+        function throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDOM();
+            setupEventListeners();
+            loadProgress();
+            updateXPDisplay();
+            setupMatchingActivity();
+            setupCanvases();
+        });
+
+        // Matching Activity Setup
+        function setupMatchingActivity() {
+            const container = document.getElementById('starter-matching');
+            if (!container) return;
+            
+            const items = container.querySelectorAll('.matching-item');
+            let firstSelected = null;
+            
+            items.forEach(item => {
+                item.addEventListener('click', function() {
+                    if (this.classList.contains('matched')) return;
+                    
+                    if (!firstSelected) {
+                        firstSelected = this;
+                        this.classList.add('selected');
+                    } else {
+                        if (firstSelected.dataset.match === this.dataset.match && firstSelected !== this) {
+                            // Correct match
+                            firstSelected.classList.add('matched');
+                            this.classList.add('matched');
+                            firstSelected.classList.remove('selected');
+                            
+                            gameState.matchedPairs.add(firstSelected.dataset.match);
+                            awardXP(10, 'Correct Match', `match_${firstSelected.dataset.match}`);
+                            
+                            const feedback = document.getElementById('matching-feedback');
+                            if (feedback) {
+                                feedback.textContent = 'Correct! ' + gameState.matchedPairs.size + '/5 matched';
+                                feedback.style.color = 'var(--success-color)';
+                            }
+                            
+                            if (gameState.matchedPairs.size === 5) {
+                                awardXP(20, 'All Matches Complete', 'starter_complete');
+                                markSectionComplete('starter');
+                            }
+                        } else {
+                            // Incorrect match
+                            firstSelected.classList.remove('selected');
+                            this.classList.add('incorrect');
+                            setTimeout(() => this.classList.remove('incorrect'), 500);
+                            
+                            const feedback = document.getElementById('matching-feedback');
+                            if (feedback) {
+                                feedback.textContent = 'Try again!';
+                                feedback.style.color = 'var(--error-color)';
+                            }
+                        }
+                        firstSelected = null;
+                    }
+                });
+            });
+        }
+
+        function resetStarterActivity() {
+            const container = document.getElementById('starter-matching');
+            if (!container) return;
+            
+            const items = container.querySelectorAll('.matching-item');
+            items.forEach(item => {
+                item.classList.remove('selected', 'matched', 'incorrect');
+            });
+            
+            gameState.matchedPairs.clear();
+            
+            const feedback = document.getElementById('matching-feedback');
+            if (feedback) feedback.textContent = '';
+        }
+
+        // Pre-Quiz Function
+        function checkPreQuiz() {
+            const selected = document.querySelector('#pre-quiz .quiz-option.selected');
+            if (!selected) return;
+            
+            const options = document.querySelectorAll('#pre-quiz .quiz-option');
+            options.forEach(opt => opt.classList.remove('correct', 'incorrect'));
+            
+            if (selected.dataset.answer === 'c') {
+                selected.classList.add('correct');
+                awardXP(10, 'Correct Answer', 'pre_quiz');
+            } else {
+                selected.classList.add('incorrect');
+                document.querySelector('#pre-quiz .quiz-option[data-answer="c"]').classList.add('correct');
+            }
+        }
+
+        // RPN Basics Functions
+        function checkRPNAdvantages() {
+            const correct = ['rpn1', 'rpn3', 'rpn5'];
+            let score = 0;
+            
+            correct.forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox && checkbox.checked) score++;
+            });
+            
+            // Check for incorrect selections
+            ['rpn2', 'rpn4'].forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox && checkbox.checked) score--;
+            });
+            
+            if (score === 3) {
+                awardXP(15, 'RPN Advantages', 'rpn_advantages');
+                markSectionComplete('basics');
+                alert('Perfect! You understand the key advantages of RPN.');
+            } else {
+                alert('Not quite right. Remember: RPN needs no brackets, uses left-to-right evaluation, and is unambiguous.');
+            }
+        }
+
+        function showHint(section) {
+            const hint = document.getElementById(section + '-hint');
+            if (!hint) return;
+            
+            hint.classList.add('show');
+            const xpReduction = gameState.hintUsage[section] ? 0 : -5;
+            gameState.hintUsage[section] = true;
+            if (xpReduction < 0) {
+                gameState.xp = Math.max(0, gameState.xp + xpReduction);
+                updateXPDisplay();
+            }
+        }
+
+        // Stack Simulation
+        const simulationSteps = [
+            { action: 'push', value: '3', description: 'Read 3: Push onto stack' },
+            { action: 'push', value: '4', description: 'Read 4: Push onto stack' },
+            { action: 'operate', operator: '+', description: 'Read +: Pop 4 and 3, compute 3+4=7, push result' },
+            { action: 'push', value: '2', description: 'Read 2: Push onto stack' },
+            { action: 'operate', operator: '×', description: 'Read ×: Pop 2 and 7, compute 7×2=14, push result' },
+            { action: 'done', description: 'Expression complete! Result = 14' }
+        ];
+
+        function nextStep() {
+            if (gameState.simulationStep >= simulationSteps.length) return;
+            
+            const step = simulationSteps[gameState.simulationStep];
+            const stack = document.getElementById('eval-stack');
+            const stepIndicator = document.getElementById('step-indicator');
+            
+            // Highlight current algorithm step
+            document.querySelectorAll('.algorithm-step').forEach(el => el.classList.remove('active'));
+            
+            if (step.action === 'push') {
+                const item = document.createElement('div');
+                item.className = 'stack-item';
+                item.textContent = step.value;
+                stack.appendChild(item);
+                gameState.stackItems.push(step.value);
+                document.getElementById('algo2').classList.add('active');
+            } else if (step.action === 'operate') {
+                // Pop animation
+                const items = stack.querySelectorAll('.stack-item');
+                if (items.length >= 2) {
+                    items[items.length - 1].classList.add('popping');
+                    items[items.length - 2].classList.add('popping');
+                    
+                    setTimeout(() => {
+                        items[items.length - 1].remove();
+                        items[items.length - 2].remove();
+                        
+                        // Calculate result
+                        let result;
+                        if (step.operator === '+') {
+                            result = 3 + 4;
+                        } else if (step.operator === '×') {
+                            result = 7 * 2;
+                        }
+                        
+                        // Push result
+                        const resultItem = document.createElement('div');
+                        resultItem.className = 'stack-item';
+                        resultItem.textContent = result;
+                        stack.appendChild(resultItem);
+                    }, 500);
+                }
+                
+                document.getElementById('algo3').classList.add('active');
+                document.getElementById('algo4').classList.add('active');
+                document.getElementById('algo5').classList.add('active');
+                document.getElementById('algo6').classList.add('active');
+            } else if (step.action === 'done') {
+                document.getElementById('algo7').classList.add('active');
+                awardXP(20, 'Simulation Complete', 'stack_simulation');
+            }
+            
+            stepIndicator.textContent = step.description;
+            gameState.simulationStep++;
+            
+            // Update buttons
+            document.getElementById('prev-btn').disabled = false;
+            if (gameState.simulationStep >= simulationSteps.length) {
+                document.getElementById('next-btn').disabled = true;
+            }
+        }
+
+        function prevStep() {
+            if (gameState.simulationStep <= 0) return;
+            
+            gameState.simulationStep--;
+            resetSimulation();
+            
+            // Replay up to current step
+            const currentStep = gameState.simulationStep;
+            gameState.simulationStep = 0;
+            for (let i = 0; i < currentStep; i++) {
+                nextStep();
+            }
+        }
+
+        function resetSimulation() {
+            const stack = document.getElementById('eval-stack');
+            stack.innerHTML = '<span class="stack-label">Stack</span>';
+            
+            gameState.simulationStep = 0;
+            gameState.stackItems = [];
+            
+            document.getElementById('step-indicator').textContent = 'Click "Next Step" to begin';
+            document.getElementById('prev-btn').disabled = true;
+            document.getElementById('next-btn').disabled = false;
+            
+            document.querySelectorAll('.algorithm-step').forEach(el => el.classList.remove('active'));
+        }
+
+        function checkRPNResult() {
+            const input = document.getElementById('rpn-result');
+            if (!input) return;
+            
+            // 5 3 - 4 × = (5-3) × 4 = 2 × 4 = 8
+            if (parseInt(input.value) === 8) {
+                input.style.borderColor = 'var(--success-color)';
+                awardXP(15, 'RPN Calculation', 'rpn_calc');
+                markSectionComplete('stack');
+                alert('Correct! (5-3) × 4 = 8');
+            } else {
+                input.style.borderColor = 'var(--error-color)';
+                alert('Try again. Remember: 5 3 - gives 2, then 2 × 4 = ?');
+            }
+        }
+
+        // Conversion Simulation
+        const conversionSteps = [
+            { token: '3', action: 'output', description: 'Number 3 → Output' },
+            { token: '+', action: 'push', description: 'Operator + → Push to stack' },
+            { token: '4', action: 'output', description: 'Number 4 → Output' },
+            { token: '×', action: 'push-pop', description: '× has higher precedence than +, push to stack' },
+            { token: '2', action: 'output', description: 'Number 2 → Output' },
+            { token: 'end', action: 'pop-all', description: 'End of expression → Pop all operators' }
+        ];
+
+        function nextConvStep() {
+            if (gameState.conversionStep >= conversionSteps.length) return;
+            
+            const step = conversionSteps[gameState.conversionStep];
+            const operatorStack = document.getElementById('operator-stack');
+            const output = document.getElementById('conv-output');
+            const stepIndicator = document.getElementById('conv-step-indicator');
+            
+            let currentOutput = output.textContent;
+            
+            if (step.action === 'output') {
+                output.textContent = currentOutput + (currentOutput ? ' ' : '') + step.token;
+            } else if (step.action === 'push') {
+                const item = document.createElement('div');
+                item.className = 'stack-item';
+                item.textContent = step.token;
+                operatorStack.appendChild(item);
+            } else if (step.action === 'push-pop') {
+                const item = document.createElement('div');
+                item.className = 'stack-item';
+                item.textContent = step.token;
+                operatorStack.appendChild(item);
+            } else if (step.action === 'pop-all') {
+                const items = operatorStack.querySelectorAll('.stack-item');
+                let delay = 0;
+                
+                // Pop in reverse order (top first)
+                for (let i = items.length - 1; i >= 0; i--) {
+                    setTimeout(() => {
+                        items[i].classList.add('popping');
+                        output.textContent = output.textContent + ' ' + items[i].textContent;
+                        setTimeout(() => items[i].remove(), 500);
+                    }, delay);
+                    delay += 600;
+                }
+                
+                setTimeout(() => {
+                    awardXP(20, 'Conversion Complete', 'conversion_simulation');
+                }, delay);
+            }
+            
+            stepIndicator.textContent = step.description;
+            gameState.conversionStep++;
+            
+            // Update buttons
+            document.getElementById('conv-prev-btn').disabled = false;
+            if (gameState.conversionStep >= conversionSteps.length) {
+                document.getElementById('conv-next-btn').disabled = true;
+            }
+        }
+
+        function prevConvStep() {
+            if (gameState.conversionStep <= 0) return;
+            resetConversion();
+        }
+
+        function resetConversion() {
+            const operatorStack = document.getElementById('operator-stack');
+            operatorStack.innerHTML = '<span class="stack-label">Operator Stack</span>';
+            
+            document.getElementById('conv-output').textContent = '';
+            gameState.conversionStep = 0;
+            
+            document.getElementById('conv-step-indicator').textContent = 'Ready to start conversion';
+            document.getElementById('conv-prev-btn').disabled = true;
+            document.getElementById('conv-next-btn').disabled = false;
+        }
+
+        function checkConversion() {
+            const input = document.getElementById('conversion-answer');
+            if (!input) return;
+            
+            const answer = input.value.trim().toLowerCase();
+            // Accept various formats
+            const correct = ['5 3 + 2 ×', '5 3 + 2 *', '5 3 + 2 x'];
+            
+            if (correct.includes(answer)) {
+                input.style.borderColor = 'var(--success-color)';
+                awardXP(15, 'Conversion Correct', 'conversion_practice');
+                markSectionComplete('conversion');
+                alert('Correct! (5 + 3) × 2 = 5 3 + 2 ×');
+            } else {
+                input.style.borderColor = 'var(--error-color)';
+                alert('Try again. Remember: parentheses have highest precedence.');
+            }
+        }
+
+        // Tree Functions
+        function showTraversal(type) {
+            const result = document.getElementById('traversal-result');
+            const typeEl = document.getElementById('traversal-type');
+            const expressionEl = document.getElementById('traversal-expression');
+            
+            result.style.display = 'block';
+            
+            // Highlight nodes in order
+            const nodes = ['node-3', 'node-plus', 'node-4', 'node-times', 'node-2'];
+            nodes.forEach(node => {
+                const el = document.getElementById(node);
+                if (el) el.classList.remove('highlight');
+            });
+            
+            let order = [];
+            let expression = '';
+            
+            switch(type) {
+                case 'inorder':
+                    order = ['node-3', 'node-plus', 'node-4', 'node-times', 'node-2'];
+                    expression = '3 + 4 × 2';
+                    typeEl.textContent = 'In-order (Infix)';
+                    break;
+                case 'preorder':
+                    order = ['node-plus', 'node-3', 'node-times', 'node-4', 'node-2'];
+                    expression = '+ 3 × 4 2';
+                    typeEl.textContent = 'Pre-order (Prefix)';
+                    break;
+                case 'postorder':
+                    order = ['node-3', 'node-4', 'node-2', 'node-times', 'node-plus'];
+                    expression = '3 4 2 × +';
+                    typeEl.textContent = 'Post-order (Postfix/RPN)';
+                    break;
+            }
+            
+            expressionEl.textContent = expression;
+            
+            // Animate highlighting
+            order.forEach((nodeId, index) => {
+                setTimeout(() => {
+                    const node = document.getElementById(nodeId);
+                    if (node) node.classList.add('highlight');
+                }, index * 500);
+            });
+            
+            awardXP(5, 'Tree Traversal', `traversal_${type}`);
+        }
+
+        function checkTraversal(answer) {
+            const options = event.target.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.classList.remove('correct', 'incorrect'));
+            
+            if (answer === 'c') {
+                options[2].classList.add('correct');
+                awardXP(15, 'Tree Knowledge', 'tree_traversal');
+                markSectionComplete('trees');
+            } else {
+                event.target.classList.add('incorrect');
+                options[2].classList.add('correct');
+            }
+        }
+
+        // Practice Functions
+        function checkPractice1() {
+            const input = document.getElementById('practice1');
+            if (!input) return;
+            
+            // 8 2 ÷ 3 - 5 × = (8÷2 - 3) × 5 = (4-3) × 5 = 1 × 5 = 5
+            if (parseInt(input.value) === 5) {
+                input.style.borderColor = 'var(--success-color)';
+                document.getElementById('practice1-feedback').innerHTML = 
+                    '<span style="color: var(--success-color);">✓ Correct! 8÷2=4, 4-3=1, 1×5=5</span>';
+                awardXP(10, 'Practice Problem', 'practice1');
+            } else {
+                input.style.borderColor = 'var(--error-color)';
+                document.getElementById('practice1-feedback').innerHTML = 
+                    '<span style="color: var(--error-color);">Try again. Work through step by step.</span>';
+            }
+        }
+
+        function checkPractice2() {
+            const input = document.getElementById('practice2');
+            if (!input) return;
+            
+            const answer = input.value.trim().toLowerCase();
+            const correct = ['7 3 2 + ×', '7 3 2 + *', '7 3 2 + x'];
+            
+            if (correct.includes(answer)) {
+                input.style.borderColor = 'var(--success-color)';
+                document.getElementById('practice2-feedback').innerHTML = 
+                    '<span style="color: var(--success-color);">✓ Correct! Parentheses are evaluated first.</span>';
+                awardXP(10, 'Practice Problem', 'practice2');
+            } else {
+                input.style.borderColor = 'var(--error-color)';
+                document.getElementById('practice2-feedback').innerHTML = 
+                    '<span style="color: var(--error-color);">Not quite. Remember: (3+2) must be evaluated before ×7</span>';
+            }
+        }
+
+        function checkPractice3(answer) {
+            const options = event.target.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.classList.remove('correct', 'incorrect'));
+            
+            if (answer === 'a') {
+                options[0].classList.add('correct');
+                awardXP(15, 'Common Mistakes', 'practice3');
+                markSectionComplete('practice');
+                alert('Correct! In RPN, the order preserves the original precedence.');
+            } else {
+                event.target.classList.add('incorrect');
+                options[0].classList.add('correct');
+                alert('Remember: a - b × c means a - (b × c), so b × c is evaluated first.');
+            }
+        }
+
+        // Applications Functions
+        function checkApplications() {
+            const app1 = document.getElementById('app1');
+            const app2 = document.getElementById('app2');
+            
+            if (!app1 || !app2) return;
+            
+            let correct = 0;
+            
+            if (app1.value === 'stack') {
+                app1.style.borderColor = 'var(--success-color)';
+                correct++;
+            } else {
+                app1.style.borderColor = 'var(--error-color)';
+            }
+            
+            if (app2.value === 'postfix') {
+                app2.style.borderColor = 'var(--success-color)';
+                correct++;
+            } else {
+                app2.style.borderColor = 'var(--error-color)';
+            }
+            
+            if (correct === 2) {
+                awardXP(15, 'Applications', 'applications');
+                markSectionComplete('applications');
+                alert('Correct! The JVM uses a stack-based architecture with postfix-style operations.');
+            } else {
+                alert('Not quite right. Think about how stack machines naturally work with RPN.');
+            }
+        }
+
+        // Final Quiz
+        function submitFinalQuiz() {
+            const answers = {
+                '1': 'd', '2': 'b', '3': 'c', '4': 'b',
+                '5': 'c', '6': 'b', '7': 'a', '8': 'b'
+            };
+            
+            let score = 0;
+            const feedback = [];
+            
+            Object.keys(answers).forEach(q => {
+                const selected = document.querySelector(`.quiz-option[data-q="${q}"].selected`);
+                if (selected && selected.dataset.a === answers[q]) {
+                    selected.classList.add('correct');
+                    score++;
+                } else {
+                    if (selected) selected.classList.add('incorrect');
+                    const correctOption = document.querySelector(`.quiz-option[data-q="${q}"][data-a="${answers[q]}"]`);
+                    if (correctOption) correctOption.classList.add('correct');
+                    
+                    // Add feedback
+                    const topics = {
+                        '1': 'RPN eliminates brackets and precedence rules',
+                        '2': 'Operators come after operands in RPN',
+                        '3': 'Stack is used for RPN evaluation',
+                        '4': '6 3 ÷ = 2, then 2 + 2 = 4, so (6 ÷ 3) + 2',
+                        '5': 'Post-order traversal produces RPN',
+                        '6': 'RPN is never ambiguous',
+                        '7': 'First evaluate (a + b), then multiply by c',
+                        '8': 'Pop operands, compute result, push back'
+                    };
+                    feedback.push(`Q${q}: ${topics[q]}`);
+                }
+            });
+            
+            gameState.sectionScores.finalQuiz = score;
+            
+            const scoreEl = document.getElementById('quiz-score');
+            const feedbackEl = document.getElementById('quiz-feedback');
+            const resultsEl = document.getElementById('quiz-results');
+            
+            if (scoreEl) scoreEl.textContent = `You scored ${score}/8 (${Math.round(score/8*100)}%)`;
+            
+            if (feedbackEl) {
+                if (feedback.length > 0) {
+                    feedbackEl.innerHTML = 
+                        '<h5>Review these topics:</h5><ul>' + 
+                        feedback.map(f => `<li>${f}</li>`).join('') + 
+                        '</ul>';
+                } else {
+                    feedbackEl.innerHTML = '<p style="color: var(--success-color);">Perfect score! Excellent work!</p>';
+                }
+            }
+            
+            if (resultsEl) resultsEl.style.display = 'block';
+            
+            awardXP(score * 10, 'Final Quiz', 'final_quiz_complete');
+            markSectionComplete('summary');
+            
+            if (score === 8) {
+                checkAchievements();
+            }
+        }
+
+        // Exam Practice
+        function showMarkScheme(question) {
+            const textarea = document.getElementById(`exam-${question}`);
+            const marks = document.getElementById(`marks-${question}`);
+            const scheme = document.getElementById(`mark-scheme-${question}`);
+            
+            if (!textarea || !marks || !scheme) return;
+            
+            const minLength = question === 'q1' ? 50 : 100;
+            
+            if (textarea.value.length < minLength || !marks.value) {
+                alert(`Please write a more detailed answer (minimum ${minLength} characters) and enter predicted marks`);
+                return;
+            }
+            
+            scheme.classList.add('show');
+            awardXP(10, 'Exam Practice', `exam_${question}`);
+        }
+
+        // Extension
+        function submitExtension() {
+            const textareas = document.querySelectorAll('#extension .input-field');
+            let totalWords = 0;
+            
+            textareas.forEach(ta => {
+                totalWords += ta.value.split(' ').filter(word => word.length > 0).length;
+            });
+            
+            if (totalWords > 50) {
+                awardXP(30, 'Extension Work', 'extension_complete');
+                markSectionComplete('extension');
+                alert('Excellent extension work! Your teacher will review your responses.');
+            } else {
+                alert('Please provide more detailed responses for the extension activities.');
+            }
+        }
+
+        // Event Listeners Setup
+        function setupEventListeners() {
+            // Navigation with event delegation
+            const navContainer = document.querySelector('.nav-pills');
+            if (navContainer) {
+                navContainer.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('nav-pill')) {
+                        navigateToSection(e.target.dataset.section);
+                    }
+                });
+            }
+
+            // Quiz options with event delegation
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('quiz-option')) {
+                    if (!e.target.classList.contains('correct') && !e.target.classList.contains('incorrect')) {
+                        const siblings = e.target.parentElement.querySelectorAll('.quiz-option');
+                        siblings.forEach(s => s.classList.remove('selected'));
+                        e.target.classList.add('selected');
+                    }
+                }
+            });
+
+            // Final quiz specific handling
+            document.addEventListener('click', function(e) {
+                if (e.target.matches('#final-quiz .quiz-option')) {
+                    const option = e.target;
+                    const question = option.dataset.q;
+                    const siblings = document.querySelectorAll(`.quiz-option[data-q="${question}"]`);
+                    siblings.forEach(s => s.classList.remove('selected'));
+                    option.classList.add('selected');
+                }
+            });
+
+            // Prevent paste
+            document.addEventListener('paste', function(e) {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showShameMessage();
+                    return false;
+                }
+            });
+
+            // Keyboard navigation
+            document.addEventListener('keydown', throttle(function(e) {
+                if (e.key === 'ArrowLeft') navigateSection('prev');
+                if (e.key === 'ArrowRight') navigateSection('next');
+                if (e.ctrlKey && e.key === 'v') {
+                    e.preventDefault();
+                    showShameMessage();
+                }
+            }, 100));
+
+            // Touch support
+            let touchStartX = 0;
+            let touchStartY = 0;
+            
+            document.addEventListener('touchstart', function(e) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            document.addEventListener('touchend', function(e) {
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const diffX = touchStartX - touchEndX;
+                const diffY = Math.abs(touchStartY - touchEndY);
+                
+                if (Math.abs(diffX) > 50 && diffY < 100) {
+                    if (diffX > 0) navigateSection('next');
+                    else navigateSection('prev');
+                }
+            }, { passive: true });
+        }
+
+        // Navigation
+        function navigateToSection(sectionId) {
+            if (!DOM.sections || !DOM.navPills) return;
+            
+            DOM.sections.forEach(s => {
+                if (s) {
+                    s.classList.remove('active');
+                    s.style.visibility = 'hidden';
+                }
+            });
+            DOM.navPills.forEach(p => {
+                if (p) p.classList.remove('active');
+            });
+            
+            const targetSection = document.getElementById(sectionId);
+            const targetPill = document.querySelector(`[data-section="${sectionId}"]`);
+            
+            if (targetSection) {
+                targetSection.classList.add('active');
+                targetSection.style.visibility = 'visible';
+            }
+            if (targetPill) {
+                targetPill.classList.add('active');
+            }
+            
+            gameState.currentSection = sectionId;
+            updateFeedbackPage();
+            
+            if (!gameState.completedSections.has(sectionId)) {
+                awardXP(5, 'Section Visit', `section_${sectionId}`);
+            }
+            
+            // Smooth scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function navigateSection(direction) {
+            if (!DOM.navPills) return;
+            
+            const sections = Array.from(DOM.navPills).filter(p => p).map(p => p.dataset.section);
+            const currentIndex = sections.indexOf(gameState.currentSection);
+            
+            if (direction === 'next' && currentIndex < sections.length - 1) {
+                navigateToSection(sections[currentIndex + 1]);
+            } else if (direction === 'prev' && currentIndex > 0) {
+                navigateToSection(sections[currentIndex - 1]);
+            }
+        }
+
+        // XP System
+        function awardXP(amount, action, actionId = null) {
+            if (actionId && gameState.actionsPerformed.has(actionId)) return;
+            if (actionId) gameState.actionsPerformed.add(actionId);
+            
+            gameState.xp += amount;
+            updateXPDisplay();
+            checkLevelUp();
+            checkAchievements();
+            saveProgress();
+            
+            // Create floating XP indicator
+            createFloatingXP(amount);
+        }
+
+        function createFloatingXP(amount) {
+            try {
+                const xpFloat = document.createElement('div');
+                xpFloat.style.cssText = `
+                    position: fixed;
+                    top: 120px;
+                    right: 100px;
+                    color: var(--warning-color);
+                    font-weight: bold;
+                    font-size: 1.5rem;
+                    pointer-events: none;
+                    z-index: 3000;
+                    animation: floatUp 2s ease-out forwards;
+                `;
+                xpFloat.textContent = `+${amount} XP`;
+                document.body.appendChild(xpFloat);
+                
+                setTimeout(() => {
+                    if (xpFloat && xpFloat.parentNode) {
+                        xpFloat.remove();
+                    }
+                }, 2000);
+            } catch (e) {
+                console.warn('Could not create floating XP indicator:', e);
+            }
+        }
+
+        function updateXPDisplay() {
+            if (!DOM.xpFill || !DOM.xpText || !DOM.currentLevel) return;
+            
+            const xpForNextLevel = XP_PER_LEVEL[gameState.level] || XP_PER_LEVEL[XP_PER_LEVEL.length - 1];
+            const xpProgress = Math.min((gameState.xp / xpForNextLevel) * 100, 100);
+            
+            DOM.xpFill.style.width = xpProgress + '%';
+            DOM.xpText.textContent = `${gameState.xp} / ${xpForNextLevel} XP`;
+            DOM.currentLevel.textContent = gameState.level;
+        }
+
+        function checkLevelUp() {
+            if (gameState.level < 5 && gameState.xp >= XP_PER_LEVEL[gameState.level]) {
+                gameState.level++;
+                showAchievement('Level Up!', `You reached Level ${gameState.level}!`, '⬆️');
+                createParticleEffect();
+            }
+        }
+
+        // Particle Effect
+        function createParticleEffect() {
+            if (!DOM.particleContainer) return;
+            
+            const colors = ['#fbbf24', '#f59e0b', '#5b21b6', '#7c3aed', '#10b981'];
+            const particleCount = 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.cssText = `
+                        left: ${Math.random() * window.innerWidth}px;
+                        top: -10px;
+                        background: ${colors[Math.floor(Math.random() * colors.length)]};
+                        animation-duration: ${2 + Math.random() * 2}s;
+                        animation-delay: ${Math.random() * 0.5}s;
+                    `;
+                    DOM.particleContainer.appendChild(particle);
+                    
+                    particle.addEventListener('animationend', () => particle.remove());
+                }, i * 50);
+            }
+        }
+
+        // Achievements
+        function checkAchievements() {
+            // First correct answer
+            if (!gameState.achievements.has('first_correct') && gameState.actionsPerformed.has('pre_quiz')) {
+                gameState.achievements.add('first_correct');
+                showAchievement('First Steps', 'Got your first correct answer!', '✅');
+            }
+            
+            // RPN Master
+            if (!gameState.achievements.has('rpn_master') && gameState.completedSections.size >= 8) {
+                gameState.achievements.add('rpn_master');
+                showAchievement('RPN Master', 'Completed most sections!', '🎓');
+            }
+            
+            // Perfect Quiz
+            if (!gameState.achievements.has('perfect_quiz') && gameState.sectionScores.finalQuiz === 8) {
+                gameState.achievements.add('perfect_quiz');
+                showAchievement('Perfect Score', 'Aced the final quiz!', '💯');
+            }
+            
+            // Speed Learner
+            if (!gameState.achievements.has('speed_learner') && gameState.completedSections.size >= 5 && Date.now() - startTime < 600000) {
+                gameState.achievements.add('speed_learner');
+                showAchievement('Speed Learner', 'Completed 5 sections in under 10 minutes!', '⚡');
+            }
+            
+            // Stack Master
+            if (!gameState.achievements.has('stack_master') && 
+                gameState.actionsPerformed.has('stack_simulation') && 
+                gameState.actionsPerformed.has('conversion_simulation')) {
+                gameState.achievements.add('stack_master');
+                showAchievement('Stack Master', 'Mastered stack operations!', '📚');
+            }
+        }
+
+        function showAchievement(title, desc, icon) {
+            if (!DOM.achievementPopup) return;
+            
+            const titleEl = DOM.achievementPopup.querySelector('#achievement-title');
+            const descEl = DOM.achievementPopup.querySelector('#achievement-desc');
+            const iconEl = DOM.achievementPopup.querySelector('#achievement-icon');
+            
+            if (titleEl) titleEl.textContent = title;
+            if (descEl) descEl.textContent = desc;
+            if (iconEl) iconEl.textContent = icon;
+            
+            DOM.achievementPopup.classList.add('show');
+            setTimeout(() => {
+                if (DOM.achievementPopup) DOM.achievementPopup.classList.remove('show');
+            }, 3000);
+            
+            awardXP(50, 'Achievement');
+            
+            // Haptic feedback for mobile
+            if ('vibrate' in navigator) {
+                navigator.vibrate([100, 50, 100]);
+            }
+        }
+
+        // Utility Functions
+        function markSectionComplete(section) {
+            gameState.completedSections.add(section);
+            const pill = document.querySelector(`[data-section="${section}"]`);
+            if (pill) pill.classList.add('completed');
+            saveProgress();
+        }
+
+        function showShameMessage() {
+            if (!DOM.shameMessage) return;
+            
+            DOM.shameMessage.style.display = 'block';
+            DOM.shameMessage.style.animation = 'shameAnimation 3s ease forwards';
+            
+            // Remove XP for trying to paste
+            gameState.xp = Math.max(0, gameState.xp - 10);
+            updateXPDisplay();
+            
+            setTimeout(() => {
+                if (DOM.shameMessage) DOM.shameMessage.style.display = 'none';
+            }, 3000);
+        }
+
+        // Canvas Functions
+        function setupCanvases() {
+            initializeCanvas('drawing-canvas');
+            initializeCanvas('exam-canvas');
+        }
+
+        function initializeCanvas(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            
+            // Set canvas size
+            canvas.width = 600;
+            canvas.height = 300;
+            
+            function getCoordinates(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                
+                if (e.touches) {
+                    return {
+                        x: (e.touches[0].clientX - rect.left) * scaleX,
+                        y: (e.touches[0].clientY - rect.top) * scaleY
+                    };
+                } else {
+                    return {
+                        x: (e.clientX - rect.left) * scaleX,
+                        y: (e.clientY - rect.top) * scaleY
+                    };
+                }
+            }
+            
+            function startDrawing(e) {
+                isDrawing = true;
+                const coords = getCoordinates(e);
+                lastX = coords.x;
+                lastY = coords.y;
+                e.preventDefault();
+            }
+            
+            function draw(e) {
+                if (!isDrawing) return;
+                
+                const coords = getCoordinates(e);
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(coords.x, coords.y);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+                
+                lastX = coords.x;
+                lastY = coords.y;
+                e.preventDefault();
+            }
+            
+            function stopDrawing(e) {
+                isDrawing = false;
+                e.preventDefault();
+            }
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events
+            canvas.addEventListener('touchstart', startDrawing, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing, { passive: false });
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function clearExamCanvas() {
+            const canvas = document.getElementById('exam-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Feedback System
+        function openFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'flex';
+                updateFeedbackPage();
+            }
+        }
+
+        function closeFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'none';
+            }
+            if (DOM.feedbackText) {
+                DOM.feedbackText.value = '';
+            }
+        }
+
+        function updateFeedbackPage() {
+            const sectionTitles = {
+                'intro': 'Introduction',
+                'starter': 'Starter Activity',
+                'basics': 'RPN Basics',
+                'stack': 'Stack Evaluation',
+                'conversion': 'Infix to RPN',
+                'trees': 'Binary Trees',
+                'practice': 'Practice',
+                'applications': 'Applications',
+                'summary': 'Summary & Quiz',
+                'exam': 'Exam Practice',
+                'extension': 'Extension Activities',
+                'videos': 'Videos'
+            };
+            
+            if (DOM.feedbackPage) {
+                DOM.feedbackPage.textContent = sectionTitles[gameState.currentSection] || 'Unknown';
+            }
+        }
+
+        function sendFeedback() {
+            if (!DOM.feedbackText) return;
+            
+            const text = DOM.feedbackText.value.trim();
+            if (!text) {
+                alert('Please enter your feedback');
+                return;
+            }
+            
+            const subject = encodeURIComponent('RPN Lesson Feedback');
+            const body = encodeURIComponent(
+                `Page: ${DOM.feedbackPage ? DOM.feedbackPage.textContent : 'Unknown'}\n\n` +
+                `Feedback: ${text}\n\n` +
+                `Section ID: ${gameState.currentSection}\n` +
+                `Level: ${gameState.level}, XP: ${gameState.xp}`
+            );
+            
+            window.location.href = `mailto:millingtond@mgs.org?subject=${subject}&body=${body}`;
+            closeFeedback();
+            awardXP(5, 'Feedback Sent', 'feedback');
+        }
+
+        // Accessibility Functions
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+            saveProgress();
+        }
+
+        function toggleDyslexiaFont() {
+            document.body.classList.toggle('dyslexia-font');
+            saveProgress();
+        }
+
+        function changeFontSize(size) {
+            document.body.classList.remove('font-small', 'font-large', 'font-xlarge');
+            if (size !== 'normal') {
+                document.body.classList.add('font-' + size);
+            }
+            saveProgress();
+        }
+
+        // Save/Load Progress
+        function saveProgress() {
+            const data = {
+                gameState: {
+                    xp: gameState.xp,
+                    level: gameState.level,
+                    completedSections: Array.from(gameState.completedSections),
+                    achievements: Array.from(gameState.achievements),
+                    actionsPerformed: Array.from(gameState.actionsPerformed),
+                    currentSection: gameState.currentSection,
+                    sectionScores: gameState.sectionScores,
+                    hintUsage: gameState.hintUsage
+                },
+                accessibility: {
+                    highContrast: document.body.classList.contains('high-contrast'),
+                    dyslexiaFont: document.body.classList.contains('dyslexia-font'),
+                    fontSize: Array.from(document.body.classList).find(c => c.startsWith('font-')) || 'normal'
+                }
+            };
+            
+            try {
+                sessionStorage.setItem('rpnLessonProgress', JSON.stringify(data));
+            } catch (e) {
+                console.warn('Could not save progress:', e);
+            }
+        }
+
+        function loadProgress() {
+            try {
+                const saved = sessionStorage.getItem('rpnLessonProgress');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    
+                    // Restore game state
+                    gameState.xp = data.gameState.xp || 0;
+                    gameState.level = data.gameState.level || 1;
+                    gameState.completedSections = new Set(data.gameState.completedSections || []);
+                    gameState.achievements = new Set(data.gameState.achievements || []);
+                    gameState.actionsPerformed = new Set(data.gameState.actionsPerformed || []);
+                    gameState.currentSection = data.gameState.currentSection || 'intro';
+                    gameState.sectionScores = data.gameState.sectionScores || {};
+                    gameState.hintUsage = data.gameState.hintUsage || {};
+                    
+                    // Restore accessibility settings
+                    if (data.accessibility) {
+                        if (data.accessibility.highContrast) {
+                            document.body.classList.add('high-contrast');
+                        }
+                        if (data.accessibility.dyslexiaFont) {
+                            document.body.classList.add('dyslexia-font');
+                        }
+                        if (data.accessibility.fontSize && data.accessibility.fontSize !== 'normal') {
+                            document.body.classList.add(data.accessibility.fontSize);
+                        }
+                    }
+                    
+                    // Restore completed sections visual state
+                    gameState.completedSections.forEach(section => {
+                        const pill = document.querySelector(`[data-section="${section}"]`);
+                        if (pill) pill.classList.add('completed');
+                    });
+                }
+            } catch (e) {
+                console.error('Error loading progress:', e);
+            }
+        }
+
+        // Auto-save every 30 seconds
+        setInterval(saveProgress, 30000);
+
+        // Easter egg: Konami code
+        const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+        let konamiIndex = 0;
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === konamiCode[konamiIndex]) {
+                konamiIndex++;
+                if (konamiIndex === konamiCode.length) {
+                    showAchievement('Secret Found!', 'You discovered the Konami code!', '🎮');
+                    awardXP(100, 'Easter Egg', 'konami_code');
+                    konamiIndex = 0;
+                    createParticleEffect();
+                }
+            } else {
+                konamiIndex = 0;
+            }
+        });
+
+        // Performance monitoring
+        const startTime = Date.now();
+        
+        // Log performance metrics
+        window.addEventListener('load', function() {
+            console.log('Page load time:', Date.now() - startTime, 'ms');
+            console.log('RPN Lesson Worksheet initialized successfully');
+        });
+
+        // Prevent right-click
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCSE Computer Science: Secondary Storage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Open+Sans&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles */
+        :root {
+            --bg-color: #f8fafc;
+            --text-color: #1e293b;
+            --primary-color: #4f46e5;
+            --secondary-color: #10b981;
+            --accent-color: #f59e0b;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --font-main: 'Inter', sans-serif;
+            --font-dyslexia: 'Open Sans', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* High Contrast Mode */
+        body.high-contrast {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --primary-color: #60a5fa;
+            --secondary-color: #34d399;
+            --accent-color: #facc15;
+            --card-bg: #1e293b;
+            --border-color: #475569;
+        }
+
+        /* Dyslexia Friendly Font */
+        body.dyslexia-font {
+            font-family: var(--font-dyslexia);
+        }
+        
+        /* Shame Mode */
+        body.shame-mode {
+            --bg-color: #b91c1c;
+            --text-color: #ffffff;
+            --primary-color: #fef2f2;
+            --secondary-color: #fee2e2;
+            --card-bg: #991b1b;
+            --border-color: #fca5a5;
+        }
+
+        /* General element styling */
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+        
+        .btn-secondary {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+        
+        .nav-item.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .nav-item:not(.active) {
+             background-color: var(--card-bg);
+             color: var(--text-color);
+        }
+        
+        .xp-bar-fill {
+            background-color: var(--secondary-color);
+            transition: width 0.5s ease-in-out;
+        }
+
+        .level-badge {
+            background-color: var(--accent-color);
+        }
+
+        /* Draggable styles */
+        .draggable {
+            cursor: grab;
+            user-select: none;
+        }
+        .draggable:active {
+            cursor: grabbing;
+        }
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .drop-zone.drag-over {
+            background-color: #e0e7ff;
+            border-style: solid;
+        }
+        body.high-contrast .drop-zone.drag-over {
+            background-color: #374151;
+        }
+        .drop-zone.correct {
+            border-color: var(--secondary-color);
+            background-color: #d1fae5;
+        }
+        .fill-in-drop-zone.correct {
+            border-style: solid;
+            border-color: var(--secondary-color);
+            padding: 2px 6px;
+        }
+        body.high-contrast .drop-zone.correct {
+            background-color: #064e3b;
+        }
+
+        /* Modal and popup styles */
+        #achievement-popup, #shame-popup {
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        
+        /* Particle canvas */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Drawing canvas */
+        #drawing-canvas {
+            border: 2px solid var(--border-color);
+            touch-action: none;
+            cursor: crosshair;
+        }
+
+        /* Lock icon for exam mark scheme */
+        .lock-icon::after {
+            content: '🔒';
+            margin-left: 8px;
+            font-size: 0.8em;
+        }
+
+        /* Hide sections by default */
+        .lesson-section {
+            display: none;
+        }
+        
+        .lesson-section.active {
+            display: block;
+        }
+
+        /* Hierarchy Pyramid */
+        .pyramid {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .pyramid-level {
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+            color: white;
+            position: relative;
+            transition: transform 0.2s, filter 0.2s;
+            margin-bottom: -1px; /* Overlap slightly */
+        }
+        .pyramid-level:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1);
+            z-index: 10;
+        }
+        #pyramid-registers { 
+            width: 120px; padding: 10px; background-color: #ef4444; 
+            clip-path: polygon(25% 0%, 75% 0%, 100% 100%, 0% 100%);
+        }
+        #pyramid-cache { 
+            width: 220px; padding: 15px; background-color: #f97316; 
+            clip-path: polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%);
+        }
+        #pyramid-ram { 
+            width: 320px; padding: 20px; background-color: #eab308;
+            clip-path: polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%);
+        }
+        #pyramid-storage { 
+            width: 420px; padding: 25px; background-color: #22c55e;
+            clip-path: polygon(5% 0%, 95% 0%, 100% 100%, 0% 100%);
+        }
+
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- Shame Popup (hidden by default) -->
+    <div id="shame-popup" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[100] hidden">
+        <div class="card p-8 rounded-lg text-center max-w-md mx-4">
+            <h2 class="text-4xl font-bold text-red-400 mb-4">SHAME</h2>
+            <p class="text-lg">Pasting is disabled to encourage your own learning and thought process. Please type your answers yourself.</p>
+            <p class="mt-4 text-sm">(This message is now a permanent reminder on this page)</p>
+        </div>
+    </div>
+    
+    <!-- Achievement Popup (template) -->
+    <div id="achievement-popup" class="fixed bottom-5 right-5 card shadow-2xl p-4 rounded-lg flex items-center gap-4 max-w-sm opacity-0 translate-y-10 z-50">
+        <div id="achievement-icon" class="text-4xl">🏆</div>
+        <div>
+            <h3 id="achievement-title" class="font-bold text-lg">Achievement Unlocked!</h3>
+            <p id="achievement-desc" class="text-sm">You've completed a task!</p>
+        </div>
+    </div>
+    
+    <!-- Particle Canvas -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- Main Header -->
+    <header class="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <h1 class="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">Secondary Storage</h1>
+                <div class="flex items-center gap-2 md:gap-4">
+                     <!-- Accessibility Controls -->
+                    <div class="relative group">
+                        <button id="accessibility-btn" aria-label="Accessibility Settings" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </button>
+                        <div class="absolute right-0 mt-2 w-48 card rounded-md shadow-lg p-2 opacity-0 group-hover:opacity-100 invisible group-hover:visible transition-all duration-200">
+                            <button id="contrast-toggle" class="w-full text-left px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-600">High Contrast</button>
+                            <button id="font-toggle" class="w-full text-left px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-600">Dyslexia Font</button>
+                            <div class="text-sm px-2 py-1">Font Size: 
+                                <button id="font-sm" class="font-bold w-6 h-6 rounded-full hover:bg-slate-200">A</button>
+                                <button id="font-md" class="font-bold w-6 h-6 rounded-full hover:bg-slate-200 text-lg">A</button>
+                                <button id="font-lg" class="font-bold w-6 h-6 rounded-full hover:bg-slate-200 text-xl">A</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- XP and Level -->
+                    <div class="flex flex-col items-end">
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-semibold">Level <span id="level-display" class="level-badge text-white font-bold rounded-full px-2 py-0.5">1</span></span>
+                             <div id="achievements-display" class="flex gap-1"></div>
+                        </div>
+                        <div class="w-24 md:w-32 h-2 bg-slate-200 dark:bg-slate-600 rounded-full mt-1">
+                            <div id="xp-bar" class="h-full xp-bar-fill rounded-full" style="width: 0%;"></div>
+                        </div>
+                        <span id="xp-display" class="text-xs text-slate-500">0 / 100 XP</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Quick Access Navbar -->
+    <nav class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 py-2">
+        <div id="quick-nav" class="container mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap justify-center gap-1 md:gap-2">
+            <!-- Nav items will be injected here by JS -->
+        </div>
+    </nav>
+    
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-5xl">
+        <div id="sections-container">
+
+            <!-- Section 1: Starter -->
+            <section id="section-1" class="lesson-section space-y-6">
+                <h2 class="text-3xl font-bold text-primary-color border-b-2 border-primary-color pb-2">1. Starter: Name That Storage!</h2>
+                <p>Let's see what you already know. Drag and drop the storage device onto its correct name.</p>
+                <div id="starter-task" class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div id="starter-drop-zones" class="space-y-4">
+                        <div class="drop-zone p-4 rounded-lg flex items-center justify-center h-24" data-accept="HDD">Hard Disk Drive</div>
+                        <div class="drop-zone p-4 rounded-lg flex items-center justify-center h-24" data-accept="SSD">Solid State Drive</div>
+                        <div class="drop-zone p-4 rounded-lg flex items-center justify-center h-24" data-accept="CD">CD / DVD</div>
+                        <div class="drop-zone p-4 rounded-lg flex items-center justify-center h-24" data-accept="USB">USB Flash Drive</div>
+                    </div>
+                    <div id="starter-drag-items" class="grid grid-cols-2 gap-4">
+                        <div class="draggable card p-2 text-center rounded-lg select-none flex items-center justify-center h-24" draggable="true" data-type="HDD">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3.33 4H20.67C21.4 4 22 4.6 22 5.33V18.67C22 19.4 21.4 20 20.67 20H3.33C2.6 20 2 19.4 2 18.67V5.33C2 4.6 2.6 4 3.33 4Z" />
+                                <circle cx="12" cy="12" r="6" />
+                                <path d="M12 12L17.5 15" />
+                                <circle cx="12" cy="12" r="1.5" />
+                                <circle cx="5" cy="6.5" r=".5" fill="currentColor"/>
+                                <circle cx="19" cy="6.5" r=".5" fill="currentColor"/>
+                                <circle cx="5" cy="17.5" r=".5" fill="currentColor"/>
+                                <circle cx="19" cy="17.5" r=".5" fill="currentColor"/>
+                            </svg>
+                        </div>
+                        <div class="draggable card p-2 text-center rounded-lg select-none flex items-center justify-center h-24" draggable="true" data-type="USB">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20" viewBox="0 0 64 64" fill="none" stroke-width="2" stroke="currentColor"><rect x="16" y="12" width="32" height="40" rx="4"/><path d="M24 12V8h16v4"/><path d="M26 18h12v4H26z"/></svg>
+                        </div>
+                        <div class="draggable card p-2 text-center rounded-lg select-none flex items-center justify-center h-24" draggable="true" data-type="CD">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20" viewBox="0 0 64 64" fill="none" stroke-width="2" stroke="currentColor"><circle cx="32" cy="32" r="28"/><circle cx="32" cy="32" r="8"/><path d="M32,4 a28,28 0 0,0 0,56" fill="currentColor" opacity="0.1"/></svg>
+                        </div>
+                        <div class="draggable card p-2 text-center rounded-lg select-none flex items-center justify-center h-24" draggable="true" data-type="SSD">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                <rect x="6" y="8" width="4" height="4" rx="0.5"></rect>
+                                <rect x="14" y="8" width="4" height="4" rx="0.5"></rect>
+                                <rect x="6" y="14" width="12" height="4" rx="0.5"></rect>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <button id="reset-starter" class="btn btn-secondary px-4 py-2 rounded-lg">Reset Task</button>
+            </section>
+            
+            <!-- Section 2: The Basics -->
+            <section id="section-2" class="lesson-section space-y-6">
+                <h2 class="text-3xl font-bold text-primary-color border-b-2 border-primary-color pb-2">2. The Basics: Fill the Gaps</h2>
+                <p>Drag the correct word from the word bank into the blank spaces in the sentences below.</p>
+                <div class="card p-6 rounded-lg space-y-4 text-lg leading-loose">
+                    <p>Secondary storage is <strong class="text-primary-color">non-volatile</strong>, meaning it <span class="fill-in-drop-zone drop-zone inline-block w-32 h-8 align-middle" data-blank-id="1"></span> its contents even when the system is turned off.</p>
+                    <p>It is used for the <strong class="text-primary-color">long-term</strong> storage of data, files, and programs like the <span class="fill-in-drop-zone drop-zone inline-block w-48 h-8 align-middle" data-blank-id="2"></span>.</p>
+                    <p>Unlike primary storage (RAM), data in secondary storage cannot be read directly by the <span class="fill-in-drop-zone drop-zone inline-block w-20 h-8 align-middle" data-blank-id="3"></span>.</p>
+                </div>
+                <div id="fill-in-word-bank" class="card p-4 rounded-lg flex flex-wrap gap-2 justify-center">
+                    <!-- Draggable words will be injected here by JS -->
+                </div>
+                <button id="reset-basics" class="btn btn-secondary px-4 py-2 rounded-lg mt-4">Reset Task</button>
+            </section>
+
+            <!-- Section 3: Characteristics -->
+            <section id="section-3" class="lesson-section space-y-6">
+                 <h2 class="text-3xl font-bold text-primary-color border-b-2 border-primary-color pb-2">3. Characteristics of Storage</h2>
+                 <p>When choosing storage, we consider several factors. Match the characteristic to its description. Remember the mnemonic: <strong class="text-accent-color">C</strong>omputer <strong class="text-accent-color">S</strong>cience <strong class="text-accent-color">P</strong>upils <strong class="text-accent-color">D</strong>o <strong class="text-accent-color">R</strong>eally <strong class="text-accent-color">C</strong>are!</p>
+                 <div id="characteristics-task" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div id="characteristics-drag" class="flex flex-col gap-4">
+                        <div class="draggable card p-3 rounded-lg text-center select-none" draggable="true" data-type="Capacity"><strong>Capacity</strong></div>
+                        <div class="draggable card p-3 rounded-lg text-center select-none" draggable="true" data-type="Speed"><strong>Speed</strong></div>
+                        <div class="draggable card p-3 rounded-lg text-center select-none" draggable="true" data-type="Portability"><strong>Portability</strong></div>
+                        <div class="draggable card p-3 rounded-lg text-center select-none" draggable="true" data-type="Durability"><strong>Durability</strong></div>
+                        <div class="draggable card p-3 rounded-lg text-center select-none" draggable="true" data-type="Reliability"><strong>Reliability</strong></div>
+                        <div class="draggable card p-3 rounded-lg text-center select-none" draggable="true" data-type="Cost"><strong>Cost</strong></div>
+                    </div>
+                    <div id="characteristics-drop" class="space-y-2">
+                        <div class="drop-zone p-3 rounded-lg flex items-center min-h-[50px]" data-accept="Capacity">The amount of data that can be stored.</div>
+                        <div class="drop-zone p-3 rounded-lg flex items-center min-h-[50px]" data-accept="Speed">How fast data can be read from or written to the device.</div>
+                        <div class="drop-zone p-3 rounded-lg flex items-center min-h-[50px]" data-accept="Portability">How easily the device can be carried around.</div>
+                        <div class="drop-zone p-3 rounded-lg flex items-center min-h-[50px]" data-accept="Durability">How well the device survives knocks and drops.</div>
+                        <div class="drop-zone p-3 rounded-lg flex items-center min-h-[50px]" data-accept="Reliability">How long the device will last without failing.</div>
+                        <div class="drop-zone p-3 rounded-lg flex items-center min-h-[50px]" data-accept="Cost">The price per gigabyte (GB) of storage.</div>
+                    </div>
+                 </div>
+                 <button id="reset-characteristics" class="btn btn-secondary px-4 py-2 rounded-lg">Reset Task</button>
+            </section>
+            
+            <!-- Section 4: Storage Types -->
+            <section id="section-4" class="lesson-section space-y-6">
+                <h2 class="text-3xl font-bold text-primary-color border-b-2 border-primary-color pb-2">4. Three Main Types</h2>
+                <p>Answer the questions to identify the three main types of secondary storage.</p>
+                <div id="types-quiz" class="space-y-4">
+                    <div class="card p-4 rounded-lg">
+                        <p class="mb-2">This type of storage has no moving parts and works by trapping electrons in 'gates'. Examples include SSDs and USB sticks.</p>
+                        <div class="flex flex-wrap gap-2" data-question="1" data-answer="solid-state"><!-- buttons injected by JS --></div>
+                    </div>
+                    <div class="card p-4 rounded-lg">
+                        <p class="mb-2">This type of storage uses lasers to read and write data on a spinning disc, often creating microscopic 'pits' and 'lands'.</p>
+                        <div class="flex flex-wrap gap-2" data-question="2" data-answer="optical"><!-- buttons injected by JS --></div>
+                    </div>
+                    <div class="card p-4 rounded-lg">
+                        <p class="mb-2">This type stores data by magnetising and de-magnetising areas on the surface of a platter or tape.</p>
+                         <div class="flex flex-wrap gap-2" data-question="3" data-answer="magnetic"><!-- buttons injected by JS --></div>
+                    </div>
+                </div>
+                 <button id="reset-types-quiz" class="btn btn-secondary px-4 py-2 rounded-lg mt-4">Reset Task</button>
+            </section>
+
+            <!-- Section 5: Storage Hierarchy -->
+            <section id="section-5" class="lesson-section space-y-6">
+                <h2 class="text-3xl font-bold text-primary-color border-b-2 border-primary-color pb-2">5. The Storage Hierarchy</h2>
+                <p>Not all memory is created equal. The computer uses a hierarchy of storage, balancing speed, capacity, and cost. Click on a level of the pyramid to learn more about it.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div class="pyramid">
+                        <div id="pyramid-registers" class="pyramid-level">CPU Registers</div>
+                        <div id="pyramid-cache" class="pyramid-level">CPU Cache</div>
+                        <div id="pyramid-ram" class="pyramid-level">Main Memory (RAM)</div>
+                        <div id="pyramid-storage" class="pyramid-level">Secondary Storage</div>
+                    </div>
+                    <div id="hierarchy-info" class="card p-6 rounded-lg min-h-[250px] flex items-center justify-center">
+                        <p class="text-center text-slate-500">Click a pyramid level to see its details.</p>
+                    </div>
+                </div>
+                <button id="reset-hierarchy" class="btn btn-secondary px-4 py-2 rounded-lg">Reset Task</button>
+            </section>
+            
+            <!-- Section 6: Device Deep Dive -->
+            <section id="section-6" class="lesson-section space-y-6">
+                <h2 class="text-3xl font-bold text-primary-color border-b-2 border-primary-color pb-2">6. Simulation: HDD vs SSD</h2>
+                <p>Let's compare a traditional Hard Disk Drive (HDD) with a modern Solid State Drive (SSD). Use the slider to see how their characteristics differ based on cost.</p>
+                <div class="card p-6 rounded-lg">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-center">
+                        <div>
+                            <h3 class="text-xl font-bold">HDD (Magnetic)</h3>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mx-auto my-2 text-primary-color" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm7 14a7 7 0 1 0 0-14 7 7 0 0 0 0 14zm0-2a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+                            <p>Capacity: <span id="hdd-capacity" class="font-bold">1000 GB</span></p>
+                            <p>Speed: <span id="hdd-speed" class="font-bold">Slow</span></p>
+                        </div>
+                        <div>
+                             <h3 class="text-xl font-bold">SSD (Solid-State)</h3>
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mx-auto my-2 text-secondary-color" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm2 4v2h10V7H7zm0 4v2h10v-2H7z"/></svg>
+                            <p>Capacity: <span id="ssd-capacity" class="font-bold">250 GB</span></p>
+                            <p>Speed: <span id="ssd-speed" class="font-bold">Fast</span></p>
+                        </div>
+                    </div>
+                    <div class="mt-6">
+                        <label for="cost-slider" class="font-semibold">Budget Slider (£30 to £200)</label>
+                        <input id="cost-slider" type="range" min="30" max="200" value="50" class="w-full mt-2">
+                        <p class="text-center font-bold text-xl mt-2">Cost: £<span id="cost-value">50</span></p>
+                    </div>
+                </div>
+                 <div class="card p-6 rounded-lg">
+                    <h3 class="font-bold text-lg">Reflection Question</h3>
+                    <p class="mb-2">Why might a video editor or gamer prefer an SSD for their main programs, even if it has less capacity for the same price as an HDD? (Think about the 'Speed' characteristic).</p>
+                    <textarea id="reflection-ssd" class="w-full h-24 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-color" placeholder="Type your answer here..."></textarea>
+                    <button id="reset-reflection-ssd" class="btn btn-secondary px-4 py-2 rounded-lg mt-2">Reset</button>
+                    <button id="submit-reflection-ssd" class="btn btn-primary px-4 py-2 rounded-lg mt-2">Submit Answer</button>
+                 </div>
+            </section>
+
+            <!-- Section 7: Scenario -->
+            <section id="section-7" class="lesson-section space-y-6">
+                 <h2 class="text-3xl font-bold text-primary-color border-b-2 border-primary-color pb-2">7. Real-World Scenario</h2>
+                 <div class="card p-6 rounded-lg flex flex-col md:flex-row gap-6">
+                    <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Digital+Camera" alt="Digital Camera" class="w-full md:w-1/3 h-auto rounded-lg object-cover">
+                    <div class="flex-1">
+                        <div id="scenario-content">
+                            <p class="mb-4">A wildlife photographer is choosing a storage device for their new digital camera. They will be carrying it on long hikes, potentially in rough terrain. They shoot high-resolution photos and videos, which create large files.</p>
+                            <h3 class="font-bold text-lg">Your Task:</h3>
+                            <p class="mb-2">Explain why a <strong class="text-secondary-color">Solid-State memory card (e.g., an SD card)</strong> is the most suitable storage type for this purpose. You must refer to at least <strong>three</strong> different storage characteristics in your answer.</p>
+                        </div>
+                        <textarea id="scenario-answer" class="w-full h-40 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-color" placeholder="Explain your reasoning here..."></textarea>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <button id="submit-scenario" class="btn btn-primary px-4 py-2 rounded-lg">Submit Answer</button>
+                            <button id="reset-scenario" class="btn btn-secondary px-4 py-2 rounded-lg">Reset</button>
+                        </div>
+                    </div>
+                 </div>
+            </section>
+            
+            <!-- Section 8: Pros and Cons -->
+            <section id="section-8" class="lesson-section space-y-6">
+                <h2 class="text-3xl font-bold text-primary-color border-b-2 border-primary-color pb-2">8. Pros and Cons</h2>
+                <p>Drag each statement to the correct category for each storage type.</p>
+                <div id="pros-cons-task" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <!-- Magnetic -->
+                    <div class="card p-4 rounded-lg">
+                        <h3 class="text-lg font-bold text-center mb-2">Magnetic (HDD)</h3>
+                        <h4 class="font-semibold text-green-600">Pros</h4>
+                        <div class="drop-zone min-h-[80px] p-2 rounded-lg bg-green-50 space-y-1" data-accept="magnetic-pro"></div>
+                        <h4 class="font-semibold text-red-600 mt-2">Cons</h4>
+                        <div class="drop-zone min-h-[80px] p-2 rounded-lg bg-red-50 space-y-1" data-accept="magnetic-con"></div>
+                    </div>
+                    <!-- Optical -->
+                    <div class="card p-4 rounded-lg">
+                        <h3 class="text-lg font-bold text-center mb-2">Optical (CD/DVD)</h3>
+                        <h4 class="font-semibold text-green-600">Pros</h4>
+                        <div class="drop-zone min-h-[80px] p-2 rounded-lg bg-green-50 space-y-1" data-accept="optical-pro"></div>
+                        <h4 class="font-semibold text-red-600 mt-2">Cons</h4>
+                        <div class="drop-zone min-h-[80px] p-2 rounded-lg bg-red-50 space-y-1" data-accept="optical-con"></div>
+                    </div>
+                    <!-- Solid-State -->
+                    <div class="card p-4 rounded-lg">
+                        <h3 class="text-lg font-bold text-center mb-2">Solid-State (SSD)</h3>
+                        <h4 class="font-semibold text-green-600">Pros</h4>
+                        <div class="drop-zone min-h-[80px] p-2 rounded-lg bg-green-50 space-y-1" data-accept="solid-state-pro"></div>
+                        <h4 class="font-semibold text-red-600 mt-2">Cons</h4>
+                        <div class="drop-zone min-h-[80px] p-2 rounded-lg bg-red-50 space-y-1" data-accept="solid-state-con"></div>
+                    </div>
+                </div>
+                <div id="pros-cons-items" class="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                    <!-- Items will be injected here by JS -->
+                </div>
+                <button id="reset-pros-cons" class="btn btn-secondary px-4 py-2 rounded-lg mt-4">Reset Task</button>
+            </section>
+
+            <!-- Section 9: Common Mistakes -->
+            <section id="section-9" class="lesson-section space-y-6">
+                 <h2 class="text-3xl font-bold text-primary-color border-b-2 border-primary-color pb-2">9. Common Mistakes</h2>
+                 <p>Let's clear up some common misconceptions. Are these statements True or False?</p>
+                 <div id="mistakes-quiz" class="space-y-4">
+                    <div class="card p-4 rounded-lg">
+                        <p class="mb-2">"RAM is a type of secondary storage."</p>
+                        <div class="flex flex-wrap gap-2" data-question="1" data-answer="false">
+                            <!-- buttons injected by JS -->
+                        </div>
+                    </div>
+                     <div class="card p-4 rounded-lg">
+                        <p class="mb-2">"An SSD is more durable than an HDD because it has no moving parts."</p>
+                        <div class="flex flex-wrap gap-2" data-question="2" data-answer="true">
+                            <!-- buttons injected by JS -->
+                        </div>
+                    </div>
+                     <div class="card p-4 rounded-lg">
+                        <p class="mb-2">"Optical discs have the highest storage capacity of all storage types."</p>
+                        <div class="flex flex-wrap gap-2" data-question="3" data-answer="false">
+                           <!-- buttons injected by JS -->
+                        </div>
+                    </div>
+                 </div>
+                 <button id="reset-mistakes-quiz" class="btn btn-secondary px-4 py-2 rounded-lg mt-4">Reset Task</button>
+            </section>
+            
+            <!-- Section 10: Exam Practice -->
+            <section id="section-10" class="lesson-section space-y-8">
+                 <h2 class="text-3xl font-bold text-primary-color border-b-2 border-primary-color pb-2">10. Exam Practice</h2>
+                 <p>Time to test your knowledge with some exam-style questions. Write a full answer, then check the mark scheme.</p>
+                 
+                 <!-- Question 1 -->
+                 <div class="card p-6 rounded-lg">
+                    <h3 class="font-bold">Question 1: Define 'non-volatile' storage. (2 marks)</h3>
+                    <textarea data-question-id="exam1" data-min-length="20" class="exam-answer w-full h-20 mt-2 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-color" placeholder="Type your definition here..."></textarea>
+                    <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <label for="predict-1">Predicted marks:</label>
+                            <input type="number" id="predict-1" min="0" max="2" class="w-16 p-1 border rounded"> / 2
+                        </div>
+                         <div class="flex flex-wrap gap-2">
+                            <button class="exam-reset-btn btn btn-secondary px-4 py-2 rounded-lg">Reset</button>
+                            <button class="exam-mark-scheme-btn btn btn-primary px-4 py-2 rounded-lg disabled:bg-slate-400 disabled:cursor-not-allowed lock-icon" disabled>Show Mark Scheme</button>
+                         </div>
+                    </div>
+                    <div class="exam-mark-scheme hidden mt-4 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                        <p><strong>Mark Scheme:</strong></p>
+                        <ul class="list-disc list-inside">
+                            <li>Stores data/contents even when the power is off (1)</li>
+                            <li>It is permanent/long-term storage (1)</li>
+                        </ul>
+                    </div>
+                 </div>
+
+                 <!-- Question 2 -->
+                 <div class="card p-6 rounded-lg">
+                    <h3 class="font-bold">Question 2: State two benefits of using solid-state storage over magnetic storage in a laptop. (4 marks)</h3>
+                    <textarea data-question-id="exam2" data-min-length="40" class="exam-answer w-full h-24 mt-2 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-color" placeholder="List and explain two benefits..."></textarea>
+                    <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <label for="predict-2">Predicted marks:</label>
+                            <input type="number" id="predict-2" min="0" max="4" class="w-16 p-1 border rounded"> / 4
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                             <button class="exam-reset-btn btn btn-secondary px-4 py-2 rounded-lg">Reset</button>
+                            <button class="exam-mark-scheme-btn btn btn-primary px-4 py-2 rounded-lg disabled:bg-slate-400 disabled:cursor-not-allowed lock-icon" disabled>Show Mark Scheme</button>
+                        </div>
+                    </div>
+                    <div class="exam-mark-scheme hidden mt-4 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                        <p><strong>Mark Scheme: (1 mark for benefit, 1 for explanation, max 4)</strong></p>
+                        <ul class="list-disc list-inside">
+                            <li><strong>Faster access speeds (1)</strong>... so the operating system and applications load quicker (1).</li>
+                            <li><strong>More durable/reliable (1)</strong>... as it has no moving parts which could be damaged (1).</li>
+                            <li><strong>Uses less power / more efficient (1)</strong>... which leads to longer battery life for the laptop (1).</li>
+                             <li><strong>Quieter operation (1)</strong>... as there are no moving parts like spinning platters (1).</li>
+                            <li><strong>Lighter / more compact (1)</strong>... which makes the laptop more portable (1).</li>
+                        </ul>
+                    </div>
+                 </div>
+
+                 <!-- Question 3 -->
+                 <div class="card p-6 rounded-lg">
+                    <h3 class="font-bold">Question 3: A school is buying new computers for its main computer lab. They need to store the operating system, many large software applications, and students' work. Discuss the suitability of using either HDDs or SSDs for these computers. (8 marks)</h3>
+                    <p class="text-sm text-slate-600">Use the canvas below to plan your answer if you wish.</p>
+                    <div class="my-2 text-center">
+                        <canvas id="drawing-canvas" width="600" height="200"></canvas>
+                        <button id="clear-canvas-btn" class="btn btn-secondary px-3 py-1 text-sm rounded-lg mt-1">Clear Canvas</button>
+                    </div>
+                    <textarea data-question-id="exam3" data-min-length="100" class="exam-answer w-full h-48 mt-2 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-color" placeholder="Discuss the pros and cons of each for the school..."></textarea>
+                    <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <label for="predict-3">Predicted marks:</label>
+                            <input type="number" id="predict-3" min="0" max="8" class="w-16 p-1 border rounded"> / 8
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                           <button class="exam-reset-btn btn btn-secondary px-4 py-2 rounded-lg">Reset</button>
+                           <button class="exam-mark-scheme-btn btn btn-primary px-4 py-2 rounded-lg disabled:bg-slate-400 disabled:cursor-not-allowed lock-icon" disabled>Show Mark Scheme</button>
+                        </div>
+                    </div>
+                    <div class="exam-mark-scheme hidden mt-4 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                        <p><strong>Mark Scheme (Level-based):</strong></p>
+                        <p>Award marks based on a balanced discussion covering characteristics like cost, capacity, speed, and reliability in the context of the school.</p>
+                        <ul class="list-disc list-inside text-sm">
+                            <li><strong>Level 1 (1-3 marks):</strong> A limited discussion. Mentions one or two characteristics for one type of drive. The answer may be a simple list of points.</li>
+                            <li><strong>Level 2 (4-6 marks):</strong> A good discussion. Compares both HDDs and SSDs using several relevant characteristics. Links are made to the school scenario (e.g., "cost is important for a school budget").</li>
+                            <li><strong>Level 3 (7-8 marks):</strong> A thorough and well-balanced discussion. Considers multiple characteristics for both drive types, constantly relating them to the specific needs of the school (many users, large software, budget constraints). A justified conclusion is reached.</li>
+                            <li><strong>Example points:</strong> SSDs would offer faster boot times and software loading, improving lesson efficiency. HDDs offer much higher capacity for a lower cost, which is crucial for a school buying in bulk and needing to store lots of student data. Reliability of SSDs is higher, reducing maintenance.</li>
+                        </ul>
+                    </div>
+                 </div>
+
+            </section>
+            
+            <!-- Section 11: Extension -->
+            <section id="section-11" class="lesson-section space-y-6">
+                <h2 class="text-3xl font-bold text-primary-color border-b-2 border-primary-color pb-2">11. Extension: The Future of Storage</h2>
+                <p>Secondary storage technology is always evolving. Technologies that seemed like science fiction are now becoming a reality.</p>
+                 <div class="card p-6 rounded-lg">
+                    <h3 class="font-bold text-lg">Your Task:</h3>
+                    <p class="mb-2">Use a search engine to research <strong>one</strong> of the following emerging storage technologies: <strong class="text-accent-color">DNA Storage</strong> or <strong class="text-accent-color">Holographic Storage</strong>. In the box below, briefly describe how it works and one major advantage it has.</p>
+                    <textarea id="extension-answer" class="w-full h-32 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-color" placeholder="Type your research findings here..."></textarea>
+                    <button id="reset-extension" class="btn btn-secondary px-4 py-2 rounded-lg mt-2">Reset</button>
+                    <button id="submit-extension" class="btn btn-primary px-4 py-2 rounded-lg mt-2">Submit Research</button>
+                 </div>
+            </section>
+
+            <!-- Section 12: Summary Quiz -->
+            <section id="section-12" class="lesson-section space-y-6">
+                <h2 class="text-3xl font-bold text-primary-color border-b-2 border-primary-color pb-2">12. Summary Quiz</h2>
+                <p>Let's check your understanding of the key concepts from the lesson.</p>
+                <div id="summary-quiz" class="space-y-6">
+                    <!-- Questions will be injected by JS -->
+                </div>
+                 <button id="reset-summary-quiz" class="btn btn-secondary px-4 py-2 rounded-lg mt-4">Reset Quiz</button>
+                <p id="easter-egg" class="text-center text-sm text-slate-400 cursor-pointer mt-6">Lesson created with care.</p>
+            </section>
+            
+            <!-- Section 13: Video Resources -->
+             <section id="section-13" class="lesson-section space-y-6">
+                <h2 class="text-3xl font-bold text-primary-color border-b-2 border-primary-color pb-2">13. Video Resources</h2>
+                <p>These videos can help reinforce your understanding. (Your teacher can add links here).</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="card p-4 rounded-lg">
+                        <div class="aspect-w-16 aspect-h-9 bg-slate-200 rounded-lg flex items-center justify-center">
+                            <p class="text-slate-500">Video Placeholder 1</p>
+                        </div>
+                        <h3 class="font-semibold mt-2">Video Title 1</h3>
+                    </div>
+                     <div class="card p-4 rounded-lg">
+                        <div class="aspect-w-16 aspect-h-9 bg-slate-200 rounded-lg flex items-center justify-center">
+                            <p class="text-slate-500">Video Placeholder 2</p>
+                        </div>
+                        <h3 class="font-semibold mt-2">Video Title 2</h3>
+                    </div>
+                </div>
+            </section>
+
+             <!-- Section 14: My Achievements -->
+            <section id="section-14" class="lesson-section space-y-6">
+                <h2 class="text-3xl font-bold text-primary-color border-b-2 border-primary-color pb-2">14. My Achievements</h2>
+                <p>Here are the badges you've earned during this lesson. Well done!</p>
+                <div id="final-achievements-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Achievement badges will be populated here -->
+                </div>
+                 <p class="text-center text-lg mt-8">You have reached Level <strong id="final-level" class="text-accent-color">1</strong>! Keep up the great work.</p>
+            </section>
+
+        </div>
+
+        <!-- Navigation Footer -->
+        <footer class="mt-12 flex justify-between items-center">
+            <button id="prev-btn" class="btn btn-primary px-6 py-2 rounded-lg disabled:bg-slate-400 disabled:cursor-not-allowed">Previous</button>
+            <span id="section-counter" class="text-sm text-slate-500"></span>
+            <button id="next-btn" class="btn btn-primary px-6 py-2 rounded-lg disabled:bg-slate-400 disabled:cursor-not-allowed">Next</button>
+        </footer>
+    </main>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- STATE MANAGEMENT ---
+        const state = {
+            currentSection: 0,
+            xp: 0,
+            level: 1,
+            xpPerLevel: [100, 150, 200, 250, 300], // XP needed to get TO the next level
+            achievements: new Set(),
+            tasksCompleted: new Set(),
+            isShamed: false,
+        };
+
+        const achievementsData = {
+            starter: { id: 'starter', title: 'Storage Novice', icon: '🌱', desc: 'You completed the starter task!' },
+            types: { id: 'types', title: 'Tech Identifier', icon: '🤖', desc: 'You identified the main storage types.' },
+            scenario: { id: 'scenario', title: 'Practical Thinker', icon: '🧠', desc: 'You aced the scenario question.' },
+            exam: { id: 'exam', title: 'Exam Ready', icon: '🎓', desc: 'You attempted all exam questions.' },
+            completionist: { id: 'completionist', title: 'Completionist', icon: '🌟', desc: 'You finished the entire worksheet!'},
+            easterEgg: { id: 'easterEgg', title: 'Secret Finder', icon: '🥚', desc: 'You found a hidden secret!'}
+        };
+        
+        const sections = document.querySelectorAll('.lesson-section');
+        const totalSections = sections.length;
+
+        // --- DOM ELEMENTS ---
+        const xpDisplay = document.getElementById('xp-display');
+        const xpBar = document.getElementById('xp-bar');
+        const levelDisplay = document.getElementById('level-display');
+        const achievementsDisplay = document.getElementById('achievements-display');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const sectionCounter = document.getElementById('section-counter');
+        const quickNav = document.getElementById('quick-nav');
+
+
+        // --- GAMIFICATION & UI ---
+        function addXP(amount, taskId) {
+            if (state.tasksCompleted.has(taskId) || state.isShamed) return;
+
+            state.tasksCompleted.add(taskId);
+            state.xp += amount;
+            
+            showParticleEffect();
+            
+            console.log(`+${amount} XP for task ${taskId}. Total XP: ${state.xp}`);
+
+            // Check for level up
+            while (state.level <= state.xpPerLevel.length && state.xp >= state.xpPerLevel[state.level - 1]) {
+                state.xp -= state.xpPerLevel[state.level - 1];
+                state.level++;
+                showAchievementPopup({id: `level${state.level}`, title: `Level Up!`, icon: '🚀', desc: `You've reached Level ${state.level}!`});
+            }
+            updateXPUI();
+        }
+
+        function updateXPUI() {
+            const currentLevelXP = state.xpPerLevel[state.level - 1] || 300;
+            const progress = Math.min((state.xp / currentLevelXP) * 100, 100);
+            
+            xpBar.style.width = `${progress}%`;
+            xpDisplay.textContent = `${state.xp} / ${currentLevelXP} XP`;
+            levelDisplay.textContent = state.level;
+            document.getElementById('final-level').textContent = state.level;
+        }
+
+        function grantAchievement(achievementId) {
+            if (state.achievements.has(achievementId) || state.isShamed) return;
+
+            const achievement = achievementsData[achievementId];
+            if (!achievement) return;
+
+            state.achievements.add(achievementId);
+            showAchievementPopup(achievement);
+            
+            const achievementIcon = document.createElement('span');
+            achievementIcon.title = achievement.title;
+            achievementIcon.textContent = achievement.icon;
+            achievementIcon.classList.add('text-lg', 'transform', 'hover:scale-125', 'transition-transform');
+            achievementsDisplay.appendChild(achievementIcon);
+            
+            updateFinalAchievements();
+        }
+
+        function showAchievementPopup(achievement) {
+            const popup = document.getElementById('achievement-popup');
+            document.getElementById('achievement-title').textContent = achievement.title;
+            document.getElementById('achievement-desc').textContent = achievement.desc;
+            document.getElementById('achievement-icon').textContent = achievement.icon;
+            
+            popup.classList.remove('opacity-0', 'translate-y-10');
+            popup.classList.add('opacity-100', 'translate-y-0');
+
+            if(window.navigator.vibrate) { window.navigator.vibrate(200); }
+            
+            setTimeout(() => {
+                popup.classList.remove('opacity-100', 'translate-y-0');
+                popup.classList.add('opacity-0', 'translate-y-10');
+            }, 4000);
+        }
+        
+        function showParticleEffect() {
+            const canvas = document.getElementById('particle-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            let particles = [];
+
+            for (let i = 0; i < 50; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 3 + 1,
+                    color: `hsl(${Math.random() * 360}, 90%, 70%)`,
+                    vx: Math.random() * 4 - 2,
+                    vy: Math.random() * -10 - 5,
+                    alpha: 1
+                });
+            }
+
+            function animateParticles() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach((p, index) => {
+                    p.y += p.vy;
+                    p.x += p.vx;
+                    p.vy += 0.1; // gravity
+                    p.alpha -= 0.01;
+
+                    if (p.alpha <= 0) {
+                        particles.splice(index, 1);
+                    } else {
+                        ctx.globalAlpha = p.alpha;
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+                if (particles.length > 0) {
+                    requestAnimationFrame(animateParticles);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+            animateParticles();
+        }
+        
+        // --- NAVIGATION ---
+        function showSection(index) {
+            if(index < 0 || index >= totalSections) return;
+            
+            state.currentSection = index;
+            
+            sections.forEach((section, i) => {
+                section.classList.toggle('active', i === index);
+            });
+            
+            document.querySelectorAll('.nav-item').forEach((nav, i) => {
+                nav.classList.toggle('active', i === index);
+            });
+            
+            prevBtn.disabled = index === 0;
+            nextBtn.disabled = index === totalSections - 1;
+
+            if (index === totalSections - 1) { // Last section
+                grantAchievement('completionist');
+            }
+            
+            sectionCounter.textContent = `Section ${index + 1} of ${totalSections}`;
+            window.scrollTo(0, 0);
+        }
+        
+        function createQuickNav() {
+            quickNav.innerHTML = ''; // Clear existing nav
+            sections.forEach((section, i) => {
+                const title = section.querySelector('h2').textContent.split('. ')[1];
+                const navBtn = document.createElement('button');
+                navBtn.textContent = `${i+1}. ${title}`;
+                navBtn.classList.add('nav-item', 'px-2', 'py-1', 'md:px-3', 'md:py-2', 'text-xs', 'md:text-sm', 'font-semibold', 'rounded-md', 'border', 'border-slate-300', 'transition-colors', 'duration-200');
+                navBtn.addEventListener('click', () => showSection(i));
+                quickNav.appendChild(navBtn);
+            });
+        }
+        
+        nextBtn.addEventListener('click', () => showSection(state.currentSection + 1));
+        prevBtn.addEventListener('click', () => showSection(state.currentSection - 1));
+
+        // --- ANTI-PASTE ---
+        function handlePaste(e) {
+            e.preventDefault();
+            if (state.isShamed) return;
+            
+            state.isShamed = true;
+            document.body.classList.add('shame-mode');
+            document.getElementById('shame-popup').classList.remove('hidden');
+        }
+        document.querySelectorAll('input[type="text"], textarea').forEach(el => {
+            el.addEventListener('paste', handlePaste);
+        });
+        
+        // --- TASK IMPLEMENTATIONS ---
+        
+        // Utility for shuffling arrays
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // Generic Drag and Drop handler
+        function setupDragAndDrop(containerId, onDropCallback) {
+            const container = document.getElementById(containerId);
+            if (!container) {
+                console.error("Drag and drop container not found:", containerId);
+                return;
+            }
+            let draggedItem = null;
+
+            container.addEventListener('dragstart', e => {
+                if (e.target.classList.contains('draggable')) {
+                    draggedItem = e.target;
+                    setTimeout(() => e.target.style.opacity = '0.5', 0);
+                }
+            });
+
+            container.addEventListener('dragend', e => {
+                if (draggedItem) {
+                    draggedItem.style.opacity = '1';
+                }
+                draggedItem = null;
+                document.querySelectorAll('.drop-zone.drag-over').forEach(dz => dz.classList.remove('drag-over'));
+            });
+
+            container.addEventListener('dragover', e => {
+                e.preventDefault();
+                const dropZone = e.target.closest('.drop-zone');
+                if (dropZone && !dropZone.contains(draggedItem)) {
+                    document.querySelectorAll('.drop-zone.drag-over').forEach(dz => dz.classList.remove('drag-over'));
+                    dropZone.classList.add('drag-over');
+                }
+            });
+
+            container.addEventListener('dragleave', e => {
+                const dropZone = e.target.closest('.drop-zone');
+                if (dropZone) {
+                    if (e.relatedTarget && dropZone.contains(e.relatedTarget)) {
+                        return;
+                    }
+                    dropZone.classList.remove('drag-over');
+                }
+            });
+
+            container.addEventListener('drop', e => {
+                e.preventDefault();
+                const dropZone = e.target.closest('.drop-zone');
+                if (dropZone && draggedItem) {
+                    onDropCallback(draggedItem, dropZone);
+                }
+                document.querySelectorAll('.drop-zone.drag-over').forEach(dz => dz.classList.remove('drag-over'));
+            });
+        }
+
+        // Section 1: Starter
+        function initStarterTask() {
+             setupDragAndDrop('starter-task', (dragged, dropped) => {
+                if (dropped.classList.contains('correct')) return;
+
+                if (dragged.dataset.type === dropped.dataset.accept) {
+                    const originalText = dropped.textContent;
+                    dropped.innerHTML = ''; 
+                    dropped.appendChild(dragged);
+                    dragged.setAttribute('draggable', 'false');
+                    dragged.classList.remove('draggable');
+                    dropped.classList.add('correct');
+                    
+                    const p = document.createElement('p');
+                    p.textContent = originalText;
+                    p.classList.add('font-bold', 'mt-1');
+                    p.style.pointerEvents = 'none'; 
+                    dropped.appendChild(p);
+
+                    checkStarterCompletion();
+                }
+            });
+            const dragContainer = document.getElementById('starter-drag-items');
+            const items = Array.from(dragContainer.children);
+            shuffleArray(items);
+            items.forEach(item => dragContainer.appendChild(item));
+        }
+        
+        function checkStarterCompletion() {
+            if (document.querySelectorAll('#starter-task .drop-zone.correct').length === 4) {
+                addXP(50, 'starter-task');
+                grantAchievement('starter');
+            }
+        }
+        
+        document.getElementById('reset-starter').addEventListener('click', () => {
+            const dragContainer = document.getElementById('starter-drag-items');
+            const dropZones = document.querySelectorAll('#starter-drop-zones .drop-zone');
+            
+            dropZones.forEach(dz => {
+                const child = dz.querySelector('.draggable');
+                if(child) {
+                    child.setAttribute('draggable', 'true');
+                    child.classList.add('draggable');
+                    const label = child.nextElementSibling;
+                    if(label && label.tagName === 'P') label.remove();
+                    dragContainer.appendChild(child);
+                }
+                dz.classList.remove('correct');
+                dz.innerHTML = `${dz.dataset.accept === 'CD' ? 'CD / DVD' : dz.dataset.accept.replace('HDD', 'Hard Disk Drive').replace('SSD', 'Solid State Drive').replace('USB', 'USB Flash Drive')}`;
+            });
+
+            const items = Array.from(dragContainer.children);
+            shuffleArray(items);
+            items.forEach(item => dragContainer.appendChild(item));
+        });
+
+        // Section 2: Basics
+        function initFillInTheBlanks() {
+            const wordBankContainer = document.getElementById('fill-in-word-bank');
+            wordBankContainer.innerHTML = ''; 
+
+            const words = [
+                { text: 'retains', correctFor: 1 }, { text: 'holds', correctFor: 1 }, { text: 'keeps', correctFor: 1 },
+                { text: 'loses', correctFor: null }, { text: 'deletes', correctFor: null }, { text: 'volatile', correctFor: null },
+                { text: 'operating system', correctFor: 2 }, { text: 'software', correctFor: null },
+                { text: 'hardware', correctFor: null }, { text: 'short-term', correctFor: null },
+                { text: 'CPU', correctFor: 3 }, { text: 'processor', correctFor: 3 },
+                { text: 'GPU', correctFor: null }
+            ];
+
+            shuffleArray(words);
+
+            words.forEach(word => {
+                const wordEl = document.createElement('div');
+                wordEl.textContent = word.text;
+                wordEl.dataset.correctFor = word.correctFor;
+                wordEl.draggable = true;
+                wordEl.classList.add('draggable', 'card', 'p-2', 'rounded-lg', 'text-center', 'select-none', 'bg-slate-200');
+                wordBankContainer.appendChild(wordEl);
+            });
+
+            setupDragAndDrop('section-2', (dragged, dropped) => {
+                if (dropped.classList.contains('fill-in-drop-zone') && !dropped.hasChildNodes()) {
+                     if (dragged.dataset.correctFor === dropped.dataset.blankId) {
+                        dropped.appendChild(dragged);
+                        dragged.draggable = false;
+                        dragged.classList.remove('draggable', 'card', 'bg-slate-200');
+                        dropped.classList.add('correct');
+                        dropped.classList.remove('drop-zone'); 
+                        addXP(25, `basics-blank-${dropped.dataset.blankId}`);
+                        checkBasicsCompletion();
+                    }
+                }
+            });
+        }
+
+        function checkBasicsCompletion() {
+            const completed = document.querySelectorAll('#section-2 .fill-in-drop-zone.correct').length;
+            if(completed === 3) {
+                addXP(25, 'basics-all-blanks');
+            }
+        }
+
+        document.getElementById('reset-basics').addEventListener('click', () => {
+            const dropZones = document.querySelectorAll('.fill-in-drop-zone');
+            dropZones.forEach(zone => {
+                zone.innerHTML = '';
+                zone.classList.add('drop-zone');
+                zone.classList.remove('correct');
+            });
+            initFillInTheBlanks();
+        });
+
+        // Section 3: Characteristics
+        function initCharacteristicsTask() {
+            setupDragAndDrop('characteristics-task', (dragged, dropped) => {
+                if(dragged.dataset.type === dropped.dataset.accept && !dropped.querySelector('.draggable')) {
+                    const originalText = dropped.textContent;
+                    dropped.innerHTML = '';
+                    dropped.appendChild(dragged);
+                    dragged.setAttribute('draggable', 'false');
+                    dragged.classList.remove('draggable');
+                    dropped.classList.add('correct');
+                    
+                    const p = document.createElement('p');
+                    p.textContent = originalText;
+                    p.classList.add('text-sm', 'ml-2', 'text-slate-600');
+                    dragged.appendChild(p);
+                    checkCharacteristicsCompletion();
+                }
+            });
+            const dragContainer = document.getElementById('characteristics-drag');
+            const items = Array.from(dragContainer.children);
+            shuffleArray(items);
+            items.forEach(item => dragContainer.appendChild(item));
+        }
+        
+        function checkCharacteristicsCompletion() {
+            if (document.querySelectorAll('#characteristics-drop .drop-zone.correct').length === 6) {
+                addXP(100, 'characteristics-task');
+            }
+        }
+        
+        document.getElementById('reset-characteristics').addEventListener('click', () => {
+            const dragContainer = document.getElementById('characteristics-drag');
+            const dropZones = document.querySelectorAll('#characteristics-drop .drop-zone');
+            
+            dropZones.forEach(dz => {
+                const child = dz.querySelector('.draggable');
+                let originalText = `Description for ${dz.dataset.accept}`;
+
+                if (child) {
+                     const textElement = child.querySelector('p');
+                     if (textElement) {
+                         originalText = textElement.textContent;
+                         textElement.remove();
+                     }
+                    child.setAttribute('draggable', 'true');
+                    child.classList.add('draggable');
+                    dragContainer.appendChild(child);
+                }
+                dz.classList.remove('correct');
+                dz.innerHTML = originalText;
+            });
+            const items = Array.from(dragContainer.children);
+            shuffleArray(items);
+            items.forEach(item => dragContainer.appendChild(item));
+        });
+        
+        // Section 4: Storage Types Quiz
+        function initTypesQuiz() {
+            const quizContainers = document.querySelectorAll('#types-quiz .flex[data-question]');
+            const options = ['Magnetic', 'Optical', 'Solid-State'];
+            
+            quizContainers.forEach(container => {
+                container.innerHTML = ''; // Clear existing
+                let shuffledOptions = [...options];
+                shuffleArray(shuffledOptions);
+                shuffledOptions.forEach(opt => {
+                    const button = document.createElement('button');
+                    button.textContent = opt;
+                    button.classList.add('btn', 'flex-1', 'p-2', 'rounded-lg', 'bg-slate-200');
+                    button.addEventListener('click', handleQuizButtonClick);
+                    container.appendChild(button);
+                });
+            });
+        }
+        
+        function handleQuizButtonClick(e) {
+            const button = e.target;
+            const buttonGroup = button.parentElement;
+            const questionId = buttonGroup.dataset.question;
+            const answer = buttonGroup.dataset.answer;
+            const selected = button.textContent.trim().toLowerCase().replace('-',' ');
+
+            if (state.tasksCompleted.has(`types-q${questionId}`)) return;
+
+            if (selected.includes(answer)) {
+                button.classList.add('bg-green-500', 'text-white');
+                button.classList.remove('bg-slate-200');
+                addXP(25, `types-q${questionId}`);
+            } else {
+                button.classList.add('bg-red-500', 'text-white');
+                button.classList.remove('bg-slate-200');
+            }
+            
+            Array.from(buttonGroup.children).forEach(btn => btn.disabled = true);
+            
+            if (document.querySelectorAll('#types-quiz .bg-green-500').length === 3) {
+                 grantAchievement('types');
+            }
+        }
+        
+         document.getElementById('reset-types-quiz').addEventListener('click', () => {
+             document.querySelectorAll('#types-quiz [data-question]').forEach(group => {
+                 Array.from(group.children).forEach(btn => {
+                     btn.disabled = false;
+                     btn.classList.remove('bg-green-500', 'bg-red-500', 'text-white');
+                     btn.classList.add('bg-slate-200');
+                 });
+             });
+        });
+
+        // Section 5: Hierarchy Diagram
+        const hierarchyData = {
+            registers: {
+                title: 'CPU Registers',
+                speed: 'Extremely Fast',
+                capacity: 'Very Small (Bytes)',
+                cost: 'Highest per byte',
+                volatility: 'Volatile',
+                info: 'Directly inside the CPU. Holds data being processed right now.'
+            },
+            cache: {
+                title: 'CPU Cache',
+                speed: 'Very Fast',
+                capacity: 'Small (Megabytes)',
+                cost: 'Very High per byte',
+                volatility: 'Volatile',
+                info: 'A small amount of very fast memory (SRAM) on or near the CPU. Stores frequently used instructions.'
+            },
+            ram: {
+                title: 'Main Memory (RAM)',
+                speed: 'Fast',
+                capacity: 'Medium (Gigabytes)',
+                cost: 'High per byte',
+                volatility: 'Volatile',
+                info: 'Where the OS, open applications, and current data are stored for quick access by the CPU.'
+            },
+            storage: {
+                title: 'Secondary Storage',
+                speed: 'Slow',
+                capacity: 'Large (Terabytes)',
+                cost: 'Low per byte',
+                volatility: 'Non-Volatile',
+                info: 'Long-term storage for the OS, applications, and files. Not directly accessible by the CPU.'
+            }
+        };
+
+        document.querySelectorAll('.pyramid-level').forEach(level => {
+            level.addEventListener('click', () => {
+                const type = level.id.split('-')[1];
+                const data = hierarchyData[type];
+                const infoBox = document.getElementById('hierarchy-info');
+                
+                infoBox.innerHTML = `
+                    <div class="text-left w-full">
+                        <h3 class="text-2xl font-bold mb-2" style="color: ${window.getComputedStyle(level).backgroundColor}">${data.title}</h3>
+                        <p class="mb-4 text-sm text-slate-600">${data.info}</p>
+                        <ul class="space-y-2">
+                            <li class="flex justify-between"><strong>Speed:</strong> <span>${data.speed}</span></li>
+                            <li class="flex justify-between"><strong>Capacity:</strong> <span>${data.capacity}</span></li>
+                            <li class="flex justify-between"><strong>Cost Per Byte:</strong> <span>${data.cost}</span></li>
+                            <li class="flex justify-between"><strong>Volatility:</strong> <span class="font-bold ${data.volatility === 'Volatile' ? 'text-red-500' : 'text-green-500'}">${data.volatility}</span></li>
+                        </ul>
+                    </div>
+                `;
+                addXP(10, 'hierarchy-click');
+            });
+        });
+
+        document.getElementById('reset-hierarchy').addEventListener('click', () => {
+             document.getElementById('hierarchy-info').innerHTML = `<p class="text-center text-slate-500">Click a pyramid level to see its details.</p>`;
+        });
+
+        // Section 6: Slider Simulation
+        const costSlider = document.getElementById('cost-slider');
+        const costValue = document.getElementById('cost-value');
+        costSlider.addEventListener('input', () => {
+            const cost = parseInt(costSlider.value);
+            costValue.textContent = cost;
+            
+            const hddCapacity = 500 + Math.round((cost / 200) * 3500);
+            const hddSpeed = (cost < 70) ? "Slow" : "Moderate";
+            const ssdCapacity = 120 + Math.round((cost / 200) * 1880);
+            const ssdSpeed = (cost < 60) ? "Fast" : "Very Fast";
+
+            document.getElementById('hdd-capacity').textContent = `${hddCapacity} GB`;
+            document.getElementById('hdd-speed').textContent = hddSpeed;
+            document.getElementById('ssd-capacity').textContent = `${ssdCapacity} GB`;
+            document.getElementById('ssd-speed').textContent = ssdSpeed;
+
+            if (!state.tasksCompleted.has('slider-interaction')) {
+                 addXP(10, 'slider-interaction');
+            }
+        });
+
+        document.getElementById('reset-reflection-ssd').addEventListener('click', () => {
+            document.getElementById('reflection-ssd').value = '';
+            const submitBtn = document.getElementById('submit-reflection-ssd');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('bg-green-500');
+            submitBtn.textContent = 'Submit Answer';
+        });
+
+        document.getElementById('submit-reflection-ssd').addEventListener('click', (e) => {
+            const answer = document.getElementById('reflection-ssd').value.toLowerCase();
+            if (answer.includes('speed') || answer.includes('fast') || answer.includes('load') || answer.includes('access') || answer.includes('quick')) {
+                addXP(75, 'ssd-reflection');
+                e.target.classList.add('bg-green-500');
+                e.target.textContent = "Good Answer!";
+                e.target.disabled = true;
+            } else {
+                alert("Think about how 'speed' affects loading times for games and large video files.");
+            }
+        });
+
+        // Section 7: Scenario
+        document.getElementById('reset-scenario').addEventListener('click', () => {
+            document.getElementById('scenario-answer').value = '';
+             const submitBtn = document.getElementById('submit-scenario');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('bg-green-500');
+            submitBtn.textContent = 'Submit Answer';
+        });
+
+        document.getElementById('submit-scenario').addEventListener('click', (e) => {
+            const answer = document.getElementById('scenario-answer').value.toLowerCase();
+            let score = 0;
+            if (answer.includes('durab') || answer.includes('moving parts') || answer.includes('drop')) score++;
+            if (answer.includes('portab') || answer.includes('light') || answer.includes('small') || answer.includes('carry')) score++;
+            if (answer.includes('capac') || answer.includes('size') || answer.includes('large files')) score++;
+            if (answer.includes('speed') || answer.includes('fast')) score++;
+            if (answer.includes('reliab')) score++;
+
+            if (score >= 3) {
+                 addXP(125, 'scenario-task');
+                 grantAchievement('scenario');
+                 e.target.classList.add('bg-green-500');
+                 e.target.textContent = "Excellent Analysis!";
+                 e.target.disabled = true;
+            } else {
+                alert(`Good start, but you need to mention at least 3 characteristics. You mentioned ${score}. Try to include terms like durability, portability, and capacity.`);
+            }
+        });
+        
+        // Section 8: Pros and Cons
+        function initProsConsTask() {
+            const itemsContainer = document.getElementById('pros-cons-items');
+            itemsContainer.innerHTML = '';
+            const items = [
+                { text: "Very cheap per GB", type: "magnetic-pro" },
+                { text: "Lots of moving parts (less durable)", type: "magnetic-con" },
+                { text: "Huge capacities available", type: "magnetic-pro" },
+                { text: "Slower read/write speeds than SSD", type: "magnetic-con" },
+                { text: "Very cheap to manufacture", type: "optical-pro" },
+                { text: "Extremely portable (light and thin)", type: "optical-pro" },
+                { text: "Very slow write speeds", type: "optical-con" },
+                { text: "Easily scratched and damaged", type: "optical-con" },
+                { text: "Very low storage capacity", type: "optical-con" },
+                { text: "Extremely fast read/write speeds", type: "solid-state-pro" },
+                { text: "Very durable (no moving parts)", type: "solid-state-pro" },
+                { text: "Low power consumption", type: "solid-state-pro" },
+                { text: "Expensive per GB", type: "solid-state-con" },
+                { text: "Memory cells wear out over time", type: "solid-state-con" },
+            ];
+            shuffleArray(items); 
+
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.textContent = item.text;
+                div.dataset.type = item.type;
+                div.draggable = true;
+                div.classList.add('draggable', 'card', 'p-2', 'rounded-lg', 'text-sm', 'text-center');
+                itemsContainer.appendChild(div);
+            });
+            
+            setupDragAndDrop('section-8', (dragged, dropped) => {
+                 if (dragged.dataset.type === dropped.dataset.accept) {
+                    dropped.appendChild(dragged);
+                    dragged.draggable = false;
+                    dragged.classList.remove('draggable');
+                    checkProsConsCompletion();
+                }
+            });
+        }
+        
+        function checkProsConsCompletion() {
+            if (document.querySelectorAll('#pros-cons-items .draggable').length === 0) {
+                 addXP(150, 'pros-cons-task');
+                 document.querySelectorAll('#pros-cons-task .drop-zone').forEach(dz => dz.classList.add('correct'));
+            }
+        }
+        
+        document.getElementById('reset-pros-cons').addEventListener('click', () => {
+             document.querySelectorAll('#pros-cons-task .drop-zone').forEach(dz => {
+                dz.innerHTML = '';
+                dz.classList.remove('correct');
+             });
+             initProsConsTask();
+        });
+
+
+        // Section 9: Mistakes Quiz
+         function initMistakesQuiz() {
+            const quizContainers = document.querySelectorAll('#mistakes-quiz .flex');
+            const options = ['True', 'False'];
+            
+            quizContainers.forEach(container => {
+                container.innerHTML = ''; // Clear existing
+                let shuffledOptions = [...options];
+                shuffleArray(shuffledOptions);
+                shuffledOptions.forEach(opt => {
+                    const button = document.createElement('button');
+                    button.textContent = opt;
+                    button.classList.add('btn', 'flex-1', 'p-2', 'rounded-lg', 'bg-slate-200');
+                    button.addEventListener('click', handleMistakeButtonClick);
+                    container.appendChild(button);
+                });
+            });
+        }
+
+        function handleMistakeButtonClick(e) {
+             const button = e.target;
+             const buttonGroup = button.parentElement;
+             const questionId = buttonGroup.dataset.question;
+             const answer = buttonGroup.dataset.answer;
+             const selected = button.textContent.trim().toLowerCase();
+            
+             if (state.tasksCompleted.has(`mistake-q${questionId}`)) return;
+
+             if (selected === answer) {
+                 button.classList.remove('bg-slate-200');
+                 button.classList.add('bg-green-500', 'text-white');
+                 addXP(25, `mistake-q${questionId}`);
+             } else {
+                  button.classList.remove('bg-slate-200');
+                  button.classList.add('bg-red-500', 'text-white');
+             }
+             Array.from(buttonGroup.children).forEach(btn => btn.disabled = true);
+        }
+
+        document.getElementById('reset-mistakes-quiz').addEventListener('click', initMistakesQuiz);
+
+        // Section 10: Exam Practice
+        document.querySelectorAll('.exam-answer').forEach(textarea => {
+            textarea.addEventListener('input', () => {
+                const minLength = parseInt(textarea.dataset.minLength);
+                const parent = textarea.closest('.card');
+                const markSchemeButton = parent.querySelector('.exam-mark-scheme-btn');
+
+                const isEnabled = textarea.value.length >= minLength;
+
+                markSchemeButton.disabled = !isEnabled;
+                
+                if (isEnabled) {
+                    markSchemeButton.classList.remove('lock-icon');
+                } else {
+                    markSchemeButton.classList.add('lock-icon');
+                }
+            });
+        });
+
+        document.querySelectorAll('.exam-mark-scheme-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const parent = e.target.closest('.card');
+                const scheme = parent.querySelector('.exam-mark-scheme');
+                scheme.classList.toggle('hidden');
+                button.textContent = scheme.classList.contains('hidden') ? 'Show Mark Scheme' : 'Hide Mark Scheme';
+                if(!scheme.classList.contains('hidden')) {
+                    checkAllExamsAttempted();
+                }
+            });
+        });
+
+         document.querySelectorAll('.exam-reset-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const parent = e.target.closest('.card');
+                parent.querySelector('textarea').value = '';
+                parent.querySelector('.exam-mark-scheme').classList.add('hidden');
+                const markBtn = parent.querySelector('.exam-mark-scheme-btn');
+                markBtn.disabled = true;
+                markBtn.classList.add('lock-icon');
+                markBtn.textContent = 'Show Mark Scheme';
+            });
+        });
+
+        function checkAllExamsAttempted() {
+            const allAttempted = Array.from(document.querySelectorAll('.exam-answer'))
+                                      .every(ta => {
+                                          const parent = ta.closest('.card');
+                                          const markSchemeShown = !parent.querySelector('.exam-mark-scheme').classList.contains('hidden');
+                                          return markSchemeShown;
+                                      });
+            if(allAttempted) {
+                addXP(200, 'exam-practice');
+                grantAchievement('exam');
+            }
+        }
+
+        // Drawing Canvas Logic
+        const canvas = document.getElementById('drawing-canvas');
+        const ctx = canvas.getContext('2d');
+        let drawing = false;
+
+        function getPointerPosition(event) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        function startDrawing(e) {
+            e.preventDefault();
+            drawing = true;
+            const pos = getPointerPosition(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+            e.preventDefault();
+            const pos = getPointerPosition(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            drawing = false;
+            ctx.beginPath();
+        }
+        
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+
+        document.getElementById('clear-canvas-btn').addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+        
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#4f46e5';
+
+
+        // Section 11: Extension
+        document.getElementById('reset-extension').addEventListener('click', () => {
+            document.getElementById('extension-answer').value = '';
+            const submitBtn = document.getElementById('submit-extension');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('bg-green-500');
+            submitBtn.textContent = 'Submit Research';
+        });
+
+        document.getElementById('submit-extension').addEventListener('click', (e) => {
+            const answer = document.getElementById('extension-answer').value;
+            if (answer.length > 50) {
+                addXP(100, 'extension-task');
+                e.target.textContent = "Research Submitted!";
+                e.target.disabled = true;
+                e.target.classList.add('bg-green-500');
+            } else {
+                alert("Please write a more detailed description based on your research.");
+            }
+        });
+        
+        // Section 12: Summary Quiz
+        function initSummaryQuiz() {
+            const quizContainer = document.getElementById('summary-quiz');
+            quizContainer.innerHTML = '';
+            const questions = [
+                {
+                    qid: 1,
+                    question: "A gamer wants the fastest possible loading times for their games. Which storage characteristic is their highest priority?",
+                    answers: [
+                        { text: "Capacity", correct: false, feedback: "Not quite. While capacity is important for storing games, it doesn't affect how quickly they load." },
+                        { text: "Cost", correct: false, feedback: "Incorrect. Cost is a budget consideration, not a performance one. The fastest options are usually more expensive." },
+                        { text: "Speed", correct: true, feedback: "Correct! Read/write speed directly impacts how quickly game files can be accessed from the drive, leading to faster loading." }
+                    ]
+                },
+                {
+                    qid: 2,
+                    question: "Why is an SSD generally considered more suitable for a laptop than an HDD?",
+                    answers: [
+                        { text: "It has a higher capacity.", correct: false, feedback: "Incorrect. For the same price, HDDs usually offer much higher storage capacity than SSDs." },
+                        { text: "It is more durable due to having no moving parts.", correct: true, feedback: "Correct! Laptops are moved around, and the lack of moving parts makes an SSD much more resistant to damage from knocks and bumps." },
+                        { text: "It is cheaper per gigabyte.", correct: false, feedback: "Not quite. SSDs are significantly more expensive per gigabyte than traditional HDDs." }
+                    ]
+                },
+                {
+                    qid: 3,
+                    question: "Which of the following is an example of volatile memory?",
+                    answers: [
+                        { text: "Hard Disk Drive (HDD)", correct: false, feedback: "Incorrect. HDDs are non-volatile; they store data permanently using magnetism, even with no power." },
+                        { text: "RAM", correct: true, feedback: "Correct! RAM (Random Access Memory) is volatile, meaning it loses all its data as soon as the power is turned off. This is why we need secondary storage." },
+                        { text: "Blu-Ray Disc", correct: false, feedback: "Incorrect. Optical discs like Blu-Ray are non-volatile and are designed for long-term storage." }
+                    ]
+                },
+                 {
+                    qid: 4,
+                    question: "Which storage type uses a laser to read and write data by creating pits and lands on a disc's surface?",
+                    answers: [
+                        { text: "Magnetic", correct: false, feedback: "Incorrect. Magnetic storage uses read/write heads to alter the magnetic state of a surface." },
+                        { text: "Solid-State", correct: false, feedback: "Incorrect. Solid-state storage uses transistors and traps electrons in gates to store data." },
+                        { text: "Optical", correct: true, feedback: "Correct! This is the defining mechanism of optical storage like CDs, DVDs, and Blu-Ray discs." }
+                    ]
+                },
+                {
+                    qid: 5,
+                    question: "A company needs to archive vast amounts of data very cheaply and doesn't need to access it often. Which storage medium is most suitable?",
+                    answers: [
+                        { text: "A large Solid-State Drive (SSD)", correct: false, feedback: "Incorrect. SSDs are far too expensive for archiving vast quantities of data." },
+                        { text: "Magnetic Tape", correct: true, feedback: "Correct! Magnetic tape has an enormous capacity and a very low cost per gigabyte, making it ideal for long-term backups and archiving where speed is not a priority." },
+                        { text: "A series of Blu-Ray discs", correct: false, feedback: "While an option, managing hundreds of discs is inefficient compared to the capacity of a single magnetic tape." }
+                    ]
+                },
+                {
+                    qid: 6,
+                    question: "What is the main drawback of magnetic storage like a Hard Disk Drive (HDD)?",
+                    answers: [
+                        { text: "It is volatile.", correct: false, feedback: "Incorrect. A key feature of all secondary storage, including HDDs, is that it is non-volatile." },
+                        { text: "It has moving parts, making it less durable.", correct: true, feedback: "Correct! The spinning platters and moving read/write arm are mechanical components that can be damaged by impact, making HDDs less durable than SSDs." },
+                        { text: "It has a very low capacity.", correct: false, feedback: "Incorrect. HDDs are known for having very high capacities for a low cost, often much higher than similarly priced SSDs." }
+                    ]
+                },
+                {
+                    qid: 7,
+                    question: "In the storage hierarchy, which type of memory is the fastest but has the smallest capacity?",
+                    answers: [
+                        { text: "Secondary Storage", correct: false, feedback: "Incorrect. Secondary storage is at the bottom of the pyramid; it's the slowest and has the largest capacity." },
+                        { text: "RAM", correct: false, feedback: "Not quite. RAM is very fast, but CPU Cache and Registers are even faster and smaller." },
+                        { text: "CPU Registers", correct: true, feedback: "Correct! Registers are located directly inside the CPU for the fastest possible access, but they can only hold a tiny amount of data at a time." }
+                    ]
+                },
+                {
+                    qid: 8,
+                    question: "What does the term 'portability' refer to in the context of secondary storage?",
+                    answers: [
+                        { text: "How fast the data can be read from the device.", correct: false, feedback: "Incorrect. This describes the 'Speed' of a device." },
+                        { text: "How easily the device can be carried around.", correct: true, feedback: "Correct! Portability relates to the size, weight, and convenience of transporting a storage device." },
+                        { text: "How long the device will last without breaking.", correct: false, feedback: "Incorrect. This describes the 'Reliability' or 'Durability' of a device." }
+                    ]
+                },
+                {
+                    qid: 9,
+                    question: "A standard single-layer DVD has a typical capacity of:",
+                    answers: [
+                        { text: "700MB", correct: false, feedback: "Incorrect. This is the typical capacity of a CD." },
+                        { text: "4.7GB", correct: true, feedback: "Correct! A standard single-layer DVD holds approximately 4.7GB of data." },
+                        { text: "25GB", correct: false, feedback: "Incorrect. This is the capacity of a standard single-layer Blu-Ray disc." }
+                    ]
+                },
+                {
+                    qid: 10,
+                    question: "Which of these is NOT an example of solid-state storage?",
+                    answers: [
+                        { text: "USB Flash Drive", correct: false, feedback: "Incorrect. A USB flash drive is a prime example of solid-state storage." },
+                        { text: "Blu-Ray Disc", correct: true, feedback: "Correct! A Blu-Ray disc is a type of optical storage, as it uses a laser to read and write data." },
+                        { text: "SD Card", correct: false, feedback: "Incorrect. An SD card, used in cameras and phones, is a form of solid-state storage." }
+                    ]
+                }
+            ];
+
+            shuffleArray(questions);
+
+            questions.forEach(q => {
+                const questionCard = document.createElement('div');
+                questionCard.classList.add('card', 'p-4', 'rounded-lg', 'summary-question');
+                questionCard.dataset.qid = q.qid;
+                
+                const questionText = document.createElement('p');
+                questionText.classList.add('mb-3', 'font-semibold');
+                questionText.textContent = q.question;
+
+                const answersDiv = document.createElement('div');
+                answersDiv.classList.add('flex', 'flex-col', 'gap-2', 'answer-buttons');
+
+                shuffleArray(q.answers);
+
+                q.answers.forEach(a => {
+                    const button = document.createElement('button');
+                    button.classList.add('btn', 'bg-slate-200', 'p-2', 'rounded-lg', 'text-left', 'hover:bg-slate-300');
+                    button.textContent = a.text;
+                    button.dataset.correct = a.correct;
+                    button.dataset.feedback = a.feedback;
+                    answersDiv.appendChild(button);
+                });
+
+                const feedbackBox = document.createElement('div');
+                feedbackBox.classList.add('feedback-box', 'hidden', 'mt-4', 'p-3', 'rounded-lg');
+                
+                questionCard.appendChild(questionText);
+                questionCard.appendChild(answersDiv);
+                questionCard.appendChild(feedbackBox);
+                quizContainer.appendChild(questionCard);
+            });
+
+            document.querySelectorAll('.summary-question .answer-buttons button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const questionDiv = e.target.closest('.summary-question');
+                    if (questionDiv.dataset.answered) return;
+
+                    questionDiv.dataset.answered = 'true';
+                    
+                    const isCorrect = e.target.dataset.correct === 'true';
+                    const feedbackText = e.target.dataset.feedback;
+                    const feedbackBox = questionDiv.querySelector('.feedback-box');
+                    
+                    feedbackBox.innerHTML = feedbackText;
+                    feedbackBox.classList.remove('hidden');
+
+                    questionDiv.querySelectorAll('.answer-buttons button').forEach(btn => {
+                        btn.disabled = true;
+                        btn.classList.remove('hover:bg-slate-300');
+                        if (btn.dataset.correct === 'true') {
+                            btn.classList.remove('bg-slate-200');
+                            btn.classList.add('bg-green-500', 'text-white');
+                        }
+                    });
+
+                    if (isCorrect) {
+                        feedbackBox.classList.add('bg-green-100', 'text-green-800', 'border-l-4', 'border-green-500');
+                        addXP(15, `summary-q-${questionDiv.dataset.qid}`);
+                    } else {
+                        feedbackBox.classList.add('bg-red-100', 'text-red-800', 'border-l-4', 'border-red-500');
+                        e.target.classList.add('bg-red-500', 'text-white');
+                    }
+                });
+            });
+        }
+
+        document.getElementById('reset-summary-quiz').addEventListener('click', initSummaryQuiz);
+
+
+        // Section 12: Easter Egg
+        document.getElementById('easter-egg').addEventListener('click', () => {
+            addXP(25, 'easter-egg');
+            grantAchievement('easterEgg');
+        });
+
+        // Section 14: Final Achievements
+        function updateFinalAchievements() {
+            const grid = document.getElementById('final-achievements-grid');
+            grid.innerHTML = ''; // Clear existing
+            
+            Object.values(achievementsData).forEach(ach => {
+                const isUnlocked = state.achievements.has(ach.id);
+                const card = document.createElement('div');
+                card.classList.add('card', 'p-4', 'rounded-lg', 'text-center', 'transition-all', 'duration-300');
+                if (isUnlocked) {
+                    card.classList.add('opacity-100');
+                } else {
+                    card.classList.add('opacity-40', 'filter', 'grayscale');
+                }
+                card.innerHTML = `
+                    <div class="text-5xl">${ach.icon}</div>
+                    <h4 class="font-bold mt-2">${ach.title}</h4>
+                    <p class="text-sm text-slate-500">${ach.desc}</p>
+                `;
+                grid.appendChild(card);
+            });
+        }
+        
+        // --- ACCESSIBILITY ---
+        const body = document.body;
+        document.getElementById('contrast-toggle').addEventListener('click', () => body.classList.toggle('high-contrast'));
+        document.getElementById('font-toggle').addEventListener('click', () => body.classList.toggle('dyslexia-font'));
+        document.getElementById('font-sm').addEventListener('click', () => body.style.fontSize = '14px');
+        document.getElementById('font-md').addEventListener('click', () => body.style.fontSize = '16px');
+        document.getElementById('font-lg').addEventListener('click', () => body.style.fontSize = '18px');
+        
+        // --- INITIALIZATION ---
+        function init() {
+            createQuickNav();
+            initStarterTask();
+            initFillInTheBlanks();
+            initCharacteristicsTask();
+            initProsConsTask();
+            initTypesQuiz();
+            initMistakesQuiz();
+            initSummaryQuiz();
+            updateXPUI();
+            updateFinalAchievements();
+            showSection(0);
+        }
+
+        init();
+    });
+    </script>
+</body>
+</html>

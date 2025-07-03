@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lexical Analysis Simulation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --primary-color: #16213e;
+            --secondary-color: #0f3460;
+            --accent-color: #e94560;
+            --text-color: #dcdcdc;
+            --highlight-color: #53bf9d;
+            --code-bg: #232946;
+            --border-radius: 12px;
+            --transition-speed: 0.5s;
+            --font-main: 'Inter', sans-serif;
+            --font-code: 'Fira Code', monospace;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            perspective: 1000px;
+        }
+
+        .simulation-container {
+            width: 95%;
+            max-width: 1200px;
+            height: 90vh;
+            max-height: 800px;
+            background: linear-gradient(145deg, var(--primary-color), var(--secondary-color));
+            border-radius: var(--border-radius);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: translateZ(0);
+        }
+        
+        #particle-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+        }
+
+        .header {
+            padding: 1.5rem 2rem;
+            background: rgba(0,0,0,0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            z-index: 10;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 0 5px var(--accent-color), 0 0 15px var(--accent-color);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        @keyframes glow {
+            from { text-shadow: 0 0 5px var(--accent-color), 0 0 15px var(--accent-color); }
+            to { text-shadow: 0 0 10px var(--accent-color), 0 0 25px var(--accent-color); }
+        }
+
+        .header p {
+            font-size: 1rem;
+            opacity: 0.8;
+            margin-top: 0.25rem;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .step {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity var(--transition-speed) cubic-bezier(0.25, 0.8, 0.25, 1), transform var(--transition-speed) cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform: translateX(50px) scale(0.98);
+            will-change: transform, opacity;
+        }
+
+        .step.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0) scale(1);
+            z-index: 5;
+        }
+        
+        .step.exiting {
+            transform: translateX(-50px) scale(0.98);
+        }
+
+        .step-content {
+            width: 100%;
+            max-width: 900px;
+            text-align: center;
+        }
+
+        .step h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--highlight-color);
+        }
+
+        .step p, .step ul {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .code-container {
+            background-color: var(--code-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            font-family: var(--font-code);
+            font-size: 1rem;
+            text-align: left;
+            margin: 1rem auto;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .code-container pre {
+             white-space: pre-wrap;
+             word-wrap: break-word;
+        }
+        
+        .code-comment { color: #6a9955; }
+        .code-keyword { color: #c586c0; font-weight: bold; } /* Changed for Python keywords like 'if' etc. */
+        .code-identifier { color: #9cdcfe; }
+        .code-operator { color: #d4d4d4; }
+        .code-constant { color: #b5cea8; }
+        .code-string { color: #ce9178; }
+        .code-error { color: #f44747; background-color: rgba(244, 71, 71, 0.2); text-decoration: underline wavy #f44747; padding: 2px 0; }
+        .code-syntax-error { color: #f44747; background-color: rgba(244, 71, 71, 0.2); padding: 2px; border-radius: 4px; }
+
+
+        .line {
+            display: block;
+            transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        
+        .line.fade-out {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        .token-stream-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 1rem;
+            min-height: 50px;
+        }
+
+        .token {
+            background: var(--secondary-color);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-family: var(--font-code);
+            font-size: 0.9rem;
+            border: 1px solid var(--highlight-color);
+            opacity: 0;
+            transform: translateY(20px);
+            animation: token-appear 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+        }
+
+        @keyframes token-appear {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .symbol-table, .error-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 2rem;
+            align-items: start;
+        }
+
+        .table-card {
+            background: rgba(0,0,0,0.2);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            height: 100%;
+        }
+        .table-card h3 {
+            color: var(--highlight-color);
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--highlight-color);
+            padding-bottom: 0.5rem;
+        }
+        
+        .table-card table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table-card th, .table-card td {
+            padding: 0.75rem;
+            text-align: left;
+            font-family: var(--font-code);
+        }
+        
+        .table-card tr {
+            opacity: 0;
+            transform: translateX(-20px);
+            animation: row-appear 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+        }
+
+        @keyframes row-appear {
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .navigation {
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-btn {
+            background: linear-gradient(145deg, var(--accent-color), #c93b51);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3);
+            transform: translateZ(0); /* Promotes to composite layer */
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.5);
+        }
+        .nav-btn:active:not(:disabled) {
+             transform: translateY(-1px);
+        }
+        
+        .nav-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            opacity: 0.6;
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        
+        #reset-btn {
+            background: linear-gradient(145deg, var(--highlight-color), #45a083);
+            box-shadow: 0 4px 15px rgba(83, 191, 157, 0.3);
+        }
+        #reset-btn:hover:not(:disabled) {
+            box-shadow: 0 6px 20px rgba(83, 191, 157, 0.5);
+        }
+        
+        span.ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple-effect 0.6s linear;
+            background-color: rgba(255, 255, 255, 0.7);
+        }
+        @keyframes ripple-effect {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--primary-color);
+            padding: 2.5rem;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transform: scale(0.95);
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal h2 { color: var(--highlight-color); margin-bottom: 1rem; }
+        .modal p { margin-bottom: 1.5rem; line-height: 1.7; }
+        .modal-btn {
+             /* Use nav-btn styles for consistency */
+            background: linear-gradient(145deg, var(--accent-color), #c93b51);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .modal-btn:hover { background-color: #c93b51; transform: translateY(-2px); }
+
+        /* Quiz Styles */
+        .quiz-container { width: 100%; max-width: 800px; }
+        .question-container {
+             background: rgba(0,0,0,0.2);
+             padding: 2rem;
+             border-radius: var(--border-radius);
+             margin-bottom: 1.5rem;
+        }
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            background: var(--secondary-color);
+            border: 2px solid transparent;
+            border-radius: 8px;
+            color: var(--text-color);
+            text-align: left;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .quiz-option:hover { border-color: var(--accent-color); }
+        .quiz-option.selected { background: var(--accent-color); color: white; border-color: var(--accent-color); }
+        .quiz-option.correct { background: var(--highlight-color); color: var(--primary-color); font-weight: bold; border-color: var(--highlight-color); }
+        .quiz-option.incorrect { background: #f44747; color: white; border-color: #f44747; }
+
+        .quiz-input {
+            width: 100%;
+            padding: 1rem;
+            background: var(--code-bg);
+            border: 2px solid rgba(255,255,255,0.2);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            font-size: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        .quiz-input.invalid-input {
+            border-color: #f44747;
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .drag-drop-container {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .drag-source {
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            background: rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            align-items: center;
+        }
+        .drop-targets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+        .drop-target-wrapper { text-align: center; }
+        .drop-target {
+            background: var(--code-bg);
+            min-height: 100px;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            border: 2px dashed var(--secondary-color);
+            transition: all 0.3s ease;
+        }
+        .drop-target-wrapper h4 { margin-bottom: 0.5rem; color: var(--highlight-color); }
+        .draggable {
+            background: var(--secondary-color);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: grab;
+            user-select: none;
+            font-family: var(--font-code);
+            transition: all 0.3s ease;
+            width: fit-content;
+            margin: auto;
+        }
+        .draggable.dragging {
+            opacity: 0.5;
+            transform: scale(1.05);
+        }
+        body.is-dragging * {
+            cursor: grabbing !important;
+        }
+        .drop-target.over {
+            border-color: var(--highlight-color);
+            background-color: rgba(83, 191, 157, 0.1);
+            transform: scale(1.02);
+        }
+
+        #quiz-feedback, #quiz-results {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 8px;
+            display: none;
+        }
+
+        #quiz-feedback.correct { background: rgba(83, 191, 157, 0.2); border-left: 5px solid var(--highlight-color); }
+        #quiz-feedback.incorrect { background: rgba(244, 71, 71, 0.2); border-left: 5px solid #f44747; }
+
+        .mark-scheme {
+            background: rgba(0,0,0,0.15);
+            text-align: left;
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .instructions {
+            background: rgba(83, 191, 157, 0.1);
+            border-left: 4px solid var(--highlight-color);
+            padding: 1rem;
+            margin-bottom: 2rem;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+            text-align: left;
+        }
+        .instructions p {
+            margin: 0;
+        }
+        .instructions strong {
+            color: var(--highlight-color);
+        }
+
+        @media (max-width: 768px) {
+            .simulation-container {
+                width: 100%;
+                height: 100vh;
+                border-radius: 0;
+            }
+            .header { padding: 1rem; }
+            .header h1 { font-size: 1.5rem; }
+            .step { padding: 1rem; }
+            .symbol-table, .error-comparison { grid-template-columns: 1fr; }
+            .drag-drop-container { grid-template-columns: 1fr; }
+            .navigation { padding: 0.5rem 1rem; }
+            .nav-btn { padding: 0.6rem 1.2rem; font-size: 0.9rem; }
+        }
+
+    </style>
+</head>
+<body>
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="simulation-container">
+        <header class="header">
+            <h1>Lexical Analysis: The First Stage of Compilation</h1>
+            <p>An interactive simulation for A-Level Computer Science (9618)</p>
+        </header>
+
+        <main class="main-content">
+            <!-- Step 1: Introduction -->
+            <section id="step-1" class="step active">
+                <div class="step-content">
+                    <div class="instructions">
+                        <p><strong>Welcome!</strong> This simulation will guide you through Lexical Analysis. Use the <strong>Next/Previous</strong> buttons or the <strong>Right/Left Arrow Keys</strong> to navigate.</p>
+                    </div>
+                    <h2>What is Lexical Analysis?</h2>
+                    <p>Lexical Analysis is the very first phase in a compiler. Its main job is to read the source code you write and break it down into a series of individual "tokens".</p>
+                    <p>Think of it like breaking down an English sentence into words and punctuation marks. Before we can understand the sentence's meaning (syntax and semantics), we first need to identify its basic components.</p>
+                    <button class="nav-btn" onclick="showModal('intro-modal')">Why is this important?</button>
+                </div>
+            </section>
+
+            <!-- Step 2: Raw Code -->
+            <section id="step-2" class="step">
+                <div class="step-content">
+                     <div class="instructions">
+                        <p><strong>Step 1: The Input.</strong> Here is a simple piece of Python code, exactly as a programmer might write it, including comments and extra spaces.</p>
+                    </div>
+                    <h2>The Source Code</h2>
+                    <p>The Lexical Analyzer starts with the raw text of a program. This includes everything: keywords, variables, numbers, operators, and things the computer doesn't need, like comments and formatting.</p>
+                    <div class="code-container">
+                        <pre id="raw-code"><code class="language-python"><span class="line"><span class="code-comment"># This program calculates an area</span></span>
+<span class="line"><span class="code-identifier">width</span> <span class="code-operator">=</span> <span class="code-constant">10</span></span>
+<span class="line"></span>
+<span class="line"><span class="code-identifier">height</span> <span class="code-operator">=</span> <span class="code-constant">5</span></span>
+<span class="line"><span class="code-identifier">area</span> <span class="code-operator">=</span> <span class="code-identifier">width</span> <span class="code-operator">*</span> <span class="code-identifier">height</span></span>
+</code></pre>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Step 3: Cleaning the code -->
+            <section id="step-3" class="step">
+                <div class="step-content">
+                    <div class="instructions">
+                        <p><strong>Step 2: Pre-processing.</strong> Watch as the analyzer cleans up the code. Click the "Clean Code" button to start.</p>
+                    </div>
+                    <h2>Removing Whitespace & Comments</h2>
+                    <p>The first task is to simplify the code. Comments are for humans only, and inconsistent spacing (like blank lines) doesn't change the program's logic. Removing them makes the code easier for the next stages to process.</p>
+                    <div class="code-container">
+                        <pre id="cleaned-code"><code class="language-python"><span class="line" data-line="comment"><span class="code-comment"># This program calculates an area</span></span>
+<span class="line" data-line="width"><span class="code-identifier">width</span> <span class="code-operator">=</span> <span class="code-constant">10</span></span>
+<span class="line" data-line="blank"></span>
+<span class="line" data-line="height"><span class="code-identifier">height</span> <span class="code-operator">=</span> <span class="code-constant">5</span></span>
+<span class="line" data-line="area"><span class="code-identifier">area</span> <span class="code-operator">=</span> <span class="code-identifier">width</span> <span class="code-operator">*</span> <span class="code-identifier">height</span></span>
+</code></pre>
+                    </div>
+                     <button id="clean-code-btn" class="nav-btn">Clean Code</button>
+                </div>
+            </section>
+
+            <!-- Step 4: Symbol Table -->
+            <section id="step-4" class="step">
+                <div class="step-content">
+                    <div class="instructions">
+                        <p><strong>Step 3: The Symbol Table.</strong> The analyzer uses a data structure called a Symbol Table to keep track of the code's components.</p>
+                    </div>
+                    <h2>The Symbol Table & Tokenisation</h2>
+                    <p>As the analyzer scans the code, it identifies different parts (lexemes). It uses a <strong>Symbol Table</strong> to assign a unique "token" (a simple code) to each keyword, operator, and constant. It also records the identifiers (variable names) it finds.</p>
+                    
+                    <div class="symbol-table">
+                        <div class="table-card">
+                            <h3>Symbol Table (Pre-defined)</h3>
+                            <table id="symbol-table-fixed">
+                                <thead><tr><th>Lexeme</th><th>Token Type</th></tr></thead>
+                                <tbody>
+                                    <tr style="animation-delay: 0.1s;"><td>if, for, while...</td><td>KEYWORD</td></tr>
+                                    <tr style="animation-delay: 0.2s;"><td>=, +, *</td><td>OPERATOR</td></tr>
+                                    <tr style="animation-delay: 0.3s;"><td>(integer)</td><td>INTEGER_CONST</td></tr>
+                                    <tr style="animation-delay: 0.4s;"><td>(string)</td><td>STRING_CONST</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="table-card">
+                            <h3>Symbol Table (User Identifiers)</h3>
+                             <table id="symbol-table-vars">
+                                <thead><tr><th>Lexeme</th><th>Token Type</th></tr></thead>
+                                <tbody>
+                                    <tr style="animation-delay: 0.5s;"><td>width</td><td>IDENTIFIER</td></tr>
+                                    <tr style="animation-delay: 0.6s;"><td>height</td><td>IDENTIFIER</td></tr>
+                                    <tr style="animation-delay: 0.7s;"><td>area</td><td>IDENTIFIER</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+             <!-- Step 5: Token Stream -->
+            <section id="step-5" class="step">
+                 <div class="step-content">
+                     <div class="instructions">
+                        <p><strong>Step 4: Creating the Token Stream.</strong> The final output of lexical analysis is a stream of tokens. Click "Generate Tokens" to see it happen.</p>
+                    </div>
+                    <h2>Generating the Token Stream</h2>
+                    <p>The analyzer reads the cleaned code from left to right, one lexeme at a time. It looks up each lexeme in the symbol table to find its token type and produces a continuous stream of these tokens. This stream is much easier for the next stage (the parser) to understand.</p>
+                    <div class="code-container">
+                        <pre id="token-source-code"><code><span class="code-identifier">width</span> <span class="code-operator">=</span> <span class="code-constant">10</span>
+<span class="code-identifier">height</span> <span class="code-operator">=</span> <span class="code-constant">5</span>
+<span class="code-identifier">area</span> <span class="code-operator">=</span> <span class="code-identifier">width</span> <span class="code-operator">*</span> <span class="code-identifier">height</span></code></pre>
+                    </div>
+                    <button id="generate-tokens-btn" class="nav-btn">Generate Tokens</button>
+                    <div class="token-stream-container" id="token-stream"></div>
+                </div>
+            </section>
+
+            <!-- Step 6: Lexical vs Syntax Errors -->
+            <section id="step-6" class="step">
+                 <div class="step-content">
+                    <div class="instructions">
+                        <p><strong>Step 5: Error Detection.</strong> It's crucial to know what kind of errors are found at this stage.</p>
+                    </div>
+                    <h2>Lexical vs. Syntax Errors</h2>
+                    <p>This is a common point of confusion. The Lexical Analyzer finds errors with the "words" themselves, while the next stage (Syntax Analyzer) finds errors with the "grammar" or sentence structure.</p>
+                    <div class="error-comparison">
+                        <div class="table-card">
+                            <h3>Lexical Error (Invalid "Word")</h3>
+                            <div class="code-container">
+                                <pre><code><span class="code-identifier code-error">user$age</span> <span class="code-operator">=</span> <span class="code-constant">25</span></code></pre>
+                            </div>
+                            <p style="text-align: left; font-size: 1rem;">The analyzer fails because '$' is not a valid character for an identifier token. It's like a spelling mistake.</p>
+                        </div>
+                        <div class="table-card">
+                            <h3>Syntax Error (Invalid "Grammar")</h3>
+                             <div class="code-container">
+                                <pre><code><span class="code-identifier">x</span> <span class="code-operator">=</span> <span class="code-constant">5</span> <span class="code-syntax-error">+</span></code></pre>
+                            </div>
+                            <p style="text-align: left; font-size: 1rem;">Here, all the tokens are valid. But the *order* is wrong. An operator like '+' needs something after it. This is a grammar mistake.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 7: Quiz -->
+            <section id="step-7" class="step">
+                <div class="step-content quiz-container">
+                    <div class="instructions">
+                        <p><strong>Final Step: Test Your Knowledge.</strong> Answer the questions to see what you've learned about Lexical Analysis.</p>
+                    </div>
+                    <h2>Knowledge Check</h2>
+                    <div id="quiz-content">
+                        <!-- Questions will be dynamically inserted here -->
+                    </div>
+                    <div id="quiz-feedback"></div>
+                    <div id="quiz-results" class="table-card" style="text-align:center;"></div>
+                    <button id="submit-quiz-btn" class="nav-btn" style="margin-top: 1rem;">Submit Answer</button>
+                    <button id="next-question-btn" class="nav-btn" style="display:none; margin-top: 1rem;">Next Question</button>
+                </div>
+            </section>
+            
+            <!-- Step 8: Summary -->
+            <section id="step-8" class="step">
+                <div class="step-content">
+                    <h2>Simulation Complete!</h2>
+                    <p>You have completed the Lexical Analysis simulation. You should now understand its key roles:</p>
+                    <ul style="text-align: left; max-width: 600px; margin: 1.5rem auto;">
+                        <li style="margin-bottom: 0.5rem;">Removing unnecessary comments and whitespace.</li>
+                        <li style="margin-bottom: 0.5rem;">Using a Symbol Table to categorize lexemes.</li>
+                        <li style="margin-bottom: 0.5rem;">Converting source code into a stream of tokens for the parser.</li>
+                        <li style="margin-bottom: 0.5rem;">Identifying basic lexical errors (invalid characters).</li>
+                        <li style="margin-bottom: 0.5rem;">Distinguishing between lexical and syntax errors.</li>
+                    </ul>
+                    <p>Use the <strong>Reset</strong> button to go through the simulation again.</p>
+                </div>
+            </section>
+
+
+        </main>
+
+        <nav class="navigation">
+            <button id="prev-btn" class="nav-btn">Previous Step</button>
+            <span>Step <span id="current-step">1</span> of 8</span>
+            <div>
+                <button id="reset-btn" class="nav-btn">Reset</button>
+                <button id="next-btn" class="nav-btn">Next Step</button>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Modals -->
+    <div id="intro-modal" class="modal">
+        <div class="modal-content">
+            <h2>Why is Lexical Analysis important?</h2>
+            <p>Without lexical analysis, the compiler's later stages (like the parser) would have a much harder job. They would have to deal with comments, variable spacing, and the raw text of identifiers and keywords. By converting everything into a uniform stream of tokens, the lexical analyzer simplifies the source code into a format that is efficient for a computer to process.</p>
+            <button class="modal-btn" onclick="closeAllModals()">Got it!</button>
+        </div>
+    </div>
+    
+    <div id="error-modal" class="modal">
+        <div class="modal-content">
+            <h2>Explanation of the Error</h2>
+            <p>In the example <code>user$age = 25</code>, the identifier <code>user$age</code> contains an illegal character ('$').</p>
+            <p>Most programming languages, including Python, have strict rules for what characters can be used in identifiers (variable names). Typically, they only allow letters, numbers, and underscores. When the lexical analyzer encounters the '$', it doesn't match the pattern for a valid identifier and flags a lexical error. The compilation or interpretation process would stop here.</p>
+            <button class="modal-btn" onclick="closeAllModals()">Understood</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Caching ---
+            const dom = {
+                body: document.body,
+                steps: document.querySelectorAll('.step'),
+                prevBtn: document.getElementById('prev-btn'),
+                nextBtn: document.getElementById('next-btn'),
+                resetBtn: document.getElementById('reset-btn'),
+                currentStepSpan: document.getElementById('current-step'),
+                navigationSpan: document.querySelector('.navigation span'),
+                modals: document.querySelectorAll('.modal'),
+                cleanCodeBtn: document.getElementById('clean-code-btn'),
+                cleanedCodeContainer: document.getElementById('cleaned-code'),
+                generateTokensBtn: document.getElementById('generate-tokens-btn'),
+                tokenStreamContainer: document.getElementById('token-stream'),
+                quizContent: document.getElementById('quiz-content'),
+                submitQuizBtn: document.getElementById('submit-quiz-btn'),
+                nextQuestionBtn: document.getElementById('next-question-btn'),
+                quizFeedback: document.getElementById('quiz-feedback'),
+                quizResults: document.getElementById('quiz-results'),
+            };
+
+            // --- State Management ---
+            let currentState = {
+                currentStep: 1,
+                totalSteps: dom.steps.length,
+                isAnimating: false,
+                quiz: {
+                    currentQuestion: 0,
+                    score: 0,
+                    questions: [],
+                },
+                inputFocused: false,
+            };
+
+            // --- Quiz Data ---
+            const quizData = [
+                {
+                    type: 'mcq',
+                    question: "What is the primary purpose of lexical analysis?",
+                    options: [ "To optimize the code for speed.", "To convert source code into a stream of tokens.", "To check for logical errors in the program.", "To execute the program.", ],
+                    correctAnswer: "To convert source code into a stream of tokens."
+                },
+                {
+                    type: 'short-answer',
+                    question: "What two types of content are typically removed from source code during the pre-processing stage of lexical analysis?",
+                    correctAnswer: (answer) => {
+                        const lowerAnswer = answer.toLowerCase();
+                        return lowerAnswer.includes('comment') && (lowerAnswer.includes('whitespace') || lowerAnswer.includes('white space'));
+                    },
+                    markScheme: "Correct Answer: <strong>Comments</strong> and <strong>Whitespace</strong> (or blank lines/spaces). These are removed because they are not needed for the execution of the program and only serve to make the code readable for humans."
+                },
+                {
+                    type: 'drag-drop',
+                    question: "Categorize the following lexemes by dragging them to the correct token type.",
+                    items: ['count', '=', 'if', '42', '*'],
+                    categories: { 'KEYWORD': [], 'IDENTIFIER': [], 'OPERATOR': [], 'INTEGER_CONST': [], },
+                    correctMapping: { 'if': 'KEYWORD', 'count': 'IDENTIFIER', '=': 'OPERATOR', '*': 'OPERATOR', '42': 'INTEGER_CONST' }
+                },
+                {
+                    type: 'mcq',
+                    question: "A line of code reads 'x = 5 +'. What kind of error is this?",
+                    options: [ "Lexical Error", "Syntax Error", "Semantic Error", "No Error"],
+                    correctAnswer: "Syntax Error",
+                    explanation: "All the tokens ('x', '=', '5', '+') are valid on their own, but their arrangement (grammar) is incorrect. This is a syntax error found by the parser."
+                }
+            ];
+            
+            // --- Particle Background ---
+            const canvas = document.getElementById('particle-canvas');
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+            let animationFrameId;
+
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            function createParticles() {
+                particles = [];
+                const particleCount = Math.floor(canvas.width * canvas.height / 25000);
+                for (let i = 0; i < particleCount; i++) {
+                    particles.push({
+                        x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+                        vx: Math.random() * 0.3 - 0.15, vy: Math.random() * 0.3 - 0.15,
+                        radius: Math.random() * 1.5 + 1,
+                    });
+                }
+            }
+
+            function animateParticles() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(233, 69, 96, 0.4)';
+                    ctx.fill();
+                });
+                animationFrameId = requestAnimationFrame(animateParticles);
+            }
+            
+            // --- Navigation ---
+            function updateStep(newStep) {
+                if (currentState.isAnimating || newStep < 1 || newStep > currentState.totalSteps) return;
+
+                currentState.isAnimating = true;
+                const oldStep = currentState.currentStep;
+                const currentStepEl = dom.steps[oldStep - 1];
+                currentStepEl.classList.add('exiting');
+                currentState.currentStep = newStep;
+                
+                setTimeout(() => {
+                    currentStepEl.classList.remove('active', 'exiting');
+                    const newStepEl = dom.steps[newStep - 1];
+                    newStepEl.classList.add('active');
+                    dom.navigationSpan.innerHTML = `Step <span id="current-step">${newStep}</span> of ${currentState.totalSteps}`;
+                    updateNavButtons();
+                    runStepAnimations(newStep);
+                    currentState.isAnimating = false;
+                }, 500);
+            }
+
+            const nextStep = () => updateStep(currentState.currentStep + 1);
+            const prevStep = () => updateStep(currentState.currentStep - 1);
+            
+            function resetSimulation() {
+                dom.cleanedCodeContainer.innerHTML = `<span class="line" data-line="comment"><span class="code-comment"># This program calculates an area</span></span>
+<span class="line" data-line="width"><span class="code-identifier">width</span> <span class="code-operator">=</span> <span class="code-constant">10</span></span>
+<span class="line" data-line="blank"></span>
+<span class="line" data-line="height"><span class="code-identifier">height</span> <span class="code-operator">=</span> <span class="code-constant">5</span></span>
+<span class="line" data-line="area"><span class="code-identifier">area</span> <span class="code-operator">=</span> <span class="code-identifier">width</span> <span class="code-operator">*</span> <span class="code-identifier">height</span></span>`;
+                dom.cleanedCodeContainer.querySelectorAll('.line').forEach(l => {
+                    l.classList.remove('fade-out');
+                    l.style.display = 'block';
+                });
+                dom.cleanCodeBtn.style.display = 'block';
+                dom.cleanCodeBtn.disabled = false;
+                dom.tokenStreamContainer.innerHTML = '';
+                dom.generateTokensBtn.style.display = 'block';
+                dom.generateTokensBtn.disabled = false;
+                currentState.quiz.currentQuestion = 0;
+                currentState.quiz.score = 0;
+                dom.quizResults.style.display = 'none';
+                dom.quizFeedback.style.display = 'none';
+                dom.submitQuizBtn.style.display = 'block';
+                dom.nextQuestionBtn.style.display = 'none';
+                updateStep(1);
+            }
+
+            function updateNavButtons() {
+                dom.prevBtn.disabled = currentState.currentStep === 1;
+                dom.nextBtn.disabled = currentState.currentStep === currentState.totalSteps;
+            }
+
+            // --- Modal Logic ---
+            window.showModal = (id) => document.getElementById(id)?.classList.add('active');
+            window.closeAllModals = () => dom.modals.forEach(modal => modal.classList.remove('active'));
+
+            // --- Step-Specific Animations & Logic ---
+            const runStepAnimations = (step) => {
+                if (step === 7) startQuiz();
+            };
+
+            const handleCleanCode = () => {
+                if (currentState.isAnimating) return;
+                currentState.isAnimating = true;
+                dom.cleanCodeBtn.disabled = true;
+
+                const commentLine = dom.cleanedCodeContainer.querySelector('[data-line="comment"]');
+                const blankLine = dom.cleanedCodeContainer.querySelector('[data-line="blank"]');
+                if (commentLine) commentLine.classList.add('fade-out');
+                if (blankLine) blankLine.classList.add('fade-out');
+
+                setTimeout(() => {
+                    if (commentLine) commentLine.style.display = 'none';
+                    if (blankLine) blankLine.style.display = 'none';
+                    currentState.isAnimating = false;
+                }, 600);
+            };
+
+            const handleGenerateTokens = () => {
+                if (currentState.isAnimating) return;
+                currentState.isAnimating = true;
+                dom.generateTokensBtn.disabled = true;
+                const tokens = ['IDENTIFIER', 'OPERATOR', 'INTEGER_CONST', 'IDENTIFIER', 'OPERATOR', 'INTEGER_CONST', 'IDENTIFIER', 'OPERATOR', 'IDENTIFIER', 'OPERATOR', 'IDENTIFIER'];
+                let delay = 0;
+                dom.tokenStreamContainer.innerHTML = '';
+                
+                tokens.forEach(tokenText => {
+                    setTimeout(() => {
+                        const tokenEl = document.createElement('div');
+                        tokenEl.className = 'token';
+                        tokenEl.textContent = tokenText;
+                        dom.tokenStreamContainer.appendChild(tokenEl);
+                    }, delay);
+                    delay += 100;
+                });
+                setTimeout(() => { currentState.isAnimating = false; }, delay + 500);
+            };
+
+            // --- Quiz Logic ---
+            function startQuiz() {
+                currentState.quiz = { score: 0, currentQuestion: 0, questions: JSON.parse(JSON.stringify(quizData)) };
+                displayQuestion();
+            }
+
+            function displayQuestion() {
+                dom.quizFeedback.style.display = 'none';
+                dom.submitQuizBtn.style.display = 'block';
+                dom.nextQuestionBtn.style.display = 'none';
+                dom.nextQuestionBtn.textContent = 'Next Question';
+                
+                const q = currentState.quiz.questions[currentState.quiz.currentQuestion];
+                let html = `<div class="question-container"><h3>Question ${currentState.quiz.currentQuestion + 1}/${currentState.quiz.questions.length}</h3><p>${q.question}</p>`;
+
+                if (q.type === 'mcq') {
+                    html += '<div class="quiz-options">';
+                    q.options.forEach(option => { html += `<button class="quiz-option" role="button">${option}</button>`; });
+                    html += '</div>';
+                } else if (q.type === 'short-answer') {
+                    html += `<input type="text" class="quiz-input" placeholder="Type your answer here...">`;
+                    html += `<div class="mark-scheme">${q.markScheme}</div>`;
+                } else if (q.type === 'drag-drop') {
+                    html += `<div class="drag-drop-container"><div class="drag-source"><h4>Lexemes</h4>`;
+                    q.items.forEach(item => { html += `<div class="draggable" draggable="true" data-item="${item}">${item}</div>`; });
+                    html += `</div><div class="drop-targets-grid">`;
+                    Object.keys(q.categories).forEach(cat => {
+                        html += `<div class="drop-target-wrapper"><h4>${cat}</h4><div class="drop-target" data-category="${cat}"></div></div>`;
+                    });
+                    html += `</div></div>`;
+                }
+                html += '</div>';
+                dom.quizContent.innerHTML = html;
+                addQuizEventListeners();
+            }
+
+            function addQuizEventListeners() {
+                // Event Delegation for MCQs
+                const optionsContainer = dom.quizContent.querySelector('.quiz-options');
+                if (optionsContainer) {
+                    optionsContainer.addEventListener('click', e => {
+                        if (e.target.classList.contains('quiz-option')) {
+                            optionsContainer.querySelectorAll('.quiz-option').forEach(btn => btn.classList.remove('selected'));
+                            e.target.classList.add('selected');
+                        }
+                    });
+                }
+                
+                const input = dom.quizContent.querySelector('.quiz-input');
+                if (input) {
+                    input.addEventListener('focus', () => currentState.inputFocused = true);
+                    input.addEventListener('blur', () => currentState.inputFocused = false);
+                    input.addEventListener('input', () => input.classList.remove('invalid-input'));
+                }
+                
+                if (currentState.quiz.questions[currentState.quiz.currentQuestion].type === 'drag-drop') {
+                    const draggables = dom.quizContent.querySelectorAll('.draggable');
+                    draggables.forEach(draggable => {
+                        draggable.addEventListener('dragstart', () => {
+                            draggable.classList.add('dragging');
+                            dom.body.classList.add('is-dragging');
+                        });
+                        draggable.addEventListener('dragend', () => {
+                            draggable.classList.remove('dragging');
+                            dom.body.classList.remove('is-dragging');
+                        });
+                    });
+                    
+                    const dropTargets = dom.quizContent.querySelectorAll('.drop-target');
+                    dropTargets.forEach(target => {
+                        target.addEventListener('dragover', e => { e.preventDefault(); target.classList.add('over'); });
+                        target.addEventListener('dragleave', () => target.classList.remove('over'));
+                        target.addEventListener('drop', e => {
+                            e.preventDefault();
+                            target.classList.remove('over');
+                            const dragging = document.querySelector('.dragging');
+                            if (dragging) target.appendChild(dragging);
+                        });
+                    });
+                }
+            }
+
+            const checkAnswer = () => {
+                const q = currentState.quiz.questions[currentState.quiz.currentQuestion];
+                let isCorrect = false;
+
+                if (q.type === 'mcq') {
+                    const selected = dom.quizContent.querySelector('.quiz-option.selected');
+                    if (!selected) { showFeedback("Please select an answer.", false); return; }
+                    isCorrect = selected.textContent === q.correctAnswer;
+                    selected.classList.add(isCorrect ? 'correct' : 'incorrect');
+                    if (!isCorrect) {
+                        [...dom.quizContent.querySelectorAll('.quiz-option')].find(o => o.textContent === q.correctAnswer)?.classList.add('correct');
+                    }
+                } else if (q.type === 'short-answer') {
+                    const input = dom.quizContent.querySelector('.quiz-input');
+                    if (input.value.length < 10) { 
+                        showFeedback("Please provide a more detailed answer.", false);
+                        input.classList.add('invalid-input');
+                        return;
+                    }
+                    isCorrect = q.correctAnswer(input.value);
+                    input.style.borderColor = isCorrect ? 'var(--highlight-color)' : '#f44747';
+                    dom.quizContent.querySelector('.mark-scheme').style.display = 'block';
+                } else if (q.type === 'drag-drop') {
+                    isCorrect = true;
+                    dom.quizContent.querySelectorAll('.draggable').forEach(itemEl => {
+                        const item = itemEl.dataset.item;
+                        const correctCategory = q.correctMapping[item];
+                        const parentCategory = itemEl.parentElement.dataset.category;
+                        if(parentCategory !== correctCategory) {
+                           isCorrect = false;
+                           itemEl.style.backgroundColor = 'var(--accent-color)';
+                        } else {
+                           itemEl.style.backgroundColor = 'var(--highlight-color)';
+                        }
+                    });
+                }
+                
+                if (isCorrect) {
+                    currentState.quiz.score++;
+                    showFeedback("Correct!", true, q.explanation);
+                } else {
+                    showFeedback("Not quite.", false, q.explanation);
+                }
+                
+                dom.submitQuizBtn.style.display = 'none';
+                dom.nextQuestionBtn.style.display = 'block';
+                if (currentState.quiz.currentQuestion === currentState.quiz.questions.length - 1) {
+                    dom.nextQuestionBtn.textContent = 'Show Results';
+                }
+            };
+            
+            const handleNextQuestion = () => {
+                currentState.quiz.currentQuestion++;
+                if (currentState.quiz.currentQuestion < currentState.quiz.questions.length) {
+                    displayQuestion();
+                } else {
+                    showResults();
+                }
+            };
+            
+            function showFeedback(message, isCorrect, explanation = null) {
+                dom.quizFeedback.style.display = 'block';
+                dom.quizFeedback.className = isCorrect ? 'correct' : 'incorrect';
+                let html = `<p><strong>${message}</strong></p>`;
+                if (explanation) html += `<p>${explanation}</p>`;
+                dom.quizFeedback.innerHTML = html;
+            }
+
+            function showResults() {
+                dom.quizContent.innerHTML = '';
+                dom.submitQuizBtn.style.display = 'none';
+                dom.nextQuestionBtn.style.display = 'none';
+                dom.quizFeedback.style.display = 'none';
+                
+                const percentage = Math.round((currentState.quiz.score / currentState.quiz.questions.length) * 100);
+                
+                dom.quizResults.innerHTML = `<h2>Quiz Complete</h2>
+                    <p>You scored <strong>${currentState.quiz.score} out of ${currentState.quiz.questions.length}</strong> (${percentage}%)</p>
+                    <p>${percentage >= 75 ? "Excellent work! You have a solid understanding of lexical analysis." : "Good effort! Review the steps and try the quiz again to solidify your knowledge."}</p>`;
+                dom.quizResults.style.display = 'block';
+            }
+            
+            function createRipple(event) {
+                const button = event.currentTarget;
+                const circle = document.createElement("span");
+                const diameter = Math.max(button.clientWidth, button.clientHeight);
+                const radius = diameter / 2;
+                circle.style.width = circle.style.height = `${diameter}px`;
+                circle.style.left = `${event.clientX - (button.offsetLeft + radius)}px`;
+                circle.style.top = `${event.clientY - (button.offsetTop + radius)}px`;
+                circle.classList.add("ripple");
+                const ripple = button.getElementsByClassName("ripple")[0];
+                if (ripple) { ripple.remove(); }
+                button.appendChild(circle);
+            }
+
+            // --- Event Listeners ---
+            dom.nextBtn.addEventListener('click', nextStep);
+            dom.prevBtn.addEventListener('click', prevStep);
+            dom.resetBtn.addEventListener('click', resetSimulation);
+            document.addEventListener('keydown', (e) => {
+                if (currentState.inputFocused) return;
+                if (e.key === 'ArrowRight') dom.nextBtn.click();
+                if (e.key === 'ArrowLeft') dom.prevBtn.click();
+            });
+            dom.modals.forEach(modal => {
+                modal.addEventListener('click', e => { if (e.target === modal) closeAllModals(); });
+            });
+            dom.cleanCodeBtn.addEventListener('click', handleCleanCode);
+            dom.generateTokensBtn.addEventListener('click', handleGenerateTokens);
+            dom.submitQuizBtn.addEventListener('click', checkAnswer);
+            dom.nextQuestionBtn.addEventListener('click', handleNextQuestion);
+
+            document.querySelectorAll(".nav-btn, .modal-btn").forEach(button => {
+                button.addEventListener("click", createRipple);
+            });
+
+
+            // --- Initialisation ---
+            function init() {
+                let resizeTimeout;
+                window.addEventListener('resize', () => {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(() => {
+                        resizeCanvas();
+                        createParticles();
+                    }, 250);
+                });
+                resizeCanvas();
+                createParticles();
+                animateParticles();
+                updateNavButtons();
+                // Set the initial total steps
+                dom.navigationSpan.innerHTML = `Step <span id="current-step">1</span> of ${currentState.totalSteps}`;
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>

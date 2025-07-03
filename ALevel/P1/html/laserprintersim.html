@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laser Printer Simulation with Audio</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+        :root {
+            --bg-color: #f0f4f8;
+            --printer-bg: #fdfdfd;
+            --printer-border: #e0e0e0;
+            --text-color: #333;
+            --accent-color: #4a90e2;
+            --laser-color: #ef5350;
+            --fuser-color: #ec407a;
+            --toner-color: #000;
+            --fuser-heat-glow: rgba(236, 64, 122, 0.7);
+            --drum-color: #69f0ae;
+            --drum-glow: rgba(76, 175, 80, 0.7);
+            --paper-color: #fafafa;
+            --success-color: #26a69a;
+            --error-color: #ef5350;
+            --shadow: 0 10px 20px rgba(0, 0, 0, 0.05), 0 6px 6px rgba(0, 0, 0, 0.07);
+        }
+
+        /* Basic Setup */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 1200px;
+            padding: clamp(10px, 2vw, 20px);
+            box-sizing: border-box;
+        }
+
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; color: var(--accent-color); margin: 0; }
+        .header p { font-size: clamp(0.9rem, 2vw, 1.1rem); max-width: 800px; margin: 10px auto; }
+        
+        .simulation-wrapper { display: flex; flex-direction: column; gap: 20px; }
+
+        /* Printer Simulation Area */
+        .printer-container {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            height: 550px;
+            background: var(--printer-bg);
+            border: 10px solid var(--printer-border);
+            border-radius: 20px;
+            margin: 0 auto;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transform: translateZ(0);
+        }
+        
+        .printer-label {
+            position: absolute; font-size: clamp(0.8rem, 1.5vw, 1rem); font-weight: 600; color: #555; z-index: 20; background: rgba(255,255,255,0.7); padding: 2px 5px; border-radius: 4px;
+        }
+        #label-laser { top: 220px; right: 40px; }
+        #label-mirror { top: 110px; right: 290px; }
+        #label-drum { top: 380px; left: 430px; transform: translateX(-50%); }
+        #label-toner { top: 200px; left: 250px; }
+        #label-paper { bottom: 20px; left: 450px; transform: translateX(-50%); }
+        #label-fuser { bottom: 180px; left: 140px; }
+
+        /* Components */
+        .component { position: absolute; will-change: transform, opacity; }
+        #laser { width: 80px; height: 25px; background: #6c757d; border-radius: 2px; top: 220px; right: 80px; }
+        .laser-beam {
+            position: absolute;
+            background: var(--laser-color);
+            height: 2px;
+            transform-origin: 0 50%;
+            opacity: 0;
+            box-shadow: 0 0 8px var(--laser-color);
+            z-index: 5;
+            transition: opacity 0.1s linear, width 0.2s linear;
+        }
+        
+        @keyframes scan-mirror { 0% { transform: rotate(-25deg); } 100% { transform: rotate(-35deg); } }
+        #mirror { width: 70px; height: 15px; background: linear-gradient(160deg, #81d4fa, #29b6f6); border: 1px solid #0288d1; top: 140px; right: 280px; border-radius: 2px; transform: rotate(-30deg); }
+        .mirror-scanning { animation: scan-mirror 0.5s alternate infinite ease-in-out; }
+
+        #drum { width: 160px; height: 160px; top: 280px; left: 430px; transform: translate(-50%, -50%); background: radial-gradient(circle, #b9f6ca, #00c853); border-radius: 50%; transition: transform 1s linear; }
+        @keyframes pulse-glow { 0% { box-shadow: 0 0 25px 8px var(--drum-glow); } 50% { box-shadow: 0 0 40px 12px var(--drum-glow); } 100% { box-shadow: 0 0 25px 8px var(--drum-glow); } }
+        .drum-charged { animation: pulse-glow 2s infinite; }
+        
+        .drum-text-layer {
+            position: absolute; width: 100%; height: 100%; font-size: 30px; 
+            text-align: center; font-weight: bold; line-height: 160px; 
+            will-change: color, opacity; opacity: 0;
+            transition: opacity 0.3s, color 0.3s;
+        }
+        #electrostatic-image { color: rgba(0, 0, 0, 0.4); z-index: 7; }
+        #toner-on-drum { color: var(--toner-color); z-index: 8; transition: opacity 0.5s ease-in-out; }
+
+        #toner-cartridge { width: 150px; height: 120px; background: #757575; top: 220px; left: 230px; clip-path: polygon(0 0, 100% 0, 100% 100%, 20% 100%, 0 80%); }
+
+        #toner-roller {
+            position: absolute;
+            width: 20px;
+            height: 100px;
+            background: #333;
+            top: 240px;
+            left: 360px; /* Start inside cartridge */
+            border-radius: 10px;
+            z-index: 7;
+            transition: transform 0.8s ease-in-out, opacity 0.5s;
+            opacity: 0;
+        }
+
+        #paper-tray { position: absolute; width: 250px; height: 40px; bottom: 40px; left: 50%; transform: translateX(-50%); }
+        .paper-sheet { position: absolute; width: 100%; height: 5px; background: var(--paper-color); border: 1px solid #ccc; border-radius: 1px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        #paper-sheet-1 { bottom: 10px; } #paper-sheet-2 { bottom: 5px; } #paper-sheet-3 { bottom: 0px; }
+        
+        #paper {
+            width: 220px; height: 8px; background: var(--paper-color); border: 1px solid #ccc;
+            position: absolute; z-index: 10;
+            opacity: 0;
+            offset-path: path("M 450,490 L 450,420 L 430,420 L 430,370 L 100,370 L 100,220 L -50, 220");
+            offset-distance: 0%;
+            transition: offset-distance 2s ease-in-out;
+        }
+        #paper-text { width: 100%; height: 100%; font-size: 16px; text-align: center; font-weight: bold; color: transparent; transition: color 0.5s ease-in-out; }
+
+        #fuser { width: 40px; height: 60px; background: var(--fuser-color); border-radius: 20px; bottom: 200px; left: 80px; z-index: 1; transition: background 0.5s, box-shadow 0.5s; }
+        .fuser-active { background: #ff75ac; box-shadow: 0 0 25px var(--fuser-heat-glow); }
+
+        #paper-path-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+        .roller { fill: #9e9e9e; stroke: #616161; stroke-width: 1; }
+
+        /* Controls & UI */
+        .controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 15px; margin-top: 10px; }
+        .btn { padding: 12px 25px; font-size: 1rem; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: all 0.2s ease-out; background: var(--accent-color); color: white; box-shadow: var(--shadow); position: relative; overflow: hidden; transform: translateZ(0); }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08); }
+        .btn:active { transform: translateY(0); }
+        #reset-btn { background-color: #78909c; }
+        #quiz-btn { background-color: var(--success-color); }
+        #mute-btn { background-color: #ffb74d; }
+        .btn:disabled { background-color: #b0bec5; cursor: not-allowed; }
+        
+        #step-description { text-align: center; font-size: 1.2rem; font-weight: 600; margin-top: 15px; min-height: 30px; width: 100%; }
+
+        /* Modal & Quiz Styles */
+        .modal { position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s; }
+        .modal.active { opacity: 1; visibility: visible; }
+        .modal-content { background-color: white; padding: 30px; border-radius: 20px; box-shadow: 0 15px 30px rgba(0,0,0,0.2); width: 90%; max-width: 500px; text-align: center; transform: scale(0.9); transition: transform 0.3s ease; }
+        .modal.active .modal-content { transform: scale(1); }
+        .modal-content h2 { margin-top: 0; color: var(--accent-color); }
+        @keyframes shake-horizontal { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        .shake { animation: shake-horizontal 0.5s ease-out; }
+
+        #quiz-section { display: none; max-width: 900px; margin: 20px auto; padding: 30px; background: var(--printer-bg); border-radius: 20px; box-shadow: var(--shadow); }
+        .option { padding: 15px; border: 2px solid var(--printer-border); border-radius: 10px; cursor: pointer; transition: all 0.2s ease-in-out; }
+        .option:hover { border-color: var(--accent-color); background: #e9f2fd; }
+        .option.selected { border-color: var(--accent-color); background-color: #d1e5fa; }
+        .option.correct { border-color: var(--success-color); background-color: #e0f2f1; font-weight: bold; }
+        .option.incorrect { border-color: var(--error-color); background-color: #ffebee; }
+        #quiz-results { display: none; text-align: center; }
+        #quiz-feedback { text-align: center; font-size: 1.2rem; font-weight: bold; margin-top: 20px; min-height: 1.5rem;}
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <header class="header">
+            <h1>Interactive Laser Printer Simulation</h1>
+            <p>A step-by-step guide to understanding how a laser printer works, based on the Cambridge 9618 A-Level syllabus. Use the buttons or arrow keys to navigate.</p>
+        </header>
+
+        <div class="simulation-wrapper">
+            <div class="printer-container">
+                <svg id="paper-path-svg">
+                    <defs>
+                        <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"> <path d="M 0 0 L 10 5 L 0 10 z" fill="#f9a825" /> </marker>
+                    </defs>
+                    <path id="motion-path" d="M 450,490 L 450,420 L 430,420 L 430,370 L 100,370 L 100,220 L -50, 220" stroke="#fdd835" stroke-width="6" fill="none" marker-start="url(#arrow)" marker-mid="url(#arrow)" />
+                    <circle class="roller" cx="450" cy="420" r="10"/> <circle class="roller" cx="430" cy="420" r="10"/>
+                    <circle class="roller" cx="430" cy="370" r="10"/> <circle class="roller" cx="100" cy="370" r="10"/>
+                    <circle class="roller" cx="100" cy="220" r="10"/> <circle class="roller" cx="140" cy="220" r="10"/>
+                </svg>
+                <div id="label-laser" class="printer-label">Laser</div>
+                <div id="label-mirror" class="printer-label">Mirror</div>
+                <div id="label-drum" class="printer-label">Drum</div>
+                <div id="label-toner" class="printer-label">Toner</div>
+                <div id="label-paper" class="printer-label">Paper</div>
+                <div id="label-fuser" class="printer-label">Fuser</div>
+
+                <div id="laser" class="component"></div>
+                <div id="laser-beam-container" class="component"></div>
+                <div id="mirror" class="component"></div>
+                <div id="toner-cartridge" class="component"></div>
+                <div id="toner-roller" class="component"></div>
+                <div id="fuser" class="component"></div>
+                <div id="drum" class="component">
+                    <div id="electrostatic-image" class="drum-text-layer">A+</div>
+                    <div id="toner-on-drum" class="drum-text-layer">A+</div>
+                </div>
+                <div id="paper-tray">
+                    <div id="paper-sheet-1" class="paper-sheet"></div> <div id="paper-sheet-2" class="paper-sheet"></div> <div id="paper-sheet-3" class="paper-sheet"></div>
+                </div>
+                <div id="paper" class="component"> <div id="paper-text">A+</div> </div>
+            </div>
+
+            <div id="step-description" aria-live="polite">Press 'Next Step' to begin the simulation.</div>
+
+            <div class="controls">
+                <button id="prev-btn" class="btn" aria-label="Previous Step">Previous Step</button>
+                <span id="step-counter">Step 0 / 7</span>
+                <button id="next-btn" class="btn" aria-label="Next Step">Next Step</button>
+                <button id="reset-btn" class="btn" aria-label="Reset Simulation">Reset</button>
+                <button id="quiz-btn" class="btn" aria-label="Take Quiz">Take Quiz</button>
+                <button id="mute-btn" class="btn" aria-label="Mute Sounds">Mute</button>
+            </div>
+        </div>
+        
+        <div id="quiz-section"></div>
+    </div>
+    
+    <div id="info-modal" class="modal"></div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Caching DOM elements for performance ---
+            const dom = {
+                prevBtn: document.getElementById('prev-btn'),
+                nextBtn: document.getElementById('next-btn'),
+                resetBtn: document.getElementById('reset-btn'),
+                quizBtn: document.getElementById('quiz-btn'),
+                muteBtn: document.getElementById('mute-btn'),
+                stepCounter: document.getElementById('step-counter'),
+                stepDescription: document.getElementById('step-description'),
+                laserBeamContainer: document.getElementById('laser-beam-container'),
+                laser: document.getElementById('laser'),
+                mirror: document.getElementById('mirror'),
+                drum: document.getElementById('drum'),
+                electrostaticImage: document.getElementById('electrostatic-image'),
+                tonerOnDrum: document.getElementById('toner-on-drum'),
+                tonerRoller: document.getElementById('toner-roller'),
+                paper: document.getElementById('paper'),
+                paperText: document.getElementById('paper-text'),
+                fuser: document.getElementById('fuser'),
+                infoModal: document.getElementById('info-modal'),
+                quizSection: document.getElementById('quiz-section'),
+                printerContainer: document.querySelector('.printer-container'),
+            };
+
+            // --- State and Configuration Variables ---
+            const rootStyles = getComputedStyle(document.documentElement);
+            const tonerColor = rootStyles.getPropertyValue('--toner-color').trim();
+            const errorColor = rootStyles.getPropertyValue('--error-color').trim();
+
+            let currentStep = 0;
+            let animationLock = false;
+            let modalCallback = null;
+            let drumRotation = 0;
+            let animationFrameId;
+
+            // --- Audio Engine Setup ---
+            const paperSynth = new Tone.NoiseSynth({
+                noise: { type: 'white' },
+                envelope: { attack: 0.005, decay: 0.05, sustain: 0 }
+            }).toDestination();
+            paperSynth.volume.value = -20;
+
+            const paperLoop = new Tone.Loop(time => paperSynth.triggerAttack(time), "16n");
+
+            const sounds = {
+                hum: new Tone.Oscillator("F#2", "sine").toDestination(),
+                whir: new Tone.Noise("brown").toDestination(),
+                laser: new Tone.Synth({ oscillator: { type: "fmsquare" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 } }).toDestination(),
+                fuser: new Tone.NoiseSynth({ noise: { type: 'pink' }, envelope: { attack: 0.5, decay: 0.1, sustain: 0.3, release: 0.5 } }).toDestination(),
+                click: new Tone.MembraneSynth().toDestination(),
+                paper: {
+                    start: () => paperLoop.start(0),
+                    stop: () => paperLoop.stop()
+                }
+            };
+            sounds.whir.volume.value = -20;
+            sounds.hum.volume.value = -25;
+            sounds.fuser.volume.value = -30;
+
+            // --- Simulation Steps Definition with Forward/Reverse Logic ---
+            const steps = [
+                {
+                    description: "Initial state. The printer is ready.",
+                    forward: () => { resetSimulationState(); sounds.hum.start(); },
+                    reverse: () => {}, // Cannot go back from step 0
+                    modal: { title: "Introduction", text: "A laser printer uses static electricity to create high-quality prints. Let's see how it works." }
+                },
+                {
+                    description: "The photosensitive drum is given a uniform electrical charge.",
+                    forward: () => dom.drum.classList.add('drum-charged'),
+                    reverse: () => dom.drum.classList.remove('drum-charged'),
+                    modal: { title: "Step 1: Drum Charging", text: "A primary charge roller coats the entire surface of the photosensitive drum with a uniform positive charge." }
+                },
+                {
+                    description: "A laser beam scans the drum, creating an electrostatic image.",
+                    forward: () => {
+                        sounds.whir.start();
+                        animateDrum(360, 2000);
+                        dom.mirror.classList.add('mirror-scanning');
+                        setTimeout(() => {
+                           createLaserBeam();
+                           setTimeout(() => dom.electrostaticImage.style.opacity = '1', 800);
+                        }, 200);
+                    },
+                    reverse: () => {
+                        sounds.whir.stop();
+                        dom.mirror.classList.remove('mirror-scanning');
+                        dom.electrostaticImage.style.opacity = '0';
+                    },
+                    modal: { title: "Step 2: Laser Writing", text: "The laser is aimed at a spinning mirror, scanning the drum. Where the laser hits, the charge is neutralized, creating an electrostatic 'drawing'." }
+                },
+                {
+                    description: "The drum is coated with oppositely charged toner.",
+                    forward: () => {
+                        animateDrum(120, 1500);
+                        dom.tonerRoller.style.transition = 'transform 0.8s ease-in-out, opacity 0.5s';
+                        dom.tonerRoller.style.opacity = '1';
+                        dom.tonerRoller.style.transform = 'translate(20px, 0)';
+                        setTimeout(() => {
+                            dom.electrostaticImage.style.opacity = '0';
+                            dom.tonerOnDrum.style.opacity = '1';
+                        }, 800);
+                        setTimeout(() => dom.tonerRoller.style.transform = 'translate(0, 0)', 1500);
+                    },
+                    reverse: () => {
+                        dom.tonerOnDrum.style.opacity = '0';
+                        dom.electrostaticImage.style.opacity = '1';
+                        dom.tonerRoller.style.opacity = '0';
+                    },
+                    modal: { title: "Step 3: Developing", text: "The drum rotates past a toner roller. The toner is charged to be attracted to the areas 'drawn' by the laser." }
+                },
+                {
+                    description: "Paper is fed and the toner is transferred.",
+                    forward: () => {
+                        sounds.paper.start();
+                        animateDrum(150, 2500);
+                        dom.paper.style.opacity = '1';
+                        dom.paper.style.offsetDistance = '35%';
+                        setTimeout(() => {
+                            dom.tonerOnDrum.style.opacity = '0';
+                            dom.paperText.style.color = tonerColor;
+                        }, 1200);
+                    },
+                    reverse: () => {
+                        sounds.paper.stop();
+                        dom.paper.style.opacity = '0';
+                        dom.paper.style.offsetDistance = '0%';
+                        dom.paperText.style.color = 'transparent';
+                        dom.tonerOnDrum.style.opacity = '1';
+                    },
+                    modal: { title: "Step 4 & 5: Paper Path & Transfer", text: "A sheet of paper is pulled from the tray. As it passes under the drum, its strong electrical charge pulls the toner powder off the drum and onto the page." }
+                },
+                {
+                    description: "The paper travels through the fuser unit.",
+                    forward: () => {
+                        sounds.fuser.triggerAttack();
+                        dom.paper.style.offsetDistance = '70%';
+                        dom.fuser.classList.add('fuser-active');
+                    },
+                    reverse: () => {
+                        sounds.fuser.triggerRelease();
+                        dom.paper.style.offsetDistance = '35%';
+                        dom.fuser.classList.remove('fuser-active');
+                    },
+                    modal: { title: "Step 6: Fusing", text: "The paper, now with loose toner, travels to two heated rollers (the fuser). The heat and pressure will permanently bond the image." }
+                },
+                {
+                    description: "The printed paper exits and the drum is cleaned.",
+                    forward: () => {
+                        sounds.paper.stop();
+                        sounds.click.triggerAttackRelease("C2", "8n", Tone.now() + 0.5);
+                        sounds.fuser.triggerRelease();
+                        dom.paper.style.offsetDistance = '100%';
+                        dom.paper.style.opacity = '0';
+                        dom.fuser.classList.remove('fuser-active');
+                        sounds.whir.stop();
+                        animateDrum(90, 1000);
+                        dom.drum.classList.remove('drum-charged');
+                    },
+                    reverse: () => {
+                        sounds.paper.start();
+                        dom.paper.style.offsetDistance = '70%';
+                        dom.paper.style.opacity = '1';
+                        dom.fuser.classList.add('fuser-active');
+                        sounds.whir.start();
+                        dom.drum.classList.add('drum-charged');
+                    },
+                    modal: { title: "Step 7: Ejecting & Cleaning", text: "The finished document exits the printer. The drum is cleaned and discharged, ready for the next page." }
+                }
+            ];
+
+            // --- Core Animation Functions ---
+            function animateDrum(degrees, duration) {
+                const targetRotation = drumRotation + degrees;
+                dom.drum.style.transition = `transform ${duration / 1000}s linear`;
+                dom.drum.style.transform = `translate(-50%, -50%) rotate(${targetRotation}deg)`;
+                drumRotation = targetRotation;
+            }
+
+            function createLaserBeam() {
+                const containerRect = dom.printerContainer.getBoundingClientRect();
+                const laserRect = dom.laser.getBoundingClientRect();
+                const mirrorRect = dom.mirror.getBoundingClientRect();
+
+                const laserX = laserRect.left - containerRect.left;
+                const laserY = laserRect.top - containerRect.top + laserRect.height / 2;
+                const mirrorX = mirrorRect.left - containerRect.left + mirrorRect.width / 2;
+                const mirrorY = mirrorRect.top - containerRect.top + mirrorRect.height / 2;
+                
+                const dx1 = mirrorX - laserX;
+                const dy1 = mirrorY - laserY;
+                const dist1 = Math.hypot(dx1, dy1);
+                const angle1 = Math.atan2(dy1, dx1) * (180 / Math.PI);
+
+                const beam1 = document.createElement('div');
+                beam1.className = 'laser-beam';
+                dom.laserBeamContainer.appendChild(beam1);
+                beam1.style.width = `0px`;
+                beam1.style.transform = `translate(${laserX}px, ${laserY}px) rotate(${angle1}deg)`;
+                
+                sounds.laser.triggerAttackRelease("G6", "64n");
+                beam1.style.opacity = '1';
+                setTimeout(() => { beam1.style.width = `${dist1}px`; }, 10);
+
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        const targetX = 350 + (i - 1) * 20;
+                        const targetY = 280;
+                        
+                        const dx2 = targetX - mirrorX;
+                        const dy2 = targetY - mirrorY;
+                        const dist2 = Math.hypot(dx2, dy2);
+                        const angle2 = Math.atan2(dy2, dx2) * (180 / Math.PI);
+                        
+                        const beam2 = document.createElement('div');
+                        beam2.className = 'laser-beam';
+                        dom.laserBeamContainer.appendChild(beam2);
+                        beam2.style.width = `0px`;
+                        beam2.style.transform = `translate(${mirrorX}px, ${mirrorY}px) rotate(${angle2}deg)`;
+                        
+                        sounds.laser.triggerAttackRelease("C7", "64n", Tone.now() + 0.05);
+                        beam2.style.opacity = '1';
+                        setTimeout(() => { beam2.style.width = `${dist2}px`; }, 10);
+
+                        setTimeout(() => {
+                           beam2.style.opacity = '0';
+                           setTimeout(() => beam2.remove(), 200);
+                        }, 200);
+
+                    }, i * 150 + 200);
+                }
+                setTimeout(() => {
+                   beam1.style.opacity = '0';
+                   setTimeout(() => beam1.remove(), 200);
+                }, 800);
+            }
+            
+            // --- UI and State Management ---
+            function resetSimulationState() {
+                Object.values(sounds).forEach(sound => { if(sound.state === "started") sound.stop(); });
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                }
+                dom.drum.classList.remove('drum-charged');
+                dom.mirror.classList.remove('mirror-scanning');
+                dom.drum.style.transition = 'none';
+                drumRotation = 0;
+                dom.drum.style.transform = 'translate(-50%, -50%) rotate(0deg)';
+                dom.electrostaticImage.style.opacity = '0';
+                dom.tonerOnDrum.style.opacity = '0';
+                dom.tonerRoller.style.transition = 'none';
+                dom.tonerRoller.style.transform = 'translate(0, 0)';
+                dom.tonerRoller.style.opacity = '0';
+                dom.paper.style.transition = 'none';
+                dom.paper.style.opacity = '0';
+                dom.paper.style.offsetDistance = '0%';
+                dom.paperText.style.color = 'transparent';
+                dom.fuser.classList.remove('fuser-active');
+                dom.laserBeamContainer.innerHTML = '';
+            }
+            
+            function updateUI() {
+                dom.stepCounter.textContent = `Step ${currentStep} / ${steps.length - 1}`;
+                dom.stepDescription.textContent = steps[currentStep].description;
+            }
+
+            function goForward() {
+                if (animationLock || currentStep >= steps.length - 1) return;
+                
+                const step = steps[currentStep + 1];
+
+                const executeAction = () => {
+                    animationLock = true;
+                    currentStep++;
+                    step.forward();
+                    updateUI();
+                    setTimeout(() => { animationLock = false; }, 500);
+                };
+
+                if(step.modal) {
+                    showModal(step.modal.title, step.modal.text, executeAction);
+                } else {
+                    executeAction();
+                }
+            }
+
+            function goBackward() {
+                if (animationLock || currentStep <= 0) return;
+                
+                animationLock = true;
+                steps[currentStep].reverse();
+                currentStep--;
+                updateUI();
+                setTimeout(() => { animationLock = false; }, 500);
+            }
+            
+            function showModal(title, text, callback) {
+                dom.infoModal.innerHTML = `<div class="modal-content"><h2>${title}</h2><p>${text}</p><button class="btn modal-close-btn">Continue</button></div>`;
+                dom.infoModal.classList.add('active');
+                modalCallback = callback;
+                dom.infoModal.querySelector('.modal-close-btn').addEventListener('click', hideModal, { once: true });
+            }
+            
+            function hideModal() {
+                if (Tone.context.state !== 'running') {
+                    Tone.start();
+                }
+                dom.infoModal.classList.remove('active');
+                if (modalCallback) {
+                    requestAnimationFrame(modalCallback);
+                    modalCallback = null;
+                }
+            }
+            
+            // --- Quiz Logic ---
+            const quizQuestions = [
+                 { question: "What is the very first step in the laser printing process?", options: ["A laser scans the drum", "The drum is coated with toner", "The photosensitive drum is given a uniform electrical charge", "Paper is fed into the printer"], answer: "The photosensitive drum is given a uniform electrical charge" },
+                { question: "What is the purpose of the laser beam?", options: ["To heat the toner", "To create a pattern of charge on the drum", "To clean the drum after printing", "To move the paper"], answer: "To create a pattern of charge on the drum" },
+                { question: "Why does the toner stick to certain parts of the drum?", options: ["Because it's magnetic", "Because of electrostatic attraction to the areas discharged by the laser", "Because the drum is sticky", "Because of gravity"], answer: "Because of electrostatic attraction to the areas discharged by the laser" },
+                { question: "What is the function of the fuser?", options: ["To fuse the paper sheets together", "To charge the paper", "To melt the toner onto the paper using heat and pressure", "To move the toner from the cartridge to the drum"], answer: "To melt the toner onto the paper using heat and pressure" },
+                { question: "After the toner is transferred to the paper, what happens to the drum?", options: ["It is replaced", "It is recharged for the next page", "It is cleaned and discharged for the next page", "It is sent to the fuser"], answer: "It is cleaned and discharged for the next page" }
+            ];
+            let userAnswers = {};
+
+            function startQuiz() {
+                resetSimulationState();
+                currentStep = 0;
+                updateUI();
+                sounds.hum.start();
+
+                dom.quizSection.style.display = 'block';
+                userAnswers = {};
+                let quizHTML = `<h2>Test Your Knowledge</h2><div id="quiz-container">`;
+                quizQuestions.forEach((q, index) => {
+                    quizHTML += `<div class="question-container"><p>${index + 1}. ${q.question}</p><div class="options-container" data-question-index="${index}">`;
+                    q.options.forEach(opt => { quizHTML += `<div class="option">${opt}</div>`; });
+                    quizHTML += `</div></div>`;
+                });
+                quizHTML += `<button id="submit-quiz-btn" class="btn">Mark My Answers</button></div><div id="quiz-feedback"></div>
+                           <div id="quiz-results" style="display:none;"><h3 id="quiz-score"></h3><button id="restart-quiz-btn" class="btn">Try Again</button></div>`;
+                dom.quizSection.innerHTML = quizHTML;
+                dom.quizSection.scrollIntoView({ behavior: 'smooth' });
+            }
+
+            function markQuiz(e) {
+                const quizContainer = e.target.closest('#quiz-section');
+                const feedbackEl = quizContainer.querySelector('#quiz-feedback');
+                 if (Object.keys(userAnswers).length < quizQuestions.length) {
+                     feedbackEl.textContent = "Please answer all questions.";
+                     feedbackEl.style.color = errorColor;
+                     feedbackEl.classList.add('shake');
+                     setTimeout(() => feedbackEl.classList.remove('shake'), 500);
+                     return;
+                 }
+                feedbackEl.textContent = "";
+                let score = 0;
+                quizQuestions.forEach((q, index) => {
+                    const container = quizContainer.querySelector(`[data-question-index='${index}']`);
+                    container.querySelectorAll('.option').forEach(opt => {
+                        if (opt.textContent === q.answer) opt.classList.add('correct');
+                        if (opt.classList.contains('selected') && opt.textContent !== q.answer) opt.classList.add('incorrect');
+                    });
+                    if (userAnswers[index] === q.answer) score++;
+                });
+                quizContainer.querySelector('#quiz-container').style.display = 'none';
+                quizContainer.querySelector('#quiz-results').style.display = 'block';
+                quizContainer.querySelector('#quiz-score').textContent = `You scored ${score} out of ${quizQuestions.length}!`;
+            }
+
+            // --- Event Listeners ---
+            dom.nextBtn.addEventListener('click', goForward);
+            dom.prevBtn.addEventListener('click', goBackward);
+            dom.resetBtn.addEventListener('click', () => {
+                resetSimulationState();
+                currentStep = 0;
+                updateUI();
+                sounds.hum.start();
+            });
+            dom.muteBtn.addEventListener('click', () => {
+                Tone.Master.mute = !Tone.Master.mute;
+                dom.muteBtn.textContent = Tone.Master.mute ? 'Unmute' : 'Mute';
+            });
+            dom.quizBtn.addEventListener('click', startQuiz );
+
+            // Use event delegation for quiz options for better performance
+            dom.quizSection.addEventListener('click', (e) => {
+                if (e.target.classList.contains('option')) {
+                    const optionsContainer = e.target.parentElement;
+                    const qIndex = optionsContainer.dataset.questionIndex;
+                    optionsContainer.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+                    e.target.classList.add('selected');
+                    userAnswers[qIndex] = e.target.textContent;
+                }
+                if (e.target.id === 'submit-quiz-btn') {
+                    markQuiz(e);
+                }
+                if (e.target.id === 'restart-quiz-btn') {
+                    startQuiz();
+                }
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (dom.infoModal.classList.contains('active')) {
+                     if (e.key === 'Enter') dom.infoModal.querySelector('.modal-close-btn').click();
+                     return;
+                }
+                if (document.activeElement.tagName === 'BUTTON') return;
+                if (e.key === 'ArrowRight') goForward();
+                if (e.key === 'ArrowLeft') goBackward();
+            });
+
+            // --- Initialisation ---
+            showModal(steps[0].modal.title, steps[0].modal.text, steps[0].forward);
+        });
+    </script>
+</body>
+</html>

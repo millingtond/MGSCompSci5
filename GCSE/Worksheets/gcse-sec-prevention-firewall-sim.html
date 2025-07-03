@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firewall Defender Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .network-zone {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            margin: 10px;
+            text-align: center;
+            min-height: 150px;
+            border-radius: 8px;
+            position: relative; 
+        }
+        .firewall {
+            border: 3px solid #f97316; 
+            padding: 20px;
+            margin: 10px 0;
+            text-align: center;
+            border-radius: 8px;
+            position: relative; 
+        }
+        .packet {
+            width: 90px; 
+            height: 65px; 
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem; 
+            position: absolute;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            padding: 4px;
+            text-align: center;
+            border: 2px solid transparent;
+            z-index: 10; 
+        }
+        .packet-icon { font-size: 1.5rem; margin-bottom: 2px; }
+        .packet-info { font-size: 0.6rem; line-height: 1.1; }
+        
+        .packet-generic { background-color: #60a5fa; color: white; border-color: #2563eb;}
+        .packet-http { background-color: #34d399; color: white; border-color: #059669;}
+        .packet-ssh { background-color: #facc15; color: #713f12; border-color: #a16207;}
+        .packet-malicious { background-color: #f87171; color: white; border-color: #dc2626;}
+        .packet-dns { background-color: #c084fc; color: white; border-color: #7e22ce;}
+
+        .log-entry { padding: 4px 8px; margin-bottom: 4px; border-radius: 4px; font-size: 0.875rem; }
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+            z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+        .modal.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background-color: white; padding: 20px; border-radius: 8px;
+            width: 90%; max-width: 500px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .rule-item {
+            transition: background-color 0.3s ease-in-out, box-shadow 0.2s ease-in-out;
+            cursor: grab; user-select: none; 
+        }
+        .rule-item.dragging { opacity: 0.7; box-shadow: 0 4px 8px rgba(0,0,0,0.2); background-color: #e0e0e0; }
+        .highlight-rule-match { background-color: #fdba74 !important; border-left-width: 6px !important; }
+        
+        /* Incoming Packet Animations */
+        @keyframes movePacketToFirewallIncoming {
+            from { left: 5%; transform: translateY(-50%); } 
+            to { left: calc(50% - 45px); transform: translateY(-50%); } 
+        }
+        @keyframes movePacketToNetworkIncoming {
+            from { left: calc(50% - 45px); transform: translateY(-50%); } 
+            to { left: calc(95% - 90px); transform: translateY(-50%); } 
+        }
+         @keyframes movePacketDeniedIncoming {
+            0% { left: calc(50% - 45px); transform: translateY(-50%) rotate(0deg); opacity: 1; }
+            50% { left: calc(50% - 45px - 30px); transform: translateY(-50%) rotate(-15deg); opacity: 0.8;} 
+            100% { left: calc(50% - 45px - 60px); transform: translateY(-50% - 20px) rotate(-30deg); opacity: 0; }
+        }
+
+        /* Outgoing Packet Animations */
+        @keyframes movePacketFromNetworkToFirewall {
+            from { right: 5%; transform: translateY(-50%); } 
+            to { right: calc(50% - 45px); transform: translateY(-50%); } 
+        }
+        @keyframes movePacketFromFirewallToInternet {
+            from { right: calc(50% - 45px); transform: translateY(-50%); } 
+            to { right: calc(95% - 90px); transform: translateY(-50%); } 
+        }
+        @keyframes movePacketDeniedOutgoing {
+            0% { right: calc(50% - 45px); transform: translateY(-50%) rotate(0deg); opacity: 1; } 
+            50% { right: 30%; transform: translateY(-50%) rotate(15deg); opacity: 0.8;} 
+            100% { right: 10%; transform: translateY(-50% - 20px) rotate(30deg); opacity: 0; } 
+        }
+
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 p-4 md:p-8">
+
+    <header class="text-center mb-8">
+        <h1 class="text-3xl md:text-4xl font-bold text-orange-600">🔥 Firewall Defender Simulation 🔥</h1>
+        <p class="text-slate-600 mt-2">Learn how firewalls protect your network by creating rules and observing traffic! (Default Policy: ALLOW)</p>
+    </header>
+
+    <div class="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <!-- Column 1: Rule Management & Info -->
+        <div class="md:col-span-1 bg-white p-6 rounded-lg shadow-lg">
+            <div class="mb-6">
+                <label for="scenarioSelector" class="block text-lg font-semibold mb-2 text-orange-700">Select Scenario:</label>
+                <select id="scenarioSelector" class="w-full p-2 border border-slate-300 rounded-md bg-white focus:ring-orange-500 focus:border-orange-500">
+                    <!-- Scenarios will be populated here -->
+                </select>
+            </div>
+
+            <h2 class="text-xl font-semibold mb-4 text-orange-700 border-b pb-2">Firewall Rules</h2>
+            <form id="addRuleForm" class="space-y-4">
+                <div>
+                    <label for="sourceIp" class="block text-sm font-medium text-slate-700">Source IP:</label>
+                    <input type="text" id="sourceIp" name="sourceIp" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm" placeholder="e.g., 192.168.1.100 or ANY">
+                </div>
+                <div>
+                    <label for="destinationIp" class="block text-sm font-medium text-slate-700">Destination IP:</label>
+                    <input type="text" id="destinationIp" name="destinationIp" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm" placeholder="e.g., 10.0.0.10 or ANY">
+                </div>
+                <div>
+                    <label for="destinationPort" class="block text-sm font-medium text-slate-700">Destination Port:</label>
+                    <input type="text" id="destinationPort" name="destinationPort" class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm" placeholder="e.g., 80 or ANY">
+                </div>
+                <div>
+                    <label for="protocol" class="block text-sm font-medium text-slate-700">Protocol:</label>
+                    <select id="protocol" name="protocol" class="mt-1 block w-full px-3 py-2 border border-slate-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm">
+                        <option value="ANY">ANY</option>
+                        <option value="TCP">TCP</option>
+                        <option value="UDP">UDP</option>
+                        <option value="ICMP">ICMP</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="action" class="block text-sm font-medium text-slate-700">Action:</label>
+                    <select id="action" name="action" class="mt-1 block w-full px-3 py-2 border border-slate-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm">
+                        <option value="ALLOW">ALLOW</option>
+                        <option value="DENY">DENY</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-150 ease-in-out">Add Rule</button>
+            </form>
+
+            <div id="rulesList" class="mt-6 space-y-2 min-h-[100px] bg-slate-50 p-2 rounded-md border">
+                <!-- Rules will be dynamically added here -->
+                <p class="text-sm text-slate-500 italic">No rules defined yet. Drag to reorder.</p>
+            </div>
+            <p class="text-xs text-slate-400 mt-1 text-center">Drag rules to change their order of priority.</p>
+
+
+            <div class="mt-8">
+                 <h3 class="text-lg font-semibold mb-2 text-orange-700">Current Scenario Objective</h3>
+                 <div id="scenarioDescription" class="text-sm text-slate-600 p-3 bg-orange-50 rounded-md border border-orange-200">
+                    <!-- Scenario description loads here -->
+                 </div>
+                 <button id="sendTestPacketButton" class="mt-4 w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 px-4 rounded-md shadow-md transition duration-150 ease-in-out">Send Test Packet for Scenario</button>
+            </div>
+        </div>
+
+        <!-- Column 2: Simulation Visual -->
+        <div class="md:col-span-2 bg-white p-6 rounded-lg shadow-lg relative min-h-[400px] overflow-hidden" id="simulationArea">
+            <div class="grid grid-cols-3 items-center h-full">
+                <div class="network-zone bg-red-50 border-red-300" id="internetZone">
+                    <h3 class="font-semibold text-red-700">🌐 Internet / External</h3>
+                </div>
+                <div class="firewall bg-orange-50 border-orange-500 mx-2" id="firewallZone">
+                    <h3 class="font-semibold text-orange-700">🛡️ Firewall</h3>
+                </div>
+                <div class="network-zone bg-green-50 border-green-300" id="yourNetworkZone">
+                    <h3 class="font-semibold text-green-700">🖥️ Your Network / Internal</h3>
+                    <div id="internalNetworkDevices" class="text-xs mt-2 space-y-1">
+                        <!-- Devices populated by scenario -->
+                    </div>
+                </div>
+            </div>
+            <!-- Packets will be animated here -->
+        </div>
+
+        <!-- Log moved inside the main container grid -->
+        <div class="mt-6 md:col-span-3 bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-semibold mb-4 text-orange-700 border-b pb-2">Firewall Log</h2>
+            <div id="firewallLog" class="max-h-60 overflow-y-auto space-y-1">
+                <p class="text-sm text-slate-500 italic">Log is empty.</p>
+                <!-- Log entries will be added here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Questions -->
+    <div id="questionModal" class="modal"> 
+        <div class="modal-content">
+            <h3 id="questionText" class="text-lg font-semibold mb-4">Question will appear here.</h3>
+            <div id="answerOptions" class="space-y-2 mb-4">
+                <!-- Answer options will be populated here -->
+            </div>
+            <button id="submitAnswerButton" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow-md">Submit Answer</button>
+            <p id="feedbackText" class="mt-3 text-sm"></p>
+        </div>
+    </div>
+
+<script>
+    // --- Globals ---
+    const addRuleForm = document.getElementById('addRuleForm');
+    const rulesList = document.getElementById('rulesList');
+    const sendTestPacketButton = document.getElementById('sendTestPacketButton');
+    const firewallLog = document.getElementById('firewallLog');
+    const simulationArea = document.getElementById('simulationArea');
+    const scenarioSelector = document.getElementById('scenarioSelector');
+    const scenarioDescription = document.getElementById('scenarioDescription');
+    const internalNetworkDevicesUI = document.getElementById('internalNetworkDevices');
+
+    const questionModal = document.getElementById('questionModal');
+    const questionText = document.getElementById('questionText');
+    const answerOptions = document.getElementById('answerOptions');
+    const submitAnswerButton = document.getElementById('submitAnswerButton'); 
+    const feedbackText = document.getElementById('feedbackText');
+
+    let rules = []; 
+    let logInitialized = false;
+    let currentQuestion = null;
+    let packetCounter = 0; 
+    let currentScenario; 
+
+    // --- Scenarios Definition ---
+    const scenarios = [
+        {
+            id: "block_ssh_threat",
+            name: "Scenario 1: Block Incoming SSH Threat",
+            description: `A TCP packet from a known malicious IP <code class="bg-slate-200 px-1 rounded">203.0.113.45</code> is trying to connect to your <code class="bg-slate-200 px-1 rounded">INTERNAL_SERVER</code> (10.0.0.10) on Port 22 (SSH).
+                         <br><strong>Firewall Behavior (Default Allow):</strong>
+                         <br>1. Send the packet first. With no rules, it will be ALLOWED by the firewall's default policy (check the log and animation!). This is risky!
+                         <br>2. Your objective is to create an explicit DENY rule. Add a rule: Action: DENY, Src IP: <code>203.0.113.45</code>, Dest IP: <code>10.0.0.10</code>, Dest Port: <code>22</code>, Protocol: <code>TCP</code>.
+                         <br>3. Send the packet again. It should now be DENIED by your new rule.`,
+            testPacket: { sourceIp: '203.0.113.45', destinationIp: '10.0.0.10', destinationPort: 22, protocol: 'TCP', type: 'ssh', direction: 'incoming' },
+            internalDevices: [{ name: 'INTERNAL_SERVER', ip: '10.0.0.10' }]
+        },
+        {
+            id: "allow_web_traffic",
+            name: "Scenario 2: Allow Only Web Traffic (Incoming)",
+            description: `Your company web server at <code class="bg-slate-200 px-1 rounded">10.0.0.80</code> needs to be accessible from the internet on ports 80 (HTTP) and 443 (HTTPS). All other traffic to this server should be blocked.
+                         <br><strong>Objective (Default Allow):</strong>
+                         <br>1. Initially, *all* traffic to 10.0.0.80 would be allowed by default.
+                         <br>2. Create specific ALLOW rules for TCP traffic to 10.0.0.80 on ports 80 and 443.
+                         <br>3. To block other traffic to this server, you must add a DENY rule for traffic to 10.0.0.80 on ANY port, with ANY protocol, from ANY source.
+                         <br><strong>Important:</strong> Place this general DENY rule *after* (lower priority than) your specific ALLOW rules for ports 80 and 443. Test by sending the HTTP packet (should be allowed) and then try sending a packet to a different port (e.g. port 22 - should be denied by your general deny rule).`,
+            testPacket: { sourceIp: 'ANY', destinationIp: '10.0.0.80', destinationPort: 80, protocol: 'TCP', type: 'http', direction: 'incoming' }, 
+            internalDevices: [{ name: 'WEB_SERVER', ip: '10.0.0.80' }]
+        },
+        {
+            id: "block_outgoing_malware",
+            name: "Scenario 3: Block Outgoing Malware Communication",
+            description: `An internal PC <code class="bg-slate-200 px-1 rounded">10.0.0.25</code> has been compromised and is trying to send data (UDP) to a known malware command & control server at <code class="bg-slate-200 px-1 rounded">198.51.100.99</code> on port 53.
+                         <br><strong>Firewall Behavior (Default Allow) & Objective:</strong>
+                         <br>1. With a 'Default Allow' policy, if you send the test packet *without any specific rules*, it will be ALLOWED out to the internet! Observe this first.
+                         <br>2. Your task is to explicitly block this malicious communication. Add a DENY rule: Action: DENY, Src IP: <code>10.0.0.25</code>, Dest IP: <code>198.51.100.99</code>, Dest Port: <code>53</code>, Protocol: <code>UDP</code>.
+                         <br>3. Send the test packet again. It should now be DENIED by your specific rule.`,
+            testPacket: { sourceIp: '10.0.0.25', destinationIp: '198.51.100.99', destinationPort: 53, protocol: 'UDP', type: 'malicious', direction: 'outgoing' },
+            internalDevices: [{ name: 'COMPROMISED_PC', ip: '10.0.0.25' }]
+        }
+    ];
+
+    // --- Functions ---
+    function handleAddRule(event) {
+        event.preventDefault(); 
+        console.log("handleAddRule called");
+        try {
+            const sourceIp = addRuleForm.sourceIp.value.trim().toUpperCase() || 'ANY';
+            const destinationIp = addRuleForm.destinationIp.value.trim().toUpperCase() || 'ANY';
+            const destPortRaw = addRuleForm.destinationPort.value.trim();
+            const destinationPort = (destPortRaw === '' || destPortRaw.toUpperCase() === 'ANY') ? 'ANY' : parseInt(destPortRaw);
+            const protocol = addRuleForm.protocol.value.toUpperCase();
+            const action = addRuleForm.action.value;
+
+            if (destPortRaw !== '' && destPortRaw.toUpperCase() !== 'ANY' && isNaN(destinationPort)) {
+                logFirewallEvent('Invalid destination port number entered. Use a number or "ANY".', 'ERROR');
+                return; 
+            }
+
+            rules.push({ sourceIp, destinationIp, destinationPort, protocol, action });
+            renderRules();
+            addRuleForm.reset(); 
+            logFirewallEvent(`Rule added: ${action} ${protocol} from ${sourceIp} to ${destinationIp}:${destinationPort}.`, 'CONFIG');
+            console.log("Rule added successfully, form reset.");
+        } catch (error) {
+            console.error("Error in handleAddRule:", error);
+            logFirewallEvent(`Error adding rule: ${error.message}. Check console.`, 'ERROR');
+        }
+    }
+    
+    function processPacket(packet) {
+        let decision = 'ALLOW'; // CHANGED: Default policy is now ALLOW
+        let matchedRuleIndex = -1;
+        let matchedBy = 'Default Allow Policy'; // Track how packet was decided
+
+        for (let i = 0; i < rules.length; i++) { 
+            const rule = rules[i];
+            let ruleMatches = true;
+
+            if (rule.sourceIp !== 'ANY' && rule.sourceIp !== packet.sourceIp) ruleMatches = false;
+            if (rule.destinationIp !== 'ANY' && rule.destinationIp !== packet.destinationIp) ruleMatches = false;
+            if (rule.destinationPort !== 'ANY' && rule.destinationPort !== packet.destinationPort) ruleMatches = false;
+            if (rule.protocol !== 'ANY' && rule.protocol !== packet.protocol) ruleMatches = false;
+            
+            if (ruleMatches) {
+                decision = rule.action;
+                matchedRuleIndex = i; 
+                matchedBy = `Rule #${matchedRuleIndex + 1}`;
+                break; 
+            }
+        }
+
+        const logMessage = `Packet (${packet.protocol}, Type: ${packet.type || 'generic'}) from ${packet.sourceIp} to ${packet.destinationIp}:${packet.destinationPort} - ${decision} (${matchedBy}).`;
+        logFirewallEvent(logMessage, decision);
+        
+        if(matchedRuleIndex !== -1) {
+            highlightRule(matchedRuleIndex);
+        }
+        animatePacket(packet, decision);
+
+        setTimeout(() => {
+            if (decision === 'ALLOW' && packet.type === 'malicious') {
+                 askQuestion({
+                    text: `A known malicious packet was ALLOWED by the '${matchedBy}'! This is a security risk. What rule would explicitly block this?`,
+                    options: [ { text: "A DENY rule matching its properties.", correct: true } ],
+                    feedbackCorrect: "Correct! A specific DENY rule is needed."
+                });
+            } else if (decision === 'ALLOW' && packet.type === 'ssh' && matchedBy === 'Default Allow Policy') {
+                 askQuestion({
+                    text: `An SSH connection attempt was ALLOWED by the 'Default Allow Policy'. For better security, specific services like SSH should often be explicitly controlled. How would you block this if it were unwanted?`,
+                    options: [ { text: "Add a DENY rule for this specific SSH traffic.", correct: true } ],
+                    feedbackCorrect: "Correct! Explicit DENY rules provide granular control."
+                });
+            }
+        }, 2500); 
+    }
+    
+    // animatePacket, loadScenario, populateScenarioSelector, renderRules, drag/drop handlers, deleteRule, highlightRule, logFirewallEvent, askQuestion, checkAnswer
+    // are assumed to be complete and correct from v1.5. Only the stubs that were modified are shown below.
+    // Ensure full definitions from v1.5 are used for other functions.
+
+    function animatePacket(packetData, decision) {
+        console.log("[animatePacket] Animating packet:", JSON.stringify(packetData), "Decision:", decision);
+        const packetElement = document.createElement('div');
+        packetElement.id = `pkt-${packetCounter++}`; 
+        packetElement.className = 'packet';
+        packetElement.style.top = '50%'; 
+        
+        let icon = '✉️'; 
+        let typeClass = 'packet-generic';
+        switch(packetData.type) {
+            case 'http': icon = '🌐'; typeClass = 'packet-http'; break;
+            case 'ssh': icon = '🔒'; typeClass = 'packet-ssh'; break;
+            case 'malicious': icon = '☠️'; typeClass = 'packet-malicious'; break;
+            case 'dns': icon = '🌍'; typeClass = 'packet-dns'; break;
+        }
+        packetElement.classList.add(typeClass);
+        packetElement.innerHTML = `
+            <span class="packet-icon">${icon}</span>
+            <div class="packet-info">
+                Src: ${packetData.sourceIp.substring(0,15)}<br>
+                Dst: ${packetData.destinationIp.substring(0,15)}:${packetData.destinationPort}<br>
+                Proto: ${packetData.protocol}
+            </div>`;
+        
+        simulationArea.appendChild(packetElement);
+        console.log("[animatePacket] Packet element appended to simulationArea.");
+
+        const isOutgoing = packetData.direction === 'outgoing';
+        console.log("[animatePacket] Is Outgoing?", isOutgoing);
+
+        if (isOutgoing) {
+            packetElement.style.right = '5%'; 
+            packetElement.style.transform = 'translateY(-50%)';
+            console.log("[animatePacket] Outgoing packet initial style:", packetElement.style.cssText);
+            packetElement.style.animation = 'movePacketFromNetworkToFirewall 1s ease-in-out forwards';
+            console.log("[animatePacket] Outgoing animation set to movePacketFromNetworkToFirewall");
+            
+            setTimeout(() => {
+                console.log("[animatePacket] Outgoing - first timeout reached. Decision:", decision);
+                if (decision === 'ALLOW') {
+                    packetElement.style.animation = 'movePacketFromFirewallToInternet 1s ease-in-out forwards';
+                    console.log("[animatePacket] Outgoing ALLOW animation set to movePacketFromFirewallToInternet");
+                } else { 
+                    packetElement.style.animation = 'movePacketDeniedOutgoing 0.7s ease-in-out forwards';
+                    console.log("[animatePacket] Outgoing DENY animation set to movePacketDeniedOutgoing");
+                }
+                setTimeout(() => {
+                    if (packetElement.parentNode) { 
+                        packetElement.remove();
+                        console.log("[animatePacket] Outgoing packet removed.");
+                    }
+                }, 1000); 
+            }, 1000); 
+        } else { // Incoming (default)
+            packetElement.style.left = '5%'; 
+            packetElement.style.transform = 'translateY(-50%)';
+            console.log("[animatePacket] Incoming packet initial style:", packetElement.style.cssText);
+            packetElement.style.animation = 'movePacketToFirewallIncoming 1s ease-in-out forwards';
+            console.log("[animatePacket] Incoming animation set to movePacketToFirewallIncoming");
+
+            setTimeout(() => {
+                console.log("[animatePacket] Incoming - first timeout reached. Decision:", decision);
+                if (decision === 'ALLOW') {
+                    packetElement.style.animation = 'movePacketToNetworkIncoming 1s ease-in-out forwards';
+                    console.log("[animatePacket] Incoming ALLOW animation set to movePacketToNetworkIncoming");
+                } else { 
+                    packetElement.style.animation = 'movePacketDeniedIncoming 0.7s ease-in-out forwards';
+                    console.log("[animatePacket] Incoming DENY animation set to movePacketDeniedIncoming");
+                }
+                setTimeout(() => {
+                     if (packetElement.parentNode) {
+                        packetElement.remove();
+                        console.log("[animatePacket] Incoming packet removed.");
+                     }
+                }, 1000);
+            }, 1000); 
+        }
+    }
+    // --- Stubs for other functions (ensure full definitions from v1.5 are used) ---
+    function loadScenario(scenarioId) {
+        currentScenario = scenarios.find(s => s.id === scenarioId);
+        if (currentScenario) {
+            scenarioDescription.innerHTML = currentScenario.description;
+            rules = []; // Clear rules for new scenario
+            renderRules();
+            logFirewallEvent(`Scenario loaded: ${currentScenario.name}`, 'INFO');
+            internalNetworkDevicesUI.innerHTML = '';
+            if (currentScenario.internalDevices) {
+                currentScenario.internalDevices.forEach(device => {
+                    const p = document.createElement('p');
+                    p.innerHTML = `${device.name} (<code class="bg-slate-200 px-1 rounded">${device.ip}</code>)`;
+                    internalNetworkDevicesUI.appendChild(p);
+                });
+            }
+        }
+    }
+    function populateScenarioSelector() {
+        scenarios.forEach(scenario => {
+            const option = document.createElement('option');
+            option.value = scenario.id;
+            option.textContent = scenario.name;
+            scenarioSelector.appendChild(option);
+        });
+        if (scenarios.length > 0) {
+            loadScenario(scenarios[0].id);
+        }
+    }
+    function renderRules() {
+        rulesList.innerHTML = ''; 
+        if (rules.length === 0) {
+            rulesList.innerHTML = '<p class="text-sm text-slate-500 italic">No rules defined yet. Drag to reorder.</p>';
+            return;
+        }
+        rules.forEach((rule, index) => {
+            const ruleDiv = document.createElement('div');
+            ruleDiv.className = `rule-item p-3 rounded-md shadow text-sm ${rule.action === 'ALLOW' ? 'bg-green-100 border-l-4 border-green-500' : 'bg-red-100 border-l-4 border-red-500'}`;
+            ruleDiv.setAttribute('data-rule-id', index); 
+            ruleDiv.setAttribute('draggable', true); 
+            ruleDiv.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span>
+                        <strong>${index + 1}. ${rule.action}:</strong>
+                        Src IP: ${rule.sourceIp || 'ANY'}, Dest IP: ${rule.destinationIp || 'ANY'},
+                        Dest Port: ${rule.destinationPort || 'ANY'}, Proto: ${rule.protocol || 'ANY'}
+                    </span>
+                    <button class="text-red-500 hover:text-red-700 font-bold text-xs" onclick="deleteRule(${index})">DELETE</button>
+                </div>
+            `;
+            ruleDiv.addEventListener('dragstart', handleDragStart);
+            ruleDiv.addEventListener('dragover', handleDragOver);
+            ruleDiv.addEventListener('drop', handleDrop);
+            ruleDiv.addEventListener('dragend', handleDragEnd);
+            rulesList.appendChild(ruleDiv);
+        });
+    }
+    let draggedItem = null;
+    function handleDragStart(e) {
+        draggedItem = this;
+        setTimeout(() => this.classList.add('dragging'), 0); 
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', this.innerHTML); 
+    }
+    function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+    function handleDrop(e) {
+        e.preventDefault();
+        const targetItem = e.target.closest('.rule-item');
+        if (targetItem && targetItem !== draggedItem) {
+            const fromIndex = parseInt(draggedItem.getAttribute('data-rule-id'));
+            const toIndex = parseInt(targetItem.getAttribute('data-rule-id'));
+            const [movedRule] = rules.splice(fromIndex, 1);
+            rules.splice(toIndex, 0, movedRule);
+            renderRules(); 
+            logFirewallEvent('Rule order changed.', 'CONFIG');
+        }
+    }
+    function handleDragEnd() { this.classList.remove('dragging'); draggedItem = null; }
+    function deleteRule(index) {
+        if (index >= 0 && index < rules.length) {
+            const deletedRule = rules.splice(index, 1)[0];
+            renderRules();
+            logFirewallEvent(`Rule deleted: ${deletedRule.action} ${deletedRule.protocol} from ${deletedRule.sourceIp} to ${deletedRule.destinationIp}:${deletedRule.destinationPort}.`, 'CONFIG');
+        }
+    }
+    function highlightRule(ruleIndex) {
+        const ruleElement = rulesList.querySelector(`.rule-item[data-rule-id="${ruleIndex}"]`);
+        if (ruleElement) {
+            ruleElement.classList.add('highlight-rule-match');
+            setTimeout(() => { ruleElement.classList.remove('highlight-rule-match'); }, 2000); 
+        }
+    }
+    function logFirewallEvent(message, type = 'INFO') {
+        if (!logInitialized) { firewallLog.innerHTML = ''; logInitialized = true; }
+        const logEntry = document.createElement('div');
+        logEntry.className = 'log-entry';
+        const timestamp = new Date().toLocaleTimeString();
+        let typeClass = 'bg-slate-100 text-slate-700'; let icon = 'ℹ️';
+        switch(type) {
+            case 'ALLOW': typeClass = 'bg-green-100 text-green-700'; icon = '✅'; break;
+            case 'DENY': typeClass = 'bg-red-100 text-red-700'; icon = '❌'; break;
+            case 'ERROR': typeClass = 'bg-yellow-100 text-yellow-700'; icon = '⚠️'; break;
+            case 'CONFIG': typeClass = 'bg-blue-100 text-blue-700'; icon = '⚙️'; break;
+        }
+        logEntry.classList.add(...typeClass.split(' ')); 
+        logEntry.innerHTML = `<span class="font-mono text-xs">${timestamp}</span> ${icon} ${message}`;
+        firewallLog.prepend(logEntry); 
+    }
+    function askQuestion(q) {
+        currentQuestion = q;
+        questionText.textContent = q.text;
+        answerOptions.innerHTML = '';
+        q.options.forEach((opt, index) => {
+            const button = document.createElement('button');
+            button.className = 'block w-full text-left p-3 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-300';
+            button.textContent = opt.text;
+            button.onclick = () => checkAnswer(index); 
+            answerOptions.appendChild(button);
+        });
+        feedbackText.textContent = '';
+        submitAnswerButton.style.display = 'block'; 
+        questionModal.classList.add('active');
+    }
+    function checkAnswer(selectedIndex) { 
+        if (!currentQuestion || selectedIndex === undefined) return;
+        const selectedOption = currentQuestion.options[selectedIndex];
+        feedbackText.className = 'mt-3 text-sm font-semibold'; 
+        if (selectedOption.correct) {
+            feedbackText.textContent = `Correct! ${currentQuestion.feedbackCorrect || ''}`;
+            feedbackText.classList.add('text-green-600');
+        } else {
+            feedbackText.textContent = `Incorrect. ${currentQuestion.feedbackIncorrect || 'Try again or review the concepts.'}`;
+            feedbackText.classList.add('text-red-600');
+        }
+        Array.from(answerOptions.children).forEach(button => button.disabled = true);
+        submitAnswerButton.textContent = "Close";
+        submitAnswerButton.onclick = () => { 
+            questionModal.classList.remove('active');
+            Array.from(answerOptions.children).forEach(button => button.disabled = false);
+            submitAnswerButton.textContent = "Submit Answer"; 
+        };
+    }
+    
+    // --- Event Listeners & Initial Setup ---
+    addRuleForm.addEventListener('submit', handleAddRule); 
+    scenarioSelector.addEventListener('change', (e) => loadScenario(e.target.value));
+    sendTestPacketButton.addEventListener('click', () => {
+        if (currentScenario && currentScenario.testPacket) {
+            const packetToSend = { ...currentScenario.testPacket, id: `pkt-scn-${packetCounter++}` };
+            logFirewallEvent(`Sending SCENARIO test packet: ${packetToSend.type || 'generic'} from ${packetToSend.sourceIp} to ${packetToSend.destinationIp}:${packetToSend.destinationPort}. Direction: ${packetToSend.direction || 'incoming'}`, 'INFO');
+            processPacket(packetToSend);
+        } else {
+            logFirewallEvent('No scenario or test packet defined.', 'ERROR');
+        }
+    });
+    submitAnswerButton.addEventListener('click', () => {
+        questionModal.classList.remove('active');
+    });
+    questionModal.addEventListener('click', (event) => {
+        if (event.target === questionModal) { 
+            questionModal.classList.remove('active');
+        }
+    });
+
+    populateScenarioSelector(); 
+    logFirewallEvent('Firewall simulation initialized (Default Policy: ALLOW). Scenarios loaded.', 'INFO');
+
+</script>
+</body>
+</html>

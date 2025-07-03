@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embedded Systems Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --font-sans: 'Inter', sans-serif;
+            --font-mono: 'Roboto Mono', monospace;
+            --bg-color: #1a1c23;
+            --glass-bg: rgba(44, 48, 61, 0.6);
+            --glass-blur: blur(12px);
+            --border-color: rgba(255, 255, 255, 0.15);
+            --text-primary: #e8e8e8;
+            --text-secondary: #a0a0b0;
+            --accent-color: #3b82f6;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+            --glow-color: rgba(59, 130, 246, 0.7);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .simulation-wrapper {
+            width: 100%;
+            max-width: 900px;
+            background: var(--glass-bg);
+            border-radius: 24px;
+            padding: clamp(1rem, 5vw, 2rem);
+            border: 1px solid var(--border-color);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            animation: fadeIn 0.5s ease-out;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .main-title {
+            text-align: center;
+            font-size: clamp(1.2rem, 5vw, 1.5rem);
+            margin-top: 0;
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+        
+        .view { display: none; }
+        .view.active { display: block; animation: fadeIn 0.5s; }
+        
+        /* Main Menu Styles */
+        .explorer-menu { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; }
+        .explorer-card { background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 16px; padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.3s ease; }
+        .explorer-card:hover { transform: translateY(-5px); background: rgba(0,0,0,0.4); box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
+        .explorer-card img { width: 100%; max-width: 200px; margin-bottom: 1rem; object-fit: contain; height: 120px; }
+        .explorer-card h3 { margin: 0; color: var(--accent-color); }
+
+        /* Car Explorer Styles */
+        .car-container { position: relative; max-width: 600px; margin: 0 auto; }
+        .car-image { width: 100%; display: block; }
+        .hotspot { position: absolute; width: 30px; height: 30px; background-color: var(--accent-color); border-radius: 50%; cursor: pointer; border: 2px solid white; box-shadow: 0 0 15px var(--glow-color); transition: transform 0.2s, box-shadow 0.2s; transform: translate(-50%, -50%); }
+        .hotspot:hover { transform: translate(-50%, -50%) scale(1.2); box-shadow: 0 0 25px var(--glow-color); }
+        .hotspot.completed { background-color: var(--success-color); box-shadow: 0 0 15px var(--success-color); }
+        
+        /* --- HOTSPOT POSITIONS UPDATED --- */
+        #hs-ecu { top: 60%; left: 82%; } 
+        #hs-abs { top: 75%; left: 28%; } /* Moved up */
+        #hs-infotainment { top: 43%; left: 56%; } 
+        #hs-airbag { top: 43%; left: 45%; } 
+        #hs-climate { top: 58%; left: 63%; }
+
+        /* Supermarket Explorer Styles */
+        .checkout-container { display: grid; grid-template-columns: 1fr 1.5fr; gap: 2rem; align-items: flex-start; }
+        @media (max-width: 768px) { .checkout-container { grid-template-columns: 1fr; } }
+        .checkout-items { background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 16px; text-align: center; }
+        .item { display: flex; align-items: center; gap: 1rem; padding: 0.5rem; border-radius: 8px; cursor: pointer; transition: background-color 0.2s; }
+        .item:hover { background: rgba(255,255,255,0.1); }
+        .item svg { width: 50px; height: 50px; flex-shrink: 0; }
+        .item.completed { opacity: 0.4; cursor: not-allowed; }
+
+        .checkout-machine { background: #4a4a4a; border-radius: 16px; padding: 1rem; }
+        .checkout-screen { background: #1e1e1e; color: #fff; padding: 1rem; border-radius: 8px; min-height: 200px; font-family: var(--font-mono); font-size: 0.9rem; margin-bottom: 1rem; border: 2px solid #282828;}
+        .checkout-screen-item { display: flex; justify-content: space-between; }
+        .checkout-screen-total { margin-top: 1rem; border-top: 1px dashed var(--text-secondary); padding-top: 0.5rem; font-weight: bold; }
+        .peripheral-area { position: relative; background: rgba(0,0,0,0.2); margin-top: 1rem; padding: 1rem; border-radius: 8px; text-align: center; color: var(--text-secondary); border: 2px dashed var(--border-color); overflow: hidden; }
+        .scanner-light { position: absolute; top: 50%; left: -10%; width: 120%; height: 3px; background: var(--error-color); box-shadow: 0 0 10px var(--error-color); transform: translateY(-50%) rotate(-20deg); opacity: 0; }
+        .scan-area.active .scanner-light { animation: scan-anim 0.5s ease-out; }
+        @keyframes scan-anim { 0% { opacity: 1; transform: translateY(-50%) rotate(-20deg) scaleX(0); left: 50%; } 50% {transform: translateY(-50%) rotate(-20deg) scaleX(1); } 100% { opacity: 0; } }
+        .bagging-area.error { border-color: var(--error-color); box-shadow: 0 0 15px var(--error-color); animation: shake 0.5s; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        .payment-area { display: flex; justify-content: center; margin-top: 1rem; }
+        
+        /* Generic Styles */
+        .back-button { background: rgba(108, 117, 125, 0.5); color: white; border: none; padding: 0.5rem 1rem; font-size: 0.9rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; position: absolute; top: 1rem; left: 1rem; }
+        .sim-button { background-color: var(--accent-color); color: white; border: none; padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; margin: 0 0.5rem; }
+        .sim-button:hover { transform: translateY(-2px); box-shadow: 0 4px 20px var(--glow-color); }
+        .sim-button:disabled { background: #555; cursor: not-allowed; transform: none; box-shadow: none;}
+        
+        /* Modal Styles */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; z-index: 100; animation: fadeIn 0.3s; }
+        .modal-content { background: var(--glass-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: clamp(1rem, 5vw, 2rem); width: 90%; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        .modal-title-container { display: flex; align-items: center; justify-content: center; gap: 0.75rem; color: var(--accent-color); }
+        .modal-title-container svg { width: 28px; height: 28px; }
+        .modal-content h3 { margin: 0; }
+        .modal-body { display: flex; flex-direction: column; align-items: center; gap: 1.5rem; margin-top: 1.5rem; }
+        .quiz-options { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.75rem; }
+        .quiz-option { width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer; transition: background-color 0.2s; text-align: left; color: var(--text-primary); }
+        .quiz-option:hover { background: rgba(255,255,255,0.1); }
+        .quiz-feedback { margin-top: 1rem; font-weight: 600; min-height: 24px; color: var(--text-primary); }
+        .quiz-feedback.correct { color: var(--success-color); }
+        .quiz-feedback.incorrect { color: var(--error-color); }
+
+        .summary-list { text-align: left; list-style-type: '✓  '; padding-left: 2rem; }
+        .summary-list li { padding-left: 0.75rem; margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body>
+
+<div class="simulation-wrapper">
+    <div id="main-menu" class="view active">
+        <h2 class="main-title">Embedded Systems Explorer</h2>
+        <div class="explorer-menu">
+            <div class="explorer-card" onclick="startExplorer('car')">
+                <img src="https://images.vexels.com/media/users/3/242802/isolated/preview/cef1e58e886cdcb9a641cfe01455e13b-small-car-profile-semi-flat.png" alt="Car">
+                <h3>Car Explorer</h3>
+            </div>
+            <div class="explorer-card" onclick="startExplorer('checkout')">
+                <img src="https://heute-at-prod-images.imgix.net/2024/04/23/5f6918f1-76a0-4286-84ef-389dee38fae7.jpeg?rect=0%2C65%2C1254%2C705&auto=format" alt="Supermarket Checkout">
+                <h3>Supermarket Checkout</h3>
+            </div>
+        </div>
+    </div>
+
+    <div id="car-explorer" class="view">
+        <button class="back-button" onclick="showMainMenu()">&#8592; Back</button>
+        <h2 class="main-title">Car Systems</h2>
+        <div class="car-container">
+            <img src="https://images.vexels.com/media/users/3/242802/isolated/preview/cef1e58e886cdcb9a641cfe01455e13b-small-car-profile-semi-flat.png" alt="Stylized illustration of a red car" class="car-image">
+            <div id="hs-ecu" class="hotspot" title="Engine Control Unit" onclick="openModal('ecu')"></div>
+            <div id="hs-abs" class="hotspot" title="Anti-lock Braking System" onclick="openModal('abs')"></div>
+            <div id="hs-infotainment" class="hotspot" title="Infotainment System" onclick="openModal('infotainment')"></div>
+            <div id="hs-airbag" class="hotspot" title="Airbag Control Unit" onclick="openModal('airbag')"></div>
+            <div id="hs-climate" class="hotspot" title="Climate Control" onclick="openModal('climate')"></div>
+        </div>
+        <p style="text-align: center; color: var(--text-secondary); margin-top: 1rem;">Click on a glowing hotspot to explore a system.</p>
+    </div>
+
+    <div id="checkout-explorer" class="view">
+        <button class="back-button" onclick="showMainMenu()">&#8592; Back</button>
+        <h2 class="main-title">Supermarket Self-Checkout</h2>
+        <div class="checkout-container">
+            <div class="checkout-items">
+                <h4>Items to Process</h4>
+                <div class="item" id="item-cereal"></div>
+                <div class="item" id="item-soda"></div>
+                <div class="item" id="item-crisps"></div>
+                <div class="item" id="item-apple"></div>
+                <div class="item" id="item-bananas"></div>
+            </div>
+            <div class="checkout-machine">
+                <div class="checkout-screen" id="checkout-screen"></div>
+                <div class="peripheral-area scan-area" id="scan-area"><div class="scanner-light"></div>Barcode Scanner</div>
+                <div class="peripheral-area" id="bagging-area">Bagging Area (Security Scale)</div>
+                <div class="payment-area">
+                    <button class="sim-button" id="pay-button" onclick="proceedToPayment()">Proceed to Payment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="summary-view" class="view" style="text-align: center;">
+        <h2 class="main-title">Key Concepts Review</h2>
+        <p>You've explored all the embedded systems! Here are the main points for the exam:</p>
+        <ul class="summary-list">
+            <li>Has a specific purpose / it only performs one or a few tasks.</li>
+            <li>Built within a larger mechanical or electrical device.</li>
+            <li>Uses dedicated hardware and sensors.</li>
+            <li>Has a microprocessor to run its software.</li>
+            <li>Its operating system and software are generally built into ROM (Read-Only Memory).</li>
+            <li>Its instructions generally do not change or get updated.</li>
+        </ul>
+        <button class="sim-button" onclick="showMainMenu()">Back to Menu</button>
+    </div>
+</div>
+
+<div id="modal-overlay" class="modal-overlay">
+    <div id="modal-content" class="modal-content">
+        <div class="modal-title-container" id="modal-title-container"></div>
+        <div id="modal-body" class="modal-body"></div>
+        <div id="quiz-container" style="display: none;">
+            <h4 id="quiz-question"></h4>
+            <div id="quiz-options" class="quiz-options"></div>
+            <p id="quiz-feedback" class="quiz-feedback"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const TOTAL_SYSTEMS = 10; // 5 car, 5 checkout
+    let completedSystems = new Set();
+    let checkoutTotal = 0;
+    let processedItems = new Set();
+
+    // --- System Data ---
+    const systemData = {
+        'ecu': { title: "Engine Control Unit", quiz: { question: "An ECU is a critical system because:", options: ["It plays music.", "It requires a password.", "Its failure could be dangerous."], answer: 2 }},
+        'abs': { title: "Anti-lock Braking System", quiz: { question: "What is the primary, dedicated function of the ABS?", options: ["To make the car go faster.", "To prevent wheel lock-up for safety.", "To reduce fuel consumption."], answer: 1 }},
+        'infotainment': { title: "Infotainment System", quiz: { question: "Why are the programs for this system likely stored in ROM?", options: ["So the user can install new games.", "Because the core functions don't change and must be available on startup.", "Because ROM is cheaper than a hard drive."], answer: 1 }},
+        'airbag': { title: "Airbag Control Unit", quiz: { question: "The Airbag system must be reliable and fast because it is a:", options: ["Comfort system", "Real-time critical system", "Entertainment system"], answer: 1 }},
+        'climate': { title: "Climate Control", quiz: { question: "A Climate Control system is an example of an embedded system focused on:", options: ["Safety", "Engine performance", "User comfort"], answer: 2 }},
+        'scanner': { title: "Barcode Scanner", quiz: { question: "A barcode scanner has one dedicated task. This makes it:", options: ["A general-purpose computer", "A type of software", "An embedded system"], answer: 2 }},
+        'scales': { title: "Weighing Scales", quiz: { question: "The checkout uses the scales' sensor data to:", options: ["Calculate your change", "Verify the item in the bag matches the expected weight", "Print the receipt"], answer: 1 }},
+        'payment': { title: "Payment Terminal", quiz: { question: "The payment terminal is a separate, secure embedded system to protect:", options: ["The store's Wi-Fi", "Your financial data", "The receipt paper"], answer: 1 }},
+        'receipt': { title: "Receipt Printer", quiz: { question: "A receipt printer is a simple embedded system. Its main task is to:", options: ["Process card payments", "Control a thermal print head and a paper cutter", "Weigh items"], answer: 1 }},
+        'cash': { title: "Cash Handler", quiz: { question: "A note acceptor uses sensors to perform its dedicated task of:", options: ["Giving change", "Printing receipts", "Detecting counterfeit notes"], answer: 2 }}
+    };
+
+    // --- DOM Elements ---
+    const allViews = document.querySelectorAll('.view');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalTitleContainer = document.getElementById('modal-title-container');
+    const modalBody = document.getElementById('modal-body');
+    const quizContainer = document.getElementById('quiz-container');
+    const quizQuestion = document.getElementById('quiz-question');
+    const quizOptions = document.getElementById('quiz-options');
+    const quizFeedback = document.getElementById('quiz-feedback');
+    const checkoutScreen = document.getElementById('checkout-screen');
+    const payButton = document.getElementById('pay-button');
+
+    // --- Core Functions ---
+    function showView(viewId) { allViews.forEach(view => view.classList.toggle('active', view.id === viewId)); if(viewId === 'main-menu') resetSimulation(); }
+    function startExplorer(type) { showView(`${type}-explorer`); }
+    function showMainMenu() { showView('main-menu'); }
+    function closeModal() { modalOverlay.style.display = 'none'; }
+    modalOverlay.addEventListener('click', (e) => { if (e.target.id === 'modal-overlay') closeModal(); });
+    
+    function openModal(systemId, simulationHTML) {
+        const data = systemData[systemId];
+
+        // If the systemId doesn't exist in our data, treat it as a generic modal
+        if (!data) {
+            modalTitleContainer.innerHTML = ''; // Clear the standard title
+            modalBody.innerHTML = simulationHTML; // The entire content is in the provided HTML
+            quizContainer.style.display = 'none';
+            modalBody.style.display = 'flex';
+            modalOverlay.style.display = 'flex';
+            return; // Stop here for generic modals
+        }
+
+        // Otherwise, it's a valid system. Proceed as normal.
+        modalTitleContainer.innerHTML = `<h3>${data.title}</h3>`;
+        modalBody.innerHTML = simulationHTML || `<p>Explore the ${data.title}.</p><button class="sim-button" onclick="showQuiz('${systemId}')">Start Quiz</button>`;
+        modalBody.style.display = 'flex';
+        
+        quizContainer.style.display = 'none';
+        quizContainer.dataset.systemId = systemId;
+        
+        if (data.quiz) {
+            quizQuestion.innerText = data.quiz.question;
+            quizOptions.innerHTML = '';
+            data.quiz.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'quiz-option';
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(systemId, index);
+                quizOptions.appendChild(btn);
+            });
+        }
+        quizFeedback.innerText = '';
+        quizFeedback.className = 'quiz-feedback';
+        modalOverlay.style.display = 'flex';
+    }
+
+    function showQuiz(systemId) { modalBody.style.display = 'none'; quizContainer.style.display = 'block'; }
+
+    function checkAnswer(systemId, selectedIndex) {
+        const data = systemData[systemId];
+        if (selectedIndex === data.quiz.answer) {
+            quizFeedback.innerText = 'Correct!';
+            quizFeedback.className = 'quiz-feedback correct';
+            completedSystems.add(systemId);
+            document.querySelectorAll(`.hotspot[onclick*="'${systemId}'"], .item[data-system-id="${systemId}"]`).forEach(el => el.classList.add('completed'));
+            
+            // If the completed system was the receipt printer, show a final thank you message.
+            if (systemId === 'receipt') {
+                setTimeout(() => {
+                    openModal('thank-you', '<h3>Thank You!</h3><p>Thank you for shopping with us.</p><button class="sim-button" onclick="showMainMenu()">Back to Menu</button>');
+                }, 1500);
+                return; // Exit to prevent the default behavior below.
+            }
+
+            setTimeout(() => {
+                closeModal();
+                if (completedSystems.size === TOTAL_SYSTEMS) {
+                    showView('summary-view');
+                }
+            }, 1500);
+        } else {
+            quizFeedback.innerText = 'Not quite, try again.';
+            quizFeedback.className = 'quiz-feedback incorrect';
+        }
+    }
+    
+    function resetSimulation() {
+        completedSystems.clear();
+        processedItems.clear();
+        document.querySelectorAll('.completed').forEach(el => el.classList.remove('completed'));
+        checkoutTotal = 0;
+        if(checkoutScreen) checkoutScreen.innerHTML = '<div class="checkout-screen-item checkout-screen-total" id="checkout-screen-total"><span>Total</span><span>£0.00</span></div>';
+        if(payButton) payButton.disabled = true;
+        closeModal();
+    }
+
+    // --- Simulation-specific functions ---
+    function proceedToPayment() {
+        if (processedItems.size < 5) { // There are 5 items total
+             const baggingArea = document.getElementById('bagging-area');
+             baggingArea.classList.add('error');
+             openModal('security-error', `<h3>Error!</h3><p>Unexpected weight in bagging area. Please make sure all items are processed before paying.</p><button class="sim-button" onclick="closeModal()">OK</button></div>`);
+             setTimeout(() => baggingArea.classList.remove('error'), 1000);
+        } else {
+             openModal('payment-choice', `<h3>Select Payment</h3><p>How would you like to pay for your items?</p><div style="display:flex; justify-content:center; gap:1rem;"><button class="sim-button" onclick="interactWithCheckout('payment', 'pay')">Pay by Card</button><button class="sim-button" onclick="interactWithCheckout('cash', 'pay')">Pay by Cash</button></div>`);
+        }
+    }
+
+    function interactWithCheckout(item, type) {
+        const itemElId = `item-${item}`;
+        const itemEl = document.getElementById(itemElId);
+        if (itemEl && itemEl.classList.contains('completed')) return;
+
+        if (type === 'pay') {
+            if(completedSystems.has(item)) return;
+            const systemId = item; // 'payment' or 'cash'
+            openModal(systemId, `<div><p>${getPaymentExplanation(systemId)}</p><p><strong>Task:</strong> Complete the quiz.</p><button class="sim-button" onclick="showQuiz('${systemId}')">Continue</button></div>`);
+            
+            // Chain the receipt printer modal after successful payment quiz
+            const originalCheckAnswer = window.checkAnswer;
+            window.checkAnswer = (id, index) => {
+                originalCheckAnswer(id, index);
+                if ((id === 'payment' || id === 'cash') && systemData[id].quiz.answer === index) {
+                    setTimeout(() => {
+                        if (!completedSystems.has('receipt')) {
+                           openModal('receipt', `<div><p>The receipt printer has one job: print a summary of the transaction.</p><p><strong>Task:</strong> Complete the quiz.</p><button class="sim-button" onclick="showQuiz('receipt')">Continue</button></div>`);
+                        }
+                    }, 1800);
+                    window.checkAnswer = originalCheckAnswer; // Restore original function
+                }
+            };
+            return;
+        }
+
+        const prices = {cereal: 3.50, soda: 1.50, crisps: 0.90, apple: 0.80, bananas: 1.20};
+        checkoutTotal += prices[item];
+        processedItems.add(item);
+        
+        const itemName = item.charAt(0).toUpperCase() + item.slice(1);
+        const totalLine = document.getElementById('checkout-screen-total');
+        totalLine.insertAdjacentHTML('beforebegin', `<div class="checkout-screen-item"><span>${itemName}</span><span>£${prices[item].toFixed(2)}</span></div>`);
+        totalLine.innerHTML = `<span>Total</span><span>£${checkoutTotal.toFixed(2)}</span>`;
+        if (processedItems.size > 0) payButton.disabled = false;
+
+        const systemId = (type === 'scan') ? 'scanner' : 'scales';
+        itemEl.dataset.systemId = systemId;
+        itemEl.classList.add('completed');
+
+        if(type === 'scan'){
+            const scanArea = document.getElementById('scan-area');
+            scanArea.classList.add('active');
+            setTimeout(() => scanArea.classList.remove('active'), 500);
+        }
+        
+        if (!completedSystems.has(systemId)) {
+            const explanation = type === 'scan' ? 'The barcode scanner reads the item\'s code with a laser. This is its only job.' : 'The security scales use sensors to measure the item\'s weight, verifying it matches what the system expects for the item you just processed.';
+            openModal(systemId, `<div><p>${explanation}</p><p><strong>Task:</strong> Complete the quiz.</p><button class="sim-button" onclick="showQuiz('${systemId}')">Continue</button></div>`);
+        }
+    }
+
+    function getPaymentExplanation(systemId) {
+        if (systemId === 'payment') return 'The Chip & PIN terminal is a highly secure, separate embedded system designed specifically to protect financial data during a transaction.';
+        if (systemId === 'cash') return 'The cash handler uses optical sensors and magnetic heads to validate notes, detect counterfeits, and command motors to dispense the correct change.';
+        return '';
+    }
+    
+    function initializeItems() {
+        const checkoutItems = [
+            { id: 'cereal', name: 'Cereal', type: 'scan', svg: `<svg viewBox="0 0 100 100"><rect x="20" y="10" width="60" height="80" fill="#f9a825" stroke="#000" stroke-width="2"/><text x="50" y="55" font-family="var(--font-sans)" font-size="12" fill="#000" text-anchor="middle">CEREAL</text></svg>` },
+            { id: 'soda', name: 'Soda', type: 'scan', svg: `<svg viewBox="0 0 100 100"><rect x="35" y="10" width="30" height="80" fill="#e53935" stroke="#000" stroke-width="2"/><rect x="30" y="15" width="40" height="15" fill="#fff"/><text x="50" y="25" fill="#e53935" font-size="10" text-anchor="middle">SODA</text></svg>` },
+            { id: 'crisps', name: 'Crisps', type: 'scan', svg: `<svg viewBox="0 0 100 100"><path d="M20 80 C 30 20, 70 20, 80 80 Z" fill="#ffca28" stroke="#000" stroke-width="2"/></svg>` },
+            { id: 'apple', name: 'Apple (by weight)', type: 'weigh', svg: `<svg viewBox="0 0 100 100"><circle cx="50" cy="55" r="30" fill="#d32f2f"/><path d="M60 25 Q 50 15 45 25" stroke="#6d4c41" stroke-width="4" fill="none"/></svg>` },
+            { id: 'bananas', name: 'Bananas (by weight)', type: 'weigh', svg: `<svg viewBox="0 0 100 100"><path d="M30 60 Q 50 20 70 60 Q 50 50 30 60 Z" fill="#fbc02d" stroke="#000" stroke-width="2"/></svg>` }
+        ];
+
+        checkoutItems.forEach(item => {
+            const itemDiv = document.getElementById(`item-${item.id}`);
+            if(itemDiv) {
+                itemDiv.innerHTML = `${item.svg}<span>${item.name}</span>`;
+                itemDiv.onclick = () => interactWithCheckout(item.id, item.type);
+            }
+        });
+        resetSimulation();
+    }
+    
+    // --- Make functions globally accessible ---
+    window.startExplorer = startExplorer;
+    window.showMainMenu = showMainMenu;
+    window.openModal = openModal;
+    window.showQuiz = showQuiz;
+    window.checkAnswer = checkAnswer;
+    window.resetSimulation = resetSimulation;
+    window.interactWithCheckout = interactWithCheckout;
+    window.proceedToPayment = proceedToPayment;
+
+    // --- Initialise ---
+    document.addEventListener('DOMContentLoaded', initializeItems);
+
+</script>
+</body>
+</html>

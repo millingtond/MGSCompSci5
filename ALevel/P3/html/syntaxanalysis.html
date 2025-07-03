@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syntax Analysis Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #e2e8f0;
+            --accent-color-1: #38bdf8;
+            --accent-color-2: #818cf8;
+            --accent-color-3: #f472b6;
+            --success-color: #4ade80;
+            --error-color: #f87171;
+            --border-color: #334155;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+        }
+
+        .animated-gradient {
+            background: linear-gradient(-45deg, var(--accent-color-1), var(--accent-color-2), var(--accent-color-3));
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .glassmorphism {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(51, 65, 85, 0.5);
+        }
+
+        .sim-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .sim-step {
+            display: none;
+            flex-grow: 1;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+            will-change: opacity, transform;
+        }
+
+        .sim-step.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            background-color: var(--card-bg);
+            border-radius: 9999px;
+            height: 8px;
+            margin: 1rem 0;
+        }
+
+        .progress-bar {
+            background-color: var(--accent-color-1);
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.5s ease-in-out;
+        }
+
+        .btn {
+            transition: all 0.3s ease;
+            transform: translateZ(0);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-reset {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+        }
+        
+        .btn-reset:hover {
+            background-color: var(--border-color);
+        }
+
+        .keyword {
+            color: var(--accent-color-1);
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px dotted var(--accent-color-1);
+        }
+        
+        .token {
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+            background-color: var(--card-bg);
+            border-left: 4px solid var(--accent-color-2);
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .parse-tree-container {
+            position: relative;
+            width: 100%;
+            height: 350px;
+            margin-top: 1.5rem;
+        }
+
+        .tree-node {
+            position: absolute;
+            background-color: var(--accent-color-3);
+            color: #111827;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transform: scale(0);
+            animation: popIn 0.5s forwards cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .tree-line {
+            position: absolute;
+            background-color: var(--border-color);
+            transform-origin: top left;
+        }
+
+        @keyframes popIn {
+            to { transform: scale(1); }
+        }
+
+        .quiz-option {
+            border: 2px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+        .quiz-option:hover {
+            border-color: var(--accent-color-2);
+            background-color: #334155;
+        }
+        .quiz-option.correct {
+            border-color: var(--success-color);
+            background-color: rgba(74, 222, 128, 0.1);
+        }
+        .quiz-option.incorrect {
+            border-color: var(--error-color);
+            background-color: rgba(248, 113, 113, 0.1);
+        }
+        
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            min-height: 50px;
+        }
+        .drop-zone.over {
+            border-color: var(--accent-color-1);
+            background-color: #334155;
+        }
+        .draggable {
+            cursor: grab;
+        }
+        .draggable:active {
+            cursor: grabbing;
+        }
+        .draggable.dragging {
+            opacity: 0.5;
+        }
+
+    </style>
+</head>
+<body class="bg-slate-900">
+
+    <div id="simulation-container" class="sim-container">
+        <!-- Header -->
+        <header class="text-center p-4 rounded-lg">
+            <h1 class="text-3xl md:text-4xl font-bold animated-gradient text-transparent bg-clip-text">Syntax Analysis Simulation</h1>
+            <p class="text-slate-400 mt-1">The Second Stage of Compilation (9618 Syllabus)</p>
+        </header>
+
+        <!-- Progress Bar -->
+        <div class="progress-bar-container">
+            <div id="progress-bar" class="progress-bar"></div>
+        </div>
+
+        <!-- Simulation Steps -->
+        <main id="steps-container" class="flex-grow relative">
+            <!-- Step 1: Introduction -->
+            <section id="step-1" class="sim-step">
+                <div class="text-center max-w-3xl">
+                    <h2 class="text-2xl font-semibold text-sky-300 mb-4">What is Syntax Analysis?</h2>
+                    <p class="text-lg text-slate-300 mb-4">
+                        After Lexical Analysis breaks code into <span class="keyword" data-term="token">tokens</span>, Syntax Analysis checks if the sequence of these tokens follows the grammatical rules of the programming language.
+                    </p>
+                    <p class="text-lg text-slate-300">
+                        Think of it like checking if an English sentence is grammatically correct. The "words" (tokens) must be in a valid order to make sense.
+                    </p>
+                    <div class="mt-8 p-4 bg-slate-800 border border-slate-700 rounded-lg">
+                        <h3 class="font-semibold text-lg mb-2">Key Functions:</h3>
+                        <ul class="list-disc list-inside text-left space-y-2">
+                            <li>Checks tokens against the language's <span class="keyword" data-term="grammar">grammar</span> rules.</li>
+                            <li>Reports any <span class="keyword" data-term="syntax-error">syntax errors</span> it finds.</li>
+                            <li>Produces a <span class="keyword" data-term="parse-tree">Parse Tree</span> (or Abstract Syntax Tree) if the code is valid.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 2: From Tokens to Parser -->
+            <section id="step-2" class="sim-step">
+                <div class="text-center max-w-4xl w-full">
+                    <h2 class="text-2xl font-semibold text-sky-300 mb-4">The Parser in Action</h2>
+                    <p class="text-lg text-slate-300 mb-6">The <span class="keyword" data-term="parser">Parser</span> takes the stream of tokens from the Lexical Analyser and checks them against the language's rules.</p>
+                    <div class="w-full p-4 bg-slate-800 border border-slate-700 rounded-lg">
+                        <p class="font-mono text-lg text-yellow-300 mb-4"># Simple line of Python code</p>
+                        <code class="text-xl bg-slate-900 p-2 rounded-md text-white">score = 10</code>
+                        <div class="my-4">
+                            <svg class="w-8 h-8 text-slate-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                        </div>
+                        <p class="font-mono text-lg text-sky-300 mb-4"># Token Stream from Lexical Analysis</p>
+                        <div id="token-container" class="flex flex-wrap justify-center gap-3">
+                            <!-- Tokens will be injected here by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Step 3: How a Parse Tree is Structured -->
+            <section id="step-3" class="sim-step">
+                <div class="text-center max-w-3xl">
+                    <h2 class="text-2xl font-semibold text-sky-300 mb-4">How is a Parse Tree Structured?</h2>
+                    <p class="text-lg text-slate-300 mb-6">Let's break down the structure for <code class="bg-slate-700 px-2 py-1 rounded-md font-mono">score = 10</code>. Think of it like a family tree for code.</p>
+                    <div class="space-y-4 text-left p-6 bg-slate-800 border border-slate-700 rounded-lg">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 h-8 w-8 rounded-full bg-fuchsia-500 flex items-center justify-center font-bold text-slate-900 mr-4">1</div>
+                            <div>
+                                <h3 class="font-bold text-lg text-fuchsia-400">The Root (The Main Action)</h3>
+                                <p class="text-slate-400">The most important operation is the assignment (`=`). It's the main action, so it goes at the top.</p>
+                            </div>
+                        </div>
+                         <div class="flex items-start">
+                            <div class="flex-shrink-0 h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center font-bold text-slate-900 mr-4">2</div>
+                            <div>
+                                <h3 class="font-bold text-lg text-indigo-400">The Branches (The Details)</h3>
+                                <p class="text-slate-400">The assignment needs a variable (`score`) and a value (`10`). These become the "children," branching off from the root.</p>
+                            </div>
+                        </div>
+                         <div class="flex items-start">
+                            <div class="flex-shrink-0 h-8 w-8 rounded-full bg-teal-500 flex items-center justify-center font-bold text-slate-900 mr-4">3</div>
+                            <div>
+                                <h3 class="font-bold text-lg text-teal-400">The Leaves (The End Points)</h3>
+                                <p class="text-slate-400">`score` and `10` are the final components. They can't be broken down further, so they are the leaves at the bottom.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 4: Building the Parse Tree -->
+            <section id="step-4" class="sim-step">
+                <div class="text-center max-w-4xl w-full">
+                    <h2 class="text-2xl font-semibold text-sky-300 mb-2">Building the Parse Tree</h2>
+                    <p class="text-lg text-slate-300 mb-4">Now, let's watch the parser build that hierarchical structure. This is the <span class="keyword" data-term="parse-tree">Parse Tree</span>.</p>
+                    <div class="w-full h-[400px] p-4 bg-slate-800 border border-slate-700 rounded-lg">
+                        <p class="font-mono text-lg text-yellow-300 mb-2"># Parse Tree for: score = 10</p>
+                        <div id="parse-tree-container" class="parse-tree-container">
+                            <!-- Parse Tree will be generated here by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Step 5: Syntax Errors -->
+            <section id="step-5" class="sim-step">
+                <div class="text-center max-w-3xl">
+                    <h2 class="text-2xl font-semibold text-red-400 mb-4">Handling Syntax Errors</h2>
+                    <p class="text-lg text-slate-300 mb-6">What happens if the code violates the language's grammar? The parser stops and reports a <span class="keyword" data-term="syntax-error">syntax error</span>.</p>
+                    <div class="w-full p-6 bg-slate-800 border border-slate-700 rounded-lg">
+                        <p class="font-mono text-lg text-yellow-300 mb-4"># Invalid Python code</p>
+                        <code id="error-code" class="text-xl bg-slate-900 p-2 rounded-md text-white transition-all duration-500">score 10 =</code>
+                        <div id="error-message" class="mt-6 p-4 bg-red-900/50 border border-red-500 rounded-lg text-red-300 text-lg opacity-0 transform translate-y-4 transition-all duration-500">
+                            <span class="font-bold">SyntaxError:</span> invalid syntax
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 6: Quiz -->
+            <section id="step-6" class="sim-step">
+                <div class="w-full max-w-4xl text-center">
+                    <h2 class="text-2xl font-semibold text-sky-300 mb-4">Test Your Knowledge</h2>
+                    <div id="quiz-container" class="space-y-8">
+                        <!-- Question 1: MCQs -->
+                        <div id="q1" class="quiz-question p-6 bg-slate-800 border border-slate-700 rounded-lg">
+                            <p class="text-lg font-semibold mb-4">1. What is the primary output of a successful syntax analysis phase?</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left" data-question="1">
+                                <div class="quiz-option p-4 rounded-lg cursor-pointer" data-answer="A">A. A stream of tokens</div>
+                                <div class="quiz-option p-4 rounded-lg cursor-pointer" data-answer="B">B. A Parse Tree</div>
+                                <div class="quiz-option p-4 rounded-lg cursor-pointer" data-answer="C">C. Machine code</div>
+                                <div class="quiz-option p-4 rounded-lg cursor-pointer" data-answer="D">D. A list of variables</div>
+                            </div>
+                            <div class="mt-3 text-sm h-8 flex items-center justify-center gap-4">
+                                <p class="feedback flex-grow text-center"></p>
+                                <button id="q1-reset" class="px-4 py-1 rounded-lg btn btn-reset hidden">Reset</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Question 2: Fill in the blank -->
+                        <div id="q2" class="quiz-question p-6 bg-slate-800 border border-slate-700 rounded-lg">
+                            <p class="text-lg font-semibold mb-4">2. The parser checks the token stream against the language's rules, which are often defined using a formal _________.</p>
+                            <input type="text" id="q2-input" class="w-full md:w-1/2 bg-slate-900 border-2 border-slate-600 rounded-lg p-2 text-center text-lg focus:border-sky-400 focus:ring-sky-400 outline-none" placeholder="Type your answer">
+                            <div class="mt-4 flex gap-4 justify-center">
+                                <button id="q2-check" class="px-6 py-2 bg-sky-600 text-white font-semibold rounded-lg btn hover:bg-sky-500 disabled:bg-slate-600 disabled:cursor-not-allowed" disabled>Check Answer</button>
+                                <button id="q2-reset" class="px-6 py-2 rounded-lg btn btn-reset hidden">Reset</button>
+                            </div>
+                            <p class="feedback mt-3 text-sm h-5"></p>
+                        </div>
+
+                        <!-- Question 3: Drag and Drop -->
+                        <div id="q3" class="quiz-question p-6 bg-slate-800 border border-slate-700 rounded-lg">
+                            <p class="text-lg font-semibold mb-4">3. For the Python code `X = Y + Z`, drag the tokens into the correct order to form a valid Abstract Syntax Tree structure (Top-Down).</p>
+                             <div class="flex justify-around items-start mt-4">
+                                <div id="q3-tokens" class="w-1/3 space-y-2">
+                                    <div class="draggable p-3 bg-indigo-500 rounded-lg text-center" draggable="true" data-id="Y">Identifier (Y)</div>
+                                    <div class="draggable p-3 bg-fuchsia-500 rounded-lg text-center" draggable="true" data-id="=">Operator (=)</div>
+                                    <div class="draggable p-3 bg-indigo-500 rounded-lg text-center" draggable="true" data-id="Z">Identifier (Z)</div>
+                                    <div class="draggable p-3 bg-teal-500 rounded-lg text-center" draggable="true" data-id="+">Operator (+)</div>
+                                    <div class="draggable p-3 bg-indigo-500 rounded-lg text-center" draggable="true" data-id="X">Identifier (X)</div>
+                                </div>
+                                <div class="w-2/3 ml-8">
+                                    <div class="drop-zone p-3 rounded-lg mb-2 flex justify-center items-center" data-target="=">Root Node</div>
+                                    <div class="flex justify-around">
+                                        <div class="drop-zone p-3 rounded-lg w-2/5" data-target="X">Left Child</div>
+                                        <div class="drop-zone p-3 rounded-lg w-2/5" data-target="+">Right Child</div>
+                                    </div>
+                                     <div class="flex justify-end mt-2">
+                                         <div class="w-2/5 flex justify-around">
+                                            <div class="drop-zone p-3 rounded-lg w-2/5" data-target="Y"></div>
+                                            <div class="drop-zone p-3 rounded-lg w-2/5" data-target="Z"></div>
+                                         </div>
+                                     </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 flex gap-4 justify-center">
+                                <button id="q3-check" class="px-6 py-2 bg-sky-600 text-white font-semibold rounded-lg btn hover:bg-sky-500 disabled:bg-slate-600 disabled:cursor-not-allowed" disabled>Check Answer</button>
+                                <button id="q3-reset" class="px-6 py-2 rounded-lg btn btn-reset hidden">Reset</button>
+                            </div>
+                            <p class="feedback mt-3 text-sm h-5"></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Step 7: Summary -->
+            <section id="step-7" class="sim-step">
+                <div class="text-center max-w-3xl">
+                    <h2 class="text-2xl font-semibold text-sky-300 mb-4">Simulation Complete!</h2>
+                    <div id="summary-card" class="p-8 bg-slate-800 border border-slate-700 rounded-lg">
+                        <p class="text-lg text-slate-300 mb-4">You've completed the simulation on Syntax Analysis.</p>
+                        <div class="text-2xl font-bold mb-2">Your Score:</div>
+                        <div id="final-score" class="text-5xl font-bold animated-gradient text-transparent bg-clip-text mb-6">
+                            0 / 3
+                        </div>
+                        <p id="score-message" class="text-slate-400 mb-8"></p>
+                        <button id="reset-button" class="w-full md:w-auto px-8 py-3 animated-gradient text-white font-bold rounded-lg btn">
+                            Run Simulation Again
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Navigation -->
+        <footer class="flex justify-between items-center mt-4">
+            <button id="prev-button" class="px-6 py-2 bg-slate-700 text-white font-semibold rounded-lg btn hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+            <button id="next-button" class="px-6 py-2 bg-sky-600 text-white font-semibold rounded-lg btn hover:bg-sky-500">Next Step</button>
+        </footer>
+    </div>
+
+    <!-- Modal for keyword definitions -->
+    <div id="modal" class="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 hidden">
+        <div id="modal-content" class="glassmorphism rounded-lg p-8 max-w-lg w-full transform scale-95 transition-transform duration-300">
+            <h3 id="modal-title" class="text-2xl font-bold animated-gradient text-transparent bg-clip-text mb-4"></h3>
+            <p id="modal-text" class="text-slate-300 mb-6"></p>
+            <button id="modal-close" class="px-6 py-2 bg-slate-600 text-white font-semibold rounded-lg btn hover:bg-slate-500 float-right">Close</button>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Caching ---
+            const steps = document.querySelectorAll('.sim-step');
+            const prevButton = document.getElementById('prev-button');
+            const nextButton = document.getElementById('next-button');
+            const progressBar = document.getElementById('progress-bar');
+            const modal = document.getElementById('modal');
+            const modalContent = document.getElementById('modal-content');
+            const modalClose = document.getElementById('modal-close');
+            const keywords = document.querySelectorAll('.keyword');
+            const quizContainer = document.getElementById('quiz-container');
+            const resetButton = document.getElementById('reset-button');
+            const finalScoreEl = document.getElementById('final-score');
+            const scoreMessageEl = document.getElementById('score-message');
+
+            // Q1 elements
+            const q1Container = document.getElementById('q1');
+            const q1ResetBtn = document.getElementById('q1-reset');
+
+            // Q2 elements
+            const q2Input = document.getElementById('q2-input');
+            const q2Check = document.getElementById('q2-check');
+            const q2ResetBtn = document.getElementById('q2-reset');
+
+            // Q3 elements
+            const q3Check = document.getElementById('q3-check');
+            const q3ResetBtn = document.getElementById('q3-reset');
+            const q3TokenContainer = document.getElementById('q3-tokens');
+            const dropZones = document.querySelectorAll('#q3 .drop-zone');
+            const draggableItems = document.querySelectorAll('#q3 .draggable');
+
+
+            // --- State ---
+            let currentStep = 0;
+            let quizScore = 0;
+            let quizAnswers = { 
+                q1: { answered: false, correct: false }, 
+                q2: { answered: false, correct: false }, 
+                q3: { answered: false, correct: false } 
+            };
+            let isModalOpen = false;
+
+            const totalSteps = steps.length;
+
+            const definitions = {
+                token: {
+                    title: 'Token',
+                    text: 'A token is the smallest individual unit in a program, like a keyword, identifier, operator, or literal value. It is the output of Lexical Analysis.'
+                },
+                grammar: {
+                    title: 'Grammar',
+                    text: 'The grammar of a programming language is the set of rules that defines how a valid program can be constructed. It is often described using notations like Backus-Naur Form (BNF).'
+                },
+                'syntax-error': {
+                    title: 'Syntax Error',
+                    text: 'A syntax error occurs when the sequence of tokens violates the grammar rules of the language. For example, a missing semicolon or a mismatched bracket.'
+                },
+                'parse-tree': {
+                    title: 'Parse Tree',
+                    text: 'A Parse Tree (or Abstract Syntax Tree - AST) is a tree-like data structure that represents the syntactic structure of the source code according to the language\'s grammar. It is used in later stages of compilation.'
+                },
+                parser: {
+                    title: 'Parser',
+                    text: 'The parser is the component of the compiler that performs syntax analysis. It takes the token stream, checks it for syntactical correctness, and builds the parse tree.'
+                }
+            };
+            
+            // --- Functions ---
+
+            /**
+             * Shows a specific step in the simulation.
+             * @param {number} stepIndex - The index of the step to show.
+             */
+            function showStep(stepIndex) {
+                steps.forEach((step, index) => {
+                    if (index === stepIndex) {
+                        step.classList.add('active');
+                    } else {
+                        step.classList.remove('active');
+                    }
+                });
+                updateUI();
+                
+                // Trigger animations for specific steps
+                if (!isModalOpen) {
+                    runStepAnimations(stepIndex);
+                }
+            }
+
+            /**
+             * Runs animations specific to the current step.
+             * @param {number} stepIndex - The index of the current step.
+             */
+            function runStepAnimations(stepIndex) {
+                switch (stepIndex) {
+                    case 1: // Step 2: Tokens
+                        animateTokens();
+                        break;
+                    case 3: // Step 4: Parse Tree (new index)
+                        buildParseTree();
+                        break;
+                    case 4: // Step 5: Syntax Error (new index)
+                        animateSyntaxError();
+                        break;
+                }
+            }
+
+            /**
+             * Updates navigation buttons and progress bar.
+             */
+            function updateUI() {
+                // Update progress bar
+                progressBar.style.width = `${((currentStep) / (totalSteps - 1)) * 100}%`;
+
+                // Update button states
+                prevButton.disabled = currentStep === 0;
+
+                // On the quiz step (now index 5), change button text
+                if (currentStep === totalSteps - 2) { 
+                    nextButton.textContent = 'Finish & See Score';
+                } else {
+                    nextButton.textContent = 'Next Step';
+                }
+                
+                // On the summary step (now index 6), hide the next button
+                if (currentStep === totalSteps - 1) { 
+                    nextButton.classList.add('hidden');
+                } else {
+                    nextButton.classList.remove('hidden');
+                }
+            }
+            
+            /**
+             * Animates the token stream display.
+             */
+            function animateTokens() {
+                const container = document.getElementById('token-container');
+                container.innerHTML = '';
+                const tokens = [
+                    { type: 'IDENTIFIER', value: 'score' },
+                    { type: 'OPERATOR', value: '=' },
+                    { type: 'LITERAL', value: '10' }
+                ];
+                tokens.forEach((token, index) => {
+                    const el = document.createElement('div');
+                    el.className = 'token p-3 rounded-lg shadow-md';
+                    el.style.animationDelay = `${index * 150}ms`;
+                    el.innerHTML = `<span class="font-bold text-sky-400">${token.type}</span>: <span class="text-white">${token.value}</span>`;
+                    container.appendChild(el);
+                });
+            }
+            
+            /**
+             * Animates the construction of the parse tree.
+             */
+            function buildParseTree() {
+                const container = document.getElementById('parse-tree-container');
+                container.innerHTML = ''; // Clear previous tree
+
+                const nodes = [
+                    { id: 'assign', text: '=', top: '5%', left: '50%', transform: 'translateX(-50%)' },
+                    { id: 'id', text: 'score', top: '40%', left: '25%', transform: 'translateX(-50%)' },
+                    { id: 'num', text: '10', top: '40%', left: '75%', transform: 'translateX(-50%)' }
+                ];
+
+                const lines = [
+                    { from: 'assign', to: 'id' },
+                    { from: 'assign', to: 'num' }
+                ];
+
+                const nodeElements = {};
+
+                nodes.forEach((node, index) => {
+                    const el = document.createElement('div');
+                    el.className = 'tree-node';
+                    el.id = `node-${node.id}`;
+                    el.textContent = node.text;
+                    el.style.top = node.top;
+                    el.style.left = node.left;
+                    el.style.transform = `${node.transform} scale(0)`;
+                    el.style.animationDelay = `${index * 300}ms`;
+                    container.appendChild(el);
+                    nodeElements[node.id] = el;
+                });
+                
+                // Defer line drawing until nodes are placed
+                setTimeout(() => {
+                    lines.forEach((line, index) => {
+                        const fromEl = nodeElements[line.from];
+                        const toEl = nodeElements[line.to];
+                        createLine(container, fromEl, toEl, index * 300 + 500);
+                    });
+                }, nodes.length * 300);
+            }
+
+            /**
+             * Creates and animates a line between two elements.
+             */
+            function createLine(container, el1, el2, delay) {
+                const x1 = el1.offsetLeft + el1.offsetWidth / 2;
+                const y1 = el1.offsetTop + el1.offsetHeight;
+                const x2 = el2.offsetLeft + el2.offsetWidth / 2;
+                const y2 = el2.offsetTop;
+
+                const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+                const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+                const lineEl = document.createElement('div');
+                lineEl.className = 'tree-line';
+                lineEl.style.width = `0px`;
+                lineEl.style.height = '3px';
+                lineEl.style.left = `${x1}px`;
+                lineEl.style.top = `${y1}px`;
+                lineEl.style.transform = `rotate(${angle}deg)`;
+                lineEl.style.transition = `width 0.5s ease ${delay}ms`;
+                container.appendChild(lineEl);
+
+                requestAnimationFrame(() => {
+                    lineEl.style.width = `${length}px`;
+                });
+            }
+
+            /**
+             * Animates the syntax error message.
+             */
+            function animateSyntaxError() {
+                const errorCode = document.getElementById('error-code');
+                const errorMessage = document.getElementById('error-message');
+                
+                setTimeout(() => {
+                    errorCode.style.backgroundColor = 'rgba(248, 113, 113, 0.2)';
+                    errorCode.style.outline = '2px solid var(--error-color)';
+                }, 500);
+
+                setTimeout(() => {
+                    errorMessage.style.opacity = '1';
+                    errorMessage.style.transform = 'translateY(0)';
+                }, 1000);
+            }
+
+            /**
+             * Handles navigation to the next step.
+             */
+            function handleNext() {
+                if (currentStep < totalSteps - 1) {
+                    currentStep++;
+                    showStep(currentStep);
+                }
+            }
+
+            /**
+             * Handles navigation to the previous step.
+             */
+            function handlePrev() {
+                if (currentStep > 0) {
+                    currentStep--;
+                    showStep(currentStep);
+                }
+            }
+
+            /**
+             * Handles keyboard navigation.
+             * @param {KeyboardEvent} e - The keyboard event.
+             */
+            function handleKeydown(e) {
+                // Do not navigate if user is typing in an input
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    return;
+                }
+                if (e.key === 'ArrowRight') {
+                    handleNext();
+                } else if (e.key === 'ArrowLeft') {
+                    handlePrev();
+                }
+            }
+            
+            /**
+             * Shows the modal with definition.
+             * @param {string} term - The keyword term to define.
+             */
+            function showModal(term) {
+                isModalOpen = true;
+                const definition = definitions[term];
+                if (definition) {
+                    document.getElementById('modal-title').textContent = definition.title;
+                    document.getElementById('modal-text').textContent = definition.text;
+                    modal.classList.remove('hidden');
+                    setTimeout(() => modalContent.style.transform = 'scale(1)', 10);
+                }
+            }
+
+            /**
+             * Hides the modal.
+             */
+            function hideModal() {
+                isModalOpen = false;
+                modalContent.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    // Re-trigger animations if needed for the current step
+                    runStepAnimations(currentStep);
+                }, 300);
+            }
+            
+            // --- Quiz Logic ---
+            function handleQuizClick(e) {
+                const option = e.target.closest('.quiz-option');
+                if (!option || quizAnswers.q1.answered) return;
+
+                const question = option.closest('.quiz-question');
+                const feedbackEl = question.querySelector('.feedback');
+                const selectedAnswer = option.dataset.answer;
+                const correctAnswer = 'B';
+
+                quizAnswers.q1.answered = true;
+                const isCorrect = selectedAnswer === correctAnswer;
+                quizAnswers.q1.correct = isCorrect;
+
+                if (isCorrect) {
+                    option.classList.add('correct');
+                    feedbackEl.textContent = 'Correct! A parse tree represents the syntactic structure of the code.';
+                    feedbackEl.style.color = 'var(--success-color)';
+                    quizScore++;
+                } else {
+                    option.classList.add('incorrect');
+                    feedbackEl.textContent = 'Incorrect. Tokens are the input, not the output. The correct output is a Parse Tree.';
+                    feedbackEl.style.color = 'var(--error-color)';
+                    question.querySelector('[data-answer="B"]').classList.add('correct');
+                }
+                q1ResetBtn.classList.remove('hidden');
+                updateFinalScore();
+            }
+            
+            function resetQ1() {
+                if (quizAnswers.q1.correct) {
+                    quizScore--;
+                }
+                quizAnswers.q1 = { answered: false, correct: false };
+                q1Container.querySelectorAll('.quiz-option').forEach(o => o.classList.remove('correct', 'incorrect'));
+                q1Container.querySelector('.feedback').textContent = '';
+                q1ResetBtn.classList.add('hidden');
+                updateFinalScore();
+            }
+
+            function checkQ2() {
+                if (quizAnswers.q2.answered) return;
+                const answer = q2Input.value.trim().toLowerCase();
+                const feedbackEl = q2Check.parentElement.nextElementSibling;
+                const correctAnswers = ['grammar', 'formal grammar'];
+                
+                quizAnswers.q2.answered = true;
+                q2Input.disabled = true;
+                q2Check.disabled = true;
+
+                const isCorrect = correctAnswers.includes(answer);
+                quizAnswers.q2.correct = isCorrect;
+
+                if (isCorrect) {
+                    q2Input.classList.add('border-green-500', 'bg-green-900/20');
+                    feedbackEl.textContent = 'Excellent! Formal grammars like BNF are used to define language syntax.';
+                    feedbackEl.style.color = 'var(--success-color)';
+                    quizScore++;
+                } else {
+                    q2Input.classList.add('border-red-500', 'bg-red-900/20');
+                    feedbackEl.textContent = 'Not quite. The correct answer is "grammar" or "formal grammar".';
+                    feedbackEl.style.color = 'var(--error-color)';
+                }
+                q2ResetBtn.classList.remove('hidden');
+                updateFinalScore();
+            }
+
+            function resetQ2() {
+                if (quizAnswers.q2.correct) {
+                    quizScore--;
+                }
+                quizAnswers.q2 = { answered: false, correct: false };
+                q2Input.value = '';
+                q2Input.disabled = false;
+                q2Check.disabled = true;
+                q2Input.className = 'w-full md:w-1/2 bg-slate-900 border-2 border-slate-600 rounded-lg p-2 text-center text-lg focus:border-sky-400 focus:ring-sky-400 outline-none';
+                q2Check.parentElement.nextElementSibling.textContent = '';
+                q2ResetBtn.classList.add('hidden');
+                updateFinalScore();
+            }
+            
+            // --- Drag and Drop Logic ---
+            let draggedItem = null;
+            
+            function handleDragStart(e) {
+                if(quizAnswers.q3.answered) return;
+                draggedItem = e.target;
+                setTimeout(() => e.target.classList.add('dragging'), 0);
+            }
+            
+            function handleDragEnd(e) {
+                e.target.classList.remove('dragging');
+            }
+
+            function handleDragOver(e) {
+                e.preventDefault();
+            }
+            
+            function handleDragEnter(e) {
+                const dropZone = e.target.closest('.drop-zone');
+                if (dropZone && !quizAnswers.q3.answered) {
+                    dropZone.classList.add('over');
+                }
+            }
+
+            function handleDragLeave(e) {
+                const dropZone = e.target.closest('.drop-zone');
+                if (dropZone) {
+                    dropZone.classList.remove('over');
+                }
+            }
+
+            function handleDrop(e) {
+                e.preventDefault();
+                if(quizAnswers.q3.answered) return;
+                const dropZone = e.target.closest('.drop-zone');
+                if (dropZone && !dropZone.children.length) { // Allow drop only if empty
+                    dropZone.classList.remove('over');
+                    dropZone.appendChild(draggedItem);
+                    draggedItem = null;
+                }
+                checkQ3Ready();
+            }
+
+            function checkQ3Ready() {
+                const placedItems = document.querySelectorAll('#q3 .drop-zone .draggable');
+                q3Check.disabled = placedItems.length !== draggableItems.length;
+            }
+
+            function checkQ3() {
+                if(quizAnswers.q3.answered) return;
+                quizAnswers.q3.answered = true;
+                q3Check.disabled = true;
+                
+                let isCorrect = true;
+                const feedbackEl = q3Check.parentElement.nextElementSibling;
+                
+                dropZones.forEach(zone => {
+                    const child = zone.firstElementChild;
+                    const target = zone.dataset.target;
+                    if (!child || child.dataset.id !== target) {
+                        isCorrect = false;
+                        zone.style.backgroundColor = 'rgba(248, 113, 113, 0.2)';
+                    } else {
+                        zone.style.backgroundColor = 'rgba(74, 222, 128, 0.2)';
+                    }
+                });
+                
+                quizAnswers.q3.correct = isCorrect;
+
+                if (isCorrect) {
+                    quizScore++;
+                    feedbackEl.textContent = 'Perfect! You have correctly structured the AST.';
+                    feedbackEl.style.color = 'var(--success-color)';
+                } else {
+                    feedbackEl.textContent = 'There are some errors in your tree structure. Review the hierarchy.';
+                    feedbackEl.style.color = 'var(--error-color)';
+                }
+                q3ResetBtn.classList.remove('hidden');
+                updateFinalScore();
+            }
+
+            function resetQ3() {
+                if (quizAnswers.q3.correct) {
+                    quizScore--;
+                }
+                quizAnswers.q3 = { answered: false, correct: false };
+                
+                dropZones.forEach(zone => {
+                    if (zone.firstElementChild) {
+                        q3TokenContainer.appendChild(zone.firstElementChild);
+                    }
+                    zone.style.backgroundColor = 'transparent';
+                    zone.classList.remove('over');
+                });
+
+                q3Check.disabled = true;
+                q3ResetBtn.classList.add('hidden');
+                q3Check.parentElement.nextElementSibling.textContent = '';
+                updateFinalScore();
+            }
+
+            function updateFinalScore() {
+                finalScoreEl.textContent = `${quizScore} / 3`;
+                if (quizScore === 3) {
+                    scoreMessageEl.textContent = "Excellent work! You have a solid understanding of Syntax Analysis.";
+                } else if (quizScore >= 1) {
+                    scoreMessageEl.textContent = "Good effort! Review the steps to strengthen your understanding.";
+                } else {
+                    scoreMessageEl.textContent = "It's worth another look. Try running the simulation again to grasp the concepts.";
+                }
+            }
+            
+            function resetSimulation() {
+                currentStep = 0;
+                quizScore = 0;
+                
+                // Reset all quiz states
+                resetQ1();
+                resetQ2();
+                resetQ3();
+
+                // Hide all reset buttons just in case
+                q1ResetBtn.classList.add('hidden');
+                q2ResetBtn.classList.add('hidden');
+                q3ResetBtn.classList.add('hidden');
+                
+                // Reset error animation
+                document.getElementById('error-code').style.backgroundColor = '';
+                document.getElementById('error-code').style.outline = '';
+                const errorMessage = document.getElementById('error-message');
+                errorMessage.style.opacity = '0';
+                errorMessage.style.transform = 'translateY(4px)';
+
+                updateFinalScore();
+                showStep(0);
+            }
+
+            // --- Event Listeners ---
+            nextButton.addEventListener('click', handleNext);
+            prevButton.addEventListener('click', handlePrev);
+            document.addEventListener('keydown', handleKeydown);
+
+            // Modal listeners
+            keywords.forEach(kw => kw.addEventListener('click', () => showModal(kw.dataset.term)));
+            modalClose.addEventListener('click', hideModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) hideModal();
+            });
+            
+            // Quiz listeners
+            q1Container.addEventListener('click', handleQuizClick);
+            q1ResetBtn.addEventListener('click', resetQ1);
+
+            q2Input.addEventListener('input', () => {
+                q2Check.disabled = q2Input.value.trim().length < 2;
+            });
+            q2Check.addEventListener('click', checkQ2);
+            q2ResetBtn.addEventListener('click', resetQ2);
+
+            draggableItems.forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragend', handleDragEnd);
+            });
+            dropZones.forEach(zone => {
+                zone.addEventListener('dragover', handleDragOver);
+                zone.addEventListener('dragenter', handleDragEnter);
+                zone.addEventListener('dragleave', handleDragLeave);
+                zone.addEventListener('drop', handleDrop);
+            });
+            q3Check.addEventListener('click', checkQ3);
+            q3ResetBtn.addEventListener('click', resetQ3);
+
+            resetButton.addEventListener('click', resetSimulation);
+
+            // --- Initialisation ---
+            showStep(0);
+        });
+    </script>
+</body>
+</html>

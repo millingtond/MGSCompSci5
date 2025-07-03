@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive BNF & Syntax Diagram Tutorial</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-color-dark: #4338ca;
+            --secondary-color: #10b981;
+            --background-color: #f3f4f6;
+            --text-color: #1f2937;
+            --card-bg: #ffffff;
+            --border-color: #e5e7eb;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .step-section {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            will-change: opacity;
+            transform: translateZ(0); /* GPU acceleration */
+        }
+
+        .step-section.active {
+            display: block;
+            opacity: 1;
+        }
+
+        .btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform: translateZ(0); /* GPU acceleration */
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-primary {
+            background-image: linear-gradient(to right, var(--primary-color), var(--primary-color-dark));
+            color: white;
+        }
+        
+        .btn .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple 600ms linear;
+            background-color: rgba(255, 255, 255, 0.7);
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+        
+        /* New Syntax Diagram styles with SVG */
+        .syntax-diagram-svg {
+            stroke: var(--text-color);
+            stroke-width: 2;
+            fill: none;
+        }
+        .syntax-diagram-svg .item-box {
+            fill: var(--card-bg);
+            stroke: var(--primary-color);
+        }
+        .syntax-diagram-svg .item-text {
+            fill: var(--text-color);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+        }
+         .syntax-diagram-svg .terminal-text {
+            fill: var(--text-color);
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            width: 90%;
+            max-width: 500px;
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        /* Improved Quiz styles */
+        .quiz-option {
+            cursor: pointer;
+            border: 2px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+        .quiz-option:hover {
+            border-color: var(--primary-color);
+            transform: scale(1.02);
+        }
+        .quiz-option.selected { border-color: var(--primary-color); background-color: #eef2ff; }
+        .quiz-option.correct { border-color: var(--secondary-color) !important; background-color: #ecfdf5; }
+        .quiz-option.incorrect { border-color: #ef4444 !important; background-color: #fee2e2; }
+
+        /* Progress Bar */
+        #progress-bar-container {
+            width: 100%;
+            background-color: var(--border-color);
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+        #progress-bar {
+            height: 8px;
+            width: 0%;
+            background-color: var(--primary-color);
+            transition: width 0.4s ease-out;
+        }
+
+        /* FIX: Ensure code blocks wrap properly */
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+    </style>
+</head>
+<body class="p-4 sm:p-6 lg:p-8">
+
+    <div class="max-w-5xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
+        <header class="p-6 bg-gradient-to-r from-indigo-700 via-purple-600 to-indigo-700 text-white">
+            <h1 class="text-2xl md:text-3xl font-bold">Backus-Naur Form (BNF) & Syntax Diagrams</h1>
+            <p class="mt-1 text-indigo-200">An Interactive Guide for A-Level Computer Science (9618)</p>
+            <div id="progress-bar-container" class="mt-4">
+                <div id="progress-bar"></div>
+            </div>
+        </header>
+
+        <main class="p-6 md:p-8">
+            <!-- Step Sections Container -->
+            <div id="steps-container">
+
+                <!-- Step 0: Introduction -->
+                <section id="step-0" class="step-section">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Welcome!</h2>
+                    <p class="mb-4 text-lg">This guide will walk you through converting <strong>Syntax Diagrams</strong> into <strong>Backus-Naur Form (BNF)</strong>, a key skill for your exam.</p>
+                    <div class="mt-6 bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                        <h3 class="font-semibold mb-2">How to use this simulation:</h3>
+                        <ul class="list-disc list-inside space-y-1">
+                            <li>Navigate using the <strong>Next/Previous</strong> buttons or the <kbd class="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">←</kbd> / <kbd class="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→</kbd> arrow keys.</li>
+                            <li>Contextual pop-ups will appear to explain key concepts. Read them carefully!</li>
+                            <li>Complete the interactive tasks and quizzes to test your knowledge.</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Step 1: Core Concepts -->
+                <section id="step-1" class="step-section">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">1. Core Concepts of BNF</h2>
+                    <p class="mb-4">BNF is a formal way to describe the syntax of a language. It uses a set of rules. Let's break down the main symbols.</p>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div class="p-4 border rounded-lg shadow-sm"><code class="text-lg font-bold text-red-600">&lt;non-terminal&gt;</code><p class="mt-1">A rule that needs further definition, like <code class="bg-gray-200 p-1 rounded">&lt;digit&gt;</code>.</p></div>
+                        <div class="p-4 border rounded-lg shadow-sm"><code class="text-lg font-bold text-red-600">::=</code><p class="mt-1">Means <strong>"is defined as"</strong>.</p></div>
+                        <div class="p-4 border rounded-lg shadow-sm"><code class="text-lg font-bold text-red-600">|</code><p class="mt-1">Represents <strong>OR</strong>, showing a choice.</p></div>
+                        <div class="p-4 border rounded-lg shadow-sm"><code class="text-lg font-bold text-red-600">"terminal"</code><p class="mt-1">A literal value that appears in the result, like <code class="bg-gray-200 p-1 rounded">"$"</code>.</p></div>
+                    </div>
+                </section>
+
+                <!-- Step 2: Simple Choice (Character) -->
+                <section id="step-2" class="step-section">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">2. Simple Choice: Defining a 'character'</h2>
+                    <p class="mb-4">Let's convert a simple syntax diagram into BNF. This diagram shows that a 'character' can be one of five symbols.</p>
+                    <div class="grid md:grid-cols-2 gap-8 items-center">
+                        <div class="syntax-diagram p-4 rounded-lg shadow-md">
+                            <h3 class="font-semibold mb-2 text-center">Syntax Diagram: character</h3>
+                            <svg viewBox="0 0 300 180" class="syntax-diagram-svg w-full">
+                                <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" /></marker></defs>
+                                <path d="M 10 90 L 50 90" marker-end="url(#arrow)"></path>
+                                <path d="M 50 90 C 70 90, 70 30, 90 30 L 210 30 C 230 30, 230 90, 250 90"></path>
+                                <path d="M 50 90 C 70 90, 70 60, 90 60 L 210 60 C 230 60, 230 90, 250 90"></path>
+                                <path d="M 50 90 L 250 90"></path>
+                                <path d="M 50 90 C 70 90, 70 120, 90 120 L 210 120 C 230 120, 230 90, 250 90"></path>
+                                <path d="M 50 90 C 70 90, 70 150, 90 150 L 210 150 C 230 150, 230 90, 250 90"></path>
+                                <path d="M 250 90 L 290 90" marker-end="url(#arrow)"></path>
+                                <circle cx="150" cy="30" r="15" fill="#eef2ff" stroke="currentColor"/><text x="150" y="35" text-anchor="middle" class="terminal-text">$</text>
+                                <circle cx="150" cy="60" r="15" fill="#eef2ff" stroke="currentColor"/><text x="150" y="65" text-anchor="middle" class="terminal-text">%</text>
+                                <circle cx="150" cy="90" r="15" fill="#eef2ff" stroke="currentColor"/><text x="150" y="95" text-anchor="middle" class="terminal-text">&</text>
+                                <circle cx="150" cy="120" r="15" fill="#eef2ff" stroke="currentColor"/><text x="150" y="125" text-anchor="middle" class="terminal-text">*</text>
+                                <circle cx="150" cy="150" r="15" fill="#eef2ff" stroke="currentColor"/><text x="150" y="155" text-anchor="middle" class="terminal-text">#</text>
+                            </svg>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h3 class="font-semibold mb-2">BNF Notation:</h3>
+                            <p class="mb-2">Each parallel path in the diagram becomes an option separated by the <strong>OR</strong> symbol (<code class="font-bold">|</code>).</p>
+                            <pre class="bg-gray-800 text-white p-4 rounded-lg text-sm md:text-base"><code id="bnf-character" class="language-bnf">&lt;character&gt; ::= $ | % | & | * | #</code></pre>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Step 3: Concatenation and Repetition (Password) -->
+                <section id="step-3" class="step-section">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">3. Concatenation & Repetition</h2>
+                    <p class="mb-4">This diagram shows a sequence followed by a loop. A <code class="bg-gray-200 p-1 rounded">&lt;password&gt;</code> starts with a 'character', then one or more 'digits' or 'capital letters'.</p>
+                    <div class="grid md:grid-cols-2 gap-8 items-center">
+                        <div class="syntax-diagram p-4 rounded-lg shadow-md">
+                            <h3 class="font-semibold mb-2 text-center">Syntax Diagram: password</h3>
+                            <svg viewBox="0 0 450 150" class="syntax-diagram-svg w-full">
+                                <defs><marker id="arrow-loop" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" /></marker></defs>
+                                <!-- Entry -->
+                                <path d="M 10 75 L 50 75" marker-end="url(#arrow-loop)"></path>
+                                <rect x="50" y="60" width="100" height="30" rx="5" class="item-box" /><text x="100" y="80" text-anchor="middle" class="item-text">character</text>
+                                <path d="M 150 75 L 180 75" marker-end="url(#arrow-loop)"></path>
+
+                                <!-- Loop Content Paths -->
+                                <path d="M 180 75 C 200 75, 200 45, 220 45 L 330 45 C 350 45, 350 75, 370 75"></path>
+                                <path d="M 180 75 C 200 75, 200 105, 220 105 L 330 105 C 350 105, 350 75, 370 75"></path>
+                                
+                                <!-- Loop Content Boxes -->
+                                <rect x="225" y="30" width="100" height="30" rx="5" class="item-box" /><text x="275" y="50" text-anchor="middle" class="item-text">digit</text>
+                                <rect x="225" y="90" width="100" height="30" rx="5" class="item-box" /><text x="275" y="110" text-anchor="middle" class="item-text">capital letter</text>
+                                
+                                <!-- Loop Back Path (Corrected) -->
+                                <path d="M 370 75 C 400 75, 400 20, 275 20 C 150 20, 150 75, 180 75" marker-end="url(#arrow-loop)"></path>
+
+                                <!-- Exit Path -->
+                                <path d="M 370 75 L 440 75" marker-end="url(#arrow-loop)"></path>
+                            </svg>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h3 class="font-semibold mb-2">BNF Notation Explained:</h3>
+                            <ol class="list-decimal list-inside space-y-2">
+                                <li>The password starts with a <code class="bg-indigo-100 p-1 rounded">&lt;character&gt;</code>.</li>
+                                <li>It's followed by a repeating part. We define this loop with a new recursive rule, <code class="bg-indigo-100 p-1 rounded">&lt;code&gt;</code>.</li>
+                                <li>The <code class="bg-indigo-100 p-1 rounded">&lt;code&gt;</code> is a <code class="bg-indigo-100 p-1 rounded">&lt;digit&gt;</code> OR a <code class="bg-indigo-100 p-1 rounded">&lt;capital_letter&gt;</code>, which can optionally be followed by another <code class="bg-indigo-100 p-1 rounded">&lt;code&gt;</code> to create the loop.</li>
+                            </ol>
+                            <pre class="mt-3 bg-gray-800 text-white p-4 rounded-lg text-sm md:text-base"><code id="bnf-password" class="language-bnf">&lt;password&gt; ::= &lt;character&gt;&lt;code&gt;
+
+&lt;code&gt; ::= &lt;digit&gt; | &lt;capital_letter&gt; | &lt;digit&gt;&lt;code&gt; | &lt;capital_letter&gt;&lt;code&gt;</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Step 4: Quiz Time! -->
+                <section id="step-4" class="step-section">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">4. Quiz: Test Your Knowledge</h2>
+                    <p class="mb-6">Let's see what you've learned. Answer the following questions.</p>
+                    <div class="space-y-6">
+                        <!-- Question 1: Multiple Choice -->
+                        <div id="quiz-1" class="p-6 border rounded-lg bg-white shadow-md">
+                            <h3 class="font-semibold mb-2">Question 1: Multiple Choice</h3>
+                            <p class="mb-4">A <code class="bg-gray-200 p-1 rounded">&lt;variable&gt;</code> must start with a <code class="bg-gray-200 p-1 rounded">&lt;letter&gt;</code> and can be followed by <strong>zero or more</strong> <code class="bg-gray-200 p-1 rounded">&lt;digit&gt;</code>s. Which BNF rule correctly defines this?</p>
+                            <div id="q1-options" class="space-y-3">
+                                <div class="quiz-option p-3 rounded-lg" data-answer="a">&lt;variable&gt; ::= &lt;letter&gt;&lt;variable&gt; | &lt;digit&gt;</div>
+                                <div class="quiz-option p-3 rounded-lg" data-answer="b">&lt;variable&gt; ::= &lt;letter&gt; | &lt;variable&gt;&lt;digit&gt;</div>
+                                <div class="quiz-option p-3 rounded-lg" data-answer="c">&lt;variable&gt; ::= &lt;letter&gt;&lt;digit&gt;</div>
+                                <div class="quiz-option p-3 rounded-lg" data-answer="d">&lt;variable&gt; ::= &lt;letter&gt; | &lt;letter&gt;&lt;digit&gt;</div>
+                            </div>
+                            <div id="q1-feedback" class="mt-4 p-3 rounded-lg text-sm hidden"></div>
+                        </div>
+
+                        <!-- Question 2: Free Text -->
+                        <div id="quiz-2" class="p-6 border rounded-lg bg-white shadow-md">
+                            <h3 class="font-semibold mb-2">Question 2: Write the BNF</h3>
+                            <p class="mb-4">A vehicle registration (<code class="bg-gray-200 p-1 rounded">&lt;vehicle_reg&gt;</code>) must be exactly two letters, followed by exactly two digits. Write the BNF rule. Assume <code class="bg-gray-200 p-1 rounded">&lt;letter&gt;</code> and <code class="bg-gray-200 p-1 rounded">&lt;digit&gt;</code> are already defined.</p>
+                            <textarea id="q2-answer" class="w-full p-2 border rounded-md font-mono focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="<vehicle_reg> ::= ..." rows="2"></textarea>
+                            <button id="q2-submit" class="mt-4 btn btn-primary px-5 py-2 rounded-md font-semibold">Check Answer</button>
+                            <div id="q2-feedback" class="mt-4 p-3 rounded-lg text-sm hidden"></div>
+                        </div>
+
+                        <!-- Question 3: Validity Check -->
+                        <div id="quiz-3" class="p-6 border rounded-lg bg-white shadow-md">
+                            <h3 class="font-semibold mb-2">Question 3: String Validation</h3>
+                            <p class="mb-4">Given the following BNF rules, which of the strings are valid variables? Click to check.</p>
+                            <pre class="bg-gray-800 text-white p-4 rounded-lg mb-4 text-sm"><code>&lt;variable&gt; ::= &lt;letter&gt; | &lt;letter&gt;&lt;tail&gt;
+&lt;tail&gt; ::= &lt;letter&gt; | &lt;digit&gt; | &lt;letter&gt;&lt;tail&gt; | &lt;digit&gt;&lt;tail&gt;
+&lt;letter&gt; ::= x | y | z
+&lt;digit&gt; ::= 8 | 9</code></pre>
+                            <div id="q3-options" class="flex flex-wrap gap-4">
+                                <div class="quiz-option p-3 rounded-lg font-mono" data-valid="true">y9x</div>
+                                <div class="quiz-option p-3 rounded-lg font-mono" data-valid="false">8xy</div>
+                                <div class="quiz-option p-3 rounded-lg font-mono" data-valid="true">z</div>
+                                <div class="quiz-option p-3 rounded-lg font-mono" data-valid="false">yz$</div>
+                                <div class="quiz-option p-3 rounded-lg font-mono" data-valid="true">x88</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                 <!-- Step 5: Summary -->
+                <section id="step-5" class="step-section">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">5. Summary & Key Takeaways</h2>
+                    <p class="mb-4 text-lg">Congratulations! You've completed the tutorial.</p>
+                    <div class="bg-indigo-50 p-6 rounded-lg border border-indigo-200">
+                        <h3 class="font-semibold text-xl mb-3">Core Principles Recap</h3>
+                        <ul class="space-y-4">
+                            <li><strong>Sequence:</strong> Items listed one after another must appear in that order.<br><code class="text-sm bg-gray-200 p-1 rounded">&lt;rule&gt; ::= A B C</code></li>
+                            <li><strong>Choice (OR):</strong> The vertical bar <code class="font-bold">|</code> means choose one option.<br><code class="text-sm bg-gray-200 p-1 rounded">&lt;rule&gt; ::= A | B</code></li>
+                            <li><strong>Repetition (Recursion):</strong> A rule referring to itself creates a loop. This is essential for "one or more" or "zero or more" scenarios.</li>
+                        </ul>
+                    </div>
+                    <p class="mt-6">Use the <strong>Reset</strong> button to practice again, or the navigation buttons to review specific sections.</p>
+                </section>
+
+            </div>
+
+            <!-- Navigation and Reset -->
+            <div class="mt-8 pt-6 border-t flex justify-between items-center">
+                <button id="prev-btn" class="btn bg-gray-200 px-6 py-2 rounded-lg font-semibold" disabled>Previous</button>
+                <button id="reset-btn" class="btn bg-red-500 text-white px-6 py-2 rounded-lg font-semibold">Reset</button>
+                <button id="next-btn" class="btn btn-primary px-6 py-2 rounded-lg font-semibold">Next Step</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Explanations -->
+    <div id="info-modal" class="modal-overlay">
+        <div class="modal-content shadow-2xl">
+            <h3 id="modal-title" class="text-xl font-bold text-indigo-700 mb-4"></h3>
+            <div id="modal-body" class="space-y-3"></div>
+            <button id="modal-close-btn" class="mt-6 btn btn-primary w-full py-2 rounded-lg">Got it!</button>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- State Management ---
+            const state = {
+                currentStep: 0,
+                totalSteps: document.querySelectorAll('.step-section').length,
+                animationsPaused: false,
+                modalsContent: {
+                    1: { title: "What is BNF?", body: `<p><strong>Backus-Naur Form (BNF)</strong> is a standard notation used to describe the syntax of programming languages, file formats, and protocols.</p><p>It's like a grammar for computers. Instead of ambiguity, it provides precise rules. Syntax diagrams are a visual way to show these rules, and BNF is the written form.</p>`},
+                    3: { title: "Handling Repetition with Recursion", body: `<p>The loop in the syntax diagram means "one or more". In BNF, we can't write 'loop'. Instead, we use <strong>recursion</strong>.</p><p>We create a new rule (we called it <code>&lt;code&gt;</code>) that defines one instance of the repeating part (<code>&lt;digit&gt;</code> or <code>&lt;capital_letter&gt;</code>).</p><p>Then, we make the rule recursive: it can be followed by another instance of itself (e.g., <code>&lt;digit&gt;&lt;code&gt;</code>). This creates a chain that can be as long as needed.</p>`}
+                }
+            };
+
+            // --- DOM Caching ---
+            const dom = {
+                prevBtn: document.getElementById('prev-btn'),
+                nextBtn: document.getElementById('next-btn'),
+                resetBtn: document.getElementById('reset-btn'),
+                steps: document.querySelectorAll('.step-section'),
+                progressBar: document.getElementById('progress-bar'),
+                modal: {
+                    overlay: document.getElementById('info-modal'),
+                    title: document.getElementById('modal-title'),
+                    body: document.getElementById('modal-body'),
+                    closeBtn: document.getElementById('modal-close-btn')
+                },
+                quizzes: {
+                    q1: { container: document.getElementById('quiz-1'), options: document.getElementById('q1-options'), feedback: document.getElementById('q1-feedback') },
+                    q2: { container: document.getElementById('quiz-2'), answer: document.getElementById('q2-answer'), submit: document.getElementById('q2-submit'), feedback: document.getElementById('q2-feedback') },
+                    q3: { container: document.getElementById('quiz-3'), options: document.getElementById('q3-options') }
+                }
+            };
+
+            // --- Modal Logic ---
+            const showModal = (step) => {
+                const content = state.modalsContent[step];
+                if (content && !sessionStorage.getItem(`modal_shown_${step}`)) {
+                    state.animationsPaused = true;
+                    dom.modal.title.textContent = content.title;
+                    dom.modal.body.innerHTML = content.body;
+                    dom.modal.overlay.classList.add('active');
+                    sessionStorage.setItem(`modal_shown_${step}`, 'true');
+                }
+            };
+
+            const closeModal = () => {
+                dom.modal.overlay.classList.remove('active');
+                state.animationsPaused = false;
+            };
+
+            // --- Navigation Logic ---
+            const updateButtons = () => {
+                dom.prevBtn.disabled = state.currentStep === 0;
+                dom.nextBtn.disabled = state.currentStep === state.totalSteps - 1;
+                
+                if (state.currentStep === 0) dom.nextBtn.textContent = 'Start Learning';
+                else if (state.currentStep === state.totalSteps - 1) dom.nextBtn.textContent = 'Finish';
+                else dom.nextBtn.textContent = 'Next Step';
+            };
+            
+            const updateProgressBar = () => {
+                 const progress = state.currentStep === 0 ? 0 : ((state.currentStep) / (state.totalSteps - 1)) * 100;
+                 dom.progressBar.style.width = `${progress}%`;
+            };
+
+            const showStep = (stepIndex) => {
+                if (state.animationsPaused) return;
+
+                dom.steps.forEach((step, index) => step.classList.toggle('active', index === stepIndex));
+                state.currentStep = stepIndex;
+                
+                updateButtons();
+                updateProgressBar();
+                setTimeout(() => showModal(state.currentStep), 500);
+            };
+
+            // --- Ripple Effect ---
+            const createRipple = (event) => {
+                const button = event.currentTarget;
+                const circle = document.createElement("span");
+                const diameter = Math.max(button.clientWidth, button.clientHeight);
+                const radius = diameter / 2;
+
+                circle.style.width = circle.style.height = `${diameter}px`;
+                circle.style.left = `${event.clientX - button.offsetLeft - radius}px`;
+                circle.style.top = `${event.clientY - button.offsetTop - radius}px`;
+                circle.classList.add("ripple");
+
+                const ripple = button.getElementsByClassName("ripple")[0];
+                if (ripple) ripple.remove();
+                
+                button.appendChild(circle);
+            }
+
+            // --- Quiz Handlers ---
+            const quizHandlers = {
+                q1: (e) => {
+                    const selectedOption = e.target.closest('.quiz-option');
+                    if (!selectedOption) return;
+
+                    const correctAnswer = 'b';
+                    const isCorrect = selectedOption.dataset.answer === correctAnswer;
+                    const feedbackEl = dom.quizzes.q1.feedback;
+                    
+                    dom.quizzes.q1.options.querySelectorAll('.quiz-option').forEach(opt => opt.style.pointerEvents = 'none');
+                    
+                    selectedOption.classList.add('selected');
+                    selectedOption.classList.add(isCorrect ? 'correct' : 'incorrect');
+
+                    if (isCorrect) {
+                        feedbackEl.innerHTML = `<strong>Correct!</strong> This rule correctly defines "zero or more" using recursion. The base case is <code>&lt;letter&gt;</code>, and the recursive step is <code>&lt;variable&gt;&lt;digit&gt;</code>.`;
+                        feedbackEl.className = 'mt-4 p-3 rounded-lg text-sm bg-green-100 text-green-800 block';
+                    } else {
+                        feedbackEl.innerHTML = `<strong>Not quite.</strong> The correct answer uses recursion where the rule calls itself. <code>&lt;variable&gt; ::= &lt;letter&gt; | &lt;variable&gt;&lt;digit&gt;</code> provides a base case (just a letter) and a recursive step (a variable followed by a digit).`;
+                        feedbackEl.className = 'mt-4 p-3 rounded-lg text-sm bg-red-100 text-red-800 block';
+                        dom.quizzes.q1.options.querySelector(`[data-answer="${correctAnswer}"]`).classList.add('correct');
+                    }
+                },
+                q2: () => {
+                    const answerEl = dom.quizzes.q2.answer;
+                    const feedbackEl = dom.quizzes.q2.feedback;
+                    const userAnswer = answerEl.value.replace(/\s+/g, '').toLowerCase();
+                    const correctAnswer = "<vehicle_reg>::=<letter><letter><digit><digit>";
+
+                    if (userAnswer.length < correctAnswer.length - 5) { // Require a reasonable attempt
+                         feedbackEl.innerHTML = `<strong>Please provide a more complete answer.</strong>`;
+                         feedbackEl.className = 'mt-4 p-3 rounded-lg text-sm bg-yellow-100 text-yellow-800 block';
+                         return;
+                    }
+
+                    answerEl.disabled = true;
+                    dom.quizzes.q2.submit.disabled = true;
+
+                    if (userAnswer === correctAnswer) {
+                         feedbackEl.innerHTML = `<strong>Excellent!</strong> That's the correct way to show a fixed sequence of elements.`;
+                         feedbackEl.className = 'mt-4 p-3 rounded-lg text-sm bg-green-100 text-green-800 block';
+                    } else {
+                         feedbackEl.innerHTML = `<strong>Almost!</strong> Remember, for a fixed sequence, you just list the non-terminals one after another.<br><br><strong>Correct Answer:</strong> <code>&lt;vehicle_reg&gt; ::= &lt;letter&gt;&lt;letter&gt;&lt;digit&gt;&lt;digit&gt;</code>`;
+                         feedbackEl.className = 'mt-4 p-3 rounded-lg text-sm bg-red-100 text-red-800 block';
+                    }
+                },
+                q3: (e) => {
+                    const selectedOption = e.target.closest('.quiz-option');
+                    if (!selectedOption) return;
+
+                    selectedOption.classList.add(selectedOption.dataset.valid === 'true' ? 'correct' : 'incorrect');
+                    selectedOption.style.pointerEvents = 'none';
+                }
+            };
+
+            // --- Reset Logic ---
+            const resetSimulation = () => {
+                sessionStorage.clear();
+                showStep(0);
+                
+                // Reset Quizzes
+                dom.quizzes.q1.options.querySelectorAll('.quiz-option').forEach(opt => {
+                    opt.className = 'quiz-option p-3 rounded-lg';
+                    opt.style.pointerEvents = 'auto';
+                });
+                dom.quizzes.q1.feedback.className = 'mt-4 p-3 rounded-lg text-sm hidden';
+
+                const q2Answer = dom.quizzes.q2.answer;
+                q2Answer.value = '';
+                q2Answer.disabled = false;
+                dom.quizzes.q2.submit.disabled = false;
+                dom.quizzes.q2.feedback.className = 'mt-4 p-3 rounded-lg text-sm hidden';
+                
+                dom.quizzes.q3.options.querySelectorAll('.quiz-option').forEach(opt => {
+                    opt.className = 'quiz-option p-3 rounded-lg font-mono';
+                    opt.style.pointerEvents = 'auto';
+                });
+            }
+
+            // --- Event Listeners ---
+            const init = () => {
+                dom.nextBtn.addEventListener('click', () => showStep(state.currentStep + 1));
+                dom.prevBtn.addEventListener('click', () => showStep(state.currentStep - 1));
+                dom.resetBtn.addEventListener('click', resetSimulation);
+                dom.modal.closeBtn.addEventListener('click', closeModal);
+                dom.modal.overlay.addEventListener('click', (e) => e.target === dom.modal.overlay && closeModal());
+
+                document.querySelectorAll('.btn').forEach(button => button.addEventListener('click', createRipple));
+
+                document.addEventListener('keydown', (e) => {
+                    const activeEl = document.activeElement;
+                    if (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') return;
+                    if (e.key === 'ArrowRight' && !dom.nextBtn.disabled) dom.nextBtn.click();
+                    if (e.key === 'ArrowLeft' && !dom.prevBtn.disabled) dom.prevBtn.click();
+                });
+
+                // Quiz Event Delegation
+                dom.quizzes.q1.options.addEventListener('click', quizHandlers.q1);
+                dom.quizzes.q2.submit.addEventListener('click', quizHandlers.q2);
+                dom.quizzes.q3.options.addEventListener('click', quizHandlers.q3);
+
+                // Initial setup
+                showStep(0);
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>

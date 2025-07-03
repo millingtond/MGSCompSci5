@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iterative Model Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0fdfa; /* teal-50 */
+        }
+        /* --- Animations --- */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes spin-and-fade {
+            from { transform: rotate(0deg) scale(0.5); opacity: 0; }
+            to { transform: rotate(360deg) scale(1); opacity: 1; }
+        }
+
+        .cycle-graphic-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        .cycle-phase {
+            position: absolute;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            opacity: 0.5;
+        }
+        .cycle-phase.active {
+            transform: scale(1.2);
+            opacity: 1;
+            z-index: 10;
+        }
+        /* Positions for cycle phases */
+        .cycle-phase:nth-child(1) { transform: translate(0, -110px); } /* Plan */
+        .cycle-phase:nth-child(2) { transform: translate(110px, 0); } /* Design */
+        .cycle-phase:nth-child(3) { transform: translate(0, 110px); } /* Build */
+        .cycle-phase:nth-child(4) { transform: translate(-110px, 0); } /* Test */
+
+        .software-build {
+            transition: all 0.5s ease-in-out;
+        }
+        .feature {
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.5s ease-in-out;
+        }
+        .feature.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .quiz-option {
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .quiz-option:not(.disabled):hover {
+            background-color: #ccfbf1; /* teal-100 */
+            transform: scale(1.02);
+        }
+        .disabled { cursor: not-allowed; pointer-events: none; }
+        .correct { background-color: #dcfce7 !important; border-color: #22c55e; }
+        .incorrect { background-color: #fee2e2 !important; border-color: #ef4444; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div id="main-container" class="w-full max-w-5xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+        <header class="p-4 sm:p-6 bg-gradient-to-r from-teal-600 to-cyan-600 text-white">
+            <h1 class="text-2xl sm:text-3xl font-bold text-center">The Iterative Model</h1>
+            <p class="text-center text-teal-100 mt-1">Building and Refining in Repeated Cycles</p>
+        </header>
+
+        <div id="instructions" class="p-5 border-b border-gray-200 bg-teal-50">
+             <h2 class="text-lg font-semibold text-teal-800 flex items-center"><i class="fas fa-info-circle mr-3"></i>How to Use This Simulation</h2>
+             <ul class="list-disc list-inside mt-2 text-gray-700 space-y-1 text-sm sm:text-base">
+                 <li>Click the <span class="font-semibold text-teal-600">"Start Iteration"</span> button to begin a development cycle.</li>
+                 <li>Watch as the software build gains new features after each full iteration.</li>
+                 <li>Follow the descriptions on the right to understand what's happening at each stage.</li>
+                 <li>After three iterations, you'll evaluate the model and take a short quiz.</li>
+             </ul>
+        </div>
+        
+        <main id="simulation-body" class="p-5 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <!-- Left Side: Iterative Process Visual -->
+            <div class="flex flex-col items-center justify-center min-h-[450px]">
+                <div class="cycle-graphic-container w-64 h-64 mb-6">
+                    <!-- Cycle Phases -->
+                    <div id="phase-plan" class="cycle-phase flex items-center justify-center w-24 h-24 bg-sky-500 text-white rounded-full shadow-lg"><div class="text-center"><i class="fas fa-clipboard-list fa-lg"></i><p class="text-sm font-bold">Plan</p></div></div>
+                    <div id="phase-design" class="cycle-phase flex items-center justify-center w-24 h-24 bg-indigo-500 text-white rounded-full shadow-lg"><div class="text-center"><i class="fas fa-drafting-compass fa-lg"></i><p class="text-sm font-bold">Design</p></div></div>
+                    <div id="phase-build" class="cycle-phase flex items-center justify-center w-24 h-24 bg-purple-500 text-white rounded-full shadow-lg"><div class="text-center"><i class="fas fa-cogs fa-lg"></i><p class="text-sm font-bold">Build</p></div></div>
+                    <div id="phase-test" class="cycle-phase flex items-center justify-center w-24 h-24 bg-rose-500 text-white rounded-full shadow-lg"><div class="text-center"><i class="fas fa-vials fa-lg"></i><p class="text-sm font-bold">Test</p></div></div>
+                    <!-- Central Software Build -->
+                    <div id="software-build" class="software-build relative w-40 h-40 bg-slate-200 rounded-lg shadow-inner flex flex-col justify-between p-2 border-4 border-slate-300">
+                        <div class="text-center text-xs font-bold text-slate-500">App v<span id="version-number">0.1</span></div>
+                        <div id="feature-login" class="feature w-full h-1/3 bg-slate-400 rounded-sm flex items-center justify-center text-white text-xs">Login</div>
+                        <div id="feature-dashboard" class="feature w-full h-1/3 bg-slate-500 rounded-sm flex items-center justify-center text-white text-xs">Dashboard</div>
+                        <div id="feature-profile" class="feature w-full h-1/3 bg-slate-600 rounded-sm flex items-center justify-center text-white text-xs">Profile</div>
+                    </div>
+                </div>
+                <button id="iteration-btn" class="bg-teal-500 text-white font-bold py-3 px-8 rounded-lg hover:bg-teal-600 transition-colors shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed">Start Iteration 1</button>
+            </div>
+
+            <!-- Right Side: Content & Explanation -->
+            <div id="content-panel" class="bg-slate-50 p-6 rounded-lg shadow-inner min-h-[450px]">
+                 <!-- Content dynamically inserted -->
+            </div>
+        </main>
+        
+        <footer class="p-4 bg-slate-100 border-t flex justify-center items-center">
+            <button id="reset-btn" class="bg-red-500 text-white font-bold py-2 px-5 rounded-lg hover:bg-red-600 transition-colors flex items-center"><i class="fas fa-redo mr-2"></i>Reset Simulation</button>
+        </footer>
+    </div>
+    
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- STATE MANAGEMENT ---
+    let currentIteration = 0; // 0=pre-start, 1, 2, 3=iterations, 4=evaluation
+    let currentPhase = -1; // -1=idle, 0=plan, 1=design, 2=build, 3=test
+    let isAnimating = false;
+    const totalIterations = 3;
+
+    // --- DOM ELEMENTS ---
+    const contentPanel = document.getElementById('content-panel');
+    const iterationBtn = document.getElementById('iteration-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const versionNumberEl = document.getElementById('version-number');
+    const cyclePhases = [
+        document.getElementById('phase-plan'),
+        document.getElementById('phase-design'),
+        document.getElementById('phase-build'),
+        document.getElementById('phase-test')
+    ];
+    const features = [
+        document.getElementById('feature-login'),
+        document.getElementById('feature-dashboard'),
+        document.getElementById('feature-profile')
+    ];
+
+    // --- DATA ---
+    const contentData = [
+        { // Pre-start
+            title: "The Iterative Model",
+            description: "Welcome! The Iterative model develops a system through repeated cycles (iterations). In each iteration, a small part of the system is designed, built, and tested. The software grows incrementally with each cycle.",
+            status: "Ready to begin development of the initial version."
+        },
+        { // Iteration 1
+            title: "Iteration 1: Core Functionality",
+            phases: [
+                "<b>Planning:</b> Define requirements for the most basic, core feature: User Authentication.",
+                "<b>Designing:</b> Create the database schema, UI mockups, and logic for the login screen.",
+                "<b>Building:</b> Code the login form, user validation, and session management.",
+                "<b>Testing:</b> Verify that users can log in successfully and invalid attempts are rejected."
+            ],
+            status: "First working version is complete with a single feature."
+        },
+        { // Iteration 2
+            title: "Iteration 2: Adding a Dashboard",
+            phases: [
+                "<b>Planning:</b> Gather requirements for a user dashboard to be displayed after login.",
+                "<b>Designing:</b> Plan the layout, data widgets, and navigation for the dashboard.",
+                "<b>Building:</b> Implement the dashboard UI and connect it to backend data sources.",
+                "<b>Testing:</b> Ensure the dashboard displays correctly and integrates with the login system."
+            ],
+            status: "The product is enhanced with a new dashboard feature."
+        },
+        { // Iteration 3
+            title: "Iteration 3: User Profiles",
+            phases: [
+                "<b>Planning:</b> Define requirements for an editable user profile page.",
+                "<b>Designing:</b> Design the UI for viewing and editing profile information.",
+                "<b>Building:</b> Develop the profile page, including forms and data update logic.",
+                "<b>Testing:</b> Test profile viewing, editing, and data persistence."
+            ],
+            status: "The product is now more feature-rich."
+        },
+        { // Evaluation
+            title: "Model Evaluation & Quiz",
+            description: "After 3 iterations, the application is significantly more complete. Now let's evaluate the pros and cons of this approach.",
+        }
+    ];
+
+    // --- INITIALIZATION ---
+    function initialize() {
+        currentIteration = 0;
+        currentPhase = -1;
+        isAnimating = false;
+        iterationBtn.disabled = false;
+        iterationBtn.textContent = `Start Iteration 1`;
+        iterationBtn.classList.remove('hidden');
+        versionNumberEl.textContent = "0.1";
+        features.forEach(f => f.classList.remove('visible'));
+        cyclePhases.forEach(p => p.classList.remove('active'));
+        updateContentPanel();
+    }
+    
+    // --- UI UPDATES ---
+    function updateContentPanel() {
+        const data = contentData[currentIteration];
+        let statusText = data.status || "";
+        if (isAnimating && currentPhase > -1) {
+            statusText = data.phases[currentPhase];
+        }
+
+        contentPanel.innerHTML = `
+            <div style="animation: fadeIn 0.5s ease-out;">
+                <h3 class="text-2xl font-bold text-slate-800 mb-2">${data.title}</h3>
+                <p class="text-slate-600 mb-5 min-h-[50px]">${data.description || ''}</p>
+                <div class="bg-slate-100 p-4 rounded-lg border border-slate-200">
+                    <p class="text-sm font-semibold text-slate-500 tracking-wider uppercase">Current Status</p>
+                    <p class="font-medium text-slate-700 mt-1 min-h-[60px]">${statusText}</p>
+                </div>
+            </div>
+        `;
+    }
+    
+    function showEvaluation() {
+        contentPanel.innerHTML = `
+            <div style="animation: fadeIn 0.5s ease-out;">
+                <h3 class="text-2xl font-bold text-slate-800 mb-2">${contentData[4].title}</h3>
+                <p class="text-slate-600 mb-5">${contentData[4].description}</p>
+                <!-- Accordion for pros and cons -->
+                <div class="space-y-2">
+                    <details class="bg-green-50 p-3 rounded-lg cursor-pointer">
+                        <summary class="font-semibold text-green-800">Benefits of Iterative Model</summary>
+                        <ul class="list-disc list-inside space-y-1 mt-2 text-sm text-green-900">
+                            <li>Lower risk of overall project failure.</li>
+                            <li>Easier to accommodate changes.</li>
+                            <li>Continuous testing and feedback.</li>
+                            <li>Better customer satisfaction through involvement.</li>
+                        </ul>
+                    </details>
+                    <details class="bg-red-50 p-3 rounded-lg cursor-pointer">
+                        <summary class="font-semibold text-red-800">Drawbacks of Iterative Model</summary>
+                        <ul class="list-disc list-inside space-y-1 mt-2 text-sm text-red-900">
+                            <li>Needs good initial design to avoid rework.</li>
+                            <li>Slower progress between releases compared to RAD.</li>
+                            <li>Can be more costly for very small projects.</li>
+                            <li>More management overhead to handle cycles.</li>
+                        </ul>
+                    </details>
+                </div>
+                <div id="quiz-container" class="mt-6"></div>
+            </div>
+        `;
+        loadQuiz();
+    }
+    
+    // --- CORE LOGIC ---
+    function startIteration() {
+        if (isAnimating) return;
+
+        if (currentIteration < totalIterations) {
+            currentIteration++;
+            isAnimating = true;
+            iterationBtn.disabled = true;
+            iterationBtn.textContent = `Iteration ${currentIteration} in Progress...`;
+            updateContentPanel();
+            runCycle();
+        } else if (currentIteration === totalIterations) {
+            currentIteration++;
+            iterationBtn.classList.add('hidden');
+            showEvaluation();
+        }
+    }
+
+    function runCycle() {
+        currentPhase = 0;
+        const cycleInterval = setInterval(() => {
+            // Deactivate previous phase
+            const prevPhaseIndex = (currentPhase + 3) % 4;
+            cyclePhases[prevPhaseIndex].classList.remove('active');
+
+            // Activate current phase
+            cyclePhases[currentPhase].classList.add('active');
+            updateContentPanel();
+
+            currentPhase++;
+            if (currentPhase > 3) {
+                clearInterval(cycleInterval);
+                finishIteration();
+            }
+        }, 1000);
+    }
+    
+    function finishIteration() {
+        // Deactivate final phase
+        cyclePhases[3].classList.remove('active');
+        currentPhase = -1;
+        isAnimating = false;
+        
+        // Show new feature
+        features[currentIteration - 1].classList.add('visible');
+        versionNumberEl.textContent = `0.${currentIteration + 1}`;
+        
+        if (currentIteration < totalIterations) {
+            iterationBtn.disabled = false;
+            iterationBtn.textContent = `Start Iteration ${currentIteration + 1}`;
+        } else {
+            iterationBtn.textContent = 'Proceed to Evaluation';
+            iterationBtn.disabled = false;
+        }
+        updateContentPanel();
+    }
+    
+    // --- QUIZ LOGIC ---
+    function loadQuiz() {
+        const quizContainer = document.getElementById('quiz-container');
+        quizContainer.innerHTML = `
+            <h4 class="font-bold text-lg text-slate-700 mb-3 mt-6">Knowledge Check</h4>
+            <div id="question" class="font-semibold text-slate-800 mb-3"></div>
+            <div id="options" class="space-y-2"></div>
+            <div id="feedback" class="mt-3 font-medium h-6"></div>
+        `;
+        // For this simulation, we'll use a single, representative question.
+        const question = "Which statement best describes the Iterative Model?";
+        const options = [
+            "A rigid, linear process where each phase must be completed before the next begins.",
+            "A process of building and testing a simple version, then adding features in repeated cycles.",
+            "A method focused on rapid prototyping with minimal upfront planning.",
+            "A model where testing is only performed once all coding is complete."
+        ];
+        const answer = options[1];
+        
+        document.getElementById('question').textContent = question;
+        const optionsContainer = document.getElementById('options');
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.textContent = opt;
+            btn.className = "w-full text-left p-3 rounded-lg border-2 border-slate-200 quiz-option";
+            btn.onclick = () => checkAnswer(btn, opt === answer);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(btn, isCorrect) {
+        document.querySelectorAll('.quiz-option').forEach(b => b.classList.add('disabled'));
+        const feedbackEl = document.getElementById('feedback');
+        if(isCorrect) {
+            btn.classList.add('correct');
+            feedbackEl.textContent = "Correct! The model builds upon itself in cycles.";
+            feedbackEl.className = "mt-3 font-medium h-6 text-green-600";
+        } else {
+            btn.classList.add('incorrect');
+            feedbackEl.textContent = "Not quite. That sounds more like the Waterfall model.";
+            feedbackEl.className = "mt-3 font-medium h-6 text-red-600";
+        }
+    }
+
+    // --- EVENT LISTENERS ---
+    iterationBtn.addEventListener('click', startIteration);
+    resetBtn.addEventListener('click', initialize);
+
+    // --- KICK OFF SIMULATION ---
+    initialize();
+});
+</script>
+</body>
+</html>

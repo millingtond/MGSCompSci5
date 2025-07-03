@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Consumption & Climate Change Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .gradient-background { background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%); }
+        .card { background-color: white; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        canvas { background-color: #ffffff; border-radius: 0.5rem; border: 1px solid #e2e8f0; position: relative; }
+        .action-button { transition: all 0.2s ease-in-out; }
+        .action-button:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.1); }
+        .action-button:disabled { background-color: #9ca3af; cursor: not-allowed; opacity: 0.8; }
+        #thermometer { width: 30px; height: 120px; background-color: #e5e7eb; border-radius: 15px; border: 2px solid #9ca3af; position: relative; overflow: hidden; margin: 10px auto 0; }
+        #mercury { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, #ef4444, #f97316, #fde047); transition: height 0.5s ease; }
+        #canvas-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: rgba(255, 255, 255, 0.85); color: #1e293b; font-size: 2rem; font-weight: bold; text-align: center; opacity: 0; pointer-events: none; transition: opacity 0.5s ease; z-index: 10;}
+        #canvas-overlay.active { opacity: 1; pointer-events: all; }
+    </style>
+</head>
+<body class="gradient-background text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Computing's Energy Consumption</h1>
+            <p class="mt-2 text-lg text-gray-600">An interactive simulation on greenhouse gases & climate change (OCR J277)</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="card p-6">
+                <h2 class="text-2xl font-bold mb-2 text-center">Global Energy & Climate Model</h2>
+                <div class="flex justify-between items-center text-center mb-2">
+                    <div class="font-bold text-lg">Year: <span id="year-display" class="text-blue-600">2025</span></div>
+                    <div class="font-bold text-lg text-red-600">Goal: Keep Temp Below +2.0°C</div>
+                </div>
+                <div style="position: relative;">
+                    <canvas id="simulationCanvas"></canvas>
+                    <div id="canvas-overlay">
+                        <div id="game-over-text"></div>
+                        <button id="restart-btn" class="mt-4 bg-indigo-500 text-white font-bold py-2 px-6 rounded-lg text-lg hidden">Restart Simulation</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 text-center">
+                    <div class="p-3 bg-blue-100 border-blue-200 rounded-lg"><h3 class="font-bold text-blue-800">Energy Demand</h3><p><span id="demand-level" class="text-xl font-semibold">0</span> GW</p></div>
+                    <div class="p-3 bg-slate-100 border-slate-200 rounded-lg"><h3 class="font-bold text-slate-800">CO₂ Level</h3><p><span id="co2-level" class="text-xl font-semibold">420</span> ppm</p></div>
+                    <div class="p-3 bg-red-100 border-red-200 rounded-lg"><h3 class="font-bold text-red-800">Temperature</h3><div id="thermometer"><div id="mercury" style="height: 20%;"></div></div><p><span id="temp-level" class="font-semibold">+1.20</span>°C</p></div>
+                </div>
+            </div>
+
+            <div class="card p-6">
+                 <h2 class="text-2xl font-bold mb-4 text-center">Actions & Solutions</h2>
+                 
+                 <div class="grid grid-cols-2 gap-x-6">
+                     <div>
+                        <h3 class="text-center font-semibold mb-2 text-gray-600">Activate Demand</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="serverBtn" data-task="server" class="action-button w-full bg-sky-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">Data Centre</button>
+                            <button id="gamingBtn" data-task="gaming" class="action-button w-full bg-purple-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">Gaming</button>
+                            <button id="streamingBtn" data-task="streaming" class="action-button w-full bg-rose-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">Streaming</button>
+                            <button id="cryptoBtn" data-task="crypto" class="action-button w-full bg-amber-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">Crypto Mining</button>
+                            <button id="aiBtn" data-task="ai" class="action-button w-full bg-pink-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">AI Training</button>
+                            <button id="iotBtn" data-task="iot" class="action-button w-full bg-lime-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">IoT Devices</button>
+                            <button id="socialBtn" data-task="social" class="action-button w-full bg-cyan-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">Social Media</button>
+                            <button id="cloudBtn" data-task="cloud" class="action-button w-full bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">Cloud Storage</button>
+                        </div>
+                     </div>
+                     <div>
+                        <h3 class="text-center font-semibold mb-2 text-gray-600">Efficiency Upgrades</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                             <button id="upgradeServerBtn" data-task="server" class="action-button w-full bg-teal-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">Upgrade Cooling</button>
+                             <button id="upgradeGamingBtn" data-task="gaming" class="action-button w-full bg-teal-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">Optimise Servers</button>
+                             <button id="upgradeStreamingBtn" data-task="streaming" class="action-button w-full bg-teal-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">New Codecs</button>
+                             <button id="upgradeCryptoBtn" data-task="crypto" class="action-button w-full bg-teal-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">Efficient Hardware</button>
+                             <button id="upgradeAiBtn" data-task="ai" class="action-button w-full bg-teal-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">Optimise Models</button>
+                             <button id="upgradeIotBtn" data-task="iot" class="action-button w-full bg-teal-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">Low-Power Chips</button>
+                             <button id="upgradeSocialBtn" data-task="social" class="action-button w-full bg-teal-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">Efficient Feeds</button>
+                             <button id="upgradeCloudBtn" data-task="cloud" class="action-button w-full bg-teal-500 text-white font-bold py-2 px-4 rounded-lg shadow-md text-sm">Deduplication</button>
+                        </div>
+                     </div>
+                 </div>
+
+                 <div class="mt-4 pt-4 border-t"><h3 class="text-center font-semibold mb-2 text-gray-600">Power Source</h3><button id="renewablesBtn" class="action-button w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow-md">Switch to 100% Renewables</button></div>
+                 <div class="mt-4 p-3 bg-indigo-100 border border-indigo-200 rounded-lg min-h-[60px]"><p id="info-box" class="text-sm text-indigo-700 text-center">Click an action to learn about its energy footprint.</p></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- GLOBAL STATE & CONFIG ---
+        let energyDemand = 0, co2Level = 420, tempAnomaly = 1.20, gameYear = 2025;
+        let isRenewable = false, isGameOver = false, isAnimating = false;
+        let gameInterval;
+        const tasks = { server: false, gaming: false, streaming: false, crypto: false, ai: false, iot: false, social: false, cloud: false };
+        const upgrades = { server: false, gaming: false, streaming: false, crypto: false, ai: false, iot: false, social: false, cloud: false };
+        let co2Particles = [], dataPackets = [];
+        const demandValues = { 
+            server: { base: 15, reduction: 7 }, 
+            gaming: { base: 8, reduction: 4 }, 
+            streaming: { base: 10, reduction: 5 },
+            crypto: { base: 25, reduction: 12 },
+            ai: { base: 20, reduction: 9 },
+            iot: { base: 7, reduction: 4 },
+            social: { base: 12, reduction: 6 },
+            cloud: { base: 18, reduction: 8 }
+        };
+
+        // --- DOM ELEMENTS ---
+        const canvas = document.getElementById('simulationCanvas'); const ctx = canvas.getContext('2d');
+        const demandEl = document.getElementById('demand-level'), co2El = document.getElementById('co2-level'), tempEl = document.getElementById('temp-level'), yearEl = document.getElementById('year-display');
+        const mercuryEl = document.getElementById('mercury'), infoBox = document.getElementById('info-box');
+        const canvasOverlay = document.getElementById('canvas-overlay'), gameOverText = document.getElementById('game-over-text'), restartBtn = document.getElementById('restart-btn');
+        const taskButtons = { server: document.getElementById('serverBtn'), gaming: document.getElementById('gamingBtn'), streaming: document.getElementById('streamingBtn'), crypto: document.getElementById('cryptoBtn'), ai: document.getElementById('aiBtn'), iot: document.getElementById('iotBtn'), social: document.getElementById('socialBtn'), cloud: document.getElementById('cloudBtn') };
+        const upgradeButtons = { server: document.getElementById('upgradeServerBtn'), gaming: document.getElementById('upgradeGamingBtn'), streaming: document.getElementById('upgradeStreamingBtn'), crypto: document.getElementById('upgradeCryptoBtn'), ai: document.getElementById('upgradeAiBtn'), iot: document.getElementById('upgradeIotBtn'), social: document.getElementById('upgradeSocialBtn'), cloud: document.getElementById('upgradeCloudBtn') };
+        const renewablesBtn = document.getElementById('renewablesBtn');
+        
+        // --- SETUP & UTILITY ---
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = 300;
+        }
+
+        // --- CLASSES ---
+        class CO2Particle { constructor(x) { this.x = x + (Math.random() - 0.5) * 10; this.y = canvas.height - 180; this.radius = Math.random() * 5 + 3; this.vy = -Math.random() * 0.5 - 0.2; this.vx = (Math.random() - 0.5) * 0.5; this.opacity = 1; } draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fillStyle = `rgba(100, 116, 139, ${this.opacity})`; ctx.fill(); } update() { this.y += this.vy; this.x += this.vx; this.opacity -= 0.005; this.draw(); } }
+        class DataPacket {
+            constructor(startX, startY, endX, endY, color) { this.x = startX; this.y = startY; this.endX = endX; this.endY = endY; this.radius = 2; this.opacity = 1; this.color = color; }
+            draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fillStyle = `rgba(${this.color}, ${this.opacity})`; ctx.fill(); }
+            update() { const dx = this.endX - this.x, dy = this.endY - this.y, dist = Math.sqrt(dx * dx + dy * dy); if (dist < 2) { this.opacity = 0; return; } this.x += (dx / dist) * 2.5; this.y += (dy / dist) * 2.5; this.opacity -= 0.02; this.draw(); }
+        }
+
+        // --- DRAWING ---
+        function drawCity() { 
+            const buildings = {
+                server:    { x: 10, w: 40, h: 120, color: '#3b82f6' }, 
+                gaming:    { x: 55, w: 35, h: 80, color: '#a855f7' }, 
+                streaming: { x: 95, w: 40, h: 100, color: '#f43f5e' },
+                iot:       { x: 140, w: 30, h: 60, color: '#84cc16'},
+                social:    { x: canvas.width - 185, w: 40, h: 110, color: '#06b6d4'},
+                cloud:     { x: canvas.width - 140, w: 45, h: 150, color: '#6366f1'},
+                crypto:    { x: canvas.width - 90, w: 40, h: 70, color: '#f59e0b' },
+                ai:        { x: canvas.width - 45, w: 35, h: 140, color: '#ec4899' }
+            };
+            
+            for (const [key, b] of Object.entries(buildings)) {
+                if (upgrades[key]) { ctx.shadowColor = '#14b8a6'; ctx.shadowBlur = 20; }
+                ctx.fillStyle = tasks[key] ? b.color : '#94a3b8';
+                ctx.fillRect(b.x, canvas.height - 20 - b.h, b.w, b.h);
+                ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+            }
+             return buildings;
+        }
+
+        function animate() { 
+            if(isGameOver && !isAnimating) return;
+            isAnimating = !isGameOver;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const tempRatio = Math.min(1, (tempAnomaly - 1.2) / 0.8); const skyColor = `rgb(${Math.floor(135 + 112*tempRatio)}, ${Math.floor(206 - 60*tempRatio)}, ${Math.floor(235 - 176*tempRatio)})`;
+            ctx.fillStyle = skyColor; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#65a30d'; ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+            
+            const buildings = drawCity();
+            if(isRenewable) { let x = canvas.width/2 - 100; ctx.fillStyle = '#d1d5db'; ctx.fillRect(x, canvas.height - 120, 5, 100); ctx.beginPath(); ctx.arc(x+2.5, canvas.height - 120, 5, 0, 2 * Math.PI); ctx.fill(); ctx.fillStyle = '#1e3a8a'; ctx.fillRect(x + 20, canvas.height - 80, 80, 60); } 
+            else { const baseX = canvas.width/2 - 60; ctx.fillStyle = '#475569'; ctx.fillRect(baseX - 20, canvas.height - 150, 160, 130); ctx.fillStyle = '#64748b'; ctx.fillRect(baseX, canvas.height - 180, 40, 160); if (Math.random() < energyDemand / 50) { co2Particles.push(new CO2Particle(baseX + 20)); }}
+            
+            if (Math.random() < 0.3) {
+                const activeTasks = Object.keys(tasks).filter(k => tasks[k]);
+                if (activeTasks.length > 0) {
+                    const randomTask = activeTasks[Math.floor(Math.random() * activeTasks.length)];
+                    const b = buildings[randomTask];
+                    dataPackets.push(new DataPacket(b.x + b.w / 2, b.y + b.h / 2, canvas.width / 2, canvas.height - 45, '255, 235, 59'));
+                }
+            }
+            dataPackets = dataPackets.filter(p => p.opacity > 0); dataPackets.forEach(p => p.update());
+            co2Particles = co2Particles.filter(p => p.opacity > 0); co2Particles.forEach(p => p.update());
+
+            if (isAnimating) { requestAnimationFrame(animate); }
+        }
+        
+        // --- GAME LOGIC & STATE MANAGEMENT ---
+        function recalculateTotalDemand() {
+            let totalDemand = 0;
+            for(const taskName in tasks) {
+                if (tasks[taskName]) {
+                    let currentDemand = demandValues[taskName].base;
+                    if (upgrades[taskName]) currentDemand -= demandValues[taskName].reduction;
+                    totalDemand += currentDemand;
+                }
+            }
+            energyDemand = totalDemand;
+        }
+
+        function gameTick() {
+            if(isGameOver) return;
+            gameYear++;
+            if (energyDemand > 0 && !isRenewable) {
+                co2Level += energyDemand * 0.15; // Increased CO2 impact
+                tempAnomaly += energyDemand * 0.0008; // Increased temperature impact
+            } else if (co2Level > 420) {
+                co2Level = Math.max(420, co2Level - 2.0); // Slower recovery
+                tempAnomaly -= 0.0010;
+            }
+            tempAnomaly = Math.max(1.2, tempAnomaly);
+            updateUI();
+            checkEndConditions();
+        }
+        
+        function resetState() {
+            energyDemand = 0; co2Level = 420; tempAnomaly = 1.20; gameYear = 2025;
+            isRenewable = false; isGameOver = false;
+            co2Particles = []; dataPackets = [];
+            for (const key in tasks) { tasks[key] = false; }
+            for (const key in upgrades) { upgrades[key] = false; }
+
+            const originalButtonTexts = {
+                server: "Data Centre", gaming: "Gaming", streaming: "Streaming", crypto: "Crypto Mining", ai: "AI Training", iot: "IoT Devices", social: "Social Media", cloud: "Cloud Storage"
+            };
+            const originalUpgradeTexts = {
+                server: "Upgrade Cooling", gaming: "Optimise Servers", streaming: "New Codecs", crypto: "Efficient Hardware", ai: "Optimise Models", iot: "Low-Power Chips", social: "Efficient Feeds", cloud: "Deduplication"
+            };
+
+            for (const key in taskButtons) {
+                taskButtons[key].classList.remove('brightness-75');
+                taskButtons[key].textContent = originalButtonTexts[key];
+            }
+            for (const key in upgradeButtons) {
+                upgradeButtons[key].disabled = false;
+                upgradeButtons[key].textContent = originalUpgradeTexts[key];
+            }
+
+            renewablesBtn.textContent = 'Switch to 100% Renewables';
+            renewablesBtn.classList.remove('bg-orange-500'); renewablesBtn.classList.add('bg-green-500');
+
+            canvasOverlay.classList.remove('active');
+            restartBtn.classList.add('hidden');
+            updateUI();
+        }
+
+        function startGame() {
+            resetState();
+            if(gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(gameTick, 4800); // 120 seconds / 25 years = 4.8s per year
+            if (!isAnimating) { requestAnimationFrame(animate); }
+        }
+
+        function checkEndConditions() {
+            if (tempAnomaly >= 2.0) { endGame(false); }
+            else if (gameYear >= 2050) { endGame(true); }
+        }
+
+        function endGame(isWin) {
+            isGameOver = true; isAnimating = false;
+            clearInterval(gameInterval);
+            if(isWin) { gameOverText.textContent = "Goal Achieved!\nYou kept warming below 2.0°C!"; gameOverText.style.color = "#16a34a"; } 
+            else { gameOverText.textContent = "Goal Failed!\nClimate target exceeded."; gameOverText.style.color = "#dc2626"; }
+            canvasOverlay.classList.add('active');
+            restartBtn.classList.remove('hidden');
+        }
+
+        // --- UI & EVENT HANDLERS ---
+        function updateUI() {
+            demandEl.textContent = energyDemand.toFixed(0);
+            co2El.textContent = co2Level.toFixed(0);
+            tempEl.textContent = `+${tempAnomaly.toFixed(2)}`;
+            yearEl.textContent = gameYear;
+            mercuryEl.style.height = `${Math.min(100, (tempAnomaly - 1.2) / 0.8 * 100)}%`;
+        }
+        
+        const infoTexts = {
+            server: "Data centres use vast energy for processing and cooling.",
+            gaming: "Online gaming requires powerful servers running 24/7.",
+            streaming: "HD video streaming is a massive driver of internet data traffic.",
+            crypto: "Cryptocurrency mining involves intensive calculations, consuming huge amounts of power.",
+            ai: "Training large AI models is an extremely energy-intensive process.",
+            iot: "Billions of always-on Internet of Things devices create a constant, low-level energy demand.",
+            social: "Powering the algorithms and data transfer for endless social media feeds is very energy intensive.",
+            cloud: "Maintaining and accessing user data stored 24/7 in the cloud requires significant energy."
+        };
+        const upgradeInfoTexts = {
+            server: "Modern cooling systems drastically reduce energy waste.",
+            gaming: "Server-side optimisations lower energy use without affecting performance.",
+            streaming: "Efficient video codecs reduce file sizes, saving data transfer energy.",
+            crypto: "Newer, specialized hardware (ASICs) can perform mining calculations using far less power.",
+            ai: "Optimising an AI model's code and structure can significantly cut down on the energy needed for training.",
+            iot: "Replacing standard chips with low-power versions drastically cuts the collective energy use.",
+            social: "Optimising feed algorithms reduces server load and data transfer, saving energy.",
+            cloud: "Data deduplication finds and removes duplicate files, reducing storage and energy needs."
+        }
+
+        function toggleTask(taskName) { 
+            tasks[taskName] = !tasks[taskName]; 
+            taskButtons[taskName].classList.toggle('brightness-75'); 
+            infoBox.textContent = tasks[taskName] ? infoTexts[taskName] : "Select an action.";
+            recalculateTotalDemand(); 
+        }
+        function applyUpgrade(taskName) { 
+            if(upgrades[taskName]) return; 
+            upgrades[taskName] = true; 
+            upgradeButtons[taskName].disabled = true; 
+            upgradeButtons[taskName].textContent = "Upgraded!"; 
+            infoBox.textContent = upgradeInfoTexts[taskName];
+            recalculateTotalDemand(); 
+        }
+        
+        Object.keys(taskButtons).forEach(key => taskButtons[key].addEventListener('click', () => toggleTask(key)));
+        Object.keys(upgradeButtons).forEach(key => upgradeButtons[key].addEventListener('click', () => applyUpgrade(key)));
+        renewablesBtn.addEventListener('click', () => { isRenewable = !isRenewable; if (isRenewable) { renewablesBtn.textContent = 'Switch back to Fossil Fuels'; renewablesBtn.classList.replace('bg-green-500','bg-orange-500'); } else { renewablesBtn.textContent = 'Switch to 100% Renewables'; renewablesBtn.classList.replace('bg-orange-500','bg-green-500'); } });
+        restartBtn.addEventListener('click', startGame);
+
+        // --- INITIAL LOAD ---
+        window.onload = () => { resizeCanvas(); startGame(); };
+    </script>
+</body>
+</html>

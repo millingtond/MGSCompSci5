@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lossless Compression & RLE: Interactive Guide</title>
+    <style>
+        /* General Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: #f0f4f8;
+            color: #333;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+        }
+        h1 {
+            text-align: center;
+            color: #4a5568;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 30px;
+            font-size: 1.2em;
+        }
+
+        /* Instructions */
+        .instructions {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
+        }
+        .instructions h2 { margin-bottom: 10px; font-size: 1.5em; }
+        .instructions ul { list-style-position: inside; padding-left: 10px; }
+
+        /* Main Layout */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        /* Simulation Area */
+        .simulation-area {
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 500px;
+            transition: background-color 0.3s;
+            overflow: hidden;
+        }
+        .simulation-content { text-align: center; animation: fadeIn 0.5s; }
+        .simulation-placeholder { color: #a0aec0; font-size: 1.5em; }
+
+        /* Concepts Panel */
+        .concepts-panel {
+            background: #fff;
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid #e2e8f0;
+        }
+        .concept-item {
+            background: #f7fafc;
+            border-left: 5px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .concept-item:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            border-left-color: #5a67d8;
+        }
+        .concept-item h3 { font-size: 1.2em; color: #4a5568; }
+        .concept-item p { font-size: 0.9em; color: #718096; }
+
+        /* RLE Demo specific styles */
+        .pixel-grid { display: inline-grid; grid-template-columns: repeat(8, 40px); gap: 2px; margin-top: 20px; background: #e2e8f0; padding: 10px; border-radius: 10px; }
+        .pixel { width: 40px; height: 40px; border-radius: 5px; cursor: pointer; transition: all 0.2s; }
+        .pixel.white { background: white; }
+        .pixel.black { background: #2d3748; }
+        .pixel:hover { transform: scale(1.1); }
+        .rle-results { margin-top: 20px; font-family: 'Courier New', monospace; font-size: 14px; text-align: left; }
+
+        /* Sound Demo specific styles */
+        .sound-visualization { display: flex; align-items: flex-end; height: 150px; background: #e2e8f0; padding: 10px; border-radius: 10px; margin: 20px auto; gap: 3px; overflow-x: auto; width: 100%;}
+        .sound-bar { flex: 0 0 20px; background: linear-gradient(to top, #3182ce, #60a5fa); border-radius: 5px 5px 0 0; min-height: 5px; }
+
+        /* Modal / Popup */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: none; }
+        .modal-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 15px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); z-index: 101; width: 90%; max-width: 600px; padding: 30px; display: none; animation: popIn 0.3s ease-out; }
+        .modal-popup h3 { font-size: 1.5em; color: #2d3748; margin-bottom: 15px; }
+        .modal-popup textarea { width: 100%; height: 150px; padding: 10px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 1em; resize: vertical; margin: 10px 0; }
+        .modal-popup .model-answer { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .button { background: #5a67d8; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: 600; transition: background 0.2s; }
+        .button:hover { background: #434190; }
+        .button.secondary { background-color: #a0aec0; }
+        .button.secondary:hover { background-color: #718096; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes popIn { from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+        
+        /* Quiz Styles (Simplified from previous version) */
+        .quiz-container { background: #f7fafc; border: 1px solid #e2e8f0; padding: 25px; border-radius: 15px; }
+        .quiz-question { font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #2d3748; }
+        .quiz-option { display: block; width: 100%; text-align: left; padding: 12px 20px; margin: 8px 0; background: white; border: 2px solid #e2e8f0; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; }
+        .quiz-option:hover { border-color: #a0aec0; }
+        .quiz-option.correct { background: #c6f6d5; border-color: #68d391; color: #2f855a; }
+        .quiz-option.incorrect { background: #fed7d7; border-color: #fc8181; color: #c53030; }
+        #finalScore { text-align: center; font-size: 1.5em; margin-top: 20px; }
+        
+        /* Responsive */
+        @media (max-width: 900px) {
+            .main-content { grid-template-columns: 1fr; }
+            .pixel-grid { grid-template-columns: repeat(8, 30px); }
+            .pixel { width: 30px; height: 30px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🗜️ Lossless Compression: An Interactive Guide</h1>
+    <p class="subtitle">OCR J277 GCSE Computer Science - An Active Recall Approach</p>
+
+    <div class="instructions">
+        <h2>📖 How to Use This Guide</h2>
+        <ul>
+            <li><strong>1. Select a Concept:</strong> Click on a topic from the panel on the right.</li>
+            <li><strong>2. Write & Explain:</strong> In the popup, write your own explanation of the concept.</li>
+            <li><strong>3. Submit & Compare:</strong> See the model answer and watch an interactive animation appear in the simulation area.</li>
+            <li><strong>4. Test Yourself:</strong> Complete the quiz at the end to check your understanding.</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="simulation-area" id="simulationArea">
+            <div class="simulation-content" id="simulationContent">
+                <div class="simulation-placeholder">
+                    <h2>Welcome!</h2>
+                    <p>Select a concept to begin the simulation.</p>
+                </div>
+            </div>
+        </div>
+        <div class="concepts-panel" id="conceptsPanel">
+            <!-- Concepts will be dynamically inserted here -->
+        </div>
+    </div>
+    
+    <div id="quizSection">
+        <h2 style="font-size: 2em; text-align: center; margin-bottom: 20px;">🎯 Test Your Knowledge</h2>
+        <div id="comprehensiveQuiz"></div>
+        <div id="finalScore"></div>
+    </div>
+</div>
+
+<!-- Modal Popup for Tasks -->
+<div class="modal-overlay" id="taskOverlay" onclick="closePopup()"></div>
+<div class="modal-popup" id="taskPopup">
+    <h3 id="popupTitle"></h3>
+    <!-- User Input View -->
+    <div id="userInputView">
+        <p id="popupPrompt" style="color: #4a5568; margin-bottom: 10px;"></p>
+        <textarea id="userAnswer" placeholder="Type your answer here..."></textarea>
+    </div>
+    <!-- Model Answer View -->
+    <div id="modelAnswerView" style="display:none;">
+        <h4 style="font-weight: 600; color: #718096; margin-bottom: 5px;">MODEL ANSWER</h4>
+        <div class="model-answer" id="popupContent"></div>
+    </div>
+    <div class="modal-buttons">
+        <button id="closeBtn" class="button secondary" onclick="closePopup()" style="display:none;">Close</button>
+        <button id="submitTaskBtn" class="button">Submit & Compare</button>
+    </div>
+</div>
+
+<script>
+// --- DATABASE OF CONCEPTS ---
+const concepts = {
+    'basics': {
+        title: "The Basics of Lossless Compression",
+        prompt: "In your own words, explain the fundamental principle of lossless compression. What is its main goal and what makes it 'lossless'?",
+        modelAnswer: "Lossless compression reduces file size without losing any original data. It works by finding patterns or repetition in the data and storing them more efficiently. When the file is uncompressed, it is restored to its exact original state, bit for bit. This is crucial for text files, executables, and images where every detail matters.",
+        interaction: 'showBasicAnimation'
+    },
+    'rle': {
+        title: "How Run-Length Encoding (RLE) Works",
+        prompt: "Describe the Run-Length Encoding algorithm. How does it represent repeating sequences of data? Give a simple example.",
+        modelAnswer: "Run-Length Encoding (RLE) is a simple form of lossless compression that works by replacing consecutive runs of the same data value (a 'run') with a single value and a count. For example, the sequence 'WWWWBBW' would be encoded as '4W2B1W'. It's most effective on data with many long runs of identical values, like simple graphics or icons.",
+        interaction: 'showRleDemo'
+    },
+    'benefits': {
+        title: "Why We Compress Data",
+        prompt: "List and explain at least three key benefits of compressing data, especially for use on the internet.",
+        modelAnswer: "Compressing data has several key benefits:\n1. **Reduced Storage Space:** Smaller files take up less space on devices like hard drives and servers.\n2. **Faster Data Transfer:** Smaller files can be downloaded and uploaded much faster, improving web page loading times and reducing buffering for streams.\n3. **Lower Network Costs:** Transmitting less data can save money on data plans and reduce overall network congestion.",
+        interaction: 'showBenefitsAnimation'
+    },
+    'sound': {
+        title: "Applying RLE to Sound",
+        prompt: "How can Run-Length Encoding be used to compress audio files? What kind of sounds or parts of a recording would benefit most from this technique?",
+        modelAnswer: "Sound is captured by taking thousands of digital 'samples' per second. If a sound is constant for a period (like a steady note or a moment of silence), it produces thousands of identical sample values. RLE can compress this by storing the sample value once, along with the count of how many times it repeats. It is most effective for sounds with sustained tones or periods of silence, and less effective for complex, rapidly changing audio.",
+        interaction: 'showSoundDemo'
+    }
+};
+
+// --- GLOBAL VARIABLES ---
+let pixelGrid = [];
+let soundData = [];
+const simulationContent = document.getElementById('simulationContent');
+
+// --- INITIALIZATION ---
+function init() {
+    populateConcepts();
+    initializeComprehensiveQuiz();
+    resetSimulationArea();
+}
+
+function populateConcepts() {
+    const panel = document.getElementById('conceptsPanel');
+    panel.innerHTML = '<h2>Select a Concept</h2>';
+    for (const [key, concept] of Object.entries(concepts)) {
+        const item = document.createElement('div');
+        item.className = 'concept-item';
+        item.onclick = () => showTask(key);
+        item.innerHTML = `<h3>${concept.title}</h3><p>${concept.modelAnswer.substring(0, 70)}...</p>`;
+        panel.appendChild(item);
+    }
+}
+
+function resetSimulationArea() {
+    simulationContent.innerHTML = `<div class="simulation-placeholder"><h2>Welcome!</h2><p>Select a concept to begin the simulation.</p></div>`;
+}
+
+// --- INTERACTIVE TASK LOGIC (MODAL) ---
+function showTask(conceptId) {
+    const concept = concepts[conceptId];
+    
+    // Populate modal
+    document.getElementById('popupTitle').textContent = concept.title;
+    document.getElementById('popupPrompt').textContent = concept.prompt;
+    document.getElementById('popupContent').textContent = concept.modelAnswer;
+    document.getElementById('userAnswer').value = '';
+
+    // Reset views
+    document.getElementById('userInputView').style.display = 'block';
+    document.getElementById('modelAnswerView').style.display = 'none';
+    document.getElementById('submitTaskBtn').style.display = 'block';
+    document.getElementById('closeBtn').style.display = 'none';
+
+    // Show modal
+    document.getElementById('taskOverlay').style.display = 'block';
+    document.getElementById('taskPopup').style.display = 'block';
+
+    const submitBtn = document.getElementById('submitTaskBtn');
+    submitBtn.onclick = () => {
+        // Switch to model answer view
+        document.getElementById('userInputView').style.display = 'none';
+        document.getElementById('modelAnswerView').style.display = 'block';
+        submitBtn.style.display = 'none';
+        document.getElementById('closeBtn').style.display = 'block';
+
+        // Trigger the associated interaction in the simulation area
+        window[concept.interaction]();
+    };
+}
+
+function closePopup() {
+    document.getElementById('taskOverlay').style.display = 'none';
+    document.getElementById('taskPopup').style.display = 'none';
+}
+
+// --- SIMULATION AREA INTERACTIONS ---
+
+function showBasicAnimation() {
+    simulationContent.innerHTML = `
+        <h3>Lossless Compression</h3>
+        <p style="font-family: 'Courier New', monospace; font-size: 1.2em; padding: 10px; background: #e2e8f0; border-radius: 8px;">
+            Original: AAAAABBBCC <br>
+            Compressed: 5A3B2C
+        </p>
+        <p style="margin-top: 15px;">The compressed version perfectly restores the original data with no loss!</p>
+    `;
+}
+
+function showBenefitsAnimation() {
+     simulationContent.innerHTML = `
+        <h3>Benefit: Faster Downloads</h3>
+        <p>Uncompressed (10MB)</p>
+        <div style="width: 100%; height: 30px; background: #e2e8f0; border-radius: 15px; overflow: hidden; margin: 5px 0 15px;">
+            <div style="width: 100%; height: 100%; background: #f56565; animation: loadBar 5s linear forwards;"></div>
+        </div>
+        <p>Compressed (2MB)</p>
+        <div style="width: 100%; height: 30px; background: #e2e8f0; border-radius: 15px; overflow: hidden; margin-top: 5px;">
+            <div style="width: 100%; height: 100%; background: #48bb78; animation: loadBar 1s linear forwards;"></div>
+        </div>
+        <style>@keyframes loadBar { from { transform: translateX(-100%); } to { transform: translateX(0); } }</style>
+    `;
+}
+
+function showRleDemo() {
+    simulationContent.innerHTML = `
+        <div>
+            <h3>Create a Pattern</h3>
+            <p>Click the pixels to toggle their color.</p>
+            <div class="pixel-grid" id="pixelGrid"></div>
+            <div class="rle-results" id="compressionSteps"></div>
+        </div>
+    `;
+    initializeGrid();
+}
+
+function showSoundDemo() {
+     simulationContent.innerHTML = `
+        <div>
+             <h3>Sound Wave Compression</h3>
+             <div class="sound-visualization" id="soundViz"></div>
+             <div class="rle-results" id="soundCompressionInfo"></div>
+             <button class="button" onclick="generateSound(true)">Compress This Sound</button>
+        </div>
+    `;
+    generateSound(false);
+}
+
+
+// RLE DEMO LOGIC
+function initializeGrid() {
+    const grid = document.getElementById('pixelGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    pixelGrid = [];
+    for (let i = 0; i < 64; i++) {
+        const pixel = document.createElement('div');
+        pixel.className = 'pixel white';
+        pixel.onclick = () => togglePixel(i);
+        grid.appendChild(pixel);
+        pixelGrid.push('W');
+    }
+    updateCompression();
+}
+
+function togglePixel(index) {
+    const pixels = document.querySelectorAll('.pixel');
+    if (!pixels[index]) return;
+    pixelGrid[index] = (pixelGrid[index] === 'W') ? 'B' : 'W';
+    pixels[index].className = `pixel ${pixelGrid[index] === 'W' ? 'white' : 'black'}`;
+    updateCompression();
+}
+
+function updateCompression() {
+    const stepsDiv = document.getElementById('compressionSteps');
+    if (!stepsDiv) return;
+    stepsDiv.innerHTML = '<h4>RLE Output:</h4>';
+    for (let row = 0; row < 8; row++) {
+        const rowData = pixelGrid.slice(row * 8, (row + 1) * 8);
+        const rowCompressed = runLengthEncode(rowData).join(' ');
+        const step = document.createElement('p');
+        step.textContent = `Row ${row + 1}: ${rowCompressed}`;
+        stepsDiv.appendChild(step);
+    }
+}
+
+function runLengthEncode(data) {
+    if (!data || data.length === 0) return [];
+    const result = [];
+    let count = 1;
+    for (let i = 0; i < data.length; i++) {
+        if (data[i] === data[i + 1]) {
+            count++;
+        } else {
+            result.push(`${count}${data[i]}`);
+            count = 1;
+        }
+    }
+    return result;
+}
+
+// SOUND DEMO LOGIC
+function generateSound(compress) {
+    const viz = document.getElementById('soundViz');
+    if (!viz) return;
+    viz.innerHTML = '';
+    soundData = [];
+    const patterns = [{ h: 30, c: 10 }, { h: 80, c: 15 }, { h: 50, c: 5 }];
+    patterns.forEach(p => {
+        for (let i = 0; i < p.c; i++) soundData.push(p.h);
+    });
+    
+    soundData.forEach(height => {
+        const bar = document.createElement('div');
+        bar.className = 'sound-bar';
+        bar.style.height = `${height}%`;
+        viz.appendChild(bar);
+    });
+
+    const info = document.getElementById('soundCompressionInfo');
+    if (compress && info) {
+        const compressed = runLengthEncode(soundData);
+        info.innerHTML = `
+            <p><strong>Original Samples:</strong> ${soundData.length}</p>
+            <p><strong>RLE Compressed:</strong> ${compressed.join(' ')}</p>
+        `;
+    } else if (info) {
+        info.innerHTML = '';
+    }
+}
+
+// --- QUIZ LOGIC ---
+const comprehensiveQuestions = [
+    { question: "What is the main characteristic of lossless compression?", options: ["It creates the smallest possible files", "All original data can be perfectly recovered", "It only works with text files", "It removes unnecessary data permanently"], correct: 1 },
+    { question: "How does Run-Length Encoding work?", options: ["It removes duplicate files", "It stores one example of data and how many times it repeats consecutively", "It converts all data to binary", "It splits files into smaller pieces"], correct: 1 },
+    { question: "If 'RRRRRGGGBBBBBB' is compressed using RLE, what is the result?", options: ["5R3G6B", "R5G3B6", "RGBRGB", "536"], correct: 0 },
+    { question: "What type of data is RLE most effective for?", options: ["Random data with no patterns", "Data with many consecutive repeated values", "Encrypted data", "Very small files"], correct: 1 }
+];
+let quizScores = {};
+
+function initializeComprehensiveQuiz() {
+    const container = document.getElementById('comprehensiveQuiz');
+    container.innerHTML = '';
+    comprehensiveQuestions.forEach((q, index) => {
+        const qId = `comp${index}`;
+        const questionDiv = document.createElement('div');
+        questionDiv.className = 'quiz-container';
+        questionDiv.innerHTML = `
+            <p class="quiz-question">Question ${index + 1}: ${q.question}</p>
+            <div class="options-container">
+            ${q.options.map((opt, i) => `<button class="quiz-option" onclick="checkQuizAnswer(this, ${i === q.correct}, '${qId}')">${opt}</button>`).join('')}
+            </div>
+        `;
+        container.appendChild(questionDiv);
+    });
+    document.getElementById('finalScore').innerHTML = '';
+}
+
+function checkQuizAnswer(button, isCorrect, questionId) {
+    const options = button.parentElement.querySelectorAll('.quiz-option');
+    options.forEach(opt => {
+        opt.disabled = true;
+        // Logic to find the correct one and highlight it
+        const qIndex = parseInt(questionId.replace('comp',''));
+        const correctIndex = comprehensiveQuestions[qIndex].correct;
+        if(opt.textContent === comprehensiveQuestions[qIndex].options[correctIndex]){
+            opt.classList.add('correct');
+        }
+    });
+
+    if (isCorrect) {
+        button.classList.add('correct');
+        quizScores[questionId] = 1;
+    } else {
+        button.classList.add('incorrect');
+        quizScores[questionId] = 0;
+    }
+    updateFinalScore();
+}
+
+function updateFinalScore() {
+    const answeredCount = Object.keys(quizScores).length;
+    if (answeredCount === comprehensiveQuestions.length) {
+        const correctCount = Object.values(quizScores).filter(s => s === 1).length;
+        const score = (correctCount / comprehensiveQuestions.length) * 100;
+        document.getElementById('finalScore').innerHTML = `
+            <h3>Quiz Complete!</h3>
+            <p>You scored ${correctCount} out of ${comprehensiveQuestions.length} (${score.toFixed(0)}%)</p>
+            <button class="button" onclick="init()">Reset All</button>
+        `;
+    }
+}
+
+
+// --- START ON LOAD ---
+window.onload = init;
+</script>
+
+</body>
+</html>

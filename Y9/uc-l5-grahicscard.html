@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU Power-Up: The Pixel Quest!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+            font-size: 16px; 
+        }
+        .gpu-header-glow {
+            animation: gpuHeaderGlow 3s ease-in-out infinite;
+        }
+        @keyframes gpuHeaderGlow {
+            0%, 100% { text-shadow: 0 0 10px #fff, 0 0 20px #00ffdd, 0 0 30px #00ffdd, 0 0 40px #00ffdd; }
+            50% { text-shadow: 0 0 20px #fff, 0 0 30px #00ccff, 0 0 40px #00ccff, 0 0 50px #00ccff; }
+        }
+        .draggable { cursor: grab; transition: all 0.3s ease; user-select: none; }
+        .draggable.dragging-active { opacity: 0.5; transform: scale(0.95); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+        
+        .drop-zone { min-height: 60px; transition: all 0.3s ease; border: 2px dashed #cbd5e1; }
+        .drop-zone.drag-over { background-color: #e0f2fe; border-color: #0ea5e9; transform: scale(1.02); }
+        
+        .achievement-unlocked { animation: achievementPopGPU 0.6s ease-out; opacity: 1 !important; }
+        @keyframes achievementPopGPU { /* Unique name to avoid conflict if multiple lessons on one page */
+            0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+            60% { transform: scale(1.2) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        
+        .interactive-diagram-hotspot { /* General style for SVG hotspots if needed, but direct styling on <g> is also used */
+            cursor: pointer;
+            transition: opacity 0.2s ease-in-out;
+        }
+        .interactive-diagram-hotspot:hover {
+            opacity: 0.7;
+        }
+
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); padding-top: 60px; }
+        .modal-content { background-color: #1f2937; /* Tailwind gray-800 */ color: #e5e7eb; /* Tailwind gray-200 */ margin: 5% auto; padding: 24px; border: 1px solid #4b5563; /* Tailwind gray-600 */ width: 80%; max-width: 500px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-close { color: #9ca3af; float: right; font-size: 28px; font-weight: bold; }
+        .modal-close:hover, .modal-close:focus { color: #e5e7eb; text-decoration: none; cursor: pointer; }
+        #modalMessageTextGpu { font-size: 1.125rem; line-height: 1.75rem; }
+
+        .reset-button {
+            background-color: #ef4444; /* Tailwind red-500 */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem; 
+            font-size: 0.875rem; 
+            font-weight: 500; 
+            transition: background-color 0.2s ease-in-out;
+            border: none;
+            cursor: pointer;
+        }
+        .reset-button:hover { background-color: #dc2626; /* Tailwind red-600 */ }
+
+        /* Quiz Option Styling - Unselected State */
+        .quiz-option { /* This is the container div for input + label */
+            margin-bottom: 0.5rem; 
+        }
+        .quiz-option label { 
+            display: block; 
+            padding: 0.6rem; 
+            border: 2px solid #4b5563; /* gray-600, increased border width */ 
+            border-radius: 0.375rem; 
+            cursor: pointer; 
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s; 
+            font-size: 0.875rem; 
+            background-color: #374151; /* gray-700 */ 
+            color: #d1d5db; /* gray-300 */
+            text-align: center;
+        }
+        /* Hide the actual radio button */
+        .quiz-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        /* Quiz Option Styling - Selected State */
+        .quiz-option input[type="radio"]:checked + label { 
+            background-color: #fde047; /* Tailwind yellow-300 */
+            border-color: #f59e0b;   /* Tailwind amber-500 */
+            color: #78350f;        /* Tailwind amber-800 */
+            font-weight: 700; 
+            box-shadow: 0 0 10px rgba(250, 204, 21, 0.6); /* Yellow glow */
+        }
+        /* For VRAM options to be inline */
+        #vramScenarioContainer .quiz-option,
+        #thermalAlertScenariosContainer .quiz-option { /* Also apply to thermal alert if it uses similar structure */
+            display: inline-block;
+            margin-right: 0.5rem; 
+        }
+        #vramScenarioContainer .quiz-option label,
+        #thermalAlertScenariosContainer .quiz-option label {
+            min-width: 60px; /* Ensure buttons have some width */
+        }
+
+
+        section p, section li { font-size: 1rem; line-height: 1.625; }
+        section h3 { font-size: 1.125rem; }
+
+        /* Render Race Animation */
+        .processing-unit { width: 40px; height: 40px; margin: 2px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; border-radius: 4px; }
+        .cpu-unit { background-color: #60a5fa; /* blue-400 */ color: white; }
+        .gpu-unit { background-color: #34d399; /* emerald-400 */ color: white; width:15px; height:15px; font-size:0.5rem;}
+        .task-block { width: 100%; height: 20px; background-color: #9ca3af; /* gray-400 */ margin-bottom: 5px; border-radius: 3px; text-align: center; line-height: 20px; font-size:0.6rem; color:white; transition: background-color 0.3s, opacity 0.3s; }
+        .task-block.processing { background-color: #f59e0b; /* amber-500 */ }
+        .task-block.completed { background-color: #4ade80; /* green-400 */ opacity: 0.5; }
+        .pixel-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; width: 160px; height: 160px; margin: 10px auto;}
+        .pixel { width: 100%; height: 100%; background-color: #4b5563; /* gray-600 */ transition: background-color 0.05s; }
+        .pixel.rendered { background-color: #84cc16; /* lime-500 */ }
+
+
+        .temp-bar-bg { background-color: #4b5563; border-radius: 6px; height: 20px; overflow: hidden;}
+        .temp-bar { height: 100%; border-radius: 6px; transition: width 0.5s ease-in-out, background-color 0.5s ease-in-out;}
+        .temp-green { background-color: #34d399; } 
+        .temp-yellow { background-color: #f59e0b; } 
+        .temp-red { background-color: #ef4444; } 
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 min-h-screen p-4 md:p-8 text-gray-200">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-12 relative">
+            <h1 class="text-4xl md:text-6xl font-bold gpu-header-glow mb-3 relative z-10">
+                GPU Power-Up: The Pixel Quest! <i class="fas fa-rocket text-yellow-400"></i>
+            </h1>
+            <p class="text-gray-400 text-lg md:text-xl relative z-10">Master the magic of graphics cards and unleash visual power!</p>
+            
+            <div class="mt-8 bg-gray-800 rounded-full p-2 shadow-xl max-w-lg mx-auto relative z-10 border border-purple-500">
+                <div class="flex items-center justify-between">
+                    <span id="levelDisplayGpu" class="text-sm font-semibold text-gray-300 ml-4">Level 1: Pixel Apprentice</span>
+                    <span class="text-sm font-semibold text-green-400 mr-4"><span id="xpPointsGpu">0</span> XP</span>
+                </div>
+                <div class="bg-gray-700 rounded-full h-4 mt-2 mx-1">
+                    <div id="xpBarGpu" class="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="mb-10 bg-gray-800/80 backdrop-blur-md p-3 rounded-lg shadow-lg sticky top-4 z-50 border border-purple-700">
+            <ul class="flex flex-wrap justify-center gap-x-3 md:gap-x-4 gap-y-2">
+                <li><a href="#section-gpu-intro" class="text-sm md:text-base text-purple-300 hover:text-indigo-300 font-medium">✨ Intro</a></li>
+                <li><a href="#section-gpu-core-concepts" class="text-sm md:text-base text-purple-300 hover:text-indigo-300 font-medium">🧠 Core Concepts</a></li>
+                <li><a href="#section-vram-voyage" class="text-sm md:text-base text-purple-300 hover:text-indigo-300 font-medium">💾 VRAM Voyage</a></li>
+                <li><a href="#section-render-race" class="text-sm md:text-base text-purple-300 hover:text-indigo-300 font-medium">🏎️ Render Race</a></li>
+                <li><a href="#section-gpu-spec-decoder" class="text-sm md:text-base text-purple-300 hover:text-indigo-300 font-medium">🔍 Spec Decoder</a></li>
+                <li><a href="#section-thermal-alert" class="text-sm md:text-base text-purple-300 hover:text-indigo-300 font-medium">🌡️ Thermal Alert</a></li>
+                <li><a href="#section-gpu-exam-prep" class="text-sm md:text-base text-purple-300 hover:text-indigo-300 font-medium">📝 Exam Prep</a></li>
+                <li><a href="#section-gpu-extensions" class="text-sm md:text-base text-purple-300 hover:text-indigo-300 font-medium">🚀 Extensions</a></li>
+                <li><a href="#section-gpu-achievements" class="text-sm md:text-base text-purple-300 hover:text-indigo-300 font-medium">🏆 Achievements</a></li>
+            </ul>
+        </nav>
+
+        <!-- Section 1: Starter - What does a GPU do? Image Comparison -->
+        <section id="section-gpu-intro" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-purple-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-purple-400">✨ Starter: The Visual Difference!</h2>
+                <button onclick="resetGpuIntro()" class="reset-button">Reset Intro</button>
+            </div>
+            <p class="text-gray-300 mb-6">Look at the two game scenes below. What makes them look so different? Which computer part is most responsible for these amazing visuals?</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="text-center">
+                    <img src="https://placehold.co/400x300/9ca3af/e5e7eb?text=Basic+Scene+(Low+FPS,+Jagged+Edges)" alt="Low Quality Game Scene" class="rounded-lg shadow-md mx-auto border-2 border-gray-700">
+                    <p class="text-sm text-gray-400 mt-2">Scene A: Basic Graphics</p>
+                </div>
+                <div class="text-center">
+                    <img src="https://placehold.co/400x300/34d399/1f2937?text=Ultra+Scene+(High+FPS,+Smooth+Details)" alt="High Quality Game Scene" class="rounded-lg shadow-md mx-auto border-2 border-green-500">
+                    <p class="text-sm text-gray-400 mt-2">Scene B: Ultra Graphics</p>
+                </div>
+            </div>
+            <div class="bg-gray-700/50 p-4 rounded-lg">
+                <label for="gpuIntroGuess" class="block font-semibold text-purple-300 mb-2">Your thoughts on the difference and the component responsible:</label>
+                <textarea id="gpuIntroGuess" class="w-full p-3 bg-gray-700 border-2 border-gray-600 rounded-md focus:border-purple-500 focus:ring-purple-500 text-gray-200 h-24" placeholder="Describe the visual differences and name the component..."></textarea>
+                <button onclick="checkGpuIntroGuess()" class="mt-3 bg-purple-600 text-white px-5 py-2.5 rounded-lg hover:bg-purple-700 transition-all text-base font-semibold">Submit Guess</button>
+                <div id="gpuIntroFeedback" class="mt-3 p-3 bg-gray-700 rounded-lg text-gray-300 min-h-[40px] text-sm"></div>
+            </div>
+        </section>
+
+        <!-- Section 2: GPU Core Concepts - Interactive Diagram -->
+        <section id="section-gpu-core-concepts" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-indigo-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-indigo-400">🧠 Task 1: GPU Core Concepts</h2>
+                 <button onclick="resetGpuCoreConcepts()" class="reset-button">Reset Diagram</button>
+            </div>
+            <p class="text-gray-300 mb-6">Click on the parts of this enhanced GPU diagram to learn about its key components and answer a quick question!</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-2 bg-gray-700/50 p-4 rounded-lg relative min-h-[400px] flex items-center justify-center overflow-hidden">
+                    <svg id="svgGpuDiagram" viewBox="0 0 250 180" class="max-w-md md:max-w-lg w-full">
+                        <!-- Main PCB -->
+                        <rect x="5" y="5" width="240" height="170" fill="#083344" rx="5" /> <!-- Darker teal/blue for PCB -->
+                        <!-- Faint trace lines -->
+                        <path d="M 15 15 L 70 60 M 20 80 L 60 110 M 230 20 L 180 70" stroke="#0e7490" stroke-width="0.5" opacity="0.3"/>
+                        <path d="M 235 160 L 180 110 M 20 150 L 70 90" stroke="#0e7490" stroke-width="0.5" opacity="0.3"/>
+
+                        <!-- GPU Die (Central Chip) -->
+                        <g class="interactive-diagram-hotspot" data-concept="gpu_chip" onclick="displayGpuConcept('gpu_chip')">
+                            <rect x="85" y="55" width="80" height="70" fill="#1e293b" rx="3" stroke="#38bdf8" stroke-width="1"/>
+                            <rect x="90" y="60" width="70" height="60" fill="#0f172a" rx="2"/>
+                            <text x="125" y="90" fill="#e0f2fe" font-size="10" text-anchor="middle" class="pointer-events-none">GPU DIE</text>
+                        </g>
+
+                        <!-- VRAM Chips (example placement) -->
+                        <g class="interactive-diagram-hotspot" data-concept="vram_chips" onclick="displayGpuConcept('vram_chips')">
+                            <rect x="75" y="35" width="25" height="15" fill="#334155" rx="1" stroke="#475569" stroke-width="0.5"/> <text x="87.5" y="28" fill="#94a3b8" font-size="6">VRAM</text>
+                            <rect x="105" y="35" width="25" height="15" fill="#334155" rx="1" stroke="#475569" stroke-width="0.5"/>
+                            <rect x="135" y="35" width="25" height="15" fill="#334155" rx="1" stroke="#475569" stroke-width="0.5"/>
+                            <rect x="165" y="35" width="25" height="15" fill="#334155" rx="1" stroke="#475569" stroke-width="0.5"/>
+                            <rect x="75" y="130" width="25" height="15" fill="#334155" rx="1" stroke="#475569" stroke-width="0.5"/>
+                            <rect x="105" y="130" width="25" height="15" fill="#334155" rx="1" stroke="#475569" stroke-width="0.5"/>
+                            <rect x="135" y="130" width="25" height="15" fill="#334155" rx="1" stroke="#475569" stroke-width="0.5"/>
+                            <rect x="165" y="130" width="25" height="15" fill="#334155" rx="1" stroke="#475569" stroke-width="0.5"/>
+                        </g>
+                        
+                        <!-- Cooling System (Fans & Heatsink) -->
+                        <g class="interactive-diagram-hotspot" data-concept="fan_cooler" onclick="displayGpuConcept('fan_cooler')">
+                            <rect x="40" y="20" width="170" height="140" fill="#4b5563" opacity="0.3" rx="4"/> <!-- Heatsink area -->
+                            <circle cx="70" cy="80" r="25" fill="#374151" stroke="#4b5563" stroke-width="1"/>
+                            <circle cx="70" cy="80" r="5" fill="#1e293b"/> <!-- Fan hub -->
+                            <path d="M 70 58 L 60 78 L 70 82 L 80 78 Z" fill="#4b5563"/> <path d="M 70 102 L 60 82 L 70 78 L 80 82 Z" fill="#4b5563"/> <!-- Fan blades (simple) -->
+                            <path d="M 58 70 L 78 60 L 82 70 L 78 80 Z" fill="#4b5563" transform="rotate(90 70 70)"/> <path d="M 82 70 L 62 60 L 58 70 L 62 80 Z" fill="#4b5563" transform="rotate(-90 70 70)"/>
+                            
+                            <circle cx="180" cy="80" r="25" fill="#374151" stroke="#4b5563" stroke-width="1"/>
+                            <circle cx="180" cy="80" r="5" fill="#1e293b"/>
+                            <path d="M 180 58 L 170 78 L 180 82 L 190 78 Z" fill="#4b5563"/> <path d="M 180 102 L 170 82 L 180 78 L 190 82 Z" fill="#4b5563"/>
+                            <text x="125" y="15" fill="#94a3b8" font-size="7" text-anchor="middle">COOLING SYSTEM</text>
+                        </g>
+
+                        <!-- Power Connector -->
+                        <g class="interactive-diagram-hotspot" data-concept="power_connector_gpu" onclick="displayGpuConcept('power_connector_gpu')">
+                            <rect x="200" y="15" width="35" height="20" fill="#1e293b" rx="2" stroke="#4b5563" stroke-width="1"/>
+                            <circle cx="207" cy="22.5" r="2" fill="#4b5563"/> <circle cx="217" cy="22.5" r="2" fill="#4b5563"/> <circle cx="227" cy="22.5" r="2" fill="#4b5563"/>
+                            <circle cx="207" cy="27.5" r="2" fill="#4b5563"/> <circle cx="217" cy="27.5" r="2" fill="#4b5563"/> <circle cx="227" cy="27.5" r="2" fill="#4b5563"/>
+                            <text x="217.5" y="10" fill="#94a3b8" font-size="6">POWER</text>
+                        </g>
+
+                        <!-- PCIe Connector (Gold Fingers) -->
+                        <g class="interactive-diagram-hotspot" data-concept="pcie_connector" onclick="displayGpuConcept('pcie_connector')">
+                            <rect x="10" y="155" width="230" height="15" fill="#334155" rx="1"/>
+                            <line x1="15" y1="155" x2="15" y2="170" stroke="#facc15" stroke-width="1.5"/> <!-- Gold color: yellow-400 -->
+                            <line x1="20" y1="155" x2="20" y2="170" stroke="#facc15" stroke-width="1.5"/>
+                            <!-- ... more lines ... -->
+                            <line x1="230" y1="155" x2="230" y2="170" stroke="#facc15" stroke-width="1.5"/>
+                            <text x="125" y="173" fill="#94a3b8" font-size="7" text-anchor="middle">PCIe Connector (to Motherboard)</text>
+                        </g>
+                        
+                        <!-- I/O Bracket (Output Ports) -->
+                        <g class="interactive-diagram-hotspot" data-concept="output_ports" onclick="displayGpuConcept('output_ports')">
+                            <rect x="5" y="10" width="25" height="130" fill="#4b5563" stroke="#718096" stroke-width="0.5" rx="2"/>
+                            <rect x="10" y="20" width="15" height="10" fill="#2d3748" rx="1"/> <text x="17.5" y="15" fill="#94a3b8" font-size="5">HDMI</text>
+                            <rect x="10" y="40" width="15" height="10" fill="#2d3748" rx="1"/> <text x="17.5" y="35" fill="#94a3b8" font-size="5">DP</text>
+                            <rect x="10" y="60" width="15" height="10" fill="#2d3748" rx="1"/> <text x="17.5" y="55" fill="#94a3b8" font-size="5">DP</text>
+                            <text x="17.5" y="145" fill="#94a3b8" font-size="7">Outputs</text>
+                        </g>
+                    </svg>
+                </div>
+                <div id="gpuConceptInfoBox" class="md:col-span-1 bg-gray-700/50 p-4 rounded-lg shadow">
+                    <h3 id="gpuConceptTitle" class="font-bold text-lg text-indigo-300 mb-2">Click a part!</h3>
+                    <p id="gpuConceptText" class="text-xs text-gray-300 mb-3"></p>
+                    <div id="gpuConceptQuizContainer" class="hidden mt-2">
+                        <p id="gpuConceptQuestion" class="text-xs font-semibold text-gray-200 mb-1"></p>
+                        <div id="gpuConceptOptions" class="space-y-1"></div>
+                        <button id="gpuConceptSubmit" class="mt-2 bg-indigo-500 text-white px-3 py-1 rounded-md hover:bg-indigo-600 text-xs">Check Answer</button>
+                        <p id="gpuConceptQuizFeedback" class="text-xs mt-1"></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Section 3: VRAM Voyage -->
+        <section id="section-vram-voyage" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-pink-600">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-pink-400">💾 Task 2: VRAM Voyage - Memory Matters!</h2>
+                <button onclick="resetVramVoyage()" class="reset-button">Reset VRAM</button>
+            </div>
+            <p class="text-gray-300 mb-2">VRAM (Video RAM) is super-fast memory on the graphics card that stores textures, frame buffers, and other data needed for rendering images. More demanding graphics need more VRAM!</p>
+            <p class="text-gray-300 mb-6">For each scenario, choose the most appropriate amount of VRAM.</p>
+            <div id="vramScenarioContainer" class="space-y-6">
+                <!-- VRAM Scenarios will be populated by JS -->
+            </div>
+             <button onclick="checkAllVramChoices()" class="mt-6 bg-pink-600 text-white px-5 py-2.5 rounded-lg hover:bg-pink-700 transition-all text-base font-semibold">Check All My VRAM Choices!</button>
+            <div id="vramOverallFeedback" class="mt-6 p-3 bg-gray-700 rounded-lg text-gray-300 min-h-[40px] text-sm text-center"></div>
+        </section>
+
+        <!-- Section 4: Render Race -->
+        <section id="section-render-race" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-teal-600">
+            <div class="flex justify-between items-center mb-5">
+                 <h2 class="text-2xl md:text-3xl font-bold text-teal-400">🏎️ Task 3: Render Race - CPU vs GPU!</h2>
+                 <button onclick="startRenderRaceAnimation()" id="startRaceButton" class="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-md text-sm">Start Race!</button>
+            </div>
+            <p class="text-gray-300 mb-4">CPUs have a few powerful cores, great for complex sequential tasks. GPUs have THOUSANDS of smaller cores designed for parallel tasks, like rendering all the pixels on your screen at once! Watch the simulation.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div class="bg-gray-700/50 p-4 rounded-lg text-center">
+                    <h4 class="font-semibold text-lg text-blue-300 mb-2">CPU Processing (Conceptual)</h4>
+                    <div class="flex justify-center space-x-2 mb-2">
+                        <div class="processing-unit cpu-unit">C1</div><div class="processing-unit cpu-unit">C2</div>
+                    </div>
+                    <div id="cpuTaskQueue" class="space-y-1 h-40 overflow-y-auto p-1 bg-gray-600 rounded border border-gray-500"></div>
+                    <p id="cpuStatus" class="text-xs text-gray-400 mt-2">Status: Idle</p>
+                </div>
+                <div class="bg-gray-700/50 p-4 rounded-lg text-center">
+                    <h4 class="font-semibold text-lg text-green-300 mb-2">GPU Processing (Conceptual)</h4>
+                    <div id="gpuPixelGrid" class="pixel-grid border border-gray-500">
+                        <!-- Pixels will be generated by JS -->
+                    </div>
+                     <p id="gpuStatus" class="text-xs text-gray-400 mt-2">Status: Idle</p>
+                </div>
+            </div>
+            <div id="renderRaceQuizDiv" class="hidden mt-4 bg-gray-700/50 p-4 rounded-lg">
+                <p class="font-semibold text-teal-300 mb-2">Based on the simulation, which task is better suited for a GPU's parallel processing power?</p>
+                <div id="renderRaceQuizOptions" class="space-y-2"></div>
+                <button onclick="checkRenderRaceQuiz()" class="mt-3 bg-teal-500 text-white px-4 py-2 rounded-md hover:bg-teal-600 text-sm">Check Answer</button>
+                <p id="renderRaceQuizFeedback" class="text-sm mt-2"></p>
+            </div>
+        </section>
+
+        <!-- Section 5: GPU Spec Decoder -->
+        <section id="section-gpu-spec-decoder" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-yellow-500">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-yellow-400">🔍 Task 4: GPU Spec Decoder!</h2>
+                <button onclick="resetSpecDecoder()" class="reset-button">Reset Decoder</button>
+            </div>
+            <p class="text-gray-300 mb-4">Graphics card names can be confusing! Let's decode one. Drag the description to the correct part of the GPU name/spec.</p>
+            <div class="bg-gray-700/50 p-4 rounded-lg mb-6 text-center">
+                <h3 id="gpuSpecString" class="text-xl font-bold text-yellow-200">PixelBlaster XG <span class="spec-part" data-spec-target="model_tier">7070 Ti</span> - <span class="spec-part" data-spec-target="vram_amount_type">12GB GDDR6X</span> - <span class="spec-part" data-spec-target="boost_clock">2100MHz Boost</span> - <span class="spec-part" data-spec-target="core_count">7680 Cores</span></h3>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-gray-700/50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-lg text-yellow-300 mb-3">Descriptions to Drag:</h4>
+                    <div id="specDecoderDraggables" class="space-y-2">
+                        <!-- Draggable descriptions populated by JS -->
+                    </div>
+                </div>
+                <div class="bg-gray-700/50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-lg text-yellow-300 mb-3">Match to Spec Parts (Drop Zones):</h4>
+                    <div id="specDecoderDropZones" class="space-y-3">
+                        <!-- Drop zones populated by JS -->
+                    </div>
+                </div>
+            </div>
+            <button onclick="checkSpecDecoder()" class="mt-6 bg-yellow-500 text-white px-5 py-2.5 rounded-lg hover:bg-yellow-600 transition-all text-base font-semibold">Check My Decoding!</button>
+            <div id="specDecoderFeedback" class="mt-4 p-3 bg-gray-700 rounded-lg text-gray-300 min-h-[40px] text-sm text-center"></div>
+        </section>
+
+        <!-- Section 6: Thermal Throttling Alert! -->
+        <section id="section-thermal-alert" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-red-500">
+             <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl md:text-3xl font-bold text-red-400">🌡️ Task 5: Thermal Throttling Alert!</h2>
+                <button onclick="resetThermalAlert()" class="reset-button">Reset Thermal Sim</button>
+            </div>
+            <p class="text-gray-300 mb-6">GPUs get hot! If they get TOO hot, they "thermal throttle" (slow down to prevent damage). Choose a cooling solution for different GPU workloads.</p>
+            <div id="thermalAlertScenariosContainer" class="space-y-8">
+                <!-- Scenarios populated by JS -->
+            </div>
+            <div id="thermalAlertOverallFeedback" class="mt-6 p-3 bg-gray-700 rounded-lg text-gray-300 min-h-[40px] text-sm text-center"></div>
+        </section>
+
+        <!-- Section 7: Exam Prep Zone -->
+        <section id="section-gpu-exam-prep" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-orange-500">
+            <div class="flex justify-between items-center mb-5"><h2 class="text-2xl md:text-3xl font-bold text-orange-400">📝 GPU Exam Prep</h2><button onclick="resetGpuExamPrep()" class="reset-button">Reset Exam Qs</button></div>
+            <p class="text-gray-300 mb-6">Test your GPU knowledge with these exam-style questions.</p>
+            <div id="gpuExamQuestionsContainer"> <!-- Questions will be populated here --> </div>
+        </section>
+
+        <!-- Section 8: Extension Activities -->
+        <section id="section-gpu-extensions" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-10 border border-purple-500">
+            <div class="flex justify-between items-center mb-5"><h2 class="text-2xl md:text-3xl font-bold text-purple-400">🚀 GPU Extensions</h2><button onclick="resetGpuExtensions()" class="reset-button">Reset Extensions</button></div>
+            <p class="text-gray-300 mb-6">Explore these advanced GPU topics!</p>
+            <div id="gpuExtensionsContainer"> <!-- Extensions will be populated here --> </div>
+        </section>
+
+        <!-- Section 9: Achievement Gallery -->
+        <section id="section-gpu-achievements" class="bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-2xl p-6 md:p-8 mb-6 border border-yellow-400">
+            <h2 class="text-2xl md:text-3xl font-bold text-yellow-300 mb-5">🏆 Your GPU Achievements!</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div id="achieve-gpu-visualizer" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🖼️</span><p class="font-bold text-sm mt-2 text-gray-200">Visual Virtuoso</p><p class="text-xs text-gray-400">Understood GPU's visual impact</p></div>
+                <div id="achieve-gpu-concept-clear" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">💡</span><p class="font-bold text-sm mt-2 text-gray-200">Concept Clear</p><p class="text-xs text-gray-400">Mastered GPU parts</p></div>
+                <div id="achieve-gpu-vram-navigator" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🧭</span><p class="font-bold text-sm mt-2 text-gray-200">VRAM Navigator</p><p class="text-xs text-gray-400">Matched VRAM to needs</p></div>
+                <div id="achieve-gpu-parallel-pro" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🏁</span><p class="font-bold text-sm mt-2 text-gray-200">Parallel Pro</p><p class="text-xs text-gray-400">Understood GPU processing</p></div>
+                <div id="achieve-gpu-spec-sleuth" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🛠️</span><p class="font-bold text-sm mt-2 text-gray-200">Spec Sleuth</p><p class="text-xs text-gray-400">Decoded GPU specs</p></div>
+                <div id="achieve-gpu-temp-tamer" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">❄️</span><p class="font-bold text-sm mt-2 text-gray-200">Temp Tamer</p><p class="text-xs text-gray-400">Managed GPU thermals</p></div>
+                <div id="achieve-gpu-exam-ace" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🎓</span><p class="font-bold text-sm mt-2 text-gray-200">Exam Ace</p><p class="text-xs text-gray-400">Passed GPU exam prep</p></div>
+                <div id="achieve-gpu-pixel-pioneer" class="bg-gray-700 p-4 rounded-lg text-center shadow-lg opacity-40 transition-opacity duration-500"><span class="text-4xl">🌟</span><p class="font-bold text-sm mt-2 text-gray-200">Pixel Pioneer</p><p class="text-xs text-gray-400">Completed all GPU tasks!</p></div>
+            </div>
+        </section>
+
+        <footer class="text-center mt-12 py-6 border-t border-gray-700">
+            <p class="text-gray-500 text-sm">&copy; Your School Name/Your Name - GPU Power-Up Lesson</p>
+        </footer>
+    </div>
+
+    <div id="messageModalGpu" class="modal"><div class="modal-content"><span class="modal-close" onclick="closeModalGpu('messageModalGpu')">&times;</span><p id="modalMessageTextGpu" class="text-lg"></p><button onclick="closeModalGpu('messageModalGpu')" class="mt-4 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700">OK</button></div></div>
+
+    <script>
+        // --- Data Constants (defined at the top) ---
+        const levelsGpu = ["Pixel Novice", "Render Rookie", "Shader Student", "Texture Titan", "Graphics Guru", "Pixel Pioneer"];
+        const anagrams = [
+            { scrambled: "UPC", answer: "CPU", hint: "The brain of the computer." }, // Example, GPU lesson would have GPU anagrams
+            { scrambled: "MARV", answer: "VRAM", hint: "Memory on the graphics card." },
+            { scrambled: "RECO", answer: "CORE", hint: "Processing unit within the GPU." },
+            { scrambled: "SHARDES", answer: "SHADERS", hint: "Programs that tell GPU how to draw." },
+            { scrambled: "XILEP", answer: "PIXEL", hint: "Smallest dot on a screen." }
+        ];
+        const gpuConcepts = {
+            gpu_chip: { 
+                title: "GPU Chip (The Core)", 
+                text: "This is the main processor of the graphics card, containing thousands of smaller cores designed for parallel processing. These cores handle tasks like rendering geometry and complex visual effects.",
+                question: "GPU cores are best for many simple tasks at once (parallel). True or False?",
+                options: ["True", "False"],
+                correct: "True", xp: 5
+            },
+            vram_chips: { 
+                title: "VRAM (Video Memory)", 
+                text: "Video Random Access Memory (VRAM) is ultra-fast memory on the GPU that stores textures, frame buffers, and other data the GPU needs quickly. More VRAM is crucial for higher resolutions and detailed textures.",
+                question: "Is VRAM generally slower or faster than system RAM for graphics tasks?",
+                options: ["Slower", "Faster"],
+                correct: "Faster", xp: 5
+            },
+            fan_cooler: { 
+                title: "Cooling System", 
+                text: "GPUs generate a lot of heat! Fans and heatsinks (or liquid cooling) dissipate this heat to prevent overheating and thermal throttling, ensuring stable performance.",
+                question: "What happens if a GPU overheats significantly?",
+                options: ["It speeds up", "It might slow down (throttle) or get damaged", "Nothing, GPUs love heat"],
+                correct: "It might slow down (throttle) or get damaged", xp: 5
+            },
+            power_connector_gpu: {
+                title: "Power Connector(s)",
+                text: "High-performance GPUs require more power than the motherboard slot can provide. These connectors draw additional power directly from the PSU.",
+                question: "Why do some GPUs need separate power connectors?",
+                options: ["For extra RGB lights", "They need more power than the PCIe slot offers", "To connect to the monitor"],
+                correct: "They need more power than the PCIe slot offers", xp: 5
+            },
+            pcie_connector: {
+                title: "PCIe Connector",
+                text: "This edge connector (often with 'gold fingers') plugs into a PCIe slot on the motherboard, allowing the GPU to communicate with the rest of the system and draw some power.",
+                question: "The PCIe connector primarily allows the GPU to:",
+                options: ["Connect to Wi-Fi", "Communicate with the motherboard", "Store game saves"],
+                correct: "Communicate with the motherboard", xp: 5
+            },
+            output_ports: {
+                title: "Output Ports (HDMI/DisplayPort)",
+                text: "These ports (like HDMI and DisplayPort) on the back of the GPU connect to your monitor to display the visuals the GPU has rendered.",
+                question: "Which of these is a common GPU output port?",
+                options: ["USB-A", "Ethernet (RJ45)", "HDMI"],
+                correct: "HDMI", xp: 5
+            }
+        };
+        const vramScenariosData = [
+            { id: "1080p_gaming", text: "Playing modern games at 1080p resolution with high settings:", options: ["2GB", "4GB", "8GB", "16GB"], correctAnswer: "8GB", xp: 5 },
+            { id: "4k_editing", text: "Editing 4K video footage smoothly:", options: ["4GB", "8GB", "12GB", "24GB"], correctAnswer: "12GB", xp: 5 },
+            { id: "vr_gaming", text: "High-fidelity Virtual Reality (VR) gaming:", options: ["6GB", "8GB", "12GB", "16GB+"], correctAnswer: "12GB", xp: 5 }
+        ];
+        const specDecoderDraggableItems = [
+            { id: "desc_model", text: "Indicates performance tier & generation (e.g., 7070 Ti)", target: "model_tier" },
+            { id: "desc_vram", text: "Amount and type of fast video memory (e.g., 12GB GDDR6X)", target: "vram_amount_type" },
+            { id: "desc_boost", text: "Maximum speed the GPU cores can reach (e.g., 2100MHz)", target: "boost_clock" },
+            { id: "desc_cores", text: "Number of parallel processing units (e.g., 7680)", target: "core_count" }
+        ];
+        const specDecoderDropZoneTargets = ["model_tier", "vram_amount_type", "boost_clock", "core_count"];
+        const thermalAlertScenariosData = [
+            { id: "light_work", text: "GPU doing light tasks (web browsing, office apps):", coolers: ["Stock Fan", "Dual Fan", "Liquid Cooler"], baseTemp: 35, heatAdd: {"Stock Fan": 10, "Dual Fan": 5, "Liquid Cooler": 2}, optimalCooler: "Stock Fan", xp:5 },
+            { id: "heavy_gaming", text: "Intense gaming session for 2 hours:", coolers: ["Stock Fan", "Dual Fan", "Liquid Cooler"], baseTemp: 45, heatAdd: {"Stock Fan": 45, "Dual Fan": 30, "Liquid Cooler": 20}, optimalCooler: "Dual Fan", xp:5 },
+            { id: "overclocked_stress", text: "Overclocked GPU under extreme stress test:", coolers: ["Stock Fan", "Dual Fan", "Liquid Cooler"], baseTemp: 50, heatAdd: {"Stock Fan": 60, "Dual Fan": 40, "Liquid Cooler": 25}, optimalCooler: "Liquid Cooler", xp:5 }
+        ];
+        const gpuExamQuestionsData = [
+            { id: "q1", text: "Explain the main purpose of a Graphics Processing Unit (GPU) in a computer system. [2 marks]", markScheme: "<li>Processes and renders images, videos, and animations for display (1 mark).</li><li>Offloads graphics-intensive tasks from the CPU, allowing for smoother visuals and better game performance (1 mark).</li>" },
+            { id: "q2", text: "Describe two key specifications that affect a GPU's performance and how they contribute. [4 marks]", markScheme: "<li><strong>Core Count:</strong> More cores allow for more parallel processing, handling more graphical calculations simultaneously (1 mark for spec, 1 for explanation).</li><li><strong>Clock Speed (MHz/GHz):</strong> Higher clock speed means cores process instructions faster (1 mark for spec, 1 for explanation).</li><li><strong>VRAM Amount & Type (e.g., GB GDDR6X):</strong> More/faster VRAM allows storing larger textures and frame data for quick access, crucial for high resolutions/settings (1 mark for spec, 1 for explanation). (Accept any two valid pairs)</li>" },
+            { id: "q3", text: "What is VRAM and why is it important for a graphics card? [2 marks]", markScheme: "<li>VRAM (Video RAM) is dedicated memory on the graphics card (1 mark).</li><li>It's important because it stores textures, frame buffers, and other graphical data for rapid access by the GPU, which is much faster than system RAM (1 mark).</li>" }
+        ];
+        const gpuExtensionData = [
+            { id: "ext1", title: "Ray Tracing Deep Dive", task: "Research 'Ray Tracing' technology. Briefly explain what it is and how it impacts GPU requirements and visual quality in games. (Min 30 words)", xp: 15 },
+            { id: "ext2", title: "Integrated vs. Dedicated GPUs", task: "What is the difference between an integrated GPU (iGPU) and a dedicated GPU (dGPU)? Give one advantage for each type. (Min 30 words)", xp: 15 }
+        ];
+        
+        // --- XP and Achievement System (GPU Lesson Specific) ---
+        let totalXPGpu = 0;
+        const MAX_XP_PER_LEVEL_GPU = 100; 
+        let currentLevelGpu = 1;
+        let draggedItemGpu = null; 
+
+        // --- Activity State Variables ---
+        let gpuIntroGuessSubmitted = false;
+        const gpuCoreConceptsState = {}; 
+        let gpuCoreConceptsCompletedCorrectly = 0;
+        const vramVoyageState = {}; 
+        let vramVoyageCorrectCount = 0;
+        let vramVoyageXPAwarded = {};
+        let renderRaceAnimationRunning = false;
+        let renderRaceQuizAnswered = false;
+        let renderRaceXPAwarded = false;
+        const specDecoderState = {}; 
+        let specDecoderTaskXPAwarded = false;
+        const thermalAlertState = {}; 
+        let thermalSimsCompleted = 0;
+        const gpuExamPrepState = {}; 
+        let gpuExtensionsCompletedCount = 0;
+        const gpuExtensionAnswersSubmitted = new Set();
+
+        // --- Achievements Object (GPU Lesson Specific) ---
+        const achievementsGpu = {
+            'gpu-visualizer': { unlocked: false, points: 15, condition: () => gpuIntroGuessSubmitted },
+            'gpu-concept-clear': { unlocked: false, points: 30, condition: () => gpuCoreConceptsCompletedCorrectly >= 3 }, 
+            'gpu-vram-navigator': { unlocked: false, points: 25, condition: () => vramVoyageCorrectCount >= 2 }, 
+            'gpu-parallel-pro': { unlocked: false, points: 20, condition: () => renderRaceQuizAnswered },
+            'gpu-spec-sleuth': { unlocked: false, points: 30, condition: () => Object.values(specDecoderState).filter(s => s.correct).length >= 3 }, 
+            'gpu-temp-tamer': { unlocked: false, points: 25, condition: () => thermalSimsCompleted >= 3 },
+            'gpu-exam-ace': { unlocked: false, points: 40, condition: () => Object.values(gpuExamPrepState).filter(q => q.selfMark && parseInt(q.selfMark) > 0).length >= 2 }, 
+            'gpu-pixel-pioneer': { unlocked: false, points: 100, condition: () => 
+                Object.values(achievementsGpu).filter(ach => ach.name !== 'gpu-pixel-pioneer').every(ach => ach.unlocked)
+            }
+        };
+        Object.keys(achievementsGpu).forEach(key => achievementsGpu[key].name = key); // Assign name for easy reference
+
+        // --- Utility Functions (XP, Achievements, Modal - GPU Lesson Specific) ---
+        function showModalGpu(message) {
+            const modalTextEl = document.getElementById('modalMessageTextGpu');
+            const modalEl = document.getElementById('messageModalGpu');
+            if (modalTextEl && modalEl) {
+                modalTextEl.textContent = message;
+                modalEl.style.display = 'block';
+            }
+        }
+
+        function addXPGpu(points) {
+            totalXPGpu += points;
+            const xpPointsEl = document.getElementById('xpPointsGpu');
+            if (xpPointsEl) xpPointsEl.textContent = totalXPGpu;
+            
+            let xpForCurrentLevel = totalXPGpu % MAX_XP_PER_LEVEL_GPU;
+            if (totalXPGpu > 0 && xpForCurrentLevel === 0 && (totalXPGpu / MAX_XP_PER_LEVEL_GPU) >= currentLevelGpu) {
+                xpForCurrentLevel = MAX_XP_PER_LEVEL_GPU;
+            }
+            const newLevel = Math.floor(totalXPGpu / MAX_XP_PER_LEVEL_GPU) + 1;
+            if (newLevel > currentLevelGpu) {
+                currentLevelGpu = newLevel;
+                showModalGpu(`Level Up! You are now Level ${currentLevelGpu}: ${levelsGpu[Math.min(currentLevelGpu - 1, levelsGpu.length - 1)]}!`);
+            }
+            const levelDisplayEl = document.getElementById('levelDisplayGpu');
+            if(levelDisplayEl) levelDisplayEl.textContent = `Level ${currentLevelGpu}: ${levelsGpu[Math.min(currentLevelGpu - 1, levelsGpu.length - 1)]}`;
+            
+            const xpBarPercentage = (xpForCurrentLevel / MAX_XP_PER_LEVEL_GPU) * 100;
+            const xpBarEl = document.getElementById('xpBarGpu');
+            if(xpBarEl) xpBarEl.style.width = xpBarPercentage + '%';
+            
+            checkAchievementsGpu();
+        }
+
+        function checkAchievementsGpu() {
+            let allOthersUnlocked = true;
+            for (const key in achievementsGpu) {
+                if (key === 'gpu-pixel-pioneer') continue; 
+                const ach = achievementsGpu[key];
+                if (ach && !ach.unlocked && ach.condition && ach.condition()) {
+                    ach.unlocked = true;
+                    const achElement = document.getElementById(`achieve-${key}`);
+                    if (achElement) {
+                        achElement.classList.remove('opacity-40');
+                        achElement.classList.add('achievement-unlocked');
+                        const achNameEl = achElement.querySelector('p.font-bold');
+                        if (achNameEl) {
+                             showModalGpu(`🏆 GPU Achievement: ${achNameEl.textContent}! (+${ach.points} XP)`);
+                        } else {
+                            showModalGpu(`🏆 GPU Achievement Unlocked! (+${ach.points} XP)`);
+                        }
+                        addXPGpu(ach.points); 
+                    }
+                }
+                if (ach && !ach.unlocked) { 
+                    allOthersUnlocked = false;
+                }
+            }
+            
+            const pixelPioneerAch = achievementsGpu['gpu-pixel-pioneer'];
+            if (pixelPioneerAch && allOthersUnlocked && pixelPioneerAch.condition && !pixelPioneerAch.unlocked) {
+                 pixelPioneerAch.unlocked = true;
+                 const achElement = document.getElementById(`achieve-gpu-pixel-pioneer`);
+                 if (achElement) {
+                    achElement.classList.remove('opacity-40');
+                    achElement.classList.add('achievement-unlocked');
+                     const achNameEl = achElement.querySelector('p.font-bold');
+                    if (achNameEl) {
+                        showModalGpu(`🏆 MASTER GPU ACHIEVEMENT: ${achNameEl.textContent}! (+${pixelPioneerAch.points} XP)`);
+                    } else {
+                        showModalGpu(`🏆 MASTER GPU ACHIEVEMENT! (+${pixelPioneerAch.points} XP)`);
+                    }
+                    addXPGpu(pixelPioneerAch.points);
+                 }
+            }
+        }
+        
+        function closeModalGpu(modalId) {
+            const modalEl = document.getElementById(modalId);
+            if (modalEl) {
+                modalEl.style.display = 'none';
+            }
+        }
+        window.addEventListener('click', function(event) { 
+            const modal = document.getElementById('messageModalGpu');
+            if (modal && event.target == modal) { 
+                closeModalGpu('messageModalGpu');
+            }
+        });
+        
+        function initializeDragDropGpu(draggableSelector, dropZoneSelector, initialContainerId, onDropCallback) {
+            document.querySelectorAll(draggableSelector).forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    draggedItemGpu = e.target; 
+                    if(draggedItemGpu) {
+                        draggedItemGpu.classList.add('dragging-active');
+                        setTimeout(() => { if(draggedItemGpu) draggedItemGpu.style.opacity = '0.5'; }, 0); 
+                    }
+                    if(e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+                });
+
+                item.addEventListener('dragend', (e) => {
+                    if(draggedItemGpu && draggedItemGpu.classList.contains('dragging-active')) { 
+                        draggedItemGpu.classList.remove('dragging-active');
+                        draggedItemGpu.style.opacity = '1'; 
+                        const originalContainer = document.getElementById(initialContainerId);
+                        // Check if the item is still in the DOM and not in a valid drop zone
+                        if (document.body.contains(draggedItemGpu) && originalContainer && !zoneContainsItemGpu(dropZoneSelector, draggedItemGpu)) {
+                            if (!originalContainer.contains(draggedItemGpu)) { 
+                                originalContainer.appendChild(draggedItemGpu);
+                            }
+                           draggedItemGpu.style.display = 'block'; 
+                        } else if (!document.body.contains(draggedItemGpu) && originalContainer) {
+                            // If it was somehow removed from DOM and not dropped, put it back
+                            originalContainer.appendChild(draggedItemGpu);
+                            draggedItemGpu.style.display = 'block';
+                        }
+                    }
+                    draggedItemGpu = null; 
+                });
+            });
+
+            document.querySelectorAll(dropZoneSelector).forEach(zone => {
+                zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+                zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+                    if (draggedItemGpu) {
+                        onDropCallback(zone, draggedItemGpu); 
+                        // draggedItemGpu is nulled in its dragend
+                    }
+                });
+            });
+        }
+
+        function zoneContainsItemGpu(dropZoneSelector, item) {
+            let found = false;
+            document.querySelectorAll(dropZoneSelector).forEach(zone => {
+                if (zone.contains(item)) {
+                    found = true;
+                }
+            });
+            return found;
+        }
+
+
+        // --- Section 1: GPU Intro ---
+        function setupGpuIntro() {
+            const guessEl = document.getElementById('gpuIntroGuess');
+            const feedbackEl = document.getElementById('gpuIntroFeedback');
+            if(guessEl) guessEl.value = '';
+            if(feedbackEl) feedbackEl.textContent = '';
+            gpuIntroGuessSubmitted = false;
+        }
+        function checkGpuIntroGuess() {
+            const guessEl = document.getElementById('gpuIntroGuess');
+            const feedbackEl = document.getElementById('gpuIntroFeedback');
+            if (!guessEl || !feedbackEl) return;
+
+            if (guessEl.value.trim().length > 10) {
+                if (!gpuIntroGuessSubmitted) {
+                    addXPGpu(10);
+                    gpuIntroGuessSubmitted = true;
+                    feedbackEl.innerHTML = `<span class="text-green-400">Great observations! GPUs (Graphics Processing Units) are indeed the powerhouses behind stunning game visuals! (+10 XP)</span>`;
+                } else {
+                    feedbackEl.textContent = "You've already submitted your thoughts for this section.";
+                }
+            } else {
+                feedbackEl.textContent = "Try to describe the differences in a bit more detail and guess the component!";
+            }
+            checkAchievementsGpu();
+        }
+        function resetGpuIntro() {
+            setupGpuIntro();
+            showModalGpu("Intro section reset.");
+        }
+
+        // --- Section 2: GPU Core Concepts ---
+        function setupGpuCoreConcepts() {
+            const infoBox = document.getElementById('gpuConceptInfoBox');
+            const titleEl = document.getElementById('gpuConceptTitle');
+            const textEl = document.getElementById('gpuConceptText');
+            const quizContainer = document.getElementById('gpuConceptQuizContainer');
+            
+            if (!infoBox || !titleEl || !textEl || !quizContainer) { console.error("GPU Core Concept elements missing"); return; }
+            
+            titleEl.textContent = "Click a part!";
+            textEl.textContent = "Learn about different parts of the GPU.";
+            quizContainer.classList.add('hidden');
+            gpuCoreConceptsCompletedCorrectly = 0;
+            Object.keys(gpuCoreConceptsState).forEach(key => delete gpuCoreConceptsState[key]); 
+            
+            document.querySelectorAll('#svgGpuDiagram .interactive-diagram-hotspot').forEach(hotspot => {
+                const conceptId = hotspot.dataset.concept;
+                if (conceptId && gpuConcepts[conceptId]) {
+                    gpuCoreConceptsState[conceptId] = { answered: false, correct: false, xpAwarded: false }; 
+                    if (!hotspot.hasAttribute('onclick')) { 
+                         hotspot.onclick = () => displayGpuConcept(conceptId);
+                    }
+                }
+            });
+        }
+
+        function displayGpuConcept(conceptId) {
+            const concept = gpuConcepts[conceptId];
+            if (!concept) return;
+
+            const titleEl = document.getElementById('gpuConceptTitle');
+            const textEl = document.getElementById('gpuConceptText');
+            const quizContainer = document.getElementById('gpuConceptQuizContainer');
+            const questionEl = document.getElementById('gpuConceptQuestion');
+            const optionsContainer = document.getElementById('gpuConceptOptions');
+            const submitButton = document.getElementById('gpuConceptSubmit');
+            const quizFeedbackEl = document.getElementById('gpuConceptQuizFeedback');
+
+            if (!titleEl || !textEl || !quizContainer || !questionEl || !optionsContainer || !submitButton || !quizFeedbackEl) return;
+
+            titleEl.textContent = concept.title;
+            textEl.textContent = concept.text;
+            questionEl.textContent = concept.question;
+            
+            optionsContainer.innerHTML = '';
+            concept.options.forEach((opt, index) => {
+                 const optionUniqueId = `gpu_opt_${conceptId}_${index}`;
+                optionsContainer.innerHTML += `
+                    <div class="quiz-option">
+                        <input type="radio" name="gpu_concept_quiz_${conceptId}" id="${optionUniqueId}" value="${opt}">
+                        <label for="${optionUniqueId}">${opt}</label>
+                    </div>`;
+            });
+
+            quizFeedbackEl.textContent = '';
+            submitButton.onclick = () => checkGpuConceptAnswer(conceptId); 
+            
+            if (gpuCoreConceptsState[conceptId] && gpuCoreConceptsState[conceptId].answered) {
+                document.querySelectorAll(`input[name="gpu_concept_quiz_${conceptId}"]`).forEach(radio => radio.disabled = true);
+                submitButton.disabled = true;
+                submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+                quizFeedbackEl.textContent = gpuCoreConceptsState[conceptId].correct ? "Correct!" : `Incorrect. Correct was: ${concept.correct}`;
+                quizFeedbackEl.className = `text-xs mt-1 ${gpuCoreConceptsState[conceptId].correct ? 'text-green-400' : 'text-red-400'}`;
+
+            } else {
+                 document.querySelectorAll(`input[name="gpu_concept_quiz_${conceptId}"]`).forEach(radio => radio.disabled = false);
+                submitButton.disabled = false;
+                submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+            quizContainer.classList.remove('hidden');
+        }
+
+        function checkGpuConceptAnswer(conceptId) {
+            const state = gpuCoreConceptsState[conceptId];
+            if (state && state.answered) return; 
+
+            const concept = gpuConcepts[conceptId];
+            const selectedOption = document.querySelector(`input[name="gpu_concept_quiz_${conceptId}"]:checked`);
+            const quizFeedbackEl = document.getElementById('gpuConceptQuizFeedback');
+            const submitButton = document.getElementById('gpuConceptSubmit');
+
+            if (!selectedOption || !concept || !quizFeedbackEl || !submitButton || !state) return;
+            
+            state.answered = true;
+            const isCorrect = selectedOption.value === concept.correct;
+            state.correct = isCorrect;
+
+            if (isCorrect) {
+                if(!state.xpAwarded) { addXPGpu(concept.xp); state.xpAwarded = true; }
+                gpuCoreConceptsCompletedCorrectly++;
+                quizFeedbackEl.innerHTML = `<span class="text-green-400">Correct! (+${concept.xp} XP)</span>`;
+            } else {
+                if(!state.xpAwarded) { addXPGpu(1); state.xpAwarded = true; } 
+                quizFeedbackEl.innerHTML = `<span class="text-red-400">Incorrect. The answer is ${concept.correct}. (+1 XP)</span>`;
+            }
+            document.querySelectorAll(`input[name="gpu_concept_quiz_${conceptId}"]`).forEach(radio => radio.disabled = true);
+            submitButton.disabled = true;
+            submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+            checkAchievementsGpu();
+        }
+        function resetGpuCoreConcepts() {
+            setupGpuCoreConcepts(); 
+            const infoBox = document.getElementById('gpuConceptInfoBox');
+            if (infoBox) {
+                 const titleEl = document.getElementById('gpuConceptTitle');
+                 const textEl = document.getElementById('gpuConceptText');
+                 const quizContainer = document.getElementById('gpuConceptQuizContainer');
+                 if(titleEl) titleEl.textContent = "Click a part!";
+                 if(textEl) textEl.textContent = "Learn about different parts of the GPU.";
+                 if(quizContainer) quizContainer.classList.add('hidden');
+            }
+            showModalGpu("GPU Core Concepts diagram reset.");
+        }
+
+
+        // --- Section 3: VRAM Voyage ---
+        function setupVramVoyage() {
+            const container = document.getElementById('vramScenarioContainer');
+            const feedbackEl = document.getElementById('vramOverallFeedback');
+            if (!container || !feedbackEl) { console.error("VRAM Voyage elements missing!"); return; }
+
+            container.innerHTML = '';
+            vramVoyageCorrectCount = 0;
+            Object.keys(vramVoyageState).forEach(key => delete vramVoyageState[key]);
+            Object.keys(vramVoyageXPAwarded).forEach(key => delete vramVoyageXPAwarded[key]);
+
+
+            vramScenariosData.forEach(scenario => {
+                vramVoyageState[scenario.id] = { attempted: false, correct: false };
+                let optionsHTML = '';
+                scenario.options.forEach((opt, index) => { 
+                    const optionId = `vram_scen_${scenario.id}_opt${index}`;
+                    optionsHTML += `
+                        <div class="quiz-option inline-block mr-2"> 
+                            <input type="radio" name="vram_scen_${scenario.id}" id="${optionId}" value="${opt}" class="hidden">
+                            <label for="${optionId}">${opt}</label>
+                        </div>`;
+                });
+                container.innerHTML += `
+                    <div class="bg-gray-700/50 p-4 rounded-lg shadow-md">
+                        <p class="text-sm text-gray-300 mb-2">${scenario.text}</p>
+                        <div id="options_vram_${scenario.id}">${optionsHTML}</div>
+                        <p id="feedback_vram_${scenario.id}" class="text-xs mt-2 h-4"></p>
+                    </div>`;
+            });
+            feedbackEl.textContent = "Choose the best VRAM for each scenario.";
+        }
+
+        function checkAllVramChoices() {
+            vramVoyageCorrectCount = 0;
+            let scenariosAttemptedCount = 0;
+            const feedbackEl = document.getElementById('vramOverallFeedback');
+            if (!feedbackEl) return;
+
+            vramScenariosData.forEach(scenario => {
+                const selected = document.querySelector(`input[name="vram_scen_${scenario.id}"]:checked`);
+                const scenarioFeedbackEl = document.getElementById(`feedback_vram_${scenario.id}`);
+                if (!scenarioFeedbackEl) return;
+                
+                scenarioFeedbackEl.textContent = ''; 
+
+                if (selected) {
+                    scenariosAttemptedCount++;
+                    vramVoyageState[scenario.id].attempted = true;
+                    if (selected.value === scenario.correctAnswer) {
+                        vramVoyageState[scenario.id].correct = true;
+                        vramVoyageCorrectCount++;
+                        if (!vramVoyageXPAwarded[scenario.id]) {
+                            addXPGpu(scenario.xp);
+                            vramVoyageXPAwarded[scenario.id] = true;
+                        }
+                        scenarioFeedbackEl.innerHTML = `<span class="text-green-400">Good choice! (+${scenario.xp} XP awarded once)</span>`;
+                    } else {
+                        vramVoyageState[scenario.id].correct = false;
+                         if (!vramVoyageXPAwarded[scenario.id]) {
+                            addXPGpu(1); 
+                            vramVoyageXPAwarded[scenario.id] = true;
+                        }
+                        scenarioFeedbackEl.innerHTML = `<span class="text-red-400">Consider if more/less VRAM is needed. (+1 XP awarded once)</span>`;
+                    }
+                }
+            });
+
+            if (scenariosAttemptedCount < vramScenariosData.length) {
+                feedbackEl.textContent = `Please make a VRAM choice for all scenarios. Attempted: ${scenariosAttemptedCount}/${vramScenariosData.length}`;
+            } else {
+                feedbackEl.textContent = `VRAM Choices Checked! You got ${vramVoyageCorrectCount}/${vramScenariosData.length} optimal.`;
+            }
+            checkAchievementsGpu();
+        }
+
+        function resetVramVoyage() {
+            setupVramVoyage();
+            const feedbackEl = document.getElementById('vramOverallFeedback');
+            if(feedbackEl) feedbackEl.textContent = "VRAM Voyage reset. Make your choices!";
+        }
+
+
+        // --- Section 4: Render Race ---
+        function setupRenderRaceQuiz() {
+            const optionsContainer = document.getElementById('renderRaceQuizOptions');
+            const feedbackEl = document.getElementById('renderRaceQuizFeedback');
+            const quizDiv = document.getElementById('renderRaceQuizDiv');
+
+            if(!optionsContainer || !feedbackEl || !quizDiv) { console.error("Render Race Quiz elements missing"); return; }
+            
+            optionsContainer.innerHTML = `
+                <div class="quiz-option"><input type="radio" name="render_race_q" id="rr_opt1" value="complex_math" class="hidden"><label for="rr_opt1">Calculating complex mathematical equations one by one.</label></div>
+                <div class="quiz-option"><input type="radio" name="render_race_q" id="rr_opt2" value="rendering_pixels" class="hidden"><label for="rr_opt2">Simultaneously calculating the color of thousands of screen pixels.</label></div>
+                <div class="quiz-option"><input type="radio" name="render_race_q" id="rr_opt3" value="managing_files" class="hidden"><label for="rr_opt3">Managing file system operations.</label></div>
+            `;
+            feedbackEl.textContent = '';
+            // quizDiv.classList.remove('hidden'); // Keep hidden until animation finishes
+            const checkBtn = quizDiv.querySelector('button');
+            if(checkBtn) checkBtn.disabled = false;
+            document.querySelectorAll('input[name="render_race_q"]').forEach(radio => {
+                radio.disabled = false;
+                radio.checked = false; // Uncheck radios on reset
+            });
+            renderRaceQuizAnswered = false; 
+        }
+
+        function startRenderRaceAnimation() {
+            if (renderRaceAnimationRunning) return;
+            renderRaceAnimationRunning = true;
+            
+            const startButton = document.getElementById('startRaceButton');
+            if(startButton) startButton.disabled = true;
+
+
+            const cpuQueueEl = document.getElementById('cpuTaskQueue');
+            const gpuGridEl = document.getElementById('gpuPixelGrid');
+            const cpuStatusEl = document.getElementById('cpuStatus');
+            const gpuStatusEl = document.getElementById('gpuStatus');
+
+            if (!cpuQueueEl || !gpuGridEl || !cpuStatusEl || !gpuStatusEl) {
+                console.error("Render race animation elements missing!");
+                renderRaceAnimationRunning = false;
+                if(startButton) startButton.disabled = false;
+                return;
+            }
+
+            cpuQueueEl.innerHTML = '';
+            gpuGridEl.innerHTML = '';
+            cpuStatusEl.textContent = "CPU: Processing...";
+            gpuStatusEl.textContent = "GPU: Rendering...";
+
+            const numTasks = 10;
+            const numPixels = 100; // 10x10 grid
+
+            for (let i = 0; i < numTasks; i++) {
+                const task = document.createElement('div');
+                task.className = 'task-block';
+                task.textContent = `Task ${i + 1}`;
+                task.id = `cpu_task_${i}`;
+                cpuQueueEl.appendChild(task);
+            }
+
+            for (let i = 0; i < numPixels; i++) {
+                const pixel = document.createElement('div');
+                pixel.className = 'pixel';
+                pixel.id = `gpu_pixel_${i}`;
+                gpuGridEl.appendChild(pixel);
+            }
+
+            let cpuTasksDone = 0;
+            function processCpuTask() {
+                if (cpuTasksDone < numTasks) {
+                    const currentTask = document.getElementById(`cpu_task_${cpuTasksDone}`);
+                    if (currentTask) {
+                        currentTask.classList.add('processing');
+                        setTimeout(() => {
+                            if (currentTask) { // Check again in case reset happened during timeout
+                                currentTask.classList.remove('processing');
+                                currentTask.classList.add('completed');
+                            }
+                            cpuTasksDone++;
+                            processCpuTask();
+                        }, 300); 
+                    } else { // Element might have been removed by a reset
+                        cpuTasksDone = numTasks; // End loop
+                        processCpuTask();
+                    }
+                } else {
+                    if(cpuStatusEl) cpuStatusEl.textContent = "CPU: Finished!";
+                    checkAnimationCompletion();
+                }
+            }
+
+            let gpuPixelsDone = 0;
+            function renderGpuPixelBatch() {
+                const batchSize = 10; 
+                for (let i = 0; i < batchSize && (gpuPixelsDone + i) < numPixels; i++) {
+                    const pixel = document.getElementById(`gpu_pixel_${gpuPixelsDone + i}`);
+                    if (pixel) {
+                        pixel.classList.add('rendered');
+                    }
+                }
+                gpuPixelsDone += batchSize;
+                if (gpuPixelsDone < numPixels) {
+                    setTimeout(renderGpuPixelBatch, 50); 
+                } else {
+                    if(gpuStatusEl) gpuStatusEl.textContent = "GPU: Finished!";
+                    checkAnimationCompletion();
+                }
+            }
+            
+            processCpuTask();
+            renderGpuPixelBatch();
+        }
+        
+        let animationPartsCompleted = 0;
+        function checkAnimationCompletion() {
+            animationPartsCompleted++;
+            if (animationPartsCompleted >= 2) { 
+                const quizDiv = document.getElementById('renderRaceQuizDiv');
+                if (quizDiv) quizDiv.classList.remove('hidden');
+                const startButton = document.getElementById('startRaceButton');
+                if(startButton) startButton.disabled = false; 
+                renderRaceAnimationRunning = false;
+                animationPartsCompleted = 0; 
+                if(!renderRaceXPAwarded){ 
+                    addXPGpu(10);
+                    renderRaceXPAwarded = true;
+                }
+            }
+        }
+
+
+        function checkRenderRaceQuiz() {
+            const selectedOption = document.querySelector('input[name="render_race_q"]:checked');
+            const feedbackEl = document.getElementById('renderRaceQuizFeedback');
+            if (!selectedOption || !feedbackEl) return;
+
+            if (!renderRaceQuizAnswered) { 
+                if (selectedOption.value === "rendering_pixels") {
+                    addXPGpu(10);
+                    feedbackEl.innerHTML = `<span class="text-green-400">Correct! GPUs excel at parallel tasks like rendering many pixels. (+10 XP)</span>`;
+                } else {
+                    addXPGpu(2);
+                    feedbackEl.innerHTML = `<span class="text-red-400">Not quite. GPUs are designed for tasks that can be broken down into many small, simultaneous calculations. (+2 XP)</span>`;
+                }
+                renderRaceQuizAnswered = true;
+                document.querySelectorAll('input[name="render_race_q"]').forEach(radio => radio.disabled = true);
+                const checkBtn = document.querySelector('#renderRaceQuizDiv button');
+                if(checkBtn) checkBtn.disabled = true;
+            } else {
+                 feedbackEl.textContent = "You've already answered this quiz.";
+            }
+            checkAchievementsGpu();
+        }
+
+        function resetRenderRace() {
+            const cpuQueueEl = document.getElementById('cpuTaskQueue');
+            const gpuGridEl = document.getElementById('gpuPixelGrid');
+            const cpuStatusEl = document.getElementById('cpuStatus');
+            const gpuStatusEl = document.getElementById('gpuStatus');
+            const quizDiv = document.getElementById('renderRaceQuizDiv');
+            const feedbackEl = document.getElementById('renderRaceQuizFeedback');
+            const startButton = document.getElementById('startRaceButton');
+
+
+            if(cpuQueueEl) cpuQueueEl.innerHTML = '';
+            if(gpuGridEl) gpuGridEl.innerHTML = '';
+            if(cpuStatusEl) cpuStatusEl.textContent = 'CPU: Idle';
+            if(gpuStatusEl) gpuStatusEl.textContent = 'GPU: Idle';
+            if(quizDiv) {
+                quizDiv.classList.add('hidden');
+                const optionsContainer = document.getElementById('renderRaceQuizOptions');
+                if(optionsContainer) optionsContainer.innerHTML = ''; 
+                const checkBtn = quizDiv.querySelector('button');
+                if(checkBtn) checkBtn.disabled = false;
+            }
+            if(feedbackEl) feedbackEl.textContent = '';
+            if(startButton) startButton.disabled = false;
+
+            renderRaceAnimationRunning = false;
+            animationPartsCompleted = 0;
+            renderRaceQuizAnswered = false;
+            renderRaceXPAwarded = false; 
+            setupRenderRaceQuiz(); 
+            showModalGpu("Render Race reset.");
+        }
+
+
+        // --- Section 5: GPU Spec Decoder ---
+        function setupSpecDecoder() {
+            const draggablesContainer = document.getElementById('specDecoderDraggables');
+            const dropZonesContainer = document.getElementById('specDecoderDropZones');
+            const feedbackEl = document.getElementById('specDecoderFeedback');
+
+            if(!draggablesContainer || !dropZonesContainer || !feedbackEl) { console.error("Spec Decoder elements missing"); return; }
+
+            draggablesContainer.innerHTML = '';
+            // Shuffle draggable items for variety
+            const shuffledDraggables = [...specDecoderDraggableItems].sort(() => Math.random() - 0.5);
+            shuffledDraggables.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "draggable bg-gray-600 p-2 rounded shadow text-center text-xs";
+                div.draggable = true;
+                div.dataset.descId = item.id;
+                div.dataset.target = item.target;
+                div.textContent = item.text;
+                draggablesContainer.appendChild(div);
+            });
+
+            dropZonesContainer.innerHTML = '';
+            const specStringEl = document.getElementById('gpuSpecString');
+            if (specStringEl) {
+                specStringEl.querySelectorAll('.spec-part').forEach(partEl => {
+                    const targetId = partEl.dataset.specTarget;
+                    const div = document.createElement('div');
+                    div.className = "drop-zone bg-gray-600 p-3 rounded-lg min-h-[50px]";
+                    div.dataset.specTarget = targetId;
+                    div.innerHTML = `<p class="text-xs text-gray-400 pointer-events-none">Drop description for "<span class="font-semibold text-yellow-300">${partEl.textContent}</span>" here</p>`;
+                    dropZonesContainer.appendChild(div);
+                    specDecoderState[targetId] = { droppedItem: null, correct: false }; 
+                });
+            }
+            
+            initializeDragDropGpu( 
+                '#specDecoderDraggables .draggable',
+                '#specDecoderDropZones .drop-zone',
+                'specDecoderDraggables',
+                handleSpecDrop
+            );
+            specDecoderTaskXPAwarded = false;
+            feedbackEl.textContent = "Drag descriptions to the matching spec part.";
+        }
+
+        function handleSpecDrop(zone, item) {
+            const existingItem = zone.querySelector('.draggable');
+            const originalContainer = document.getElementById('specDecoderDraggables');
+            if (existingItem && originalContainer) {
+                originalContainer.appendChild(existingItem);
+                existingItem.style.display = 'block';
+            }
+            zone.appendChild(item);
+            item.style.display = 'block';
+            item.classList.remove('dragging-active');
+        }
+
+        function checkSpecDecoder() {
+            let correctCount = 0;
+            const feedbackEl = document.getElementById('specDecoderFeedback');
+            if(!feedbackEl) return;
+
+            document.querySelectorAll('#specDecoderDropZones .drop-zone').forEach(zone => {
+                const target = zone.dataset.specTarget;
+                const droppedEl = zone.querySelector('.draggable');
+                zone.classList.remove('border-green-500', 'bg-green-900/30', 'border-red-500', 'bg-red-900/30');
+                
+                if (droppedEl) {
+                    specDecoderState[target].droppedItem = droppedEl.dataset.descId;
+                    if (droppedEl.dataset.target === target) {
+                        specDecoderState[target].correct = true;
+                        correctCount++;
+                        zone.classList.add('border-green-500', 'bg-green-900/30');
+                    } else {
+                        specDecoderState[target].correct = false;
+                        zone.classList.add('border-red-500', 'bg-red-900/30');
+                    }
+                } else {
+                    specDecoderState[target].droppedItem = null;
+                    specDecoderState[target].correct = false;
+                }
+            });
+
+            if (!specDecoderTaskXPAwarded) {
+                const xpEarned = correctCount * 5; 
+                addXPGpu(xpEarned);
+                specDecoderTaskXPAwarded = true;
+                feedbackEl.textContent = `Decoding complete! You got ${correctCount}/${specDecoderDropZoneTargets.length} correct. (+${xpEarned} XP)`;
+            } else {
+                 feedbackEl.textContent = `Decoding complete! You got ${correctCount}/${specDecoderDropZoneTargets.length} correct. XP already awarded for this attempt.`;
+            }
+            checkAchievementsGpu();
+        }
+        function resetSpecDecoder() { setupSpecDecoder(); }
+
+
+        // --- Section 6: Thermal Throttling Alert! ---
+        function setupThermalAlert() {
+            const container = document.getElementById('thermalAlertScenariosContainer');
+            const feedbackEl = document.getElementById('thermalAlertOverallFeedback');
+            if(!container || !feedbackEl) { console.error("Thermal Alert elements missing"); return; }
+
+            container.innerHTML = '';
+            thermalSimsCompleted = 0;
+            Object.keys(thermalAlertState).forEach(key => delete thermalAlertState[key]);
+
+            thermalAlertScenariosData.forEach(scenario => {
+                thermalAlertState[scenario.id] = { xpAwarded: false };
+                let optionsHTML = '';
+                scenario.coolers.forEach(cooler => {
+                    optionsHTML += `<option value="${cooler.replace(/\s+/g, '_').toLowerCase()}">${cooler}</option>`;
+                });
+                container.innerHTML += `
+                    <div class="bg-gray-700/50 p-6 rounded-lg shadow">
+                        <h3 class="font-semibold text-lg text-red-300 mb-2">${scenario.text}</h3>
+                        <div class="mb-3">
+                            <label for="thermal_cooler_${scenario.id}" class="block text-sm font-medium text-gray-300 mb-1">Choose Cooling:</label>
+                            <select id="thermal_cooler_${scenario.id}" class="w-full p-2 bg-gray-600 border border-gray-500 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 text-gray-200">
+                                ${optionsHTML}
+                            </select>
+                        </div>
+                        <button onclick="simulateGpuCooling('${scenario.id}')" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 text-sm">Simulate Temperature</button>
+                        <div class="mt-3">
+                            <p class="text-sm font-medium text-gray-300">Simulated GPU Temperature:</p>
+                            <div class="temp-bar-bg mt-1"><div id="tempBar_thermal_${scenario.id}" class="temp-bar"></div></div>
+                            <p id="tempFeedback_thermal_${scenario.id}" class="text-sm mt-1 text-gray-400"></p>
+                        </div>
+                    </div>`;
+            });
+            feedbackEl.textContent = "Choose cooling for each workload.";
+        }
+
+        function simulateGpuCooling(scenarioId) {
+            const coolerSelectEl = document.getElementById(`thermal_cooler_${scenarioId}`);
+            if (!coolerSelectEl) return;
+            const coolerTypeKey = coolerSelectEl.value;
+
+            const scenarioData = thermalAlertScenariosData.find(s => s.id === scenarioId);
+            if (!scenarioData) return;
+
+            const tempBar = document.getElementById(`tempBar_thermal_${scenarioId}`);
+            const tempFeedback = document.getElementById(`tempFeedback_thermal_${scenarioId}`);
+            const overallFeedbackEl = document.getElementById('thermalAlertOverallFeedback');
+            if(!tempBar || !tempFeedback || !overallFeedbackEl) return;
+
+            const coolerDisplayName = scenarioData.coolers.find(c => c.replace(/\s+/g, '_').toLowerCase() === coolerTypeKey);
+            const temp = scenarioData.baseTemp + scenarioData.heatAdd[coolerDisplayName]; 
+            
+            let barColorClass = 'temp-green';
+            let feedbackMsg = "Looking good!";
+
+            if (temp >= 90) { barColorClass = 'temp-red'; feedbackMsg = "DANGER! Severe throttling likely, risk of damage!"; }
+            else if (temp >= 80) { barColorClass = 'temp-yellow'; feedbackMsg = "Warning! GPU is hot, performance may throttle."; }
+            else if (temp >= 65) { barColorClass = 'temp-yellow'; feedbackMsg = "A bit warm, but generally okay for this load."; }
+            else { barColorClass = 'temp-green'; feedbackMsg = "Excellent cooling for this workload!"; }
+
+            tempBar.style.width = `${Math.min(temp, 100)}%`; 
+            tempBar.className = `temp-bar ${barColorClass}`;
+            tempFeedback.textContent = `${feedbackMsg} (Simulated: ${temp}°C)`;
+
+            if (!thermalAlertState[scenarioId].xpAwarded) {
+                addXPGpu(scenarioData.xp);
+                thermalAlertState[scenarioId].xpAwarded = true;
+                thermalSimsCompleted++; 
+            }
+            overallFeedbackEl.textContent = `Simulations run for unique scenarios: ${thermalSimsCompleted}/${thermalAlertScenariosData.length}`;
+            checkAchievementsGpu();
+        }
+        function resetThermalAlert() { setupThermalAlert(); }
+        
+        // --- Section 7: GPU Exam Prep ---
+        function setupGpuExamPrep() {
+            const container = document.getElementById('gpuExamQuestionsContainer');
+            if(!container) return;
+            container.innerHTML = '';
+            Object.keys(gpuExamPrepState).forEach(key => delete gpuExamPrepState[key]);
+
+            gpuExamQuestionsData.forEach((q, index) => {
+                const qId = `gpu_q${index + 1}`;
+                gpuExamPrepState[qId] = { answered: false, selfMark: null, markSchemeViewed: false };
+                container.innerHTML += `
+                    <div class="bg-gray-700/50 p-6 rounded-lg shadow mb-6">
+                        <div class="flex justify-between items-start mb-3">
+                            <h3 class="text-lg font-bold text-gray-200">Question ${index + 1}</h3>
+                            <span class="bg-orange-700 text-orange-200 px-3 py-1 rounded-full text-sm font-semibold">${q.id.includes("q2") ? "[4 marks]" : "[2 marks]"}</span>
+                        </div>
+                        <p class="text-gray-300 mb-3">${q.text}</p>
+                        <textarea id="${qId}Answer" class="w-full p-3 bg-gray-600 border-2 border-gray-500 rounded-lg focus:border-orange-400 focus:ring-orange-400 text-gray-200 h-24 mb-3 text-base" placeholder="Write your answer here..."></textarea>
+                        <div class="flex items-center gap-4 mb-3">
+                            <label for="${qId}Marks" class="text-sm font-semibold text-gray-300">Self-Assessed Marks:</label>
+                            <select id="${qId}Marks" class="p-2 bg-gray-600 border border-gray-500 rounded-md text-gray-200 text-base">
+                                <option value="">Select...</option>
+                                ${[...Array( (q.id.includes("q2") ? 5 : 3) ).keys()].map(i => `<option value="${i}">${i}</option>`).join('')}
+                            </select>
+                        </div>
+                        <button onclick="toggleGpuMarkScheme('${qId}')" class="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors text-sm">Show/Hide Mark Scheme</button>
+                        <div id="${qId}MarkScheme" class="hidden mt-3 bg-green-800/30 p-4 rounded-lg border border-green-700 text-base">
+                            <h4 class="font-bold text-green-300 mb-2">Mark Scheme:</h4>
+                            <ul class="text-sm space-y-1 list-disc list-inside text-green-200">${q.markScheme}</ul>
+                        </div>
+                    </div>`;
+            });
+        }
+        function toggleGpuMarkScheme(questionId) { 
+            const markSchemeEl = document.getElementById(questionId + 'MarkScheme');
+            if(!markSchemeEl) return;
+            markSchemeEl.classList.toggle('hidden');
+            
+            if (gpuExamPrepState[questionId] && !gpuExamPrepState[questionId].markSchemeViewed && !markSchemeEl.classList.contains('hidden')) {
+                addXPGpu(5); 
+                gpuExamPrepState[questionId].markSchemeViewed = true;
+                const answerEl = document.getElementById(questionId + 'Answer');
+                if(answerEl && answerEl.value.length > 10) {
+                    showModalGpu("Mark scheme revealed! Compare with your answer. (+5 XP)");
+                } else { showModalGpu("Mark scheme revealed. (+5 XP)"); }
+            }
+            checkAchievementsGpu(); 
+        }
+        function resetGpuExamPrep() { 
+            setupGpuExamPrep();
+            showModalGpu("GPU Exam prep answers and self-assessments cleared.");
+        }
+
+        // --- Section 8: GPU Extensions ---
+        function setupGpuExtensions() { 
+            const container = document.getElementById('gpuExtensionsContainer');
+            if(!container) return;
+            container.innerHTML = '';
+            gpuExtensionsCompletedCount = 0;
+            gpuExtensionAnswersSubmitted.clear();
+
+            gpuExtensionData.forEach(ext => {
+                container.innerHTML += `
+                <div class="bg-gray-700/50 p-6 rounded-lg shadow mb-6">
+                    <h3 class="font-bold text-lg mb-3 text-purple-300">${ext.title}</h3>
+                    <p class="text-gray-300 mb-4">${ext.task}</p>
+                    <textarea id="${ext.id}Answer" class="w-full p-3 bg-gray-600 border-2 border-gray-500 rounded-lg focus:border-purple-400 focus:ring-purple-400 text-gray-200 h-32 text-base" placeholder="Write your response here..."></textarea>
+                    <button id="${ext.id}Button" onclick="submitGpuExtensionAnswer('${ext.id}', ${ext.xp})" class="mt-3 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 text-sm">Submit & Get XP</button>
+                </div>`;
+            });
+        }
+        function submitGpuExtensionAnswer(extensionId, points) { 
+            const answerEl = document.getElementById(extensionId + 'Answer');
+            const buttonEl = document.getElementById(extensionId + 'Button');
+            if(!answerEl || !buttonEl) return;
+
+            const answerText = answerEl.value.trim();
+            if (answerText.length < 30) { showModalGpu("Please provide a more detailed answer (at least 30 words)."); return; }
+            if (!gpuExtensionAnswersSubmitted.has(extensionId)) {
+                gpuExtensionAnswersSubmitted.add(extensionId); addXPGpu(points);
+                showModalGpu(`Great effort on the extension task! (+${points} XP)`);
+                answerEl.disabled = true;
+                buttonEl.disabled = true; 
+                gpuExtensionsCompletedCount++;
+            } else { showModalGpu("You've already submitted this extension answer."); }
+            checkAchievementsGpu();
+        }
+        function resetGpuExtensions() { 
+            setupGpuExtensions();
+            showModalGpu("GPU Extension activities reset.");
+        }
+
+        // --- DOMContentLoaded Initializations ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Setup all activities
+            setupGpuIntro(); 
+            setupGpuCoreConcepts();
+            setupVramVoyage();
+            setupRenderRaceQuiz(); 
+            setupSpecDecoder();
+            setupThermalAlert();
+            setupGpuExamPrep();
+            setupGpuExtensions();
+            
+            // Initial XP bar update and achievement check
+            addXPGpu(0); 
+        });
+    </script>
+</body>
+</html>

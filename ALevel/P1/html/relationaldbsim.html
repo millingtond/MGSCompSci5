@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relational Database Benefits Simulation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-start: #1a202c;
+            --bg-end: #2d3748;
+            --primary: #4299e1;
+            --primary-light: #63b3ed;
+            --secondary: #4a5568;
+            --text-light: #e2e8f0;
+            --text-dark: #a0aec0;
+            --card-bg: rgba(45, 55, 72, 0.7);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --glass-bg: rgba(26, 32, 44, 0.6);
+            --success-glow: rgba(52, 211, 153, 0.5);
+            --error-glow: rgba(239, 68, 68, 0.5);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-start);
+            background-image: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            color: var(--text-light);
+            overflow: hidden;
+        }
+
+        .simulation-container {
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            background-color: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        
+        .step {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+            will-change: opacity, transform;
+        }
+
+        .step.active {
+            display: flex; /* Changed to flex for better centering */
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Button styles with ripple effect */
+        .btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+            transform: translateZ(0); /* GPU acceleration */
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn-primary {
+            background-color: var(--primary);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-light);
+            box-shadow: 0 10px 15px -3px rgba(66, 153, 225, 0.4), 0 4px 6px -2px rgba(66, 153, 225, 0.05);
+        }
+        .btn-secondary {
+            background-color: var(--secondary);
+        }
+
+        .db-table {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: all 0.4s cubic-bezier(.25,.8,.25,1);
+            transform-style: preserve-3d;
+            will-change: transform, box-shadow;
+        }
+        .db-table:hover {
+            transform: perspective(1000px) rotateY(1deg) rotateX(1deg) scale(1.02);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            border-color: var(--primary-light);
+        }
+        .db-table th {
+            border-bottom: 2px solid var(--primary);
+        }
+        .db-table td, .db-table th {
+            padding: 0.75rem 1rem;
+            text-align: left;
+        }
+        .data-redundant {
+            background-color: rgba(239, 68, 68, 0.3);
+            transition: background-color 0.5s;
+            box-shadow: 0 0 15px var(--error-glow);
+        }
+        .data-consistent {
+            background-color: rgba(52, 211, 153, 0.3);
+            transition: background-color 0.5s;
+            box-shadow: 0 0 15px var(--success-glow);
+        }
+        
+        .relationship-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            transform-origin: 0 0;
+            z-index: -1;
+            transition: all 0.5s ease-in-out;
+            opacity: 0;
+        }
+        
+        .modal {
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            background-color: var(--bg-end);
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            transform: translateY(-50px) scale(0.95);
+        }
+        
+        .quiz-option {
+            border: 2px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        .quiz-option:hover {
+            border-color: var(--primary);
+            background-color: rgba(66, 153, 225, 0.1);
+            transform: translateY(-2px);
+        }
+        .quiz-option.selected {
+            border-color: var(--primary-light);
+            background-color: rgba(66, 153, 225, 0.2);
+            box-shadow: 0 0 10px rgba(66, 153, 225, 0.3);
+        }
+        .quiz-option.correct {
+            border-color: #34d399;
+            background-color: rgba(52, 211, 153, 0.2);
+            box-shadow: 0 0 10px var(--success-glow);
+        }
+        .quiz-option.incorrect {
+            border-color: #ef4444;
+            background-color: rgba(239, 68, 68, 0.2);
+            box-shadow: 0 0 10px var(--error-glow);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-slideIn { animation: slideIn 0.8s cubic-bezier(.25,.8,.25,1) forwards; }
+
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        .fade-in { animation: fade-in 0.5s ease-in-out forwards; }
+        
+        .progress-bar-bg { background-color: var(--secondary); }
+        .progress-bar { 
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            transition: width 0.5s ease-in-out; 
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        .short-answer-input {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-light);
+        }
+        .short-answer-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+        }
+
+        /* Improved feedback animation */
+        @keyframes flash-success {
+            0% { box-shadow: 0 0 0 0 var(--success-glow); }
+            50% { box-shadow: 0 0 20px 5px var(--success-glow); }
+            100% { box-shadow: 0 0 0 0 var(--success-glow); }
+        }
+        .flash-success {
+            animation: flash-success 1s ease-in-out;
+        }
+
+    </style>
+</head>
+<body class="min-h-screen w-full flex items-center justify-center p-4">
+
+    <div id="simulation-wrapper" class="w-full max-w-7xl h-[90vh] mx-auto simulation-container flex flex-col p-6 lg:p-8">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-4">
+            <h1 class="text-xl md:text-2xl font-bold text-white">Relational Database Benefits</h1>
+            <div class="w-1/3">
+                <div class="text-sm text-right mb-1 text-gray-400"><span id="progress-text">Step 1 / 11</span></div>
+                <div class="w-full progress-bar-bg rounded-full h-2.5">
+                    <div id="progress-bar" class="progress-bar h-2.5 rounded-full" style="width: 9%"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main id="main-content" class="flex-grow relative overflow-y-auto">
+            <!-- Step 1: Introduction -->
+            <div id="step-1" class="step h-full flex-col items-center justify-center text-center">
+                <h2 class="text-4xl font-bold text-white mb-4">Welcome!</h2>
+                <p class="text-lg text-gray-300 max-w-3xl">This simulation explores the key benefits of using a relational database, a fundamental concept in A-Level Computer Science (Cambridge 9618). You'll see why they are more powerful than simple flat-file spreadsheets.</p>
+                <p class="mt-4 text-gray-400">Use the arrow buttons or your keyboard's arrow keys to navigate.</p>
+            </div>
+
+            <!-- Step 2: The Problem (Flat File) -->
+            <div id="step-2" class="step h-full flex-col items-center justify-center">
+                <h3 class="text-2xl font-bold text-center mb-4">The Problem: A "Flat-File" Database</h3>
+                <div id="flat-file-table" class="db-table w-full max-w-4xl">
+                    <table class="w-full text-sm">
+                        <thead><tr><th>MemberID</th><th>Name</th><th>Email</th><th>Activity</th><th>Instructor</th><th>BookingDate</th></tr></thead>
+                        <tbody>
+                            <tr><td>101</td><td>Alice</td><td>alice@web.com</td><td>Tennis</td><td class="redundant-cell">John Smith</td><td>2025-07-15</td></tr>
+                            <tr><td>102</td><td>Bob</td><td>bob@web.com</td><td>Swimming</td><td class="redundant-cell">David Lee</td><td>2025-07-16</td></tr>
+                            <tr><td>101</td><td>Alice</td><td>alice@web.com</td><td>Swimming</td><td class="redundant-cell">David Lee</td><td>2025-07-18</td></tr>
+                            <tr><td>103</td><td>Charlie</td><td>charlie@web.com</td><td>Tennis</td><td class="redundant-cell">John Smith</td><td>2025-07-20</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p id="step-2-feedback" class="text-center mt-4 text-red-400 opacity-0 transition-opacity duration-500">Notice the repeated data? This is called <strong class="font-bold">Data Redundancy</strong>.</p>
+            </div>
+
+            <!-- Step 3: The Solution (Relational Model) -->
+            <div id="step-3" class="step h-full flex-col items-center justify-center">
+                 <h3 class="text-2xl font-bold text-center mb-4">The Solution: The Relational Model</h3>
+                <div id="relational-view" class="w-full flex flex-col lg:flex-row justify-around items-center gap-6 relative">
+                     <div id="members-table" class="db-table animate-slideIn" style="animation-delay: 0.2s;">
+                        <h4 class="font-bold p-2 text-center bg-blue-900/50 rounded-t-lg">Members</h4>
+                        <table class="w-full text-sm"><thead><tr><th>MemberID</th><th>Name</th><th>Email</th></tr></thead>
+                        <tbody>
+                            <tr><td>101</td><td>Alice</td><td>alice@web.com</td></tr>
+                            <tr><td>102</td><td>Bob</td><td>bob@web.com</td></tr>
+                            <tr><td>103</td><td>Charlie</td><td>charlie@web.com</td></tr>
+                        </tbody></table>
+                    </div>
+                     <div id="bookings-table" class="db-table animate-slideIn" style="animation-delay: 0.4s;">
+                        <h4 class="font-bold p-2 text-center bg-green-900/50 rounded-t-lg">Bookings</h4>
+                        <table class="w-full text-sm"><thead><tr><th>BookingID</th><th>MemberID</th><th>ActivityID</th><th>Date</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td>101</td><td>1</td><td>15-07-25</td></tr>
+                            <tr><td>2</td><td>102</td><td>2</td><td>16-07-25</td></tr>
+                            <tr><td>3</td><td>101</td><td>2</td><td>18-07-25</td></tr>
+                            <tr><td>4</td><td>103</td><td>1</td><td>20-07-25</td></tr>
+                        </tbody></table>
+                    </div>
+                    <div id="activities-table" class="db-table animate-slideIn" style="animation-delay: 0.6s;">
+                        <h4 class="font-bold p-2 text-center bg-purple-900/50 rounded-t-lg">Activities</h4>
+                         <table class="w-full text-sm"><thead><tr><th>ActivityID</th><th>ActivityName</th><th>Instructor</th></tr></thead>
+                        <tbody>
+                            <tr><td>1</td><td>Tennis</td><td>John Smith</td></tr>
+                            <tr><td>2</td><td>Swimming</td><td>David Lee</td></tr>
+                        </tbody></table>
+                    </div>
+                </div>
+                <div id="relationship-lines-container" class="absolute top-0 left-0 w-full h-full z-[-1] overflow-hidden pointer-events-none"></div>
+            </div>
+            
+            <!-- Step 4: Reduced Redundancy -->
+            <div id="step-4" class="step h-full flex-col items-center justify-center text-center">
+                 <h2 class="text-3xl font-bold mb-4">Benefit 1: Reduced Data Redundancy</h2>
+                 <p class="max-w-3xl mb-6 text-lg">By splitting data into related tables, we eliminate duplication. The instructor's name, for example, is now stored only once for each activity, not for every single booking.</p>
+                 <button id="highlight-instructor-btn" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg">Show Me</button>
+            </div>
+
+            <!-- Step 5: Data Integrity -->
+            <div id="step-5" class="step h-full flex-col items-center justify-center text-center">
+                <h2 class="text-3xl font-bold mb-4">Benefit 2: Improved Data Integrity</h2>
+                <p class="max-w-3xl mb-6 text-lg">Data integrity means the data is reliable and consistent. If we need to update a member's email, we only have to change it in one place.</p>
+                <div class="flex items-center gap-4">
+                    <p>Change Alice's email to:</p>
+                    <input id="email-update-input" type="text" value="alice.new@web.com" class="short-answer-input p-2 rounded-md">
+                    <button id="update-email-btn" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg">Update</button>
+                </div>
+                <p id="integrity-feedback" class="mt-4 h-6"></p>
+            </div>
+
+            <!-- Step 6: Program-Data Independence -->
+            <div id="step-6" class="step h-full flex-col items-center justify-center text-center">
+                 <h2 class="text-3xl font-bold mb-4">Benefit 3: Program-Data Independence</h2>
+                 <p class="max-w-3xl mb-6 text-lg">The structure of the data can be changed without breaking the programs that access it. Let's add a 'JoinDate' column to the Members table. A program that only lists member names will be unaffected.</p>
+                 <div class="flex flex-col md:flex-row gap-8 items-center">
+                    <div id="program-view" class="db-table p-4 transition-all duration-500">
+                        <h4 class="font-bold mb-2">Program Output: Member List</h4>
+                        <ul id="program-output-list"><li>Alice</li><li>Bob</li><li>Charlie</li></ul>
+                    </div>
+                     <button id="add-column-btn" class="btn btn-primary self-center text-white font-bold py-2 px-4 rounded-lg">Add 'JoinDate' Column</button>
+                 </div>
+                 <p id="independence-feedback" class="mt-4 h-6"></p>
+            </div>
+
+            <!-- Step 7: Concurrent Access -->
+            <div id="step-7" class="step h-full flex-col items-center justify-center text-center">
+                <h2 class="text-3xl font-bold mb-4">Benefit 4: Concurrent Access</h2>
+                <p class="max-w-3xl mb-6 text-lg">Relational databases manage multiple users accessing data at the same time. Let's say two users try to book the last Tennis slot simultaneously. Record locking prevents a conflict.</p>
+                <div class="flex gap-8 items-center">
+                    <div class="text-center"><p>User A</p><button id="user-a-book" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg mt-2">Book Slot</button></div>
+                    <div id="tennis-slot" class="db-table p-4 text-center">
+                        <h4 class="font-bold">Tennis Slots</h4>
+                        <p class="text-4xl font-bold my-2">1</p>
+                        <p>Remaining</p>
+                    </div>
+                    <div class="text-center"><p>User B</p><button id="user-b-book" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg mt-2">Book Slot</button></div>
+                </div>
+                <div id="concurrency-log" class="mt-4 p-2 bg-gray-900 rounded-lg w-full max-w-md h-24 font-mono text-sm overflow-y-auto"></div>
+            </div>
+            
+            <!-- Step 8: Complex Queries -->
+            <div id="step-8" class="step h-full flex-col items-center justify-center text-center">
+                <h2 class="text-3xl font-bold mb-4">Benefit 5: Complex Queries</h2>
+                <p class="max-w-3xl mb-6 text-lg">The relational structure allows for powerful and complex queries to find specific data by joining tables.</p>
+                <div class="bg-gray-900/50 p-4 rounded-lg flex items-center gap-4">
+                    <span class="font-bold">Find all members who do</span>
+                    <select id="query-activity-select" class="short-answer-input p-2 rounded-md">
+                        <option value="1">Tennis</option>
+                        <option value="2">Swimming</option>
+                    </select>
+                    <button id="run-query-btn" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg">Run Query</button>
+                </div>
+                <div id="query-results" class="mt-4 db-table w-full max-w-md opacity-0 transition-opacity duration-500">
+                     <h4 class="font-bold p-2 text-center bg-blue-900/50 rounded-t-lg">Query Results</h4>
+                     <table class="w-full text-sm"><thead><tr><th>MemberID</th><th>Name</th></tr></thead><tbody id="query-results-body"></tbody></table>
+                </div>
+            </div>
+
+            <!-- Step 9: Security -->
+            <div id="step-9" class="step h-full flex-col items-center justify-center text-center">
+                 <h2 class="text-3xl font-bold mb-4">Benefit 6: Security & Access Rights</h2>
+                 <p class="max-w-3xl mb-6 text-lg">Different users can be given different "views" of the data, improving security and privacy. An administrator sees everything, while a member only sees their own bookings.</p>
+                 <div class="flex gap-4 mb-4">
+                    <button id="view-admin-btn" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg">View as Admin</button>
+                    <button id="view-member-btn" class="btn btn-secondary text-white font-bold py-2 px-4 rounded-lg">View as Member (Alice)</button>
+                 </div>
+                 <div id="security-view-container" class="w-full max-w-4xl h-64 relative">
+                     <!-- Views will be injected here -->
+                 </div>
+            </div>
+            
+            <!-- Step 10: Quiz -->
+            <div id="step-10" class="step h-full flex-col items-center justify-center">
+                <h2 class="text-3xl font-bold mb-2">Knowledge Check</h2>
+                <p class="text-gray-400 mb-6">Let's test your understanding.</p>
+                <div id="quiz-container" class="w-full max-w-3xl">
+                    <!-- Quiz questions will be dynamically inserted here -->
+                </div>
+                <button id="submit-quiz-btn" class="mt-6 btn btn-primary text-white font-bold py-2 px-4 rounded-lg opacity-0" disabled>Check Answers</button>
+            </div>
+            
+             <!-- Step 11: Final Score -->
+            <div id="step-11" class="step h-full flex-col items-center justify-center text-center">
+                <h2 class="text-4xl font-bold text-white mb-4">Simulation Complete!</h2>
+                <p class="text-lg text-gray-300">You scored <span id="final-score" class="font-bold text-2xl text-primary"></span> out of <span id="total-questions" class="font-bold text-2xl"></span>.</p>
+                <div id="score-feedback" class="mt-4 text-lg"></div>
+                <div class="mt-6">
+                    <h3 class="text-2xl font-bold mb-2">Summary of Benefits:</h3>
+                    <ul class="list-disc list-inside text-left max-w-md mx-auto text-gray-300">
+                        <li>Reduced Data Redundancy</li>
+                        <li>Improved Data Integrity & Consistency</li>
+                        <li>Program-Data Independence</li>
+                        <li>Managed Concurrent Access</li>
+                        <li>Enables Complex Queries</li>
+                        <li>Enhanced Security & Access Control</li>
+                    </ul>
+                </div>
+                <button id="reset-sim-btn" class="mt-8 btn btn-primary text-white font-bold py-3 px-6 rounded-lg">Try Again</button>
+            </div>
+        </main>
+        
+        <!-- Navigation -->
+        <footer class="mt-auto pt-4 flex justify-between items-center">
+            <button id="prev-btn" class="btn btn-secondary text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                &larr; Previous
+            </button>
+            <span class="text-gray-400 text-sm">Step <span id="current-step-display">1</span></span>
+            <button id="next-btn" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                Next &rarr;
+            </button>
+        </footer>
+    </div>
+    
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal hidden">
+        <div class="modal-content w-full max-w-lg p-6 text-center">
+            <h3 id="modal-title" class="text-2xl font-bold mb-4"></h3>
+            <p id="modal-text" class="text-gray-300 mb-6"></p>
+            <button id="modal-close-btn" class="btn btn-primary text-white font-bold py-2 px-6 rounded-lg">Continue</button>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        
+        // --- Caching frequently accessed DOM elements ---
+        const dom = {
+            steps: document.querySelectorAll('.step'),
+            prevBtn: document.getElementById('prev-btn'),
+            nextBtn: document.getElementById('next-btn'),
+            progressBar: document.getElementById('progress-bar'),
+            progressText: document.getElementById('progress-text'),
+            currentStepDisplay: document.getElementById('current-step-display'),
+            modal: document.getElementById('modal'),
+            modalTitle: document.getElementById('modal-title'),
+            modalText: document.getElementById('modal-text'),
+            modalCloseBtn: document.getElementById('modal-close-btn'),
+            flatFileTable: document.getElementById('flat-file-table'),
+            redundantCells: document.querySelectorAll('.redundant-cell'),
+            step2Feedback: document.getElementById('step-2-feedback'),
+            relationshipLinesContainer: document.getElementById('relationship-lines-container'),
+            highlightInstructorBtn: document.getElementById('highlight-instructor-btn'),
+            updateEmailBtn: document.getElementById('update-email-btn'),
+            emailInput: document.getElementById('email-update-input'),
+            integrityFeedback: document.getElementById('integrity-feedback'),
+            addColumnBtn: document.getElementById('add-column-btn'),
+            programView: document.getElementById('program-view'),
+            independenceFeedback: document.getElementById('independence-feedback'),
+            tennisSlot: document.getElementById('tennis-slot'),
+            userABtn: document.getElementById('user-a-book'),
+            userBBtn: document.getElementById('user-b-book'),
+            concurrencyLog: document.getElementById('concurrency-log'),
+            queryActivitySelect: document.getElementById('query-activity-select'),
+            runQueryBtn: document.getElementById('run-query-btn'),
+            queryResults: document.getElementById('query-results'),
+            queryResultsBody: document.getElementById('query-results-body'),
+            viewAdminBtn: document.getElementById('view-admin-btn'),
+            viewMemberBtn: document.getElementById('view-member-btn'),
+            securityContainer: document.getElementById('security-view-container'),
+            quizContainer: document.getElementById('quiz-container'),
+            submitQuizBtn: document.getElementById('submit-quiz-btn'),
+            finalScoreDisplay: document.getElementById('final-score'),
+            totalQuestionsDisplay: document.getElementById('total-questions'),
+            scoreFeedback: document.getElementById('score-feedback'),
+            resetSimBtn: document.getElementById('reset-sim-btn'),
+        };
+
+        // --- State Management ---
+        const state = {
+            currentStep: 1,
+            totalSteps: dom.steps.length,
+            animationsPaused: false,
+            quizAnswers: {},
+            quizScore: 0,
+        };
+        
+        // --- Data & Content ---
+        const originalHTML = {
+            membersTable: document.getElementById('members-table').innerHTML,
+            tennisSlot: dom.tennisSlot.innerHTML,
+            step4: document.getElementById('step-4').innerHTML,
+            step6MembersTable: document.querySelector('#step-6 #members-table')?.innerHTML, // May not exist initially
+        };
+
+        const modalContent = {
+            1: { title: "Relational Databases", text: "Welcome! We'll start by looking at the problems with a simple 'flat-file' database, like a single spreadsheet, before exploring the relational solution." },
+            2: { title: "Data Redundancy", text: "This table shows bookings for a sports club. Notice how the instructor names are repeated? This is data redundancy. It wastes space and can lead to errors if you need to update information." },
+            3: { title: "The Relational Model", text: "The solution is to split the data into separate, related tables. We now have a table for Members, one for Activities, and a 'linking' table for Bookings. Notice how redundancy is gone." },
+            4: { title: "Benefit 1: Reduced Redundancy", text: "With the new structure, if an instructor changes, we only need to update it in one single place in the 'Activities' table. This makes data maintenance much easier." },
+            5: { title: "Benefit 2: Data Integrity", text: "Because the data isn't duplicated, it's more consistent and reliable. Let's see what happens when we update a member's email address." },
+            6: { title: "Benefit 3: Program-Data Independence", text: "This means we can change the database structure (e.g., add or remove columns) without needing to rewrite the software that accesses it. Let's demonstrate." },
+            7: { title: "Benefit 4: Concurrent Access", text: "Real-world databases are used by many people at once. Relational Database Management Systems (RDBMS) use features like 'record locking' to prevent users from overwriting each other's changes, ensuring data consistency." },
+            8: { title: "Benefit 5: Complex Queries", text: "By 'joining' related tables, we can ask complex questions. For example, 'Show me the names of all members who are booked for Tennis'. This is a core strength of relational databases, powered by languages like SQL." },
+            9: { title: "Benefit 6: Security", text: "A RDBMS allows administrators to set specific permissions. Different users or groups can be given different 'views' of the data, so they only see what they are authorized to see. This is crucial for privacy and security." },
+            10: { title: "Knowledge Check", text: "Time to test what you've learned. Answer the questions to see how well you've grasped the concepts." },
+        };
+
+        const quizData = [
+            {
+                question: "1. What is the primary benefit of splitting data into multiple tables in a relational database?",
+                type: "mcq",
+                options: {
+                    a: "To make the database look more organized.",
+                    b: "To reduce data redundancy and improve data integrity.",
+                    c: "To increase the physical size of the database file.",
+                    d: "To make queries run slower but more accurately.",
+                },
+                correct: "b",
+            },
+            {
+                question: "2. The concept that the data structure can be changed without affecting the programs that use it is called...",
+                type: "text",
+                correct: "program-data independence",
+            },
+            {
+                question: "3. If a member's details are updated in one table and this is reflected everywhere, this enforces...",
+                type: "mcq",
+                options: {
+                    a: "Data Security",
+                    b: "Concurrent Access",
+                    c: "Referential Integrity",
+                    d: "Program-Data Independence",
+                },
+                correct: "c",
+            },
+        ];
+
+        // --- Utility Functions ---
+        const debounce = (func, delay) => {
+            let timeout;
+            return function(...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), delay);
+            };
+        };
+
+        // --- Core UI and Navigation Functions ---
+        
+        function updateUI() {
+            dom.steps.forEach((step, index) => {
+                step.classList.toggle('active', (index + 1) === state.currentStep);
+            });
+
+            dom.prevBtn.disabled = (state.currentStep === 1);
+            dom.nextBtn.disabled = (state.currentStep === state.totalSteps);
+
+            const progress = (state.currentStep / state.totalSteps) * 100;
+            dom.progressBar.style.width = `${progress}%`;
+            dom.progressText.textContent = `Step ${state.currentStep} / ${state.totalSteps}`;
+            dom.currentStepDisplay.textContent = state.currentStep;
+            
+            // Execute animations or logic specific to the current step
+            runStepLogic(state.currentStep);
+        }
+        
+        function changeStep(direction) {
+            const newStep = state.currentStep + direction;
+            if (newStep >= 1 && newStep <= state.totalSteps) {
+                state.currentStep = newStep;
+                updateUI();
+                if(newStep < state.totalSteps) showModal(state.currentStep);
+            }
+        }
+
+        function showModal(step) {
+            if (modalContent[step]) {
+                state.animationsPaused = true;
+                dom.modalTitle.textContent = modalContent[step].title;
+                dom.modalText.textContent = modalContent[step].text;
+                dom.modal.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    dom.modal.classList.add('fade-in');
+                    dom.modal.querySelector('.modal-content').style.transform = 'translateY(0) scale(1)';
+                });
+            }
+        }
+
+        function closeModal() {
+            dom.modal.querySelector('.modal-content').style.transform = 'translateY(-50px) scale(0.95)';
+            dom.modal.classList.remove('fade-in');
+            setTimeout(() => {
+                 dom.modal.classList.add('hidden');
+                 state.animationsPaused = false;
+                 runStepAnimations(state.currentStep);
+            }, 300);
+        }
+        
+        // --- Step-Specific Logic & Animations ---
+
+        function runStepLogic(step) {
+            // This function is for logic that should run every time a step becomes active.
+            // For one-off animations after a modal closes, see runStepAnimations.
+            switch(step) {
+                case 3:
+                case 4:
+                    setTimeout(drawRelationshipLines, 100);
+                    break;
+                case 9:
+                    // Default to admin view
+                    if(!dom.securityContainer.innerHTML) handleSecurityView('admin');
+                    break;
+                case 10:
+                    // Initialize quiz if not already done
+                    if(!dom.quizContainer.innerHTML) buildQuiz();
+                    break;
+                default:
+                    dom.relationshipLinesContainer.innerHTML = '';
+            }
+        }
+
+        function runStepAnimations(step) {
+            if (state.animationsPaused) return;
+
+            if (step === 2) {
+                setTimeout(() => {
+                    dom.redundantCells.forEach(cell => cell.classList.add('data-redundant'));
+                    dom.step2Feedback.style.opacity = '1';
+                }, 500);
+            }
+             if (step === 3) {
+                 setTimeout(drawRelationshipLines, 100);
+             }
+        }
+        
+        function drawRelationshipLines() {
+            dom.relationshipLinesContainer.innerHTML = '';
+            const membersTable = document.getElementById('members-table');
+            const bookingsTable = document.getElementById('bookings-table');
+            const activitiesTable = document.getElementById('activities-table');
+
+            if (!membersTable || !bookingsTable || !activitiesTable) return;
+            
+            createLine(membersTable, bookingsTable);
+            createLine(activitiesTable, bookingsTable);
+        }
+
+        function createLine(elem1, elem2) {
+            const rect1 = elem1.getBoundingClientRect();
+            const rect2 = elem2.getBoundingClientRect();
+            const containerRect = dom.relationshipLinesContainer.getBoundingClientRect();
+
+            const startX = rect1.right - containerRect.left;
+            const startY = rect1.top - containerRect.top + rect1.height / 2;
+            const endX = rect2.left - containerRect.left;
+            const endY = rect2.top - containerRect.top + rect2.height / 2;
+
+            const length = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2);
+            const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
+
+            const line = document.createElement('div');
+            line.className = 'relationship-line';
+            line.style.width = `${length}px`;
+            line.style.left = `${startX}px`;
+            line.style.top = `${startY}px`;
+            line.style.transform = `rotate(${angle}deg)`;
+            dom.relationshipLinesContainer.appendChild(line);
+            requestAnimationFrame(() => line.style.opacity = '1');
+        }
+
+        // --- Event Handlers for Step Interactions ---
+
+        dom.highlightInstructorBtn.addEventListener('click', () => {
+             const tablesHTML = `<div class="db-table w-full max-w-4xl mb-6"><h4 class="font-bold p-2 text-center bg-gray-700 rounded-t-lg">Flat-File (Before)</h4><table class="w-full text-sm"><thead><tr><th>...</th><th>Instructor</th></tr></thead><tbody><tr><td>...</td><td class="data-redundant">John Smith</td></tr><tr><td>...</td><td class="data-redundant">John Smith</td></tr></tbody></table></div><div class="text-2xl font-bold my-4">&darr;</div><div class="db-table w-full max-w-md"><h4 class="font-bold p-2 text-center bg-purple-900/50 rounded-t-lg">Activities Table (After)</h4><table class="w-full text-sm"><thead><tr><th>...</th><th>Instructor</th></tr></thead><tbody><tr><td>...</td><td class="data-consistent">John Smith</td></tr></tbody></table></div>`;
+             document.getElementById('step-4').innerHTML = `<h2 class="text-3xl font-bold mb-4">Benefit 1: Reduced Data Redundancy</h2><p class="max-w-3xl mb-6 text-lg">The instructor 'John Smith' was repeated. Now, it's stored once. Updating it here fixes it for all Tennis bookings.</p>${tablesHTML}`;
+        });
+        
+        dom.updateEmailBtn.addEventListener('click', () => {
+            const newEmail = dom.emailInput.value;
+            if(!newEmail || newEmail.trim() === "") {
+                dom.integrityFeedback.textContent = "Please enter a new email.";
+                dom.integrityFeedback.className = "mt-4 h-6 text-red-400";
+                return;
+            }
+            const emailCell = document.querySelector('#members-table tbody tr:first-child td:last-child');
+            emailCell.textContent = newEmail;
+            emailCell.parentElement.classList.add('flash-success');
+            
+            dom.integrityFeedback.textContent = "Updated! The change is made in one place, ensuring consistency.";
+            dom.integrityFeedback.className = "mt-4 h-6 text-green-400";
+            
+            setTimeout(() => {
+                emailCell.parentElement.classList.remove('flash-success');
+            }, 1000);
+        });
+        
+        dom.addColumnBtn.addEventListener('click', () => {
+            const table = document.querySelector('#step-6 #members-table') || document.querySelector('#members-table');
+            const header = table.querySelector('thead tr');
+            const newHeader = document.createElement('th');
+            newHeader.className = "data-consistent";
+            newHeader.textContent = "JoinDate";
+            header.appendChild(newHeader);
+            
+            table.querySelectorAll('tbody tr').forEach((row, index) => {
+                const newCell = document.createElement('td');
+                newCell.className = "data-consistent";
+                newCell.textContent = `2024-0${index+1}-15`;
+                row.appendChild(newCell);
+            });
+            
+            dom.programView.classList.add('flash-success');
+            dom.independenceFeedback.textContent = "Notice the program output is unchanged. This is Program-Data Independence.";
+            dom.independenceFeedback.className = "mt-4 h-6 text-green-400";
+            dom.addColumnBtn.disabled = true;
+        });
+
+        let slots = 1;
+        let isBooking = false;
+        const bookSlot = (user) => {
+            if (isBooking) { logToConcurrencyPanel(`${user} is waiting...`); return; }
+            if (slots > 0) {
+                isBooking = true;
+                logToConcurrencyPanel(`${user} starts booking...`);
+                logToConcurrencyPanel(`Database record is LOCKED.`);
+                setTimeout(() => {
+                    slots--;
+                    dom.tennisSlot.querySelector('p.text-4xl').textContent = slots;
+                    logToConcurrencyPanel(`${user} successfully booked. Record UNLOCKED.`);
+                    isBooking = false;
+                    if (slots <= 0) {
+                        dom.userABtn.disabled = true;
+                        dom.userBBtn.disabled = true;
+                        dom.tennisSlot.classList.add('opacity-50');
+                        logToConcurrencyPanel(`All slots are booked.`);
+                    }
+                }, 1500);
+            }
+        };
+        const logToConcurrencyPanel = (message) => {
+            dom.concurrencyLog.innerHTML += `<div>&gt; ${message}</div>`;
+            dom.concurrencyLog.scrollTop = dom.concurrencyLog.scrollHeight;
+        };
+        dom.userABtn.addEventListener('click', () => bookSlot('User A'));
+        dom.userBBtn.addEventListener('click', () => bookSlot('User B'));
+        
+        dom.runQueryBtn.addEventListener('click', () => {
+            const queryData = { "1": [{id: 101, name: 'Alice'}, {id: 103, name: 'Charlie'}], "2": [{id: 102, name: 'Bob'}, {id: 101, name: 'Alice'}] };
+            const results = queryData[dom.queryActivitySelect.value];
+            dom.queryResultsBody.innerHTML = results.map(res => `<tr><td>${res.id}</td><td>${res.name}</td></tr>`).join('');
+            dom.queryResults.style.opacity = '1';
+        });
+
+        const handleSecurityView = (viewType) => {
+            const views = {
+                admin: `<div class="db-table animate-slideIn w-full"><h4 class="font-bold p-2 text-center bg-red-900/50 rounded-t-lg">Admin View (All Data)</h4><div class="p-2 grid grid-cols-1 md:grid-cols-3 gap-2"><div><strong>Members</strong><ul class="text-xs"><li>101: Alice</li><li>102: Bob</li><li>103: Charlie</li></ul></div><div><strong>Bookings</strong><ul class="text-xs"><li>ID 1: Alice -> Tennis</li><li>ID 2: Bob -> Swim</li><li>ID 3: Alice -> Swim</li></ul></div><div><strong>Activities</strong><ul class="text-xs"><li>ID 1: Tennis</li><li>ID 2: Swimming</li></ul></div></div></div>`,
+                member: `<div class="db-table animate-slideIn w-full"><h4 class="font-bold p-2 text-center bg-blue-900/50 rounded-t-lg">Member View (Alice)</h4><p class="p-2 text-sm">Showing bookings for Member 101 (Alice) only:</p><ul class="p-2 text-sm list-disc list-inside"><li>Booking for Tennis on 2025-07-15</li><li>Booking for Swimming on 2025-07-18</li></ul></div>`
+            };
+            dom.securityContainer.innerHTML = views[viewType];
+            dom.viewAdminBtn.classList.toggle('btn-primary', viewType === 'admin');
+            dom.viewAdminBtn.classList.toggle('btn-secondary', viewType !== 'admin');
+            dom.viewMemberBtn.classList.toggle('btn-primary', viewType === 'member');
+            dom.viewMemberBtn.classList.toggle('btn-secondary', viewType !== 'member');
+        };
+        dom.viewAdminBtn.addEventListener('click', () => handleSecurityView('admin'));
+        dom.viewMemberBtn.addEventListener('click', () => handleSecurityView('member'));
+        
+        // --- Quiz Functions ---
+
+        function buildQuiz() {
+            dom.quizContainer.innerHTML = quizData.map((q, index) => {
+                const isHidden = index > 0 ? 'hidden' : '';
+                if(q.type === 'mcq') {
+                    const optionsHTML = Object.entries(q.options).map(([key, value]) => 
+                        `<div class="quiz-option p-4 rounded-lg cursor-pointer" data-answer="${key}">${key}) ${value}</div>`
+                    ).join('');
+                    return `<div class="quiz-question ${isHidden}" data-question-index="${index}"><p class="font-semibold text-lg mb-4">${q.question}</p><div class="quiz-options grid grid-cols-1 md:grid-cols-2 gap-4">${optionsHTML}</div></div>`;
+                }
+                if(q.type === 'text') {
+                    return `<div class="quiz-question ${isHidden}" data-question-index="${index}"><p class="font-semibold text-lg mb-4">${q.question}</p><div class="quiz-options"><input type="text" placeholder="Type your answer here" class="w-full p-3 rounded-lg short-answer-input" data-answer-input><p class="quiz-feedback text-sm mt-2 h-4"></p></div></div>`;
+                }
+            }).join('');
+            addQuizListeners();
+        }
+
+        function addQuizListeners() {
+            dom.quizContainer.addEventListener('click', (e) => {
+                if(e.target.matches('.quiz-option')) {
+                    const qDiv = e.target.closest('.quiz-question');
+                    const qIndex = qDiv.dataset.questionIndex;
+                    state.quizAnswers[qIndex] = e.target.dataset.answer;
+                    
+                    qDiv.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+                    e.target.classList.add('selected');
+                    
+                    setTimeout(showNextQuestion, 400);
+                    checkAllAnswered();
+                }
+            });
+
+             dom.quizContainer.addEventListener('input', (e) => {
+                if(e.target.matches('[data-answer-input]')) {
+                    const qIndex = e.target.closest('.quiz-question').dataset.questionIndex;
+                    const value = e.target.value.trim().toLowerCase();
+                    if(value.length > 5) state.quizAnswers[qIndex] = value; else delete state.quizAnswers[qIndex];
+                    checkAllAnswered();
+                }
+            });
+        }
+        
+        function showNextQuestion() {
+            const currentQ = dom.quizContainer.querySelector('.quiz-question:not(.hidden)');
+            const nextQ = currentQ.nextElementSibling;
+            if(nextQ) {
+                currentQ.classList.add('hidden');
+                nextQ.classList.remove('hidden');
+            }
+        }
+
+        function checkAllAnswered() {
+            if(Object.keys(state.quizAnswers).length === quizData.length) {
+                dom.submitQuizBtn.disabled = false;
+                dom.submitQuizBtn.style.opacity = '1';
+            }
+        }
+        
+        dom.submitQuizBtn.addEventListener('click', () => {
+            state.quizScore = 0;
+            quizData.forEach((q, index) => {
+                const userAnswer = state.quizAnswers[index];
+                if (q.type === 'mcq') {
+                    const option = dom.quizContainer.querySelector(`[data-question-index="${index}"] [data-answer="${userAnswer}"]`);
+                    if(userAnswer === q.correct) {
+                        state.quizScore++;
+                        option?.classList.add('correct');
+                    } else {
+                        option?.classList.add('incorrect');
+                    }
+                }
+                if (q.type === 'text') {
+                     const input = dom.quizContainer.querySelector(`[data-question-index="${index}"] input`);
+                     const feedback = dom.quizContainer.querySelector(`[data-question-index="${index}"] .quiz-feedback`);
+                     if(userAnswer && q.correct.split(' ').every(word => userAnswer.includes(word))) {
+                         state.quizScore++;
+                         input.classList.add('correct');
+                         feedback.textContent = "Correct!";
+                         feedback.className = "quiz-feedback text-sm mt-2 h-4 text-green-400";
+                     } else {
+                         input.classList.add('incorrect');
+                         feedback.textContent = `Correct answer: ${q.correct}`;
+                         feedback.className = "quiz-feedback text-sm mt-2 h-4 text-red-400";
+                     }
+                }
+            });
+
+            dom.submitQuizBtn.disabled = true;
+            dom.quizContainer.style.pointerEvents = 'none';
+
+            setTimeout(() => {
+                changeStep(1);
+                dom.finalScoreDisplay.textContent = state.quizScore;
+                dom.totalQuestionsDisplay.textContent = quizData.length;
+                 if (state.quizScore === quizData.length) {
+                    dom.scoreFeedback.textContent = "Excellent work! You've mastered the key concepts.";
+                    dom.scoreFeedback.className = "mt-4 text-lg text-green-400";
+                } else if (state.quizScore >= 1) {
+                     dom.scoreFeedback.textContent = "Good job! Review the steps to solidify your understanding.";
+                     dom.scoreFeedback.className = "mt-4 text-lg text-yellow-400";
+                } else {
+                    dom.scoreFeedback.textContent = "It looks like you found this tricky. It's worth restarting the simulation to review the material.";
+                    dom.scoreFeedback.className = "mt-4 text-lg text-red-400";
+                }
+            }, 2500);
+        });
+
+        // --- Reset Function ---
+        function resetSimulation() {
+            state.currentStep = 1;
+            state.quizAnswers = {};
+            state.quizScore = 0;
+            updateUI();
+            
+            // Reset visual states
+            dom.redundantCells.forEach(cell => cell.classList.remove('data-redundant'));
+            dom.step2Feedback.style.opacity = '0';
+            document.getElementById('step-4').innerHTML = originalHTML.step4;
+            document.getElementById('highlight-instructor-btn').addEventListener('click', dom.highlightInstructorBtn.click);
+            
+            // Reset Step 5
+            dom.emailInput.value = "alice.new@web.com";
+            dom.integrityFeedback.textContent = '';
+            document.getElementById('members-table').innerHTML = originalHTML.membersTable;
+            
+            // Reset Step 6
+            if(originalHTML.step6MembersTable) { // If it existed
+                const step6table = document.querySelector('#step-6 #members-table');
+                if(step6table) step6table.innerHTML = originalHTML.step6MembersTable;
+            }
+            dom.programView.classList.remove('flash-success');
+            dom.independenceFeedback.textContent = '';
+            document.getElementById('add-column-btn').disabled = false;
+
+            // Reset Step 7
+            slots = 1; isBooking = false;
+            dom.concurrencyLog.innerHTML = '';
+            dom.userABtn.disabled = false;
+            dom.userBBtn.disabled = false;
+            dom.tennisSlot.innerHTML = originalHTML.tennisSlot;
+            dom.tennisSlot.classList.remove('opacity-50');
+
+            // Reset Step 8 & 9
+            dom.queryResults.style.opacity = '0';
+            dom.queryResultsBody.innerHTML = '';
+            dom.securityContainer.innerHTML = '';
+            handleSecurityView('admin');
+
+            // Reset Quiz
+            dom.quizContainer.innerHTML = '';
+            buildQuiz();
+            dom.quizContainer.style.pointerEvents = 'auto';
+            dom.submitQuizBtn.disabled = true;
+            dom.submitQuizBtn.style.opacity = '0';
+
+            showModal(1);
+        }
+        dom.resetSimBtn.addEventListener('click', resetSimulation);
+        
+        // --- Global Event Listeners ---
+        dom.nextBtn.addEventListener('click', () => changeStep(1));
+        dom.prevBtn.addEventListener('click', () => changeStep(-1));
+        dom.modalCloseBtn.addEventListener('click', closeModal);
+        
+        window.addEventListener('keydown', e => {
+            if (dom.modal.classList.contains('hidden')) {
+                 if (e.key === 'ArrowRight' && !dom.nextBtn.disabled) changeStep(1);
+                 if (e.key === 'ArrowLeft' && !dom.prevBtn.disabled) changeStep(-1);
+            }
+            if (e.key === 'Escape' && !dom.modal.classList.contains('hidden')) closeModal();
+        });
+        
+        window.addEventListener('resize', debounce(drawRelationshipLines, 150));
+
+
+        // --- Initialisation ---
+        updateUI();
+        showModal(1);
+    });
+    </script>
+</body>
+</html>

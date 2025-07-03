@@ -1,0 +1,4682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallel Processing Systems | Interactive Lesson</title>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary-color: #8b5cf6;
+            --secondary-dark: #7c3aed;
+            --success-color: #10b981;
+            --success-dark: #059669;
+            --error-color: #ef4444;
+            --error-dark: #dc2626;
+            --warning-color: #f59e0b;
+            --warning-dark: #d97706;
+            --bg-color: #ffffff;
+            --bg-secondary: #f8fafc;
+            --text-color: #1e293b;
+            --text-secondary: #64748b;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --highlight-color: #fef3c7;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-success: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            --gradient-gold: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --animation-duration: 0.3s;
+            --animation-timing: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Performance optimizations */
+        .will-animate {
+            will-change: transform, opacity;
+        }
+
+        /* Smooth animations */
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* High Contrast Mode */
+        body.high-contrast {
+            --bg-color: #000000;
+            --bg-secondary: #0a0a0a;
+            --text-color: #ffffff;
+            --text-secondary: #e0e0e0;
+            --card-bg: #1a1a1a;
+            --border-color: #ffffff;
+            --primary-color: #00ff00;
+            --secondary-color: #ffff00;
+            --gradient-primary: linear-gradient(135deg, #00ff00 0%, #ffff00 100%);
+        }
+
+        /* Dyslexia-Friendly Font */
+        body.dyslexia-font {
+            font-family: 'Comic Sans MS', 'OpenDyslexic', sans-serif;
+            letter-spacing: 0.05em;
+            word-spacing: 0.1em;
+            line-height: 1.8;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-overlay.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Modern Glass Header */
+        .header {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 1.5rem 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-lg);
+            transform: translateZ(0);
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.1) 100%);
+            pointer-events: none;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            letter-spacing: -0.025em;
+        }
+
+        /* XP Container Enhanced */
+        .xp-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(255,255,255,0.15);
+            padding: 0.5rem 1.5rem;
+            border-radius: 2rem;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+            transition: transform var(--animation-duration) var(--animation-timing);
+        }
+
+        .xp-container:hover {
+            transform: translateY(-2px);
+        }
+
+        .xp-bar {
+            width: 200px;
+            height: 24px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+            transition: width 0.6s var(--animation-timing);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+            transform: translateZ(0);
+        }
+
+        .xp-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .level-badge {
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 1.5rem;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .level-badge::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: rotate 10s linear infinite;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Navigation Enhanced */
+        .nav-container {
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(20px);
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 80px;
+            z-index: 999;
+            box-shadow: var(--shadow-md);
+            transform: translateZ(0);
+        }
+
+        .nav-pills {
+            display: flex;
+            gap: 0.75rem;
+            overflow-x: auto;
+            padding: 0.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+
+        .nav-pills::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-pill {
+            padding: 0.625rem 1.25rem;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 2rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all var(--animation-duration) var(--animation-timing);
+            font-size: 0.875rem;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0);
+        }
+
+        .nav-pill::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: var(--primary-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            opacity: 0.3;
+        }
+
+        .nav-pill:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .nav-pill:hover::before {
+            width: 100%;
+            height: 100%;
+        }
+
+        .nav-pill.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+            transform: scale(1.05);
+        }
+
+        .nav-pill.completed {
+            border-color: var(--success-color);
+            position: relative;
+        }
+
+        .nav-pill.completed::after {
+            content: '✓';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--gradient-success);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            box-shadow: var(--shadow-md);
+            animation: bounceIn 0.5s ease;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            min-height: calc(100vh - 200px);
+        }
+
+        .section {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .section.active {
+            display: block;
+            animation: fadeInUp 0.5s ease forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Modern Cards Enhanced */
+        .card {
+            background: var(--card-bg);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            transition: all var(--animation-duration) var(--animation-timing);
+            transform: translateZ(0);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.6s var(--animation-timing);
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .card-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            letter-spacing: -0.025em;
+        }
+
+        .card-title span {
+            font-size: 2rem;
+            -webkit-text-fill-color: initial;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* Interactive Areas Enhanced */
+        .interactive-area {
+            background: var(--bg-secondary);
+            border: 2px dashed var(--border-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            min-height: 120px;
+            position: relative;
+            transition: all var(--animation-duration) var(--animation-timing);
+            transform: translateZ(0);
+        }
+
+        .interactive-area:hover {
+            border-color: var(--primary-light);
+            background: rgba(99, 102, 241, 0.02);
+        }
+
+        .highlight-active {
+            border-color: var(--primary-color);
+            background: rgba(99, 102, 241, 0.05);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+            50% { box-shadow: 0 0 0 12px rgba(99, 102, 241, 0); }
+        }
+
+        /* Buttons Enhanced */
+        .btn {
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--animation-duration) var(--animation-timing);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            text-transform: none;
+            letter-spacing: 0.025em;
+            touch-action: manipulation;
+            transform: translateZ(0);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--card-bg);
+            color: var(--text-color);
+            border: 2px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--bg-secondary);
+            border-color: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success-color), var(--success-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        /* Achievement Popup Enhanced */
+        .achievement-popup {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: white;
+            border-radius: 1.5rem;
+            padding: 1.5rem 2rem;
+            box-shadow: var(--shadow-xl);
+            transform: translateX(400px);
+            transition: transform 0.5s var(--animation-timing);
+            z-index: 2000;
+            max-width: 320px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .achievement-popup::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-gold);
+        }
+
+        .achievement-popup::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 1s ease;
+        }
+
+        .achievement-popup.show {
+            transform: translateX(0);
+        }
+
+        .achievement-popup.show::after {
+            transform: translateX(100%);
+        }
+
+        .achievement-icon {
+            font-size: 3.5rem;
+            text-align: center;
+            margin-bottom: 0.75rem;
+            animation: bounceRotate 0.6s ease;
+        }
+
+        @keyframes bounceRotate {
+            0% { transform: scale(0) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(180deg); }
+            100% { transform: scale(1) rotate(360deg); }
+        }
+
+        /* Quiz Elements Enhanced */
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 1.25rem;
+            margin: 0.75rem 0;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all var(--animation-duration) var(--animation-timing);
+            position: relative;
+            overflow: hidden;
+            font-weight: 500;
+            transform: translateZ(0);
+        }
+
+        .quiz-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .quiz-option:hover:not(.correct):not(.incorrect) {
+            background: var(--bg-secondary);
+            border-color: var(--primary-light);
+            transform: translateX(8px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .quiz-option:hover::before {
+            left: 100%;
+        }
+
+        .quiz-option.selected {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .quiz-option.correct {
+            background: linear-gradient(135deg, var(--success-color), var(--success-dark));
+            color: white;
+            border-color: var(--success-color);
+            animation: correctAnswer 0.6s ease;
+        }
+
+        .quiz-option.incorrect {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            border-color: var(--error-color);
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes correctAnswer {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        /* Input Fields Enhanced */
+        .input-field {
+            width: 100%;
+            padding: 0.875rem 1.25rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            transition: all var(--animation-duration) var(--animation-timing);
+            background: var(--card-bg);
+            font-family: inherit;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            background: white;
+            transform: scale(1.02);
+        }
+
+        .input-field::placeholder {
+            color: var(--text-secondary);
+        }
+
+        /* Matching Container Enhanced */
+        .matching-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .draggable-item, .drop-zone {
+            padding: 1.25rem;
+            margin: 0.75rem 0;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            cursor: pointer;
+            transition: all var(--animation-duration) var(--animation-timing);
+            user-select: none;
+            touch-action: manipulation;
+            position: relative;
+            font-weight: 500;
+            transform: translateZ(0);
+        }
+
+        .draggable-item::after {
+            content: '→';
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .draggable-item:hover:not(.matched) {
+            background: var(--bg-secondary);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .draggable-item:hover::after {
+            opacity: 1;
+        }
+
+        .draggable-item.selected {
+            background: var(--gradient-primary);
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .draggable-item.matched {
+            opacity: 0.5;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+
+        .drop-zone {
+            min-height: 80px;
+            border-style: dashed;
+            border-width: 3px;
+            background: var(--bg-secondary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, var(--primary-color) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .drop-zone.highlight::before {
+            opacity: 0.1;
+        }
+
+        .drop-zone.highlight {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: var(--primary-color);
+            animation: dropZonePulse 1s infinite;
+        }
+
+        @keyframes dropZonePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .drop-zone.correct {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            border-color: var(--success-color);
+            animation: successPulse 0.6s ease;
+        }
+
+        /* Code Editor Enhanced */
+        .code-editor {
+            background: #1a1b26;
+            color: #a9b1d6;
+            padding: 1.75rem;
+            border-radius: 1rem;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.95rem;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            line-height: 1.6;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .code-editor::before {
+            content: 'CODE';
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            font-size: 0.75rem;
+            color: #565f89;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .code-editor::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-primary);
+            opacity: 0.5;
+        }
+
+        .code-editor .keyword {
+            color: #bb9af7;
+            font-weight: 600;
+        }
+
+        .code-editor .string {
+            color: #9ece6a;
+        }
+
+        .code-editor .comment {
+            color: #565f89;
+            font-style: italic;
+        }
+
+        /* Simulation Container Enhanced */
+        .simulation-container {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .simulation-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+            pointer-events: none;
+        }
+
+        .simulation-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            position: relative;
+            z-index: 1;
+        }
+
+        .simulation-controls button {
+            padding: 0.5rem 1rem;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .simulation-controls button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .simulation-controls button:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+        }
+
+        .simulation-controls button:active::before {
+            width: 100px;
+            height: 100px;
+        }
+
+        .simulation-controls button:disabled {
+            background: var(--text-secondary);
+            cursor: not-allowed;
+            transform: none;
+            opacity: 0.6;
+        }
+
+        /* Processor Visualization Enhanced */
+        .processor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .processor-unit {
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s var(--animation-timing);
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0);
+        }
+
+        .processor-unit::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            opacity: 0.3;
+        }
+
+        .processor-unit.active {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+            transform: scale(1.05);
+        }
+
+        .processor-unit.active::before {
+            width: 200%;
+            height: 200%;
+        }
+
+        .processor-unit.processing {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05));
+            animation: processingPulse 1s infinite alternate;
+        }
+
+        @keyframes processingPulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.05); }
+        }
+
+        .processor-label {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .processor-data {
+            font-family: monospace;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Pipeline Visualization Enhanced */
+        .pipeline-stage {
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.3s var(--animation-timing);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pipeline-stage::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 0;
+            background: linear-gradient(90deg, var(--success-color), transparent);
+            transition: width 0.5s ease;
+            opacity: 0.3;
+        }
+
+        .pipeline-stage.active {
+            border-color: var(--success-color);
+            background: rgba(16, 185, 129, 0.05);
+            transform: translateX(10px);
+        }
+
+        .pipeline-stage.active::after {
+            width: 100%;
+        }
+
+        .stage-label {
+            font-weight: 600;
+            min-width: 100px;
+        }
+
+        .stage-content {
+            flex: 1;
+            font-family: monospace;
+            color: var(--text-secondary);
+        }
+
+        /* Drawing Canvas Enhanced */
+        .drawing-canvas {
+            border: 3px solid var(--border-color);
+            border-radius: 1rem;
+            background: white;
+            touch-action: none;
+            cursor: crosshair;
+            margin: 1.5rem 0;
+            box-shadow: var(--shadow-md);
+            transition: border-color var(--animation-duration) ease;
+        }
+
+        .drawing-canvas:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Feedback Button Enhanced */
+        .feedback-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: all var(--animation-duration) var(--animation-timing);
+            z-index: 1000;
+            font-size: 1.5rem;
+            transform: translateZ(0);
+        }
+
+        .feedback-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
+            transform: translate(-50%, -50%) scale(0);
+            transition: transform 0.3s ease;
+            border-radius: 50%;
+        }
+
+        .feedback-btn:hover {
+            transform: scale(1.1) rotate(15deg);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .feedback-btn:hover::before {
+            transform: translate(-50%, -50%) scale(1.5);
+        }
+
+        .feedback-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Modal Enhanced */
+        .feedback-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .feedback-content {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            animation: slideUp 0.3s ease;
+            position: relative;
+        }
+
+        .feedback-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Accessibility Controls Enhanced */
+        .accessibility-controls {
+            position: fixed;
+            top: 150px;
+            right: 20px;
+            background: white;
+            border-radius: 1rem;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            border: 1px solid var(--border-color);
+            transition: transform var(--animation-duration) ease;
+            transform: translateZ(0);
+        }
+
+        .accessibility-controls:hover {
+            transform: translateX(-5px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .accessibility-controls h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .accessibility-controls button {
+            display: block;
+            width: 100%;
+            margin: 0.5rem 0;
+            padding: 0.625rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all var(--animation-duration) ease;
+            font-weight: 500;
+        }
+
+        .accessibility-controls button:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            transform: translateX(-2px);
+        }
+
+        /* Progress Indicators Enhanced */
+        .progress-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--border-color);
+            transition: all var(--animation-duration) ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-dot::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            transform: translate(-50%, -50%) scale(0);
+            transition: transform 0.3s ease;
+            opacity: 0.2;
+        }
+
+        .progress-dot:hover::before {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .progress-dot.active {
+            background: var(--primary-color);
+            transform: scale(1.5);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .progress-dot.completed {
+            background: var(--success-color);
+            position: relative;
+        }
+
+        .progress-dot.completed::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 0.6rem;
+            font-weight: bold;
+        }
+
+        /* Shame Message Enhanced */
+        .shame-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            padding: 2rem 3rem;
+            border-radius: 1.5rem;
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-align: center;
+            z-index: 3000;
+            box-shadow: var(--shadow-xl);
+            animation: shameAnimation 3s ease forwards;
+        }
+
+        @keyframes shameAnimation {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+            20% { transform: translate(-50%, -50%) scale(1.2) rotate(-5deg); }
+            40% { transform: translate(-50%, -50%) scale(0.9) rotate(5deg); }
+            60% { transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
+            80% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+        }
+
+        /* Hint Container Enhanced */
+        .hint-container {
+            margin-top: 1rem;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+            border-left: 4px solid var(--warning-color);
+            border-radius: 0.75rem;
+            display: none;
+            animation: slideDown 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hint-container::before {
+            content: '💡';
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 2rem;
+            opacity: 0.2;
+        }
+
+        .hint-container.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Database Tables Enhanced */
+        .db-table {
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            overflow: hidden;
+            margin: 1.5rem 0;
+            box-shadow: var(--shadow-md);
+            transition: all var(--animation-duration) ease;
+            transform: translateZ(0);
+        }
+
+        .db-table:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .db-table-header {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 1rem 1.25rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .db-table-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: rgba(255,255,255,0.3);
+        }
+
+        .db-table-content {
+            padding: 1.25rem;
+            background: var(--bg-secondary);
+        }
+
+        .db-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 1rem;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            transition: background var(--animation-duration) ease;
+        }
+
+        .db-row:last-child {
+            border-bottom: none;
+        }
+
+        .db-row:hover {
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .db-cell {
+            padding: 0.625rem;
+            background: white;
+            border-radius: 0.5rem;
+            text-align: center;
+            font-weight: 500;
+            box-shadow: var(--shadow-sm);
+            transition: all var(--animation-duration) ease;
+        }
+
+        .db-cell:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Mark Scheme Enhanced */
+        .mark-scheme {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            border: 2px solid var(--success-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-top: 1.5rem;
+            display: none;
+            animation: fadeIn 0.5s ease;
+            position: relative;
+        }
+
+        .mark-scheme::before {
+            content: '✓';
+            position: absolute;
+            right: 1rem;
+            top: 1rem;
+            font-size: 2rem;
+            color: var(--success-color);
+            opacity: 0.2;
+        }
+
+        .mark-scheme.show {
+            display: block;
+        }
+
+        .mark-scheme h5 {
+            color: var(--success-dark);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        /* Font Size Controls Enhanced */
+        .font-size-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+
+        .font-size-controls button {
+            padding: 0.5rem 0.75rem;
+            margin: 0;
+        }
+
+        body.font-small { font-size: 14px; }
+        body.font-large { font-size: 18px; }
+        body.font-xlarge { font-size: 20px; }
+
+        /* Loading State */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid transparent;
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Performance Optimizations */
+        .section:not(.active) {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* Network Visualization Enhanced */
+        .network-container {
+            background: linear-gradient(135deg, #1a1b26 0%, #0f0f17 100%);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            position: relative;
+            overflow: hidden;
+            min-height: 400px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .network-node {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s var(--animation-timing);
+            z-index: 10;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transform: translateZ(0);
+        }
+
+        .network-node::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .network-node:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.6);
+        }
+
+        .network-node:hover::before {
+            opacity: 0.3;
+        }
+
+        .network-node.active {
+            background: linear-gradient(135deg, var(--success-color), var(--success-dark));
+            animation: nodePulse 1s infinite;
+        }
+
+        .network-node.selected {
+            background: linear-gradient(135deg, var(--warning-color), var(--warning-dark));
+            transform: scale(1.1);
+        }
+
+        @keyframes nodePulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            50% { transform: scale(1.1); box-shadow: 0 0 20px 10px rgba(16, 185, 129, 0); }
+        }
+
+        .network-link {
+            position: absolute;
+            height: 2px;
+            background: var(--border-color);
+            transform-origin: left center;
+            transition: all 0.3s ease;
+            z-index: 5;
+        }
+
+        .network-link.active {
+            background: linear-gradient(90deg, var(--success-color), var(--success-dark));
+            height: 4px;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+            animation: linkPulse 1s ease;
+        }
+
+        @keyframes linkPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Timeline Slot Enhanced */
+        .timeline-slot {
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .timeline-slot::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, var(--primary-color) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .timeline-slot:hover::before {
+            opacity: 0.1;
+        }
+
+        .timeline-slot.filled {
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Mobile Responsive Enhanced */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .xp-container {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .xp-bar {
+                width: 150px;
+            }
+
+            .matching-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .nav-container {
+                top: 140px;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .accessibility-controls {
+                top: auto;
+                bottom: 90px;
+                right: 10px;
+                padding: 1rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .achievement-popup {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+
+            .interactive-area {
+                padding: 1.5rem;
+            }
+
+            .processor-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .network-container {
+                min-height: 300px;
+            }
+
+            .simulation-controls {
+                flex-direction: column;
+            }
+
+            .simulation-controls button {
+                width: 100%;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            .header, .nav-container, .feedback-btn, .accessibility-controls, .btn, .loading-overlay {
+                display: none !important;
+            }
+
+            .section {
+                display: block !important;
+                opacity: 1 !important;
+                transform: none !important;
+                page-break-after: always;
+            }
+
+            .card {
+                box-shadow: none;
+                border: 1px solid #000;
+            }
+        }
+
+        /* Custom Scrollbar Enhanced */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--primary-light), var(--primary-color));
+            border-radius: 6px;
+            border: 2px solid var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, var(--primary-color), var(--primary-dark));
+        }
+
+        /* Particle Container */
+        #particle-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2999;
+        }
+
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFall 2s linear forwards;
+        }
+
+        @keyframes particleFall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* Quiz Question Styling Enhanced */
+        .quiz-question {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quiz-question::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--gradient-primary);
+        }
+
+        .quiz-question p {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        /* Success Animation Enhanced */
+        @keyframes successPulse {
+            0% { 
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 0 0 20px rgba(16, 185, 129, 0);
+                transform: scale(1.02);
+            }
+            100% { 
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+                transform: scale(1);
+            }
+        }
+
+        .success-animation {
+            animation: successPulse 1s ease;
+        }
+
+        /* Floating XP Enhanced */
+        @keyframes floatUp {
+            0% { 
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% { 
+                transform: translateY(-50px) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        .xp-float {
+            position: fixed;
+            color: var(--warning-color);
+            font-weight: bold;
+            font-size: 1.5rem;
+            pointer-events: none;
+            z-index: 3000;
+            animation: floatUp 2s ease-out forwards;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Keyboard Shortcuts Tooltip */
+        .keyboard-shortcuts {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .keyboard-shortcuts.show {
+            opacity: 1;
+        }
+
+        /* Iframe responsiveness */
+        iframe {
+            width: 100%;
+            height: 80vh;
+            border: none;
+            display: block;
+        }
+
+        /* Error State */
+        .error-message {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+            border-left: 4px solid var(--error-color);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            margin: 1rem 0;
+            color: var(--error-color);
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="header-content">
+            <h1>Parallel Processing Systems</h1>
+            <div class="xp-container" role="status" aria-live="polite">
+                <span class="level-badge">Level <span id="current-level">1</span></span>
+                <div class="xp-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
+                </div>
+                <span id="xp-text">0 / 100 XP</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-container" role="navigation" aria-label="Lesson sections">
+        <div class="nav-pills" id="nav-pills">
+            <button class="nav-pill active" data-section="intro" aria-current="page">Introduction</button>
+            <button class="nav-pill" data-section="starter">Starter Activity</button>
+            <button class="nav-pill" data-section="levels">Levels of Parallelism</button>
+            <button class="nav-pill" data-section="systems">Parallel Systems</button>
+            <button class="nav-pill" data-section="multiprogramming">Multi-programming</button>
+            <button class="nav-pill" data-section="mpc">Massively Parallel</button>
+            <button class="nav-pill" data-section="software">MPC Software</button>
+            <button class="nav-pill" data-section="hardware">MPC Hardware</button>
+            <button class="nav-pill" data-section="realworld">Real World</button>
+            <button class="nav-pill" data-section="summary">Summary & Quiz</button>
+            <button class="nav-pill" data-section="exam">Exam Practice</button>
+            <button class="nav-pill" data-section="extension">Extension</button>
+            <button class="nav-pill" data-section="videos">Videos</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" role="main">
+        <!-- Introduction Section -->
+        <section id="intro" class="section active">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🚀</span> Welcome to Parallel Processing!
+                </h2>
+                <div class="progress-indicator" role="group" aria-label="Section progress">
+                    <span class="progress-dot active" title="Current section"></span>
+                    <span class="progress-dot" title="Not started"></span>
+                    <span class="progress-dot" title="Not started"></span>
+                    <span class="progress-dot" title="Not started"></span>
+                    <span class="progress-dot" title="Not started"></span>
+                </div>
+                
+                <h3>Learning Outcomes</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem; line-height: 1.8;">
+                    <li>Understand the different levels of parallelism in computing</li>
+                    <li>Differentiate between SISD, SIMD, MISD, and MIMD architectures</li>
+                    <li>Explain how multi-programming and multi-tasking work</li>
+                    <li>Describe Massively Parallel Computer systems and their applications</li>
+                    <li>Analyze software considerations for parallel processing</li>
+                    <li>Evaluate hardware requirements for parallel systems</li>
+                </ul>
+
+                <div class="interactive-area highlight-active">
+                    <h4>Pre-Assessment: Test Your Knowledge</h4>
+                    <p>How much do you already know about parallel processing? Let's find out!</p>
+                    
+                    <div id="pre-quiz">
+                        <p><strong>Question 1:</strong> What does parallel processing mean?</p>
+                        <button class="quiz-option" data-answer="a">Processing data in a straight line</button>
+                        <button class="quiz-option" data-answer="b">Multiple operations happening simultaneously</button>
+                        <button class="quiz-option" data-answer="c">Processing data in parallel lines</button>
+                        <button class="quiz-option" data-answer="d">Sequential data processing</button>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkPreQuiz()" style="margin-top: 1rem;">
+                        Check Answer
+                    </button>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="navigateSection('next')">
+                        Start Learning →
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Starter Activity -->
+        <section id="starter" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎯</span> Starter Activity: Match the Concepts
+                </h2>
+                
+                <p>Match each parallel processing concept to its correct description by clicking items to connect them!</p>
+                
+                <div class="matching-container" id="starter-matching">
+                    <div>
+                        <h4>Concepts</h4>
+                        <div class="draggable-item" data-id="1">Pipelining</div>
+                        <div class="draggable-item" data-id="2">Multi-core Processing</div>
+                        <div class="draggable-item" data-id="3">Distributed Computing</div>
+                        <div class="draggable-item" data-id="4">Thread-level Parallelism</div>
+                        <div class="draggable-item" data-id="5">GPU Processing</div>
+                        <div class="draggable-item" data-id="6">Task Scheduling</div>
+                    </div>
+                    <div>
+                        <h4>Descriptions</h4>
+                        <div class="drop-zone" data-type="1">Multiple instruction stages at once</div>
+                        <div class="drop-zone" data-type="2">Several CPUs on one chip</div>
+                        <div class="drop-zone" data-type="3">Networked computers working together</div>
+                        <div class="drop-zone" data-type="4">Software using multiple threads</div>
+                        <div class="drop-zone" data-type="5">Many simple cores for graphics/data</div>
+                        <div class="drop-zone" data-type="6">OS switches between processes</div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetStarterActivity()">Reset Activity</button>
+                <button class="btn btn-primary" onclick="checkStarterActivity()">Check Answers</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Levels of Parallelism -->
+        <section id="levels" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📊</span> Three Levels of Parallelism
+                </h2>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Interactive: Explore Parallelism Levels</h4>
+                    <p>Click each level to see a visual demonstration:</p>
+                    
+                    <div class="simulation-container">
+                        <div class="simulation-controls">
+                            <button onclick="showParallelismLevel('instruction')">Instruction-Level</button>
+                            <button onclick="showParallelismLevel('processor')">Processor-Level</button>
+                            <button onclick="showParallelismLevel('computer')">Computer-Level</button>
+                        </div>
+                        
+                        <div id="parallelism-demo" style="min-height: 300px;">
+                            <p style="text-align: center; color: #a9b1d6; margin-top: 100px;">
+                                Select a parallelism level above to see the demonstration
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Fill in the Blanks</h4>
+                    <p>Complete the descriptions using the provided options:</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>1. Instruction-level parallelism uses 
+                            <select class="input-field" style="width: 150px; display: inline-block;" id="fill1">
+                                <option value="">Choose...</option>
+                                <option value="pipelining">pipelining</option>
+                                <option value="networking">networking</option>
+                                <option value="scheduling">scheduling</option>
+                                <option value="threading">threading</option>
+                            </select>
+                            to work on multiple instructions.
+                        </p>
+                        
+                        <p>2. Processor-level parallelism requires software to use 
+                            <select class="input-field" style="width: 150px; display: inline-block;" id="fill2">
+                                <option value="">Choose...</option>
+                                <option value="pipelining">pipelining</option>
+                                <option value="networking">networking</option>
+                                <option value="scheduling">scheduling</option>
+                                <option value="threading">threading</option>
+                            </select>
+                            to utilize multiple cores.
+                        </p>
+                        
+                        <p>3. Computer-level parallelism involves 
+                            <select class="input-field" style="width: 150px; display: inline-block;" id="fill3">
+                                <option value="">Choose...</option>
+                                <option value="single processors">single processors</option>
+                                <option value="networked systems">networked systems</option>
+                                <option value="cache memory">cache memory</option>
+                                <option value="virtual memory">virtual memory</option>
+                            </select>
+                            working together.
+                        </p>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkLevelsFill()">Check Answers</button>
+                    <button class="btn btn-secondary" onclick="showHint('levels')">Need a Hint?</button>
+                </div>
+                
+                <div class="hint-container" id="levels-hint">
+                    <p>💡 Hint: Think about the scale - instruction (smallest), processor (medium), computer (largest)</p>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetLevelsSection()">Reset Section</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Parallel Systems (SISD/SIMD/MISD/MIMD) -->
+        <section id="systems" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🔄</span> Four Categories of Parallel Systems
+                </h2>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Interactive System Simulator</h4>
+                    <p>Step through each system type to understand how they process data:</p>
+                    
+                    <div class="simulation-container">
+                        <div class="simulation-controls">
+                            <button id="sim-prev" onclick="simStep('prev')">← Previous</button>
+                            <span id="sim-current">SISD System</span>
+                            <button id="sim-next" onclick="simStep('next')">Next →</button>
+                        </div>
+                        
+                        <div id="system-simulation" style="min-height: 400px; position: relative;">
+                            <!-- Simulation content will be dynamically generated -->
+                        </div>
+                        
+                        <div id="system-description" style="margin-top: 1rem; padding: 1rem; background: rgba(255,255,255,0.1); border-radius: 0.5rem; color: #a9b1d6;">
+                            <p>SISD: Single Instruction Single Data - Traditional sequential processing</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>System Classification Challenge</h4>
+                    <p>Which system type would be best for each scenario?</p>
+                    
+                    <div class="quiz-question">
+                        <p><strong>1. Processing millions of pixels in an image filter:</strong></p>
+                        <button class="quiz-option" onclick="checkSystemType(this, 1, 'a')">SISD</button>
+                        <button class="quiz-option" onclick="checkSystemType(this, 1, 'b')">SIMD</button>
+                        <button class="quiz-option" onclick="checkSystemType(this, 1, 'c')">MISD</button>
+                        <button class="quiz-option" onclick="checkSystemType(this, 1, 'd')">MIMD</button>
+                    </div>
+                    
+                    <div class="quiz-question">
+                        <p><strong>2. Running a web server handling different user requests:</strong></p>
+                        <button class="quiz-option" onclick="checkSystemType(this, 2, 'a')">SISD</button>
+                        <button class="quiz-option" onclick="checkSystemType(this, 2, 'b')">SIMD</button>
+                        <button class="quiz-option" onclick="checkSystemType(this, 2, 'c')">MISD</button>
+                        <button class="quiz-option" onclick="checkSystemType(this, 2, 'd')">MIMD</button>
+                    </div>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetSystemsSection()">Reset Section</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Multi-programming -->
+        <section id="multiprogramming" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🔀</span> Multi-programming & Multi-tasking
+                </h2>
+                
+                <h3>Understanding Process Scheduling</h3>
+                <p>Multi-programming allows a computer to run multiple programs "simultaneously" through clever scheduling.</p>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Build a Process Timeline</h4>
+                    <p>Drag processes to create an efficient schedule (click to select, then click timeline slot):</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem;">
+                        <div>
+                            <h5>Processes</h5>
+                            <div class="draggable-item" data-process="A" data-time="3">Process A (3ms)</div>
+                            <div class="draggable-item" data-process="B" data-time="2">Process B (2ms)</div>
+                            <div class="draggable-item" data-process="C" data-time="4">Process C (4ms)</div>
+                            <div class="draggable-item" data-process="D" data-time="1">Process D (1ms)</div>
+                        </div>
+                        <div>
+                            <h5>Timeline (10ms total)</h5>
+                            <div id="process-timeline" style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 0.25rem;">
+                                <!-- Timeline slots will be created dynamically -->
+                            </div>
+                            <p style="margin-top: 1rem; font-size: 0.875rem;">Goal: Minimize idle time and maximize throughput</p>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkSchedule()">Check Schedule</button>
+                    <button class="btn btn-secondary" onclick="resetSchedule()">Reset Timeline</button>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>True or False</h4>
+                    <div style="margin: 1rem 0;">
+                        <p>1. Multi-programming requires multiple CPUs 
+                            <select class="input-field" style="width: 100px; display: inline-block;" id="tf1">
+                                <option value="">Select...</option>
+                                <option value="true">True</option>
+                                <option value="false">False</option>
+                            </select>
+                        </p>
+                        
+                        <p>2. Context switching has zero overhead 
+                            <select class="input-field" style="width: 100px; display: inline-block;" id="tf2">
+                                <option value="">Select...</option>
+                                <option value="true">True</option>
+                                <option value="false">False</option>
+                            </select>
+                        </p>
+                        
+                        <p>3. Scheduling improves CPU utilization 
+                            <select class="input-field" style="width: 100px; display: inline-block;" id="tf3">
+                                <option value="">Select...</option>
+                                <option value="true">True</option>
+                                <option value="false">False</option>
+                            </select>
+                        </p>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkTrueFalse()">Check Answers</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Massively Parallel Computers -->
+        <section id="mpc" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🌐</span> Massively Parallel Computer Systems
+                </h2>
+                
+                <p>MPCs use hundreds or thousands of processors working together on complex problems.</p>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>MPC Network Visualization</h4>
+                    <p>Click processors to see how they communicate in a network:</p>
+                    
+                    <div class="network-container" id="mpc-network">
+                        <!-- Network nodes will be dynamically generated -->
+                    </div>
+                    
+                    <div style="margin-top: 1rem;">
+                        <button class="btn btn-secondary" onclick="resetNetwork()">Reset Network</button>
+                        <button class="btn btn-primary" onclick="simulateMessage()">Simulate Message Passing</button>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>MPC Characteristics</h4>
+                    <p>Select all that apply to Massively Parallel Computers:</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <label style="display: block; margin: 0.5rem 0;">
+                            <input type="checkbox" id="mpc1" style="margin-right: 0.5rem;">
+                            Large number of separate processors
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0;">
+                            <input type="checkbox" id="mpc2" style="margin-right: 0.5rem;">
+                            Sequential processing only
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0;">
+                            <input type="checkbox" id="mpc3" style="margin-right: 0.5rem;">
+                            Coordinated simultaneous processing
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0;">
+                            <input type="checkbox" id="mpc4" style="margin-right: 0.5rem;">
+                            Complex network infrastructure
+                        </label>
+                        <label style="display: block; margin: 0.5rem 0;">
+                            <input type="checkbox" id="mpc5" style="margin-right: 0.5rem;">
+                            No communication between processors
+                        </label>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkMPCCharacteristics()">Check Selection</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- MPC Software Considerations -->
+        <section id="software" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>💻</span> MPC Software Considerations
+                </h2>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Code Parallelization Exercise</h4>
+                    <p>Transform this sequential code into parallel blocks:</p>
+                    
+                    <div class="code-editor">
+                        <span class="comment">// Sequential Version</span><br>
+                        <span class="keyword">for</span> (i = 0; i < 1000000; i++) {<br>
+                        &nbsp;&nbsp;result[i] = process(data[i]);<br>
+                        }<br><br>
+                        <span class="comment">// Parallel Version - Split into blocks</span><br>
+                    </div>
+                    
+                    <p style="margin-top: 1rem;">How many processors should we use?</p>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; max-width: 400px;">
+                        <button class="quiz-option" onclick="checkProcessorCount(this, '2')">2</button>
+                        <button class="quiz-option" onclick="checkProcessorCount(this, '4')">4</button>
+                        <button class="quiz-option" onclick="checkProcessorCount(this, '8')">8</button>
+                        <button class="quiz-option" onclick="checkProcessorCount(this, '1000000')">1,000,000</button>
+                    </div>
+                    
+                    <div id="parallel-code" style="display: none; margin-top: 1rem;">
+                        <div class="code-editor">
+                            <span class="comment">// Parallel blocks for 4 processors</span><br>
+                            <span class="keyword">Processor 1:</span> process(0 to 249,999)<br>
+                            <span class="keyword">Processor 2:</span> process(250,000 to 499,999)<br>
+                            <span class="keyword">Processor 3:</span> process(500,000 to 749,999)<br>
+                            <span class="keyword">Processor 4:</span> process(750,000 to 999,999)<br>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Software Requirements</h4>
+                    <p>Complete the sentence about MPC software:</p>
+                    
+                    <p>MPC software must handle both 
+                        <input type="text" class="input-field" style="width: 150px; display: inline-block;" id="soft1" placeholder="Enter answer">
+                        and 
+                        <input type="text" class="input-field" style="width: 150px; display: inline-block;" id="soft2" placeholder="Enter answer">
+                        between processors.
+                    </p>
+                    
+                    <button class="btn btn-primary" onclick="checkSoftwareAnswers()">Check Answer</button>
+                    <button class="btn btn-secondary" onclick="showHint('software')">Need a Hint?</button>
+                </div>
+                
+                <div class="hint-container" id="software-hint">
+                    <p>💡 Hint: Think about what processors need to do - work together (p_______) and organize their work (c_______)</p>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- MPC Hardware Considerations -->
+        <section id="hardware" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🔧</span> MPC Hardware Considerations
+                </h2>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Network Topology Builder</h4>
+                    <p>Connect 6 processors efficiently. Click a processor then click another to create a link:</p>
+                    
+                    <div class="network-container" id="topology-builder">
+                        <!-- Processors will be added dynamically -->
+                    </div>
+                    
+                    <div style="margin-top: 1rem; display: flex; gap: 1rem; align-items: center;">
+                        <span>Links created: <strong id="link-count">0</strong></span>
+                        <button class="btn btn-secondary" onclick="resetTopology()">Reset</button>
+                        <button class="btn btn-primary" onclick="checkTopology()">Check Efficiency</button>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Hardware Challenge</h4>
+                    <p>For a system with N processors, how many direct links are needed for full connectivity?</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>Formula: Number of links = 
+                            <select class="input-field" style="width: 150px; display: inline-block;" id="formula">
+                                <option value="">Choose...</option>
+                                <option value="N">N</option>
+                                <option value="N-1">N - 1</option>
+                                <option value="N*(N-1)/2">N × (N-1) / 2</option>
+                                <option value="N*N">N × N</option>
+                            </select>
+                        </p>
+                        
+                        <p>For 100 processors, this equals: 
+                            <input type="number" class="input-field" style="width: 100px; display: inline-block;" id="link-calc" placeholder="?">
+                            links
+                        </p>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkHardwareAnswers()">Check Answers</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Real World Applications -->
+        <section id="realworld" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🌍</span> Real-World Applications
+                </h2>
+                
+                <h3>Where Parallel Processing Makes a Difference</h3>
+                
+                <div class="interactive-area">
+                    <h4>Case Study Analysis</h4>
+                    <p>Read each scenario and identify the best parallel processing approach:</p>
+                    
+                    <div class="db-table">
+                        <div class="db-table-header">Weather Prediction System</div>
+                        <div class="db-table-content">
+                            <p>Processing millions of data points from weather stations worldwide to create 10-day forecasts. Each region's data can be processed independently before combining results.</p>
+                            
+                            <p><strong>Which approach is most suitable?</strong></p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 1rem;">
+                                <button class="quiz-option" onclick="checkCaseStudy(this, 1, 'a')">Single powerful processor</button>
+                                <button class="quiz-option" onclick="checkCaseStudy(this, 1, 'b')">MPC with distributed processing</button>
+                                <button class="quiz-option" onclick="checkCaseStudy(this, 1, 'c')">Basic multi-core CPU</button>
+                                <button class="quiz-option" onclick="checkCaseStudy(this, 1, 'd')">Sequential batch processing</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="db-table" style="margin-top: 1rem;">
+                        <div class="db-table-header">Video Game Graphics Rendering</div>
+                        <div class="db-table-content">
+                            <p>Calculating lighting, shadows, and textures for millions of pixels 60 times per second. Same calculations applied to different pixel groups.</p>
+                            
+                            <p><strong>Which system type fits best?</strong></p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 1rem;">
+                                <button class="quiz-option" onclick="checkCaseStudy(this, 2, 'a')">SISD</button>
+                                <button class="quiz-option" onclick="checkCaseStudy(this, 2, 'b')">SIMD (GPU)</button>
+                                <button class="quiz-option" onclick="checkCaseStudy(this, 2, 'c')">MISD</button>
+                                <button class="quiz-option" onclick="checkCaseStudy(this, 2, 'd')">Networked computers</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 2rem;">Common Mistakes to Avoid:</h4>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li>Assuming more processors always = better performance</li>
+                    <li>Ignoring communication overhead between processors</li>
+                    <li>Not considering whether a problem can be parallelized</li>
+                    <li>Forgetting synchronization requirements</li>
+                </ul>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary & Quiz -->
+        <section id="summary" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📝</span> Summary & Final Assessment
+                </h2>
+                
+                <h3>Key Takeaways</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li><strong>Three Levels:</strong> Instruction (pipelining), Processor (multi-core), Computer (networked)</li>
+                    <li><strong>Four Systems:</strong> SISD, SIMD, MISD, MIMD - each for different use cases</li>
+                    <li><strong>Multi-programming:</strong> Scheduling allows apparent simultaneous execution</li>
+                    <li><strong>MPCs:</strong> Massive parallelism requires careful software and hardware design</li>
+                    <li><strong>Real Impact:</strong> From weather prediction to gaming, parallel processing is everywhere</li>
+                </ul>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Final Assessment</h4>
+                    <div id="final-quiz">
+                        <!-- Question 1 -->
+                        <div class="quiz-question">
+                            <p><strong>1. Which level of parallelism uses pipelining?</strong></p>
+                            <button class="quiz-option" data-q="1" data-a="a">Computer-level</button>
+                            <button class="quiz-option" data-q="1" data-a="b">Processor-level</button>
+                            <button class="quiz-option" data-q="1" data-a="c">Instruction-level</button>
+                            <button class="quiz-option" data-q="1" data-a="d">Network-level</button>
+                        </div>
+                        
+                        <!-- Question 2 -->
+                        <div class="quiz-question">
+                            <p><strong>2. SIMD is best for:</strong></p>
+                            <button class="quiz-option" data-q="2" data-a="a">Web servers</button>
+                            <button class="quiz-option" data-q="2" data-a="b">Image processing</button>
+                            <button class="quiz-option" data-q="2" data-a="c">Database queries</button>
+                            <button class="quiz-option" data-q="2" data-a="d">Text editing</button>
+                        </div>
+                        
+                        <!-- Question 3 -->
+                        <div class="quiz-question">
+                            <p><strong>3. Multi-programming requires:</strong></p>
+                            <button class="quiz-option" data-q="3" data-a="a">Multiple CPUs</button>
+                            <button class="quiz-option" data-q="3" data-a="b">Network connection</button>
+                            <button class="quiz-option" data-q="3" data-a="c">Process scheduling</button>
+                            <button class="quiz-option" data-q="3" data-a="d">GPU cores</button>
+                        </div>
+                        
+                        <!-- Question 4 -->
+                        <div class="quiz-question">
+                            <p><strong>4. MPCs typically have how many processors?</strong></p>
+                            <button class="quiz-option" data-q="4" data-a="a">2-4</button>
+                            <button class="quiz-option" data-q="4" data-a="b">8-16</button>
+                            <button class="quiz-option" data-q="4" data-a="c">32-64</button>
+                            <button class="quiz-option" data-q="4" data-a="d">Hundreds/thousands</button>
+                        </div>
+                        
+                        <!-- Question 5 -->
+                        <div class="quiz-question">
+                            <p><strong>5. Which is NOT a characteristic of MIMD?</strong></p>
+                            <button class="quiz-option" data-q="5" data-a="a">Different instructions</button>
+                            <button class="quiz-option" data-q="5" data-a="b">Different data sets</button>
+                            <button class="quiz-option" data-q="5" data-a="c">Asynchronous operation</button>
+                            <button class="quiz-option" data-q="5" data-a="d">Single instruction stream</button>
+                        </div>
+                        
+                        <!-- Question 6 -->
+                        <div class="quiz-question">
+                            <p><strong>6. MPC software must handle:</strong></p>
+                            <button class="quiz-option" data-q="6" data-a="a">Graphics only</button>
+                            <button class="quiz-option" data-q="6" data-a="b">Sequential processing</button>
+                            <button class="quiz-option" data-q="6" data-a="c">Parallelism and coordination</button>
+                            <button class="quiz-option" data-q="6" data-a="d">Single threads</button>
+                        </div>
+                        
+                        <!-- Question 7 -->
+                        <div class="quiz-question">
+                            <p><strong>7. True or False: MISD has many practical applications</strong></p>
+                            <button class="quiz-option" data-q="7" data-a="a">True</button>
+                            <button class="quiz-option" data-q="7" data-a="b">False</button>
+                        </div>
+                        
+                        <!-- Question 8 -->
+                        <div class="quiz-question">
+                            <p><strong>8. Full connectivity for N processors requires how many links?</strong></p>
+                            <button class="quiz-option" data-q="8" data-a="a">N</button>
+                            <button class="quiz-option" data-q="8" data-a="b">N × 2</button>
+                            <button class="quiz-option" data-q="8" data-a="c">N × (N-1) / 2</button>
+                            <button class="quiz-option" data-q="8" data-a="d">N × N</button>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="submitFinalQuiz()">Submit Quiz</button>
+                    
+                    <div id="quiz-results" style="margin-top: 2rem; display: none;">
+                        <h4>Your Results:</h4>
+                        <p id="quiz-score"></p>
+                        <div id="quiz-feedback"></div>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exam Practice -->
+        <section id="exam" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📋</span> Exam Practice Questions
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Question 1 (6 marks)</h4>
+                    <p>Explain the three levels of parallelism in computer systems. For each level:</p>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>Name the level (1 mark each)</li>
+                        <li>Describe how it achieves parallelism (1 mark each)</li>
+                    </ul>
+                    
+                    <textarea class="input-field" id="exam-q1" rows="10" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q1" min="0" max="6" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q1')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="mark-scheme" id="mark-scheme-q1">
+                        <h5>Mark Scheme:</h5>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>Instruction-level (1) - Uses pipelining to work on multiple instructions (1)</li>
+                            <li>Processor-level (1) - Multiple cores/processors work on different parts (1)</li>
+                            <li>Computer-level (1) - Networked computers work together as a unit (1)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Question 2 (8 marks)</h4>
+                    <p>A company wants to process large datasets for climate modeling.</p>
+                    <p>(a) Recommend which parallel system type (SISD/SIMD/MISD/MIMD) would be most suitable and justify your choice. (4 marks)</p>
+                    <p>(b) Describe two software considerations and two hardware considerations for implementing this system. (4 marks)</p>
+                    
+                    <textarea class="input-field" id="exam-q2" rows="12" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q2" min="0" max="8" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q2')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="mark-scheme" id="mark-scheme-q2">
+                        <h5>Mark Scheme:</h5>
+                        <p>(a) MIMD recommended (1) because:</p>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>Different regions can be processed with different models (1)</li>
+                            <li>Asynchronous operation allows flexibility (1)</li>
+                            <li>Can handle complex, varied calculations (1)</li>
+                        </ul>
+                        <p>(b) Software: Code must be split into parallel blocks (1), Requires coordination between processors (1)</p>
+                        <p>Hardware: Need communication links between processors (1), Requires message-passing infrastructure (1)</p>
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 2rem;">Drawing Canvas for Calculations</h4>
+                <p>Use this canvas for any diagrams or rough work:</p>
+                <canvas id="drawing-canvas" class="drawing-canvas" width="600" height="300"></canvas>
+                <button class="btn btn-secondary" onclick="clearCanvas()">Clear Canvas</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Extension Activities -->
+        <section id="extension" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🌟</span> Extension Activities
+                </h2>
+                
+                <h3>Beyond the Specification</h3>
+                
+                <div class="interactive-area">
+                    <h4>GPU Programming Concepts</h4>
+                    <p>Research CUDA or OpenCL programming. Explain how GPU programming differs from traditional CPU programming:</p>
+                    
+                    <textarea class="input-field" rows="6" placeholder="Discuss thread hierarchy, memory management, and kernel functions..."></textarea>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Quantum Parallelism</h4>
+                    <p>How does quantum computing take parallelism to the next level? Research and explain quantum superposition and its implications:</p>
+                    
+                    <textarea class="input-field" rows="6" placeholder="Explain how qubits can exist in multiple states simultaneously..."></textarea>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Design Challenge</h4>
+                    <p>Design a parallel processing solution for real-time language translation. Consider:</p>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>Which parallel system type to use</li>
+                        <li>How to split the workload</li>
+                        <li>Communication requirements</li>
+                        <li>Scalability considerations</li>
+                    </ul>
+                    
+                    <textarea class="input-field" rows="10" placeholder="Describe your complete system design..."></textarea>
+                </div>
+                
+                <button class="btn btn-primary" onclick="submitExtension()">Submit Extension Work</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Videos Section -->
+        <section id="videos" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎥</span> Video Resources
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Supplementary Videos</h4>
+                    <p>Your teacher will add video links here to support your learning:</p>
+                    
+                    <div style="background: var(--bg-secondary); padding: 3rem; border-radius: 1rem; text-align: center; margin: 2rem 0;">
+                        <p style="color: var(--text-secondary); font-size: 4rem;">📹</p>
+                        <p style="color: var(--text-secondary);">Video content will be added here</p>
+                    </div>
+                </div>
+                
+                <h4>Additional Resources</h4>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li>Cambridge 9618 Specification - Parallel Processing</li>
+                    <li>Parallel Computing Simulators</li>
+                    <li>MPC Architecture Examples</li>
+                    <li>Past Paper Questions on Parallelism</li>
+                </ul>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('intro')">Start Over</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Achievement Popup -->
+    <div class="achievement-popup" id="achievement-popup">
+        <div class="achievement-icon" id="achievement-icon">🏆</div>
+        <h4 id="achievement-title">Achievement Unlocked!</h4>
+        <p id="achievement-desc">You've earned a new achievement</p>
+    </div>
+
+    <!-- Shame Message -->
+    <div class="shame-message" id="shame-message">
+        🚫 No pasting allowed! Type your own answers! 🚫
+    </div>
+
+    <!-- Particle Container -->
+    <div id="particle-container"></div>
+
+    <!-- Feedback Button & Modal -->
+    <button class="feedback-btn" onclick="openFeedback()" aria-label="Send feedback">
+        <span>💬</span>
+    </button>
+
+    <div class="feedback-modal" id="feedback-modal">
+        <div class="feedback-content">
+            <h3 style="margin-bottom: 1rem; color: var(--primary-color);">Send Feedback</h3>
+            <p>Found a bug or have a suggestion? Let us know!</p>
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                Current page: <span id="feedback-page" style="font-weight: 600;"></span>
+            </p>
+            <textarea class="input-field" id="feedback-text" rows="5" placeholder="Describe the issue or suggestion..." style="margin-top: 1rem;"></textarea>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeFeedback()">Cancel</button>
+                <button class="btn btn-primary" onclick="sendFeedback()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accessibility Controls -->
+    <div class="accessibility-controls">
+        <h4>Accessibility</h4>
+        <button onclick="toggleHighContrast()">High Contrast</button>
+        <button onclick="toggleDyslexiaFont()">Dyslexia Font</button>
+        <div class="font-size-controls">
+            <button onclick="changeFontSize('small')">A-</button>
+            <button onclick="changeFontSize('normal')">A</button>
+            <button onclick="changeFontSize('large')">A+</button>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Tooltip -->
+    <div class="keyboard-shortcuts" id="keyboard-shortcuts">
+        <strong>Keyboard Shortcuts:</strong><br>
+        ← → Arrow keys: Navigate sections<br>
+        Ctrl+V: Disabled (no pasting!)
+    </div>
+
+    <script>
+        // Performance optimization: Cache DOM elements
+        const DOM = {
+            xpFill: null,
+            xpText: null,
+            currentLevel: null,
+            navPills: null,
+            sections: null,
+            achievementPopup: null,
+            shameMessage: null,
+            feedbackModal: null,
+            feedbackPage: null,
+            feedbackText: null,
+            particleContainer: null,
+            loadingOverlay: null
+        };
+
+        // Initialize DOM cache
+        function initializeDOM() {
+            DOM.xpFill = document.getElementById('xp-fill');
+            DOM.xpText = document.getElementById('xp-text');
+            DOM.currentLevel = document.getElementById('current-level');
+            DOM.navPills = document.querySelectorAll('.nav-pill');
+            DOM.sections = document.querySelectorAll('.section');
+            DOM.achievementPopup = document.getElementById('achievement-popup');
+            DOM.shameMessage = document.getElementById('shame-message');
+            DOM.feedbackModal = document.getElementById('feedback-modal');
+            DOM.feedbackPage = document.getElementById('feedback-page');
+            DOM.feedbackText = document.getElementById('feedback-text');
+            DOM.particleContainer = document.getElementById('particle-container');
+            DOM.loadingOverlay = document.getElementById('loading-overlay');
+        }
+
+        // Game State
+        let gameState = {
+            xp: 0,
+            level: 1,
+            completedSections: new Set(),
+            achievements: new Set(),
+            actionsPerformed: new Set(),
+            currentSection: 'intro',
+            sectionScores: {},
+            selectedItems: {},
+            hintUsage: {},
+            simulationState: {
+                currentSystem: 0,
+                networkNodes: [],
+                networkLinks: [],
+                topologyLinks: [],
+                selectedNode: null
+            }
+        };
+
+        // XP Requirements per level
+        const XP_PER_LEVEL = [0, 100, 250, 450, 700, 1000];
+
+        // System types for simulation
+        const SYSTEM_TYPES = ['SISD', 'SIMD', 'MISD', 'MIMD'];
+
+        // Performance: Debounce function
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Performance: Throttle function
+        function throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        // Performance: Request Animation Frame wrapper
+        function raf(callback) {
+            if ('requestAnimationFrame' in window) {
+                requestAnimationFrame(callback);
+            } else {
+                setTimeout(callback, 16);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDOM();
+            setupEventListeners();
+            loadProgress();
+            updateXPDisplay();
+            
+            // Hide loading overlay
+            setTimeout(() => {
+                if (DOM.loadingOverlay) {
+                    DOM.loadingOverlay.classList.add('fade-out');
+                    setTimeout(() => {
+                        DOM.loadingOverlay.style.display = 'none';
+                    }, 500);
+                }
+            }, 500);
+            
+            // Initialize activities after DOM is ready
+            raf(() => {
+                setupMatchingActivities();
+                initializeSimulations();
+                initializeNetworks();
+            });
+            
+            // Show keyboard shortcuts briefly
+            showKeyboardShortcuts();
+        });
+
+        // Show keyboard shortcuts tooltip
+        function showKeyboardShortcuts() {
+            const shortcuts = document.getElementById('keyboard-shortcuts');
+            if (shortcuts) {
+                shortcuts.classList.add('show');
+                setTimeout(() => {
+                    shortcuts.classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        // Error handling wrapper
+        function safeExecute(func, errorMessage = 'An error occurred') {
+            try {
+                return func();
+            } catch (error) {
+                console.error(errorMessage, error);
+                return null;
+            }
+        }
+
+        // Starter Activity Functions
+        function setupMatchingActivities() {
+            safeExecute(() => {
+                setupMatching('starter-matching', {
+                    '1': '1', '2': '2', '3': '3', '4': '4', '5': '5', '6': '6'
+                });
+            }, 'Error setting up matching activities');
+        }
+
+        function setupMatching(containerId, answers) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            const items = container.querySelectorAll('.draggable-item');
+            const zones = container.querySelectorAll('.drop-zone');
+            
+            items.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (this.classList.contains('matched')) return;
+                    
+                    items.forEach(i => i.classList.remove('selected'));
+                    this.classList.add('selected');
+                    gameState.selectedItems[containerId] = this;
+                });
+            });
+            
+            zones.forEach(zone => {
+                zone.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const selected = gameState.selectedItems[containerId];
+                    if (!selected || selected.classList.contains('matched')) return;
+                    
+                    const itemId = selected.dataset.id;
+                    const zoneType = this.dataset.type;
+                    
+                    if (answers[itemId] === zoneType) {
+                        selected.classList.add('matched');
+                        selected.classList.remove('selected');
+                        this.classList.add('correct');
+                        this.innerHTML = `<strong>✓</strong> ${selected.textContent}`;
+                        awardXP(5, 'Correct Match', `match_${containerId}_${itemId}`);
+                        
+                        // Animate success
+                        this.classList.add('success-animation');
+                        setTimeout(() => this.classList.remove('success-animation'), 1000);
+                    } else {
+                        this.classList.add('highlight');
+                        setTimeout(() => this.classList.remove('highlight'), 1000);
+                    }
+                });
+            });
+        }
+
+        function resetStarterActivity() {
+            resetMatching('starter-matching');
+        }
+
+        function resetMatching(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            container.querySelectorAll('.draggable-item').forEach(item => {
+                item.classList.remove('matched', 'selected');
+            });
+            
+            container.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.classList.remove('correct', 'highlight');
+                const originalText = zone.dataset.type;
+                if (originalText) {
+                    zone.textContent = zone.textContent.replace(/✓\s*/, '');
+                }
+            });
+            
+            delete gameState.selectedItems[containerId];
+        }
+
+        function checkStarterActivity() {
+            const matchingContainer = document.getElementById('starter-matching');
+            if (!matchingContainer) return;
+            
+            const correct = matchingContainer.querySelectorAll('.drop-zone.correct').length;
+            if (correct === 6) {
+                awardXP(20, 'Starter Complete', 'starter_activity');
+                markSectionComplete('starter');
+                showNotification('Perfect! All matches correct!', 'success');
+            } else {
+                showNotification(`${correct}/6 correct. Keep trying!`, 'info');
+            }
+        }
+
+        // Levels of Parallelism Functions
+        function showParallelismLevel(level) {
+            const demo = document.getElementById('parallelism-demo');
+            if (!demo) return;
+            
+            let content = '';
+            
+            switch(level) {
+                case 'instruction':
+                    content = `
+                        <h5 style="color: #a9b1d6; text-align: center;">Instruction-Level Parallelism (Pipelining)</h5>
+                        <div style="margin-top: 2rem;">
+                            ${createPipelineVisualization()}
+                        </div>
+                        <p style="color: #a9b1d6; text-align: center; margin-top: 1rem;">
+                            Multiple instructions in different stages simultaneously
+                        </p>
+                    `;
+                    break;
+                case 'processor':
+                    content = `
+                        <h5 style="color: #a9b1d6; text-align: center;">Processor-Level Parallelism</h5>
+                        <div class="processor-grid" style="margin-top: 2rem;">
+                            ${createProcessorVisualization(4)}
+                        </div>
+                        <p style="color: #a9b1d6; text-align: center; margin-top: 1rem;">
+                            Multiple cores working on different threads
+                        </p>
+                    `;
+                    break;
+                case 'computer':
+                    content = `
+                        <h5 style="color: #a9b1d6; text-align: center;">Computer-Level Parallelism</h5>
+                        <div style="margin-top: 2rem; text-align: center;">
+                            ${createNetworkVisualization()}
+                        </div>
+                        <p style="color: #a9b1d6; text-align: center; margin-top: 1rem;">
+                            Multiple computers networked together
+                        </p>
+                    `;
+                    break;
+            }
+            
+            demo.innerHTML = content;
+            awardXP(5, 'Explore Parallelism', `parallelism_${level}`);
+            
+            // Animate elements
+            raf(() => {
+                if (level === 'instruction') animatePipeline();
+                if (level === 'processor') animateProcessors();
+            });
+        }
+
+        function createPipelineVisualization() {
+            const stages = ['Fetch', 'Decode', 'Execute', 'Store'];
+            let html = '';
+            
+            for (let i = 0; i < 4; i++) {
+                html += `<div class="pipeline-stage" id="pipeline-${i}">
+                    <div class="stage-label">${stages[i]}</div>
+                    <div class="stage-content">Instruction ${i + 1}</div>
+                </div>`;
+            }
+            
+            return html;
+        }
+
+        function createProcessorVisualization(count) {
+            let html = '';
+            for (let i = 0; i < count; i++) {
+                html += `
+                    <div class="processor-unit" id="processor-${i}">
+                        <div class="processor-label">Core ${i + 1}</div>
+                        <div class="processor-data">Thread ${i + 1}</div>
+                    </div>
+                `;
+            }
+            return html;
+        }
+
+        function createNetworkVisualization() {
+            return `
+                <svg width="400" height="300" viewBox="0 0 400 300">
+                    <line x1="100" y1="150" x2="200" y2="50" stroke="#e2e8f0" stroke-width="2"/>
+                    <line x1="200" y1="50" x2="300" y2="150" stroke="#e2e8f0" stroke-width="2"/>
+                    <line x1="300" y1="150" x2="200" y2="250" stroke="#e2e8f0" stroke-width="2"/>
+                    <line x1="200" y1="250" x2="100" y2="150" stroke="#e2e8f0" stroke-width="2"/>
+                    <line x1="100" y1="150" x2="300" y2="150" stroke="#e2e8f0" stroke-width="2"/>
+                    
+                    <circle cx="100" cy="150" r="30" fill="#6366f1"/>
+                    <circle cx="200" cy="50" r="30" fill="#6366f1"/>
+                    <circle cx="300" cy="150" r="30" fill="#6366f1"/>
+                    <circle cx="200" cy="250" r="30" fill="#6366f1"/>
+                    
+                    <text x="100" y="155" text-anchor="middle" fill="white" font-weight="bold">PC1</text>
+                    <text x="200" y="55" text-anchor="middle" fill="white" font-weight="bold">PC2</text>
+                    <text x="300" y="155" text-anchor="middle" fill="white" font-weight="bold">PC3</text>
+                    <text x="200" y="255" text-anchor="middle" fill="white" font-weight="bold">PC4</text>
+                </svg>
+            `;
+        }
+
+        function animatePipeline() {
+            const stages = document.querySelectorAll('.pipeline-stage');
+            stages.forEach((stage, index) => {
+                setTimeout(() => {
+                    stage.classList.add('active');
+                    setTimeout(() => stage.classList.remove('active'), 1000);
+                }, index * 500);
+            });
+        }
+
+        function animateProcessors() {
+            const processors = document.querySelectorAll('.processor-unit');
+            processors.forEach((proc, index) => {
+                setTimeout(() => {
+                    proc.classList.add('active', 'processing');
+                    setTimeout(() => proc.classList.remove('active', 'processing'), 2000);
+                }, index * 300);
+            });
+        }
+
+        function checkLevelsFill() {
+            const answers = {
+                'fill1': 'pipelining',
+                'fill2': 'threading',
+                'fill3': 'networked systems'
+            };
+            
+            let correct = 0;
+            Object.keys(answers).forEach(id => {
+                const select = document.getElementById(id);
+                if (!select) return;
+                
+                if (select.value === answers[id]) {
+                    select.style.borderColor = 'var(--success-color)';
+                    correct++;
+                } else {
+                    select.style.borderColor = 'var(--error-color)';
+                }
+            });
+            
+            if (correct === 3) {
+                awardXP(15, 'Levels Understood', 'levels_complete');
+                markSectionComplete('levels');
+                showNotification('Excellent! You understand the three levels of parallelism!', 'success');
+            }
+        }
+
+        function resetLevelsSection() {
+            ['fill1', 'fill2', 'fill3'].forEach(id => {
+                const select = document.getElementById(id);
+                if (select) {
+                    select.value = '';
+                    select.style.borderColor = '';
+                }
+            });
+        }
+
+        // Parallel Systems Simulation
+        function initializeSimulations() {
+            raf(() => {
+                updateSystemSimulation();
+            });
+        }
+
+        function simStep(direction) {
+            if (direction === 'next' && gameState.simulationState.currentSystem < 3) {
+                gameState.simulationState.currentSystem++;
+            } else if (direction === 'prev' && gameState.simulationState.currentSystem > 0) {
+                gameState.simulationState.currentSystem--;
+            }
+            
+            updateSystemSimulation();
+            awardXP(3, 'Explore Systems', `system_${SYSTEM_TYPES[gameState.simulationState.currentSystem]}`);
+        }
+
+        function updateSystemSimulation() {
+            const current = document.getElementById('sim-current');
+            const simulation = document.getElementById('system-simulation');
+            const description = document.getElementById('system-description');
+            
+            if (!current || !simulation || !description) return;
+            
+            const systemType = SYSTEM_TYPES[gameState.simulationState.currentSystem];
+            current.textContent = `${systemType} System`;
+            
+            // Update buttons
+            const prevBtn = document.getElementById('sim-prev');
+            const nextBtn = document.getElementById('sim-next');
+            if (prevBtn) prevBtn.disabled = gameState.simulationState.currentSystem === 0;
+            if (nextBtn) nextBtn.disabled = gameState.simulationState.currentSystem === 3;
+            
+            // Create visualization
+            let viz = '';
+            let desc = '';
+            
+            switch(systemType) {
+                case 'SISD':
+                    viz = createSISDVisualization();
+                    desc = 'SISD: Single Instruction Single Data - Traditional sequential processing';
+                    break;
+                case 'SIMD':
+                    viz = createSIMDVisualization();
+                    desc = 'SIMD: Single Instruction Multiple Data - Same operation on multiple data (GPU-style)';
+                    break;
+                case 'MISD':
+                    viz = createMISDVisualization();
+                    desc = 'MISD: Multiple Instruction Single Data - Different operations on same data (rare)';
+                    break;
+                case 'MIMD':
+                    viz = createMIMDVisualization();
+                    desc = 'MIMD: Multiple Instruction Multiple Data - Full parallel processing flexibility';
+                    break;
+            }
+            
+            simulation.innerHTML = viz;
+            description.innerHTML = `<p>${desc}</p>`;
+            
+            // Animate the new visualization
+            raf(() => {
+                const units = simulation.querySelectorAll('.processor-unit');
+                units.forEach((unit, i) => {
+                    setTimeout(() => {
+                        unit.classList.add('active');
+                    }, i * 100);
+                });
+            });
+        }
+
+        function createSISDVisualization() {
+            return `
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; gap: 2rem;">
+                    <div class="processor-unit active" style="width: 100px;">
+                        <div class="processor-label">CPU</div>
+                        <div class="processor-data">Inst: ADD</div>
+                    </div>
+                    <div style="font-size: 2rem; color: #a9b1d6;">→</div>
+                    <div class="processor-unit" style="width: 100px;">
+                        <div class="processor-label">Data</div>
+                        <div class="processor-data">[5]</div>
+                    </div>
+                    <div style="font-size: 2rem; color: #a9b1d6;">→</div>
+                    <div class="processor-unit processing" style="width: 100px;">
+                        <div class="processor-label">Result</div>
+                        <div class="processor-data">[10]</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createSIMDVisualization() {
+            return `
+                <div style="display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 1rem; padding: 2rem;">
+                    <div class="processor-unit active" style="grid-row: 1/5;">
+                        <div class="processor-label">Single Instruction</div>
+                        <div class="processor-data">MULTIPLY</div>
+                    </div>
+                    <div style="font-size: 2rem; color: #a9b1d6; grid-row: 1/5;">→</div>
+                    <div>
+                        <div class="processor-unit">
+                            <div class="processor-data">[2]</div>
+                        </div>
+                        <div class="processor-unit" style="margin-top: 0.5rem;">
+                            <div class="processor-data">[4]</div>
+                        </div>
+                        <div class="processor-unit" style="margin-top: 0.5rem;">
+                            <div class="processor-data">[6]</div>
+                        </div>
+                        <div class="processor-unit" style="margin-top: 0.5rem;">
+                            <div class="processor-data">[8]</div>
+                        </div>
+                    </div>
+                    <div style="font-size: 2rem; color: #a9b1d6; grid-row: 1/5;">→</div>
+                    <div>
+                        <div class="processor-unit processing">
+                            <div class="processor-data">[4]</div>
+                        </div>
+                        <div class="processor-unit processing" style="margin-top: 0.5rem;">
+                            <div class="processor-data">[8]</div>
+                        </div>
+                        <div class="processor-unit processing" style="margin-top: 0.5rem;">
+                            <div class="processor-data">[12]</div>
+                        </div>
+                        <div class="processor-unit processing" style="margin-top: 0.5rem;">
+                            <div class="processor-data">[16]</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createMISDVisualization() {
+            return `
+                <div style="display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 1rem; padding: 2rem;">
+                    <div>
+                        <div class="processor-unit active">
+                            <div class="processor-data">ADD</div>
+                        </div>
+                        <div class="processor-unit active" style="margin-top: 0.5rem;">
+                            <div class="processor-data">MULT</div>
+                        </div>
+                        <div class="processor-unit active" style="margin-top: 0.5rem;">
+                            <div class="processor-data">SUB</div>
+                        </div>
+                    </div>
+                    <div style="font-size: 2rem; color: #a9b1d6;">→</div>
+                    <div class="processor-unit" style="grid-row: 1/4;">
+                        <div class="processor-label">Same Data</div>
+                        <div class="processor-data">[10]</div>
+                    </div>
+                    <div style="font-size: 2rem; color: #a9b1d6;">→</div>
+                    <div>
+                        <div class="processor-unit processing">
+                            <div class="processor-data">[15]</div>
+                        </div>
+                        <div class="processor-unit processing" style="margin-top: 0.5rem;">
+                            <div class="processor-data">[20]</div>
+                        </div>
+                        <div class="processor-unit processing" style="margin-top: 0.5rem;">
+                            <div class="processor-data">[5]</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createMIMDVisualization() {
+            return `
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; padding: 2rem;">
+                    <div style="text-align: center;">
+                        <div class="processor-unit active">
+                            <div class="processor-label">CPU 1</div>
+                            <div class="processor-data">Web Server</div>
+                        </div>
+                        <div style="margin-top: 0.5rem;">↓</div>
+                        <div class="processor-unit">
+                            <div class="processor-data">User Data</div>
+                        </div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div class="processor-unit active">
+                            <div class="processor-label">CPU 2</div>
+                            <div class="processor-data">Database</div>
+                        </div>
+                        <div style="margin-top: 0.5rem;">↓</div>
+                        <div class="processor-unit">
+                            <div class="processor-data">Query Data</div>
+                        </div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div class="processor-unit active">
+                            <div class="processor-label">CPU 3</div>
+                            <div class="processor-data">Analytics</div>
+                        </div>
+                        <div style="margin-top: 0.5rem;">↓</div>
+                        <div class="processor-unit">
+                            <div class="processor-data">Log Data</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function checkSystemType(element, question, answer) {
+            const correct = {
+                1: 'b', // SIMD for image processing
+                2: 'd'  // MIMD for web server
+            };
+            
+            const isCorrect = correct[question] === answer;
+            const parent = element.parentElement;
+            const options = parent.querySelectorAll('.quiz-option');
+            
+            options.forEach(opt => opt.classList.remove('correct', 'incorrect'));
+            
+            if (isCorrect) {
+                element.classList.add('correct');
+                awardXP(10, 'System Classification', `system_class_${question}`);
+                
+                // Check if both questions answered correctly
+                const q1Correct = document.querySelector('.quiz-question:nth-of-type(1) .quiz-option.correct');
+                const q2Correct = document.querySelector('.quiz-question:nth-of-type(2) .quiz-option.correct');
+                
+                if (q1Correct && q2Correct) {
+                    markSectionComplete('systems');
+                    showNotification('Excellent! You understand all four system types!', 'success');
+                }
+            } else {
+                element.classList.add('incorrect');
+                const correctAnswer = Array.from(options).find(opt => 
+                    opt.getAttribute('onclick').includes(`'${correct[question]}'`)
+                );
+                if (correctAnswer) correctAnswer.classList.add('correct');
+            }
+        }
+
+        function resetSystemsSection() {
+            gameState.simulationState.currentSystem = 0;
+            updateSystemSimulation();
+            document.querySelectorAll('#systems .quiz-option').forEach(opt => {
+                opt.classList.remove('correct', 'incorrect');
+            });
+        }
+
+        // Multi-programming Functions
+        function initializeTimeline() {
+            const timeline = document.getElementById('process-timeline');
+            if (!timeline) return;
+            
+            timeline.innerHTML = '';
+            for (let i = 0; i < 10; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'timeline-slot drop-zone';
+                slot.dataset.slot = i;
+                slot.innerHTML = `<small style="color: #64748b;">T${i}</small>`;
+                
+                slot.addEventListener('click', function() {
+                    handleTimelineClick(this, i, timeline);
+                });
+                
+                timeline.appendChild(slot);
+            }
+            
+            // Setup process selection
+            document.querySelectorAll('[data-process]').forEach(item => {
+                item.addEventListener('click', function() {
+                    if (this.classList.contains('matched')) return;
+                    
+                    document.querySelectorAll('[data-process]').forEach(p => p.classList.remove('selected'));
+                    this.classList.add('selected');
+                    gameState.selectedItems['timeline'] = this;
+                });
+            });
+        }
+
+        function handleTimelineClick(slot, slotIndex, timeline) {
+            const selected = gameState.selectedItems['timeline'];
+            if (!selected) return;
+            
+            const process = selected.dataset.process;
+            const time = parseInt(selected.dataset.time);
+            
+            // Check if slot is available
+            let canPlace = true;
+            for (let j = 0; j < time && slotIndex + j < 10; j++) {
+                const checkSlot = timeline.children[slotIndex + j];
+                if (checkSlot && checkSlot.dataset.filled) {
+                    canPlace = false;
+                    break;
+                }
+            }
+            
+            if (canPlace && slotIndex + time <= 10) {
+                // Fill slots
+                for (let j = 0; j < time && slotIndex + j < 10; j++) {
+                    const fillSlot = timeline.children[slotIndex + j];
+                    fillSlot.style.background = getProcessColor(process);
+                    fillSlot.innerHTML = process;
+                    fillSlot.dataset.filled = 'true';
+                    fillSlot.dataset.process = process;
+                    fillSlot.classList.add('filled');
+                }
+                
+                selected.classList.add('matched');
+                selected.classList.remove('selected');
+                gameState.selectedItems['timeline'] = null;
+                
+                awardXP(5, 'Schedule Process', `schedule_${process}`);
+            } else {
+                slot.classList.add('highlight');
+                setTimeout(() => slot.classList.remove('highlight'), 1000);
+                showNotification('Cannot place process here - not enough space!', 'warning');
+            }
+        }
+
+        function getProcessColor(process) {
+            const colors = {
+                'A': '#6366f1',
+                'B': '#8b5cf6',
+                'C': '#10b981',
+                'D': '#f59e0b'
+            };
+            return colors[process] || '#64748b';
+        }
+
+        function checkSchedule() {
+            const timeline = document.getElementById('process-timeline');
+            if (!timeline) return;
+            
+            let filledSlots = 0;
+            
+            for (let i = 0; i < 10; i++) {
+                if (timeline.children[i] && timeline.children[i].dataset.filled) {
+                    filledSlots++;
+                }
+            }
+            
+            const efficiency = (filledSlots / 10) * 100;
+            
+            if (efficiency === 100) {
+                showNotification('Perfect schedule! Maximum efficiency achieved!', 'success');
+                awardXP(25, 'Perfect Schedule', 'perfect_schedule');
+                markSectionComplete('multiprogramming');
+            } else if (efficiency >= 80) {
+                showNotification(`Good schedule! ${efficiency}% efficiency. Can you reach 100%?`, 'info');
+                awardXP(15, 'Good Schedule', 'good_schedule');
+            } else {
+                showNotification(`${efficiency}% efficiency. Try to minimize gaps in the timeline.`, 'warning');
+            }
+        }
+
+        function resetSchedule() {
+            initializeTimeline();
+            document.querySelectorAll('[data-process]').forEach(item => {
+                item.classList.remove('matched', 'selected');
+            });
+        }
+
+        function checkTrueFalse() {
+            const answers = {
+                'tf1': 'false', // Multi-programming doesn't require multiple CPUs
+                'tf2': 'false', // Context switching has overhead
+                'tf3': 'true'   // Scheduling improves CPU utilization
+            };
+            
+            let correct = 0;
+            Object.keys(answers).forEach(id => {
+                const select = document.getElementById(id);
+                if (!select) return;
+                
+                if (select.value === answers[id]) {
+                    select.style.borderColor = 'var(--success-color)';
+                    correct++;
+                } else {
+                    select.style.borderColor = 'var(--error-color)';
+                }
+            });
+            
+            if (correct === 3) {
+                awardXP(15, 'Multi-programming Master', 'multiprog_tf');
+                showNotification('Perfect! You understand multi-programming concepts!', 'success');
+            }
+        }
+
+        // MPC Network Functions
+        function initializeNetworks() {
+            raf(() => {
+                createMPCNetwork();
+                createTopologyBuilder();
+                initializeTimeline();
+            });
+        }
+
+        function createMPCNetwork() {
+            const container = document.getElementById('mpc-network');
+            if (!container) return;
+            
+            const nodes = [];
+            const positions = [
+                {x: 200, y: 50}, {x: 350, y: 100}, {x: 350, y: 250},
+                {x: 200, y: 300}, {x: 50, y: 250}, {x: 50, y: 100},
+                {x: 200, y: 175}
+            ];
+            
+            // Clear container
+            container.innerHTML = '';
+            
+            // Create nodes
+            positions.forEach((pos, i) => {
+                const node = document.createElement('div');
+                node.className = 'network-node';
+                node.style.left = pos.x - 30 + 'px';
+                node.style.top = pos.y - 30 + 'px';
+                node.textContent = `P${i + 1}`;
+                node.dataset.id = i;
+                
+                node.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    awardXP(2, 'Explore Network', `network_node_${i}`);
+                });
+                
+                container.appendChild(node);
+                nodes.push(node);
+            });
+            
+            gameState.simulationState.networkNodes = nodes;
+            
+            // Create some initial links
+            createNetworkLink(container, positions[0], positions[1]);
+            createNetworkLink(container, positions[1], positions[2]);
+            createNetworkLink(container, positions[0], positions[6]);
+            createNetworkLink(container, positions[3], positions[6]);
+        }
+
+        function createNetworkLink(container, pos1, pos2) {
+            const link = document.createElement('div');
+            link.className = 'network-link';
+            
+            const dx = pos2.x - pos1.x;
+            const dy = pos2.y - pos1.y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            
+            link.style.width = length + 'px';
+            link.style.left = pos1.x + 'px';
+            link.style.top = pos1.y + 'px';
+            link.style.transform = `rotate(${angle}deg)`;
+            
+            container.appendChild(link);
+            gameState.simulationState.networkLinks.push(link);
+        }
+
+        function resetNetwork() {
+            const nodes = document.querySelectorAll('.network-node');
+            nodes.forEach(node => node.classList.remove('active'));
+            
+            const links = document.querySelectorAll('.network-link');
+            links.forEach(link => link.classList.remove('active'));
+        }
+
+        function simulateMessage() {
+            const nodes = document.querySelectorAll('.network-node');
+            const links = document.querySelectorAll('.network-link');
+            
+            // Animate message passing
+            let delay = 0;
+            links.forEach((link, i) => {
+                setTimeout(() => {
+                    link.classList.add('active');
+                    setTimeout(() => link.classList.remove('active'), 500);
+                }, delay);
+                delay += 300;
+            });
+            
+            nodes.forEach((node, i) => {
+                setTimeout(() => {
+                    node.classList.add('active');
+                    setTimeout(() => node.classList.remove('active'), 1000);
+                }, i * 200);
+            });
+            
+            awardXP(10, 'Message Simulation', 'mpc_message_sim');
+            showNotification('Message passing simulation complete!', 'info');
+        }
+
+        function checkMPCCharacteristics() {
+            const correct = ['mpc1', 'mpc3', 'mpc4']; // 1, 3, and 4 are correct
+            let score = 0;
+            let incorrect = 0;
+            
+            correct.forEach(id => {
+                if (document.getElementById(id).checked) score++;
+            });
+            
+            // Check for incorrect selections
+            if (document.getElementById('mpc2').checked) incorrect++;
+            if (document.getElementById('mpc5').checked) incorrect++;
+            
+            if (score === 3 && incorrect === 0) {
+                showNotification('Perfect! You understand MPC characteristics!', 'success');
+                awardXP(20, 'MPC Understanding', 'mpc_characteristics');
+                markSectionComplete('mpc');
+            } else {
+                showNotification(`${score}/3 correct characteristics selected. Remember: MPCs have many processors working together with communication.`, 'warning');
+            }
+        }
+
+        // Software Considerations Functions
+        function checkProcessorCount(element, count) {
+            const options = element.parentElement.querySelectorAll('.quiz-option');
+            options.forEach(opt => opt.classList.remove('correct', 'incorrect'));
+            
+            if (count === '4' || count === '8') {
+                element.classList.add('correct');
+                document.getElementById('parallel-code').style.display = 'block';
+                awardXP(10, 'Processor Balance', 'processor_count');
+                showNotification('Good choice! This balances parallelism with overhead.', 'success');
+            } else {
+                element.classList.add('incorrect');
+                if (count === '1000000') {
+                    showNotification('Too many processors! Communication overhead would be massive.', 'error');
+                } else if (count === '2') {
+                    showNotification('This would work, but we could use more processors efficiently.', 'warning');
+                }
+                
+                // Show correct answers
+                Array.from(options).forEach(opt => {
+                    if (opt.getAttribute('onclick').includes("'4'") || 
+                        opt.getAttribute('onclick').includes("'8'")) {
+                        opt.classList.add('correct');
+                    }
+                });
+            }
+        }
+
+        function checkSoftwareAnswers() {
+            const input1 = document.getElementById('soft1').value.toLowerCase().trim();
+            const input2 = document.getElementById('soft2').value.toLowerCase().trim();
+            
+            const validAnswers1 = ['parallelism', 'parallel processing', 'parallel execution'];
+            const validAnswers2 = ['coordination', 'communication', 'synchronization'];
+            
+            let correct = 0;
+            
+            if (validAnswers1.some(ans => input1.includes(ans))) {
+                document.getElementById('soft1').style.borderColor = 'var(--success-color)';
+                correct++;
+            } else {
+                document.getElementById('soft1').style.borderColor = 'var(--error-color)';
+            }
+            
+            if (validAnswers2.some(ans => input2.includes(ans))) {
+                document.getElementById('soft2').style.borderColor = 'var(--success-color)';
+                correct++;
+            } else {
+                document.getElementById('soft2').style.borderColor = 'var(--error-color)';
+            }
+            
+            if (correct === 2) {
+                awardXP(15, 'Software Requirements', 'software_req');
+                markSectionComplete('software');
+                showNotification('Correct! MPC software must handle parallelism and coordination.', 'success');
+            }
+        }
+
+        // Hardware Considerations Functions
+        function createTopologyBuilder() {
+            const container = document.getElementById('topology-builder');
+            if (!container) return;
+            
+            // Clear container
+            container.innerHTML = '';
+            
+            const positions = [
+                {x: 100, y: 100}, {x: 300, y: 100},
+                {x: 100, y: 300}, {x: 300, y: 300},
+                {x: 200, y: 50}, {x: 200, y: 350}
+            ];
+            
+            const nodes = [];
+            positions.forEach((pos, i) => {
+                const node = document.createElement('div');
+                node.className = 'network-node';
+                node.style.left = pos.x - 30 + 'px';
+                node.style.top = pos.y - 30 + 'px';
+                node.textContent = `P${i + 1}`;
+                node.dataset.id = i;
+                node.dataset.position = JSON.stringify(pos);
+                
+                node.addEventListener('click', function() {
+                    handleTopologyClick(this, nodes, container);
+                });
+                
+                container.appendChild(node);
+                nodes.push(node);
+            });
+            
+            gameState.simulationState.topologyLinks = [];
+            updateLinkCount();
+        }
+
+        function handleTopologyClick(node, allNodes, container) {
+            const selected = gameState.simulationState.selectedNode;
+            
+            if (!selected) {
+                node.classList.add('selected');
+                gameState.simulationState.selectedNode = node;
+            } else if (selected === node) {
+                node.classList.remove('selected');
+                gameState.simulationState.selectedNode = null;
+            } else {
+                // Create link between nodes
+                const pos1 = JSON.parse(selected.dataset.position);
+                const pos2 = JSON.parse(node.dataset.position);
+                
+                // Check if link already exists
+                const linkId = `link-${Math.min(selected.dataset.id, node.dataset.id)}-${Math.max(selected.dataset.id, node.dataset.id)}`;
+                if (!document.getElementById(linkId)) {
+                    const link = document.createElement('div');
+                    link.className = 'network-link';
+                    link.id = linkId;
+                    
+                    const dx = pos2.x - pos1.x;
+                    const dy = pos2.y - pos1.y;
+                    const length = Math.sqrt(dx * dx + dy * dy);
+                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                    
+                    link.style.width = length + 'px';
+                    link.style.left = pos1.x + 'px';
+                    link.style.top = pos1.y + 'px';
+                    link.style.transform = `rotate(${angle}deg)`;
+                    
+                    container.appendChild(link);
+                    gameState.simulationState.topologyLinks.push(link);
+                    updateLinkCount();
+                    
+                    awardXP(3, 'Create Link', `topology_link_${linkId}`);
+                }
+                
+                selected.classList.remove('selected');
+                gameState.simulationState.selectedNode = null;
+            }
+        }
+
+        function updateLinkCount() {
+            const count = document.getElementById('link-count');
+            if (count) {
+                count.textContent = gameState.simulationState.topologyLinks.length;
+            }
+        }
+
+        function resetTopology() {
+            const container = document.getElementById('topology-builder');
+            if (!container) return;
+            
+            // Remove all links
+            gameState.simulationState.topologyLinks.forEach(link => link.remove());
+            gameState.simulationState.topologyLinks = [];
+            
+            // Reset node selection
+            container.querySelectorAll('.network-node').forEach(node => {
+                node.classList.remove('selected');
+            });
+            
+            gameState.simulationState.selectedNode = null;
+            updateLinkCount();
+        }
+
+        function checkTopology() {
+            const linkCount = gameState.simulationState.topologyLinks.length;
+            const maxLinks = (6 * 5) / 2; // n(n-1)/2 for 6 nodes
+            
+            if (linkCount === maxLinks) {
+                showNotification('Perfect! Full mesh topology achieved - maximum connectivity!', 'success');
+                awardXP(25, 'Network Architect', 'full_topology');
+            } else if (linkCount >= 9) {
+                showNotification(`Good connectivity! ${linkCount}/${maxLinks} possible links. Full mesh needs ${maxLinks} links.`, 'info');
+                awardXP(15, 'Good Topology', 'good_topology');
+            } else {
+                showNotification(`${linkCount} links created. For better fault tolerance, try adding more connections.`, 'warning');
+            }
+        }
+
+        function checkHardwareAnswers() {
+            const formula = document.getElementById('formula').value;
+            const calculation = document.getElementById('link-calc').value;
+            
+            let correct = 0;
+            
+            if (formula === 'N*(N-1)/2') {
+                document.getElementById('formula').style.borderColor = 'var(--success-color)';
+                correct++;
+            } else {
+                document.getElementById('formula').style.borderColor = 'var(--error-color)';
+            }
+            
+            if (calculation === '4950') { // 100 * 99 / 2
+                document.getElementById('link-calc').style.borderColor = 'var(--success-color)';
+                correct++;
+            } else {
+                document.getElementById('link-calc').style.borderColor = 'var(--error-color)';
+            }
+            
+            if (correct === 2) {
+                awardXP(20, 'Hardware Master', 'hardware_calc');
+                markSectionComplete('hardware');
+                showNotification('Excellent! You understand the hardware requirements for full connectivity.', 'success');
+            }
+        }
+
+        // Real World Functions
+        function checkCaseStudy(element, study, answer) {
+            const correct = {
+                1: 'b', // MPC for weather prediction
+                2: 'b'  // SIMD/GPU for graphics
+            };
+            
+            const isCorrect = correct[study] === answer;
+            const parent = element.parentElement;
+            const options = parent.querySelectorAll('.quiz-option');
+            
+            options.forEach(opt => opt.classList.remove('correct', 'incorrect'));
+            
+            if (isCorrect) {
+                element.classList.add('correct');
+                awardXP(15, 'Real World Application', `case_study_${study}`);
+                
+                // Check if both case studies answered correctly
+                const case1Correct = document.querySelector('.db-table:nth-of-type(1) .quiz-option.correct');
+                const case2Correct = document.querySelector('.db-table:nth-of-type(2) .quiz-option.correct');
+                
+                if (case1Correct && case2Correct) {
+                    markSectionComplete('realworld');
+                    showNotification('Excellent! You understand real-world applications of parallel processing!', 'success');
+                }
+            } else {
+                element.classList.add('incorrect');
+                const correctAnswer = Array.from(options).find(opt => 
+                    opt.getAttribute('onclick').includes(`'${correct[study]}'`)
+                );
+                if (correctAnswer) correctAnswer.classList.add('correct');
+            }
+        }
+
+        // Final Quiz Functions
+        function submitFinalQuiz() {
+            const answers = {
+                '1': 'c', // Instruction-level uses pipelining
+                '2': 'b', // SIMD for image processing
+                '3': 'c', // Multi-programming needs scheduling
+                '4': 'd', // MPCs have hundreds/thousands
+                '5': 'd', // MIMD doesn't have single instruction
+                '6': 'c', // MPC needs parallelism and coordination
+                '7': 'b', // False - MISD has few applications
+                '8': 'c'  // N(N-1)/2 links
+            };
+            
+            let score = 0;
+            const feedback = [];
+            
+            Object.keys(answers).forEach(q => {
+                const selected = document.querySelector(`.quiz-option[data-q="${q}"].selected`);
+                if (selected && selected.dataset.a === answers[q]) {
+                    selected.classList.add('correct');
+                    score++;
+                } else {
+                    if (selected) selected.classList.add('incorrect');
+                    const correctOption = document.querySelector(`.quiz-option[data-q="${q}"][data-a="${answers[q]}"]`);
+                    if (correctOption) correctOption.classList.add('correct');
+                    
+                    // Add feedback
+                    const topics = {
+                        '1': 'Instruction-level uses pipelining',
+                        '2': 'SIMD is ideal for parallel data operations',
+                        '3': 'Multi-programming uses scheduling, not multiple CPUs',
+                        '4': 'MPCs have massive processor counts',
+                        '5': 'MIMD has multiple instruction streams',
+                        '6': 'Software must handle parallelism AND coordination',
+                        '7': 'MISD has very limited practical use',
+                        '8': 'Full connectivity = N×(N-1)/2 links'
+                    };
+                    feedback.push(`Q${q}: ${topics[q]}`);
+                }
+            });
+            
+            gameState.sectionScores.finalQuiz = score;
+            
+            const scoreEl = document.getElementById('quiz-score');
+            const feedbackEl = document.getElementById('quiz-feedback');
+            const resultsEl = document.getElementById('quiz-results');
+            
+            if (scoreEl) scoreEl.textContent = `You scored ${score}/8 (${Math.round(score/8*100)}%)`;
+            
+            if (feedbackEl) {
+                if (feedback.length > 0) {
+                    feedbackEl.innerHTML = 
+                        '<h5>Review these topics:</h5><ul>' + 
+                        feedback.map(f => `<li>${f}</li>`).join('') + 
+                        '</ul>';
+                } else {
+                    feedbackEl.innerHTML = '<p style="color: var(--success-color);">Perfect score! Outstanding work!</p>';
+                }
+            }
+            
+            if (resultsEl) resultsEl.style.display = 'block';
+            
+            awardXP(score * 10, 'Final Quiz', 'final_quiz_complete');
+            markSectionComplete('summary');
+            
+            if (score === 8) {
+                checkAchievements();
+                showNotification('Perfect score! You\'ve mastered parallel processing!', 'success');
+            }
+        }
+
+        // Exam Practice Functions
+        function showMarkScheme(question) {
+            const textarea = document.getElementById(`exam-${question}`);
+            const marks = document.getElementById(`marks-${question}`);
+            const scheme = document.getElementById(`mark-scheme-${question}`);
+            
+            if (!textarea || !marks || !scheme) return;
+            
+            const minLength = question === 'q1' ? 100 : 150;
+            
+            if (textarea.value.length < minLength || !marks.value) {
+                showNotification(`Please write a more detailed answer (minimum ${minLength} characters) and enter predicted marks`, 'warning');
+                return;
+            }
+            
+            scheme.classList.add('show');
+            awardXP(10, 'Exam Practice', `exam_${question}`);
+        }
+
+        // Extension Functions
+        function submitExtension() {
+            const textareas = document.querySelectorAll('#extension .input-field');
+            let totalWords = 0;
+            
+            textareas.forEach(ta => {
+                totalWords += ta.value.split(' ').filter(word => word.length > 0).length;
+            });
+            
+            if (totalWords > 100) {
+                awardXP(40, 'Extension Complete', 'extension_complete');
+                markSectionComplete('extension');
+                showNotification('Excellent extension work! Your teacher will review your responses.', 'success');
+            } else {
+                showNotification('Please provide more detailed responses for the extension activities.', 'warning');
+            }
+        }
+
+        // Event Setup for Final Quiz
+        document.addEventListener('click', function(e) {
+            if (e.target.matches('#final-quiz .quiz-option')) {
+                const option = e.target;
+                const question = option.dataset.q;
+                const siblings = document.querySelectorAll(`.quiz-option[data-q="${question}"]`);
+                siblings.forEach(s => s.classList.remove('selected'));
+                option.classList.add('selected');
+            }
+        });
+
+        // Optimized Event Listeners
+        function setupEventListeners() {
+            // Navigation with event delegation
+            const navContainer = document.querySelector('.nav-pills');
+            if (navContainer) {
+                navContainer.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('nav-pill')) {
+                        navigateToSection(e.target.dataset.section);
+                    }
+                });
+            }
+
+            // Quiz options with event delegation
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('quiz-option')) {
+                    if (!e.target.classList.contains('correct') && !e.target.classList.contains('incorrect')) {
+                        selectQuizOption(e.target);
+                    }
+                }
+            });
+
+            // Prevent paste
+            document.addEventListener('paste', function(e) {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showShameMessage();
+                    return false;
+                }
+            });
+
+            // Keyboard navigation
+            document.addEventListener('keydown', throttle(function(e) {
+                if (e.key === 'ArrowLeft') navigateSection('prev');
+                if (e.key === 'ArrowRight') navigateSection('next');
+                if (e.key === '?') showKeyboardShortcuts();
+                if (e.ctrlKey && e.key === 'v') {
+                    e.preventDefault();
+                    showShameMessage();
+                }
+            }, 100));
+
+            // Touch support
+            let touchStartX = 0;
+            let touchStartY = 0;
+            
+            document.addEventListener('touchstart', function(e) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            document.addEventListener('touchend', function(e) {
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const diffX = touchStartX - touchEndX;
+                const diffY = Math.abs(touchStartY - touchEndY);
+                
+                if (Math.abs(diffX) > 50 && diffY < 100) {
+                    if (diffX > 0) navigateSection('next');
+                    else navigateSection('prev');
+                }
+            }, { passive: true });
+
+            // Optimized scroll handler
+            window.addEventListener('scroll', debounce(function() {
+                if (!DOM.sections) return;
+                
+                DOM.sections.forEach(section => {
+                    if (section && section.classList.contains('active')) {
+                        const rect = section.getBoundingClientRect();
+                        const inView = rect.bottom > 0 && rect.top < window.innerHeight;
+                        
+                        // Only update if visibility changed
+                        if (inView && section.style.visibility === 'hidden') {
+                            section.style.visibility = 'visible';
+                        } else if (!inView && section.style.visibility === 'visible') {
+                            section.style.visibility = 'hidden';
+                        }
+                    }
+                });
+            }, 100));
+
+            // Prevent context menu
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
+        }
+
+        // Navigation Functions
+        function navigateToSection(sectionId) {
+            if (!DOM.sections || !DOM.navPills) return;
+            
+            // Use CSS classes for performance
+            DOM.sections.forEach(s => {
+                if (s) {
+                    s.classList.remove('active');
+                    s.style.visibility = 'hidden';
+                }
+            });
+            DOM.navPills.forEach(p => {
+                if (p) p.classList.remove('active');
+            });
+            
+            const targetSection = document.getElementById(sectionId);
+            const targetPill = document.querySelector(`[data-section="${sectionId}"]`);
+            
+            if (targetSection) {
+                targetSection.classList.add('active');
+                raf(() => {
+                    targetSection.style.visibility = 'visible';
+                });
+            }
+            if (targetPill) {
+                targetPill.classList.add('active');
+                // Scroll nav pill into view if needed
+                targetPill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+            
+            gameState.currentSection = sectionId;
+            updateFeedbackPage();
+            
+            if (!gameState.completedSections.has(sectionId)) {
+                awardXP(5, 'Section Visit', `section_${sectionId}`);
+            }
+            
+            // Smooth scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function navigateSection(direction) {
+            if (!DOM.navPills) return;
+            
+            const sections = Array.from(DOM.navPills).filter(p => p).map(p => p.dataset.section);
+            const currentIndex = sections.indexOf(gameState.currentSection);
+            
+            if (direction === 'next' && currentIndex < sections.length - 1) {
+                navigateToSection(sections[currentIndex + 1]);
+            } else if (direction === 'prev' && currentIndex > 0) {
+                navigateToSection(sections[currentIndex - 1]);
+            }
+        }
+
+        // XP System
+        function awardXP(amount, action, actionId = null) {
+            if (actionId && gameState.actionsPerformed.has(actionId)) return;
+            if (actionId) gameState.actionsPerformed.add(actionId);
+            
+            gameState.xp += amount;
+            updateXPDisplay();
+            checkLevelUp();
+            checkAchievements();
+            saveProgress();
+            
+            createFloatingXP(amount);
+        }
+
+        function createFloatingXP(amount) {
+            safeExecute(() => {
+                const xpFloat = document.createElement('div');
+                xpFloat.className = 'xp-float';
+                xpFloat.style.cssText = `
+                    top: 120px;
+                    right: 100px;
+                `;
+                xpFloat.textContent = `+${amount} XP`;
+                document.body.appendChild(xpFloat);
+                
+                setTimeout(() => {
+                    if (xpFloat && xpFloat.parentNode) {
+                        xpFloat.remove();
+                    }
+                }, 2000);
+            }, 'Could not create floating XP indicator');
+        }
+
+        function updateXPDisplay() {
+            if (!DOM.xpFill || !DOM.xpText || !DOM.currentLevel) return;
+            
+            const xpForNextLevel = XP_PER_LEVEL[gameState.level] || XP_PER_LEVEL[XP_PER_LEVEL.length - 1];
+            const xpProgress = Math.min((gameState.xp / xpForNextLevel) * 100, 100);
+            
+            DOM.xpFill.style.width = xpProgress + '%';
+            DOM.xpText.textContent = `${gameState.xp} / ${xpForNextLevel} XP`;
+            DOM.currentLevel.textContent = gameState.level;
+        }
+
+        function checkLevelUp() {
+            if (gameState.level < 5 && gameState.xp >= XP_PER_LEVEL[gameState.level]) {
+                gameState.level++;
+                showAchievement('Level Up!', `You reached Level ${gameState.level}!`, '⬆️');
+                createParticleEffect();
+            }
+        }
+
+        function createParticleEffect() {
+            if (!DOM.particleContainer) return;
+            
+            const colors = ['#fbbf24', '#f59e0b', '#6366f1', '#8b5cf6', '#10b981'];
+            const particleCount = 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = Math.random() * window.innerWidth + 'px';
+                    particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    particle.style.animationDelay = Math.random() * 0.5 + 's';
+                    
+                    DOM.particleContainer.appendChild(particle);
+                    
+                    particle.addEventListener('animationend', () => particle.remove());
+                }, i * 50);
+            }
+        }
+
+        function checkAchievements() {
+            // First correct answer
+            if (!gameState.achievements.has('first_correct') && gameState.actionsPerformed.has('correct_answer')) {
+                gameState.achievements.add('first_correct');
+                showAchievement('First Steps', 'Got your first correct answer!', '✅');
+            }
+            
+            // Parallel Master
+            if (!gameState.achievements.has('parallel_master') && gameState.completedSections.size >= 10) {
+                gameState.achievements.add('parallel_master');
+                showAchievement('Parallel Master', 'Completed most sections!', '🎓');
+            }
+            
+            // Perfect Quiz
+            if (!gameState.achievements.has('perfect_quiz') && gameState.sectionScores.finalQuiz === 8) {
+                gameState.achievements.add('perfect_quiz');
+                showAchievement('Perfect Score', 'Aced the final quiz!', '💯');
+            }
+            
+            // Network Architect
+            if (!gameState.achievements.has('network_architect') && gameState.actionsPerformed.has('full_topology')) {
+                gameState.achievements.add('network_architect');
+                showAchievement('Network Architect', 'Created a fully connected network!', '🌐');
+            }
+            
+            // Speed Learner
+            if (!gameState.achievements.has('speed_learner') && 
+                gameState.completedSections.size >= 5 && 
+                Date.now() - startTime < 600000) {
+                gameState.achievements.add('speed_learner');
+                showAchievement('Speed Learner', 'Completed 5 sections in under 10 minutes!', '⚡');
+            }
+        }
+
+        function showAchievement(title, desc, icon) {
+            if (!DOM.achievementPopup) return;
+            
+            const titleEl = DOM.achievementPopup.querySelector('#achievement-title');
+            const descEl = DOM.achievementPopup.querySelector('#achievement-desc');
+            const iconEl = DOM.achievementPopup.querySelector('#achievement-icon');
+            
+            if (titleEl) titleEl.textContent = title;
+            if (descEl) descEl.textContent = desc;
+            if (iconEl) iconEl.textContent = icon;
+            
+            DOM.achievementPopup.classList.add('show');
+            setTimeout(() => {
+                if (DOM.achievementPopup) DOM.achievementPopup.classList.remove('show');
+            }, 3000);
+            
+            awardXP(50, 'Achievement');
+            
+            // Haptic feedback for mobile
+            if ('vibrate' in navigator) {
+                navigator.vibrate([100, 50, 100]);
+            }
+        }
+
+        // Notification System
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 1rem 2rem;
+                border-radius: 0.75rem;
+                font-weight: 500;
+                z-index: 3001;
+                animation: slideDown 0.3s ease;
+                box-shadow: var(--shadow-lg);
+            `;
+            
+            switch(type) {
+                case 'success':
+                    notification.style.background = 'var(--success-color)';
+                    notification.style.color = 'white';
+                    break;
+                case 'error':
+                    notification.style.background = 'var(--error-color)';
+                    notification.style.color = 'white';
+                    break;
+                case 'warning':
+                    notification.style.background = 'var(--warning-color)';
+                    notification.style.color = 'white';
+                    break;
+                default:
+                    notification.style.background = 'var(--primary-color)';
+                    notification.style.color = 'white';
+            }
+            
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideUp 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Quiz Functions
+        function selectQuizOption(option) {
+            const siblings = option.parentElement.querySelectorAll('.quiz-option');
+            siblings.forEach(s => s.classList.remove('selected'));
+            option.classList.add('selected');
+        }
+
+        function checkPreQuiz() {
+            const selected = document.querySelector('#pre-quiz .quiz-option.selected');
+            if (!selected) {
+                showNotification('Please select an answer first!', 'warning');
+                return;
+            }
+            
+            const correct = selected.dataset.answer === 'b';
+            if (correct) {
+                selected.classList.add('correct');
+                awardXP(10, 'Correct Answer', 'pre_quiz');
+                gameState.actionsPerformed.add('correct_answer');
+                showNotification('Correct! Parallel processing means multiple operations happening simultaneously.', 'success');
+            } else {
+                selected.classList.add('incorrect');
+                document.querySelector('#pre-quiz .quiz-option[data-answer="b"]').classList.add('correct');
+                showNotification('Not quite. The correct answer is: Multiple operations happening simultaneously.', 'info');
+            }
+        }
+
+        // Utility Functions
+        function markSectionComplete(section) {
+            gameState.completedSections.add(section);
+            const pill = document.querySelector(`[data-section="${section}"]`);
+            if (pill) pill.classList.add('completed');
+            updateProgressDots(section);
+            saveProgress();
+        }
+
+        function updateProgressDots(section) {
+            const dots = document.querySelectorAll(`#${section} .progress-dot`);
+            if (dots.length > 0) {
+                dots.forEach((dot, index) => {
+                    if (dot) {
+                        dot.classList.add('completed');
+                    }
+                });
+            }
+        }
+
+        function showShameMessage() {
+            if (!DOM.shameMessage) return;
+            
+            DOM.shameMessage.style.display = 'block';
+            DOM.shameMessage.style.animation = 'shameAnimation 3s ease forwards';
+            
+            gameState.xp = Math.max(0, gameState.xp - 10);
+            updateXPDisplay();
+            
+            setTimeout(() => {
+                if (DOM.shameMessage) DOM.shameMessage.style.display = 'none';
+            }, 3000);
+        }
+
+        function showHint(section) {
+            const hint = document.getElementById(section + '-hint');
+            if (!hint) return;
+            
+            hint.classList.add('show');
+            const xpReduction = gameState.hintUsage[section] ? 0 : -5;
+            gameState.hintUsage[section] = true;
+            if (xpReduction < 0) {
+                gameState.xp = Math.max(0, gameState.xp + xpReduction);
+                updateXPDisplay();
+                showNotification('Hint shown (-5 XP)', 'warning');
+            }
+        }
+
+        // Feedback System
+        function openFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'flex';
+                updateFeedbackPage();
+            }
+        }
+
+        function closeFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'none';
+            }
+            if (DOM.feedbackText) {
+                DOM.feedbackText.value = '';
+            }
+        }
+
+        function updateFeedbackPage() {
+            const sectionTitles = {
+                'intro': 'Introduction',
+                'starter': 'Starter Activity',
+                'levels': 'Levels of Parallelism',
+                'systems': 'Parallel Systems',
+                'multiprogramming': 'Multi-programming',
+                'mpc': 'Massively Parallel Computers',
+                'software': 'MPC Software',
+                'hardware': 'MPC Hardware',
+                'realworld': 'Real World Applications',
+                'summary': 'Summary & Quiz',
+                'exam': 'Exam Practice',
+                'extension': 'Extension Activities',
+                'videos': 'Videos'
+            };
+            
+            if (DOM.feedbackPage) {
+                DOM.feedbackPage.textContent = sectionTitles[gameState.currentSection] || 'Unknown';
+            }
+        }
+
+        function sendFeedback() {
+            if (!DOM.feedbackText) return;
+            
+            const text = DOM.feedbackText.value.trim();
+            if (!text) {
+                showNotification('Please enter your feedback', 'warning');
+                return;
+            }
+            
+            const subject = encodeURIComponent('Parallel Processing Lesson Feedback');
+            const body = encodeURIComponent(
+                `Page: ${DOM.feedbackPage ? DOM.feedbackPage.textContent : 'Unknown'}\n\n` +
+                `Feedback: ${text}\n\n` +
+                `Section ID: ${gameState.currentSection}\n` +
+                `Level: ${gameState.level}, XP: ${gameState.xp}`
+            );
+            
+            window.location.href = `mailto:millingtond@mgs.org?subject=${subject}&body=${body}`;
+            closeFeedback();
+            awardXP(5, 'Feedback Sent', 'feedback');
+            showNotification('Thank you for your feedback!', 'success');
+        }
+
+        // Accessibility Functions
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+            saveProgress();
+            showNotification('High contrast mode ' + (document.body.classList.contains('high-contrast') ? 'enabled' : 'disabled'), 'info');
+        }
+
+        function toggleDyslexiaFont() {
+            document.body.classList.toggle('dyslexia-font');
+            saveProgress();
+            showNotification('Dyslexia font ' + (document.body.classList.contains('dyslexia-font') ? 'enabled' : 'disabled'), 'info');
+        }
+
+        function changeFontSize(size) {
+            document.body.classList.remove('font-small', 'font-large', 'font-xlarge');
+            if (size !== 'normal') {
+                document.body.classList.add('font-' + size);
+            }
+            saveProgress();
+            showNotification(`Font size changed to ${size}`, 'info');
+        }
+
+        // Save/Load Progress
+        function saveProgress() {
+            const data = {
+                gameState: {
+                    xp: gameState.xp,
+                    level: gameState.level,
+                    completedSections: Array.from(gameState.completedSections),
+                    achievements: Array.from(gameState.achievements),
+                    actionsPerformed: Array.from(gameState.actionsPerformed),
+                    currentSection: gameState.currentSection,
+                    sectionScores: gameState.sectionScores,
+                    hintUsage: gameState.hintUsage
+                },
+                accessibility: {
+                    highContrast: document.body.classList.contains('high-contrast'),
+                    dyslexiaFont: document.body.classList.contains('dyslexia-font'),
+                    fontSize: Array.from(document.body.classList).find(c => c.startsWith('font-')) || 'normal'
+                }
+            };
+            
+            try {
+                sessionStorage.setItem('parallelProcessingProgress', JSON.stringify(data));
+            } catch (e) {
+                console.warn('Could not save progress:', e);
+            }
+        }
+
+        function loadProgress() {
+            try {
+                const saved = sessionStorage.getItem('parallelProcessingProgress');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    
+                    // Restore game state
+                    gameState.xp = data.gameState.xp || 0;
+                    gameState.level = data.gameState.level || 1;
+                    gameState.completedSections = new Set(data.gameState.completedSections || []);
+                    gameState.achievements = new Set(data.gameState.achievements || []);
+                    gameState.actionsPerformed = new Set(data.gameState.actionsPerformed || []);
+                    gameState.currentSection = data.gameState.currentSection || 'intro';
+                    gameState.sectionScores = data.gameState.sectionScores || {};
+                    gameState.hintUsage = data.gameState.hintUsage || {};
+                    
+                    // Restore accessibility settings
+                    if (data.accessibility) {
+                        if (data.accessibility.highContrast) {
+                            document.body.classList.add('high-contrast');
+                        }
+                        if (data.accessibility.dyslexiaFont) {
+                            document.body.classList.add('dyslexia-font');
+                        }
+                        if (data.accessibility.fontSize && data.accessibility.fontSize !== 'normal') {
+                            document.body.classList.add(data.accessibility.fontSize);
+                        }
+                    }
+                    
+                    // Restore completed sections visual state
+                    gameState.completedSections.forEach(section => {
+                        const pill = document.querySelector(`[data-section="${section}"]`);
+                        if (pill) pill.classList.add('completed');
+                    });
+                }
+            } catch (e) {
+                console.error('Error loading progress:', e);
+            }
+        }
+
+        // Canvas initialization
+        function initializeCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            
+            // Set canvas size
+            canvas.width = 600;
+            canvas.height = 300;
+            
+            function getCoordinates(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                
+                if (e.touches) {
+                    return {
+                        x: (e.touches[0].clientX - rect.left) * scaleX,
+                        y: (e.touches[0].clientY - rect.top) * scaleY
+                    };
+                } else {
+                    return {
+                        x: (e.clientX - rect.left) * scaleX,
+                        y: (e.clientY - rect.top) * scaleY
+                    };
+                }
+            }
+            
+            function startDrawing(e) {
+                isDrawing = true;
+                const coords = getCoordinates(e);
+                lastX = coords.x;
+                lastY = coords.y;
+                e.preventDefault();
+            }
+            
+            function draw(e) {
+                if (!isDrawing) return;
+                
+                const coords = getCoordinates(e);
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(coords.x, coords.y);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+                
+                lastX = coords.x;
+                lastY = coords.y;
+                e.preventDefault();
+            }
+            
+            function stopDrawing(e) {
+                isDrawing = false;
+                e.preventDefault();
+            }
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events
+            canvas.addEventListener('touchstart', startDrawing, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing, { passive: false });
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+            showNotification('Canvas cleared', 'info');
+        }
+
+        // Auto-save every 30 seconds
+        setInterval(saveProgress, 30000);
+
+        // Easter egg: Konami code
+        const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+        let konamiIndex = 0;
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === konamiCode[konamiIndex]) {
+                konamiIndex++;
+                if (konamiIndex === konamiCode.length) {
+                    showAchievement('Secret Found!', 'You discovered the Konami code!', '🎮');
+                    awardXP(100, 'Easter Egg', 'konami_code');
+                    konamiIndex = 0;
+                    createParticleEffect();
+                }
+            } else {
+                konamiIndex = 0;
+            }
+        });
+
+        // Performance monitoring
+        const startTime = Date.now();
+        
+        // Log performance metrics
+        window.addEventListener('load', function() {
+            console.log('Page load time:', Date.now() - startTime, 'ms');
+            console.log('Parallel Processing Lesson initialized successfully');
+        });
+
+        // Initialize canvas when exam section becomes active
+        const observer = new MutationObserver(function(mutations) {
+            const canvas = document.getElementById('drawing-canvas');
+            if (canvas && !canvas.hasAttribute('data-initialized')) {
+                initializeCanvas();
+                canvas.setAttribute('data-initialized', 'true');
+            }
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    </script>
+</body>
+</html>
+                    

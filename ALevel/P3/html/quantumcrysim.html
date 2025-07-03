@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Quantum Cryptography Simulation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #111827;
+            --primary-color: #3b82f6;
+            --secondary-color: #1f2937;
+            --text-color: #e5e7eb;
+            --accent-color: #8b5cf6;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+            --warning-color: #f97316;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+        }
+
+        .glassmorphism {
+            background: rgba(31, 41, 55, 0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .animated-gradient {
+            background: linear-gradient(-45deg, #3b82f6, #8b5cf6, #10b981, #f59e0b);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .step-container {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            will-change: opacity, transform;
+        }
+
+        .step-hidden {
+            opacity: 0;
+            transform: scale(0.98);
+            pointer-events: none;
+            position: absolute;
+            width: 100%;
+        }
+
+        .step-visible {
+            opacity: 1;
+            transform: scale(1);
+            position: relative;
+        }
+        
+        #polarization-canvas {
+            width: 100%;
+            height: 250px;
+            border-radius: 0.5rem;
+            background-color: rgba(0,0,0,0.2);
+        }
+        
+        .modal { transition: opacity 0.3s ease, transform 0.3s ease; }
+        .modal-hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
+
+        .btn {
+             transition: all 0.3s ease;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-image: none;
+            background-color: #374151;
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        .btn-primary {
+            background-image: linear-gradient(to right, var(--primary-color) 0%, var(--accent-color) 51%, var(--primary-color) 100%);
+            background-size: 200% auto;
+        }
+        .btn-primary:hover:not(:disabled) { background-position: right center; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        
+        .btn-secondary { background-color: #4b5563; }
+        .btn-secondary:hover:not(:disabled) { background-color: #6b7280; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+
+        .quiz-option { transition: all 0.2s ease-in-out; border-left: 4px solid transparent; }
+        .quiz-option:hover { border-left-color: var(--primary-color); transform: translateX(5px); background-color: var(--secondary-color); }
+        .quiz-option.selected { border-left-color: var(--accent-color); background-color: rgba(139, 92, 246, 0.2); }
+        .quiz-option.correct { border-left-color: var(--success-color); }
+        .quiz-option.incorrect { border-left-color: var(--error-color); }
+        
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th, .data-table td { padding: 0.5rem; text-align: center; }
+        .data-table th { font-weight: bold; color: var(--text-color); }
+        .data-table td { background-color: var(--secondary-color); font-family: monospace; font-size: 1.1rem; }
+        .data-table tr.highlight-row td { background-color: rgba(59, 130, 246, 0.2); transition: background-color 0.3s ease; }
+        
+        .strikethrough { text-decoration: line-through; opacity: 0.5; }
+
+        .focus-box {
+            background-color: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid var(--primary-color);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            will-change: opacity, transform;
+        }
+
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div id="main-container" class="w-full max-w-6xl mx-auto glassmorphism rounded-2xl shadow-2xl p-4 md:p-8 relative">
+        
+        <header class="text-center mb-4 md:mb-6 border-b border-gray-700 pb-4">
+            <h1 class="text-3xl md:text-4xl font-bold animated-gradient text-transparent bg-clip-text">Interactive Quantum Cryptography Simulation</h1>
+            <p class="text-gray-400 mt-2">Understanding the BB84 Protocol for A-Level Computer Science (9618)</p>
+        </header>
+
+        <div id="simulation-content" class="relative min-h-[550px]">
+            <!-- Step 1: Introduction -->
+            <div id="step-1" class="step-container step-visible">
+                <h2 class="text-2xl font-semibold text-center text-blue-400 mb-4">Welcome to Quantum Cryptography!</h2>
+                <div class="text-lg text-gray-300 space-y-4 max-w-3xl mx-auto p-4 rounded-lg bg-gray-800/50">
+                    <p>Traditional cryptography relies on mathematical complexity. Quantum Cryptography, however, uses the laws of physics to secure data.</p>
+                    <p>The core idea is that <strong class="text-yellow-400">observing a quantum system disturbs it</strong>. This means we can always detect an eavesdropper!</p>
+                    <p>In this simulation, we'll explore the <strong class="text-purple-400">BB84 protocol</strong>, where Alice sends a secret key to Bob using polarized photons (particles of light).</p>
+                    <p class="font-semibold text-center mt-6">Use the arrow keys or the buttons below to navigate through the steps.</p>
+                </div>
+                 <div class="mt-8 text-center">
+                    <button onclick="showModal('intro-modal')" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg">Key Concepts</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Polarization -->
+            <div id="step-2" class="step-container step-hidden">
+                <h2 class="text-2xl font-semibold text-center text-blue-400 mb-4">Step 1: Photon Polarization</h2>
+                <p class="text-center text-gray-400 mb-6 max-w-2xl mx-auto">Alice encodes bits as polarized photons. She has two "bases" (filter types) to choose from: Rectilinear (+) and Diagonal (x).</p>
+                <div id="polarization-sim" class="relative flex flex-col items-center justify-around p-6 bg-gray-800/50 rounded-lg min-h-[400px]">
+                    <canvas id="polarization-canvas"></canvas>
+                    <div id="polarization-explanation" class="mt-4 text-center h-10 font-semibold"></div>
+                    <div class="w-full mt-4">
+                        <p class="text-center mb-4"><strong>Task:</strong> Send photons and see if they pass through Bob's filter.</p>
+                        <div class="flex justify-center items-center gap-4 flex-wrap">
+                            <div>
+                                <label for="photon-type" class="block text-center mb-1 text-gray-400">Photon Polarization:</label>
+                                <select id="photon-type" class="bg-gray-700 border border-gray-600 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                    <option value="V">Vertical (|) - Bit 0</option>
+                                    <option value="H">Horizontal (—) - Bit 1</option>
+                                    <option value="D135">Diagonal (\) - Bit 0</option>
+                                    <option value="D45">Diagonal (/) - Bit 1</option>
+                                </select>
+                            </div>
+                             <div>
+                                <label for="filter-type" class="block text-center mb-1 text-gray-400">Bob's Filter Basis:</label>
+                                <select id="filter-type" class="bg-gray-700 border border-gray-600 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                    <option value="rectilinear">Rectilinear (+)</option>
+                                    <option value="diagonal">Diagonal (x)</option>
+                                </select>
+                            </div>
+                            <button id="send-photon-btn" onclick="runPolarizationSim()" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg">Send Photon</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Alice Sends -->
+            <div id="step-3" class="step-container step-hidden">
+                 <h2 class="text-2xl font-semibold text-center text-blue-400 mb-4">Step 2: Alice Sends a Sequence</h2>
+                 <p class="text-center text-gray-400 mb-2 max-w-3xl mx-auto">Alice generates a random bit sequence and encodes each bit using a randomly chosen basis.</p>
+                 <div id="step-3-focus" class="focus-box p-3 my-4 rounded-lg text-center opacity-0 -translate-y-2"><p id="step-3-explanation"></p></div>
+                 <div id="alice-sequence-vis" class="bg-gray-800/50 p-4 rounded-lg overflow-x-auto"></div>
+                 <div class="text-center mt-4">
+                    <button id="generate-sequence-btn" onclick="generateAliceSequence()" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg">Generate & Send Sequence</button>
+                 </div>
+            </div>
+            
+            <!-- Step 4: Bob Measures -->
+            <div id="step-4" class="step-container step-hidden">
+                <h2 class="text-2xl font-semibold text-center text-blue-400 mb-4">Step 3: Bob Measures the Photons</h2>
+                <p class="text-center text-gray-400 mb-2 max-w-3xl mx-auto">Bob doesn't know Alice's bases. He measures each photon using his own random bases. His result is only reliable if his basis matches Alice's.</p>
+                <div id="step-4-focus" class="focus-box p-3 my-4 rounded-lg text-center opacity-0 -translate-y-2"><p id="step-4-explanation"></p></div>
+                <div id="bob-measurement-vis" class="bg-gray-800/50 p-4 rounded-lg overflow-x-auto"></div>
+                 <div class="flex justify-center mt-4 space-x-4">
+                     <button id="bob-measure-btn" onclick="bobMeasuresSequence()" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg">Bob Measures</button>
+                     <button id="reset-step4-btn" onclick="resetStep4()" class="btn btn-secondary text-white font-bold py-2 px-4 rounded-lg">Reset & Rerun</button>
+                </div>
+            </div>
+
+            <!-- Step 5: Sifting -->
+            <div id="step-5" class="step-container step-hidden">
+                <h2 class="text-2xl font-semibold text-center text-blue-400 mb-4">Step 4: The Public Discussion (Sifting)</h2>
+                <p class="text-center text-gray-400 mb-2 max-w-3xl mx-auto">Alice and Bob publicly compare the bases they used. They <strong class="text-yellow-400">keep</strong> the bits where bases matched and <strong class="text-red-400">discard</strong> the bits where they didn't.</p>
+                <div id="step-5-focus" class="focus-box p-3 my-4 rounded-lg text-center opacity-0 -translate-y-2"><p id="step-5-explanation"></p></div>
+                <div id="sifting-vis" class="bg-gray-800/50 p-4 rounded-lg overflow-x-auto"></div>
+                 <div id="final-key-container" class="mt-6 text-center opacity-0 transition-opacity duration-500">
+                    <h3 class="text-xl font-semibold text-green-400">Shared Secret Key Assembled!</h3>
+                    <div class="mt-2 flex justify-center items-center flex-wrap gap-2" id="final-key-bits"></div>
+                </div>
+                <div class="flex justify-center mt-4 space-x-4">
+                     <button id="sift-btn" onclick="performSifting()" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg">Compare Bases</button>
+                     <button id="reset-step5-btn" onclick="resetStep5()" class="btn btn-secondary text-white font-bold py-2 px-4 rounded-lg">Reset & Rerun</button>
+                </div>
+            </div>
+
+            <!-- Step 6: Eavesdropper -->
+            <div id="step-6" class="step-container step-hidden">
+                <h2 class="text-2xl font-semibold text-center text-red-400 mb-4">Step 5: Detecting an Eavesdropper (Eve)</h2>
+                <p class="text-center text-gray-400 mb-2 max-w-3xl mx-auto">Eve intercepts, measures, and re-sends the photons. Her measurements disturb the system, introducing errors that Alice and Bob will detect.</p>
+                <div id="step-6-focus" class="focus-box p-3 my-4 rounded-lg text-center opacity-0 -translate-y-2"><p id="step-6-explanation"></p></div>
+                <div id="eve-vis" class="bg-gray-800/50 p-4 rounded-lg overflow-x-auto"></div>
+                <div class="flex justify-center mt-4 space-x-4">
+                     <button id="eve-btn" onclick="runEveSimulation()" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg">Simulate with Eve</button>
+                     <button id="reset-step6-btn" onclick="resetStep6()" class="btn btn-secondary text-white font-bold py-2 px-4 rounded-lg">Reset & Rerun</button>
+                </div>
+            </div>
+
+            <!-- Step 7: Quiz -->
+            <div id="step-7" class="step-container step-hidden">
+                <h2 class="text-2xl font-semibold text-center text-blue-400 mb-4">Knowledge Check</h2>
+                <div id="quiz-container" class="max-w-3xl mx-auto bg-gray-800/50 p-6 rounded-lg"></div>
+                <div class="text-center mt-6">
+                    <button id="quiz-submit-btn" onclick="submitQuiz()" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg">Submit Answers</button>
+                    <button id="quiz-reset-btn" onclick="resetQuiz()" class="btn btn-secondary text-white font-bold py-2 px-4 rounded-lg ml-4 hidden">Try Again</button>
+                </div>
+            </div>
+            
+            <!-- Step 8: Summary -->
+            <div id="step-8" class="step-container step-hidden">
+                <h2 class="text-2xl font-semibold text-center text-blue-400 mb-4">Summary & Conclusion</h2>
+                <div class="flex flex-col md:flex-row gap-6 max-w-4xl mx-auto">
+                    <div class="flex-1 bg-green-900/30 p-4 rounded-lg border border-green-500">
+                        <h3 class="text-xl font-bold text-green-400 mb-3">Benefits</h3>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><strong class="text-green-300">Guaranteed Security:</strong> Any eavesdropping is detectable due to the laws of quantum mechanics (the observer effect).</li>
+                            <li><strong class="text-green-300">Key Integrity:</strong> The key cannot be copied and decrypted later. Once measured incorrectly, the information is lost.</li>
+                            <li><strong class="text-green-300">Secure Exchange:</strong> Allows for the exchange of very long, truly random keys.</li>
+                        </ul>
+                    </div>
+                    <div class="flex-1 bg-red-900/30 p-4 rounded-lg border border-red-500">
+                        <h3 class="text-xl font-bold text-red-400 mb-3">Drawbacks</h3>
+                        <ul class="list-disc list-inside space-y-2">
+                            <li><strong class="text-red-300">Limited Range:</strong> Signal (photon state) degrades over long distances in fibre optic cables.</li>
+                            <li><strong class="text-red-300">Specialist Hardware:</strong> Requires dedicated fibre lines and expensive, sensitive equipment like photon detectors.</li>
+                             <li><strong class="text-red-300">High Cost:</strong> The required infrastructure is currently very expensive to implement.</li>
+                            <li><strong class="text-red-300">Environmental Interference:</strong> Polarization can be accidentally altered by environmental factors, causing errors.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="text-center mt-8">
+                     <p class="text-lg mb-4">You have completed the simulation!</p>
+                     <button onclick="resetSimulation()" class="btn btn-primary text-white font-bold py-3 px-6 rounded-lg text-lg">Restart Simulation</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Navigation -->
+        <div class="flex justify-between items-center mt-6 md:mt-8 pt-4 border-t border-gray-700">
+            <button id="prev-btn" onclick="navigate(-1)" class="btn btn-secondary text-white font-bold py-2 px-4 rounded-lg">
+                &larr; Previous Step
+            </button>
+            <div class="text-sm text-gray-400">Step <span id="current-step-indicator">1</span> of 8</div>
+            <button id="next-btn" onclick="navigate(1)" class="btn btn-primary text-white font-bold py-2 px-4 rounded-lg">
+                Next Step &rarr;
+            </button>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-70 z-40 modal-hidden" onclick="closeAllModals()"></div>
+    <div id="intro-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-2xl glassmorphism rounded-lg shadow-2xl p-6 z-50 modal-hidden">
+        <h3 class="text-xl font-bold mb-4 text-blue-300">Key Concepts Explained</h3>
+        <div class="space-y-3 text-gray-300">
+            <p><strong class="text-yellow-400">Photon:</strong> A single particle of light. The smallest discrete amount of electromagnetic radiation.</p>
+            <p><strong class="text-yellow-400">Polarization:</strong> The orientation of a photon's oscillation. Think of it like a light wave vibrating in a specific direction (e.g., up-and-down or side-to-side).</p>
+            <p><strong class="text-yellow-400">Basis (pl. Bases):</strong> A pair of polarizations used for encoding and measuring. In BB84, we use two:
+                <br>- <strong class="text-cyan-400">Rectilinear (+):</strong> Vertical (|) and Horizontal (—)
+                <br>- <strong class="text-cyan-400">Diagonal (x):</strong> 45° (/) and 135° (\)
+            </p>
+            <p><strong class="text-yellow-400">Observer Effect:</strong> The act of measuring a quantum property (like polarization) can change it. If you measure a diagonal photon with a rectilinear filter, you force it into a vertical or horizontal state, destroying the original information.</p>
+        </div>
+        <button onclick="closeAllModals()" class="mt-6 btn btn-primary text-white font-bold py-2 px-4 rounded-lg float-right">Got it!</button>
+    </div>
+    <div id="feedback-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-md glassmorphism rounded-lg shadow-2xl p-6 z-50 modal-hidden">
+        <h3 id="feedback-title" class="text-xl font-bold mb-4"></h3>
+        <p id="feedback-text" class="text-gray-300"></p>
+        <button onclick="closeAllModals()" class="mt-6 btn btn-primary text-white font-bold py-2 px-4 rounded-lg float-right">Close</button>
+    </div>
+
+<script>
+    // --- STATE MANAGEMENT ---
+    let currentStep = 1;
+    const totalSteps = 8;
+    let simState = {}; 
+    let isAnimating = false;
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    // --- DOM ELEMENT CACHING ---
+    const stepContainers = Array.from({ length: totalSteps }, (_, i) => document.getElementById(`step-${i + 1}`));
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const stepIndicator = document.getElementById('current-step-indicator');
+    const modalBackdrop = document.getElementById('modal-backdrop');
+    const modals = document.querySelectorAll('.fixed.z-50');
+
+    // --- INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+        updateNavigation();
+        initializeQuiz();
+        initPolarizationCanvas();
+        window.addEventListener('resize', initPolarizationCanvas);
+        document.addEventListener('keydown', handleKeyPress);
+    });
+
+    function setAnimating(state) {
+        isAnimating = state;
+        document.querySelectorAll('.step-container button.btn').forEach(btn => btn.disabled = state);
+    }
+
+    function resetSimulation() {
+        setAnimating(false);
+        simState = {};
+        resetStep3();
+        resetStep4();
+        resetStep5();
+        resetStep6();
+        resetQuiz();
+        navigate(1 - currentStep); 
+    }
+
+    // --- NAVIGATION ---
+    function navigate(direction) {
+        if (isAnimating) return;
+        const newStep = currentStep + direction;
+        if (newStep >= 1 && newStep <= totalSteps) {
+            stepContainers[currentStep - 1].classList.replace('step-visible', 'step-hidden');
+            currentStep = newStep;
+            stepContainers[currentStep - 1].classList.replace('step-hidden', 'step-visible');
+            updateNavigation();
+            if (currentStep === 2) {
+                initPolarizationCanvas();
+            }
+        }
+    }
+
+    function updateNavigation() {
+        stepIndicator.textContent = currentStep;
+        prevBtn.disabled = currentStep === 1;
+        nextBtn.disabled = currentStep === totalSteps;
+    }
+    
+    function handleKeyPress(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || Array.from(modals).some(m => !m.classList.contains('modal-hidden'))) {
+            return;
+        }
+        if (e.key === 'ArrowRight') navigate(1);
+        else if (e.key === 'ArrowLeft') navigate(-1);
+    }
+
+    // --- MODAL & FEEDBACK CONTROLS ---
+    function showModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modalBackdrop.classList.remove('modal-hidden');
+            modal.classList.remove('modal-hidden');
+        }
+    }
+
+    function closeAllModals() {
+        modalBackdrop.classList.add('modal-hidden');
+        modals.forEach(modal => modal.classList.add('modal-hidden'));
+    }
+    
+    function showFeedback(title, text) {
+        document.getElementById('feedback-title').textContent = title;
+        document.getElementById('feedback-text').innerHTML = text;
+        showModal('feedback-modal');
+    }
+    
+    function showFocusBox(step, text) {
+        const focusBox = document.getElementById(`step-${step}-focus`);
+        const explanation = document.getElementById(`step-${step}-explanation`);
+        explanation.innerHTML = text;
+        focusBox.classList.remove('opacity-0', '-translate-y-2');
+    }
+
+    function hideFocusBox(step) {
+        const focusBox = document.getElementById(`step-${step}-focus`);
+        focusBox.classList.add('opacity-0', '-translate-y-2');
+    }
+
+    // --- SIMULATION LOGIC ---
+
+    // Step 2: Polarization Simulation (CANVAS REWRITE)
+    let canvas, ctx, canvasState = {};
+
+    function initPolarizationCanvas() {
+        canvas = document.getElementById('polarization-canvas');
+        if (!canvas) return;
+        ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        canvasState.width = rect.width;
+        canvasState.height = rect.height;
+        drawPolarizationScene();
+    }
+
+    function drawPolarizationScene(detectorState = {color: '#4b5563', bit: null}) {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvasState.width, canvasState.height);
+
+        // Draw Alice (Emitter)
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '16px Inter';
+        ctx.textAlign = 'center';
+        ctx.fillText('Alice (Emitter)', canvasState.width * 0.2, 30);
+        ctx.strokeStyle = '#6b7280';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(canvasState.width * 0.2 - 40, canvasState.height / 2 - 40, 80, 80);
+
+        // Draw Bob (Filter)
+        const filterType = document.getElementById('filter-type').value;
+        ctx.fillText('Bob (Filter)', canvasState.width * 0.5, 30);
+        ctx.strokeStyle = 'var(--primary-color)';
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(canvasState.width * 0.5 - 40, canvasState.height / 2 - 40, 80, 80);
+        ctx.setLineDash([]);
+        ctx.lineWidth = 3;
+        const centerX = canvasState.width * 0.5;
+        const centerY = canvasState.height / 2;
+        if (filterType === 'rectilinear') {
+            ctx.beginPath();
+            ctx.moveTo(centerX - 40, centerY);
+            ctx.lineTo(centerX + 40, centerY);
+            ctx.moveTo(centerX, centerY - 40);
+            ctx.lineTo(centerX, centerY + 40);
+            ctx.stroke();
+        } else { // diagonal
+            ctx.beginPath();
+            ctx.moveTo(centerX - 30, centerY - 30);
+            ctx.lineTo(centerX + 30, centerY + 30);
+            ctx.moveTo(centerX - 30, centerY + 30);
+            ctx.lineTo(centerX + 30, centerY - 30);
+            ctx.stroke();
+        }
+
+        // Draw Detector
+        ctx.fillText('Detector', canvasState.width * 0.8, 30);
+        ctx.fillStyle = detectorState.color;
+        ctx.fillRect(canvasState.width * 0.8 - 40, canvasState.height / 2 - 40, 80, 80);
+        if (detectorState.bit !== null) {
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 40px Inter';
+            ctx.fillText(detectorState.bit, canvasState.width * 0.8, canvasState.height / 2 + 15);
+        }
+    }
+
+    function runPolarizationSim() {
+        if (isAnimating) return;
+        setAnimating(true);
+        
+        const explanation = document.getElementById('polarization-explanation');
+        explanation.innerHTML = '';
+        
+        let photon = {
+            x: canvasState.width * 0.2,
+            y: canvasState.height / 2,
+            radius: 8,
+            color: '#facc15',
+            shatter: false,
+            particles: []
+        };
+        
+        const photonType = document.getElementById('photon-type').value;
+        const filterType = document.getElementById('filter-type').value;
+        let photonBasis, photonBit;
+        switch(photonType) {
+            case 'V': photonBasis = 'rectilinear'; photonBit = 0; break;
+            case 'H': photonBasis = 'rectilinear'; photonBit = 1; break;
+            case 'D135': photonBasis = 'diagonal'; photonBit = 0; break;
+            case 'D45': photonBasis = 'diagonal'; photonBit = 1; break;
+        }
+
+        const passes = (photonBasis === filterType);
+        const outcome = passes ? 'pass' : (Math.random() < 0.5 ? 'block' : 'change');
+        
+        let detectorState = {color: '#4b5563', bit: null};
+        let startTime = null;
+        const duration = 2000; // 2 seconds travel time
+
+        function animate(timestamp) {
+            if (!startTime) startTime = timestamp;
+            const progress = Math.min((timestamp - startTime) / duration, 1);
+
+            drawPolarizationScene(detectorState);
+
+            if (photon.shatter) {
+                photon.particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.1; // gravity
+                    p.alpha -= 0.02;
+                    ctx.fillStyle = `rgba(239, 68, 68, ${p.alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                if (photon.particles.some(p => p.alpha > 0)) {
+                    requestAnimationFrame(animate);
+                } else {
+                    setAnimating(false);
+                    drawPolarizationScene();
+                }
+                return;
+            }
+
+            const fromX = canvasState.width * 0.2;
+            const filterX = canvasState.width * 0.5;
+            
+            photon.x = fromX + (filterX - fromX) * progress;
+            
+            // Draw photon
+            ctx.beginPath();
+            ctx.arc(photon.x, photon.y, photon.radius, 0, Math.PI * 2);
+            ctx.fillStyle = photon.color;
+            ctx.shadowColor = photon.color;
+            ctx.shadowBlur = 15;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                // Interaction logic at the filter
+                switch(outcome) {
+                    case 'pass':
+                        detectorState = { color: 'var(--success-color)', bit: photonBit };
+                        explanation.innerHTML = `<span style="color: var(--success-color)">Success!</span> Bases match. Photon passed.`;
+                        drawPolarizationScene(detectorState);
+                        setAnimating(false);
+                        break;
+                    case 'block':
+                        photon.shatter = true;
+                        for (let i = 0; i < 15; i++) {
+                            photon.particles.push({
+                                x: filterX, y: photon.y, radius: Math.random() * 2 + 1,
+                                vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 0.7) * 4, alpha: 1
+                            });
+                        }
+                        explanation.innerHTML = `<span style="color: var(--error-color)">Blocked!</span> Mismatched bases. Photon absorbed.`;
+                        requestAnimationFrame(animate); // Start shatter animation
+                        break;
+                    case 'change':
+                        const newBit = Math.round(Math.random());
+                        detectorState = { color: 'var(--warning-color)', bit: newBit };
+                        explanation.innerHTML = `<span style="color: var(--warning-color)">State Changed!</span> Mismatched bases. Photon state randomized.`;
+                        drawPolarizationScene(detectorState);
+                        setAnimating(false);
+                        break;
+                }
+            }
+        }
+        requestAnimationFrame(animate);
+    }
+    
+    // Step 3, 4, 5, 6: Table-based display rewrite
+    const polarizationMap = {
+        rectilinear: { 0: '|', 1: '—' },
+        diagonal: { 0: '\\', 1: '/' }
+    };
+
+    function createTableHTML(headers, ...rowDataArrays) {
+        let html = '<table class="data-table"><tbody>';
+        rowDataArrays.forEach((rowData, i) => {
+            html += `<tr id="${headers[i].idPrefix}-${i}"><th>${headers[i].label}</th>`;
+            html += rowData.map((cell, j) => `<td id="${headers[i].idPrefix}-cell-${i}-${j}">${cell}</td>`).join('');
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        return html;
+    }
+
+    function resetStep3() {
+        document.getElementById('alice-sequence-vis').innerHTML = '';
+        hideFocusBox(3);
+        simState.alice = null;
+    }
+
+    async function generateAliceSequence() {
+        if (isAnimating) return;
+        setAnimating(true);
+        resetStep3();
+        showFocusBox(3, 'Generating random bits and bases for Alice...');
+        await sleep(500);
+
+        simState.alice = Array.from({length: 8}, () => {
+            const bit = Math.round(Math.random());
+            const basis = Math.random() < 0.5 ? 'rectilinear' : 'diagonal';
+            return { bit, basis, polarization: polarizationMap[basis][bit] };
+        });
+
+        const headers = [
+            { label: "Alice's Bit", idPrefix: 'alice-bit' },
+            { label: "Alice's Basis", idPrefix: 'alice-basis' },
+            { label: "Photon Sent", idPrefix: 'alice-photon' }
+        ];
+        const rowData = [
+            simState.alice.map(item => item.bit),
+            simState.alice.map(item => item.basis === 'rectilinear' ? '+' : 'x'),
+            simState.alice.map(item => item.polarization)
+        ];
+        
+        const container = document.getElementById('alice-sequence-vis');
+        container.innerHTML = createTableHTML(headers, ...rowData);
+        
+        showFocusBox(3, 'Sequence sent! Bob can now try to measure them.');
+        setAnimating(false);
+    }
+    
+    function resetStep4() {
+        document.getElementById('bob-measurement-vis').innerHTML = '';
+        hideFocusBox(4);
+        simState.bob = null;
+    }
+
+    async function bobMeasuresSequence() {
+        if (isAnimating) return;
+        if (!simState.alice) {
+            showFeedback('Error', 'Please generate and send a sequence from Alice first (Step 2).');
+            return;
+        }
+        setAnimating(true);
+        resetStep4();
+        showFocusBox(4, 'Bob is choosing his own random bases...');
+        await sleep(500);
+
+        simState.bob = simState.alice.map(aliceItem => {
+            const bobBasis = Math.random() < 0.5 ? 'rectilinear' : 'diagonal';
+            const match = aliceItem.basis === bobBasis;
+            const bobBit = match ? aliceItem.bit : Math.round(Math.random());
+            return { basis: bobBasis, bit: bobBit, match: match };
+        });
+
+        const headers = [
+            { label: "Alice's Basis", idPrefix: 'bob-abasis' },
+            { label: "Bob's Basis", idPrefix: 'bob-bbasis' },
+            { label: "Bases Match?", idPrefix: 'bob-match' },
+            { label: "Bob's Bit", idPrefix: 'bob-bit' }
+        ];
+        const rowData = [
+            simState.alice.map(item => item.basis === 'rectilinear' ? '+' : 'x'),
+            simState.bob.map(item => item.basis === 'rectilinear' ? '+' : 'x'),
+            simState.bob.map(item => '?'),
+            simState.bob.map(item => '?')
+        ];
+
+        const container = document.getElementById('bob-measurement-vis');
+        container.innerHTML = createTableHTML(headers, ...rowData);
+
+        for (let i = 0; i < 8; i++) {
+            showFocusBox(4, `Comparing bases for photon ${i+1}...`);
+            const bobItem = simState.bob[i];
+            const aBasisCell = document.getElementById(`bob-abasis-cell-0-${i}`);
+            const bBasisCell = document.getElementById(`bob-bbasis-cell-1-${i}`);
+            
+            aBasisCell.style.transition = 'background-color 0.3s';
+            bBasisCell.style.transition = 'background-color 0.3s';
+            const highlightClass = bobItem.match ? 'bg-green-600/30' : 'bg-red-600/30';
+            aBasisCell.classList.add(highlightClass);
+            bBasisCell.classList.add(highlightClass);
+            
+            await sleep(400);
+
+            document.getElementById(`bob-match-cell-2-${i}`).innerHTML = bobItem.match ? '✅' : '❌';
+            document.getElementById(`bob-bit-cell-3-${i}`).innerHTML = bobItem.match ? bobItem.bit : `<span class="text-yellow-400">${bobItem.bit}</span>`;
+            
+            await sleep(400);
+            aBasisCell.classList.remove(highlightClass);
+            bBasisCell.classList.remove(highlightClass);
+        }
+
+        showFocusBox(4, 'Measurement complete! Now they must sift the results.');
+        setAnimating(false);
+    }
+
+    function resetStep5() {
+        document.getElementById('sifting-vis').innerHTML = '';
+        document.getElementById('final-key-container').classList.add('opacity-0');
+        document.getElementById('final-key-bits').innerHTML = '';
+        hideFocusBox(5);
+        simState.finalKey = null;
+    }
+
+    async function performSifting() {
+        if (isAnimating) return;
+        if (!simState.bob) {
+            showFeedback('Error', 'Bob needs to measure the sequence first (Step 3).');
+            return;
+        }
+        setAnimating(true);
+        resetStep5();
+        showFocusBox(5, 'Alice and Bob are publicly comparing their basis choices...');
+        
+        const container = document.getElementById('sifting-vis');
+        const headers = [
+            { label: "Alice's Bit", idPrefix: 'sift-abit' },
+            { label: "Bob's Bit", idPrefix: 'sift-bbit' },
+            { label: "Bases Match?", idPrefix: 'sift-match' }
+        ];
+        const rowData = [
+            simState.alice.map(item => item.bit),
+            simState.bob.map(item => item.bit),
+            simState.bob.map(item => item.match ? '✅' : '❌')
+        ];
+        container.innerHTML = createTableHTML(headers, ...rowData);
+
+        await sleep(500);
+        
+        simState.finalKey = '';
+        for (let i = 0; i < 8; i++) {
+            showFocusBox(5, `Sifting position ${i+1}...`);
+            const row1 = document.getElementById(`sift-abit-0`);
+            const row2 = document.getElementById(`sift-bbit-1`);
+            const row3 = document.getElementById(`sift-match-2`);
+            
+            const cell1 = row1.children[i+1];
+            const cell2 = row2.children[i+1];
+            const cell3 = row3.children[i+1];
+
+            const highlightClass = simState.bob[i].match ? 'bg-green-600/30' : 'bg-red-600/30';
+            cell1.classList.add(highlightClass);
+            cell2.classList.add(highlightClass);
+            cell3.classList.add(highlightClass);
+
+            await sleep(400);
+
+            if (simState.bob[i].match) {
+                showFocusBox(5, `Match! Keeping bit ${simState.alice[i].bit}.`);
+                simState.finalKey += simState.alice[i].bit;
+            } else {
+                showFocusBox(5, `Mismatch! Discarding this position.`);
+                cell1.classList.add('strikethrough');
+                cell2.classList.add('strikethrough');
+            }
+            await sleep(400);
+            cell1.classList.remove(highlightClass);
+            cell2.classList.remove(highlightClass);
+            cell3.classList.remove(highlightClass);
+        }
+
+        showFocusBox(5, 'Sifting complete. Assembling the final secret key...');
+        await sleep(500);
+
+        const keyContainer = document.getElementById('final-key-bits');
+        for (const bit of simState.finalKey) {
+            const bitEl = document.createElement('div');
+            bitEl.className = 'p-3 bg-green-600 rounded-lg font-mono text-2xl';
+            bitEl.textContent = bit;
+            keyContainer.appendChild(bitEl);
+            await sleep(150);
+        }
+        document.getElementById('final-key-container').classList.remove('opacity-0');
+        
+        setAnimating(false);
+    }
+
+    function resetStep6() {
+        document.getElementById('eve-vis').innerHTML = '';
+        hideFocusBox(6);
+        simState.eve = null;
+        simState.bobAfterEve = null;
+    }
+
+    async function runEveSimulation() {
+        if (isAnimating) return;
+        setAnimating(true);
+        resetStep6();
+        showFocusBox(6, "Preparing simulation with an eavesdropper...");
+        
+        simState.alice = Array.from({length: 8}, () => {
+            const bit = Math.round(Math.random());
+            const basis = Math.random() < 0.5 ? 'rectilinear' : 'diagonal';
+            return { bit, basis, polarization: polarizationMap[basis][bit] };
+        });
+
+        simState.eve = simState.alice.map(aliceItem => {
+            const eveBasis = Math.random() < 0.5 ? 'rectilinear' : 'diagonal';
+            const eveMatch = aliceItem.basis === eveBasis;
+            const eveBit = eveMatch ? aliceItem.bit : Math.round(Math.random());
+            return { basis: eveBasis, bit: eveBit, match: eveMatch };
+        });
+
+        simState.bobAfterEve = simState.eve.map((eveItem, i) => {
+            const bobBasis = Math.random() < 0.5 ? 'rectilinear' : 'diagonal';
+            const bobMatchEve = bobBasis === eveItem.basis;
+            const bobBit = bobMatchEve ? eveItem.bit : Math.round(Math.random());
+            return { basis: bobBasis, bit: bobBit };
+        });
+
+        const headers = [
+            { label: "Alice's Bit", idPrefix: 'eve-abit' },
+            { label: "Alice's Basis", idPrefix: 'eve-abasis' },
+            { label: "Eve's Basis", idPrefix: 'eve-ebasis' },
+            { label: "Eve's Bit", idPrefix: 'eve-ebit' },
+            { label: "Bob's Basis", idPrefix: 'eve-bbasis' },
+            { label: "Bob's Bit", idPrefix: 'eve-bbit' },
+            { label: "Sift?", idPrefix: 'eve-sift' },
+            { label: "Error?", idPrefix: 'eve-error' }
+        ];
+        const rowData = [
+            simState.alice.map(item => item.bit),
+            simState.alice.map(item => item.basis === 'rectilinear' ? '+' : 'x'),
+            simState.eve.map(item => item.basis === 'rectilinear' ? '+' : 'x'),
+            simState.eve.map(item => item.bit),
+            simState.bobAfterEve.map(item => item.basis === 'rectilinear' ? '+' : 'x'),
+            simState.bobAfterEve.map(item => item.bit),
+            Array(8).fill('?'),
+            Array(8).fill('?')
+        ];
+        
+        const container = document.getElementById('eve-vis');
+        container.innerHTML = createTableHTML(headers, ...rowData);
+        await sleep(500);
+
+        let errorCount = 0;
+        let keyLength = 0;
+
+        for (let i = 0; i < 8; i++) {
+            showFocusBox(6, `Eve intercepts and measures photon ${i+1}...`);
+            const eveBasisCell = document.getElementById(`eve-ebasis-cell-2-${i}`);
+            if (!simState.eve[i].match) {
+                eveBasisCell.classList.add('bg-red-600/30');
+            }
+            await sleep(800);
+
+            showFocusBox(6, `Bob measures the new photon and they sift...`);
+            const siftMatch = simState.alice[i].basis === simState.bobAfterEve[i].basis;
+            const siftCell = document.getElementById(`eve-sift-cell-6-${i}`);
+            siftCell.innerHTML = siftMatch ? 'KEEP' : 'DISCARD';
+            
+            if (siftMatch) {
+                keyLength++;
+                const bitError = simState.alice[i].bit !== simState.bobAfterEve[i].bit;
+                if (bitError) {
+                    errorCount++;
+                    const errorCell = document.getElementById(`eve-error-cell-7-${i}`);
+                    errorCell.innerHTML = '❗';
+                    document.getElementById(`eve-bbit-cell-5-${i}`).classList.add('bg-red-600/30');
+                    showFocusBox(6, `Error detected! Alice had ${simState.alice[i].bit}, Bob got ${simState.bobAfterEve[i].bit}.`);
+                }
+            }
+            await sleep(1000);
+        }
+
+        const errorRate = keyLength > 0 ? (errorCount / keyLength) * 100 : 0;
+        if (errorCount > 0) {
+            showFocusBox(6, `<strong>Eavesdropper Detected!</strong> An error rate of ~${errorRate.toFixed(0)}% was found. The key is discarded.`);
+        } else {
+            showFocusBox(6, `<strong>No Errors Detected (Pure Luck!).</strong> Eve's meddling didn't cause an error in the final key.`);
+        }
+        setAnimating(false);
+    }
+
+
+    // --- QUIZ LOGIC ---
+    const quizData = [
+        {
+            type: 'mcq',
+            question: "What is the primary reason that eavesdropping is always detectable in quantum cryptography?",
+            options: [ "The encryption algorithm is too complex to break.", "Measuring a quantum state, like a photon's polarization, inevitably disturbs it.", "The fibre optic cables have built-in alarms.", "Alice and Bob use a secret password to verify the key." ],
+            answer: 1
+        },
+        {
+            type: 'short-answer',
+            question: "Name one significant drawback of current quantum cryptography systems.",
+            keywords: ['range', 'distance', 'cost', 'expensive', 'hardware', 'fibre', 'fiber', 'interference', 'polarisation', 'polarization']
+        },
+        {
+            type: 'task',
+            question: "Alice sends a sequence. Bob measures it. Determine the final shared key after sifting. Enter only the bits (0s and 1s) that are kept.",
+            data: {
+                alice_bits: [0, 1, 1, 0, 1, 0, 0, 1],
+                alice_bases: ['R', 'D', 'R', 'R', 'D', 'R', 'D', 'D'],
+                bob_bases:   ['R', 'R', 'R', 'D', 'D', 'R', 'R', 'D']
+            },
+            answer: "01101"
+        },
+        {
+            type: 'mcq',
+            question: "During the 'sifting' phase, what information do Alice and Bob publicly share?",
+            options: [ "The secret key itself.", "The sequence of bits they originally chose.", "The sequence of measurement bases they used.", "Their computer's IP addresses." ],
+            answer: 2
+        }
+    ];
+
+    function initializeQuiz() {
+        const container = document.getElementById('quiz-container');
+        container.innerHTML = '';
+        quizData.forEach((q, index) => {
+            let questionHTML = `<div class="mb-6" id="q-${index}">`;
+            questionHTML += `<p class="font-semibold text-lg mb-3">${index + 1}. ${q.question}</p>`;
+            
+            if (q.type === 'mcq') {
+                questionHTML += `<div class="space-y-2" data-qindex="${index}">${q.options.map((opt, optIndex) => `<div class="quiz-option p-3 rounded-lg cursor-pointer bg-gray-700/50" data-option-index="${optIndex}" onclick="selectOption(this)">${opt}</div>`).join('')}</div>`;
+            } else if (q.type === 'short-answer') {
+                questionHTML += `<input type="text" data-qindex="${index}" class="w-full p-2 rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your answer here...">`;
+            } else if (q.type === 'task') {
+                const table = `<div class="overflow-x-auto"><table class="w-full text-center text-sm"><thead>
+                    <tr class="text-gray-400"><th class="p-2">Alice's Bit</th>${q.data.alice_bits.map(b => `<td class="p-2 font-mono">${b}</td>`).join('')}</tr>
+                    <tr class="text-gray-400"><th class="p-2">Alice's Basis</th>${q.data.alice_bases.map(b => `<td class="p-2 font-mono text-xl">${b === 'R' ? '+' : 'x'}</td>`).join('')}</tr>
+                    <tr class="text-gray-400"><th class="p-2">Bob's Basis</th>${q.data.bob_bases.map(b => `<td class="p-2 font-mono text-xl">${b === 'R' ? '+' : 'x'}</td>`).join('')}</tr>
+                    </thead></table></div><input type="text" data-qindex="${index}" class="mt-3 w-full p-2 rounded bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter the final key...">`;
+                questionHTML += table;
+            }
+            
+            questionHTML += `<div class="feedback mt-2 text-sm"></div></div>`;
+            container.innerHTML += questionHTML;
+        });
+        
+        document.getElementById('quiz-submit-btn').classList.remove('hidden');
+        document.getElementById('quiz-reset-btn').classList.add('hidden');
+    }
+
+    function selectOption(el) {
+        if (document.getElementById('quiz-submit-btn').disabled) return;
+        Array.from(el.parentElement.children).forEach(child => child.classList.remove('selected'));
+        el.classList.add('selected');
+    }
+
+    function submitQuiz() {
+        let score = 0;
+        quizData.forEach((q, index) => {
+            const qContainer = document.getElementById(`q-${index}`);
+            const feedbackEl = qContainer.querySelector('.feedback');
+            let isCorrect = false;
+
+            if (q.type === 'mcq') {
+                const selectedOption = qContainer.querySelector('.quiz-option.selected');
+                if (selectedOption && parseInt(selectedOption.dataset.optionIndex) === q.answer) {
+                    isCorrect = true;
+                    selectedOption.classList.add('correct');
+                } else if (selectedOption) {
+                    selectedOption.classList.add('incorrect');
+                    qContainer.querySelector(`[data-option-index="${q.answer}"]`).classList.add('correct');
+                }
+                feedbackEl.innerHTML = isCorrect ? '<span class="text-green-400">Correct!</span>' : `<span class="text-red-400">Incorrect.</span> The correct answer is highlighted.`;
+            } else if (q.type === 'short-answer' || q.type === 'task') {
+                const input = qContainer.querySelector('input');
+                const answer = input.value.trim();
+                if (answer.length < 3) {
+                    feedbackEl.innerHTML = `<span class="text-yellow-400">Please provide a more detailed answer.</span>`;
+                    return;
+                }
+                if (q.type === 'short-answer') {
+                    isCorrect = q.keywords.some(kw => answer.toLowerCase().includes(kw));
+                    feedbackEl.innerHTML = isCorrect ? `<span class="text-green-400">Correct!</span> Any of: ${q.keywords.join(', ')} would be accepted.` : `<span class="text-red-400">Incorrect.</span> A correct answer would mention concepts like: ${q.keywords.join(', ')}.`;
+                } else { // task
+                    isCorrect = answer.replace(/\s/g, '') === q.answer;
+                    feedbackEl.innerHTML = isCorrect ? `<span class="text-green-400">Correct! The final key is ${q.answer}.</span>` : `<span class="text-red-400">Incorrect.</span> The correct key is ${q.answer}. You keep the bits only where the bases match.`;
+                }
+                input.classList.add(isCorrect ? 'border-green-500' : 'border-red-500');
+                input.disabled = true;
+            }
+            if (isCorrect) score++;
+        });
+
+        showFeedback('Quiz Results', `You scored ${score} out of ${quizData.length}.<br>Check the feedback for each question.`);
+        document.getElementById('quiz-submit-btn').disabled = true;
+        document.getElementById('quiz-reset-btn').classList.remove('hidden');
+    }
+
+    function resetQuiz() {
+        initializeQuiz();
+        document.getElementById('quiz-submit-btn').disabled = false;
+    }
+
+</script>
+</body>
+</html>

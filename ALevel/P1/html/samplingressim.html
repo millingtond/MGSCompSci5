@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Sample Resolution Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* CSS Variables for easy theme management */
+        :root {
+            --bg-color: #1a1a2e;
+            --primary-color: #e94560;
+            --card-bg: rgba(22, 22, 37, 0.6);
+            --text-color: #e0e0e0;
+            --text-muted: #a0a0c0;
+            --border-color: rgba(233, 69, 96, 0.3);
+            --gradient-start: #16222a;
+            --gradient-end: #3a6073;
+            --success-color: #4CAF50;
+            --error-color: #F44336;
+            --font-family: 'Poppins', sans-serif;
+        }
+
+        /* Base styles */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Prevent scrolling on the main page */
+        }
+
+        body {
+            font-family: var(--font-family);
+            background: linear-gradient(-45deg, #1a1a2e, #16222a, #3a6073, #1e1e3f);
+            background-size: 400% 400%;
+            animation: gradientBG 25s ease infinite;
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Main container for the simulation */
+        .simulation-container {
+            width: 100%;
+            max-width: 1000px;
+            height: 95%;
+            max-height: 700px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Header section */
+        .sim-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .sim-header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        /* Main content area where steps are displayed */
+        .sim-content {
+            flex-grow: 1;
+            position: relative;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 20px 30px;
+        }
+
+        /* Individual step styling */
+        .step {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            animation: fadeIn 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            position: absolute;
+            width: calc(100% - 60px);
+            left: 30px;
+            top: 20px;
+        }
+        
+        .step.active {
+            display: flex;
+            position: relative; /* Change position for active step */
+            left: auto;
+            top: auto;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .step h2 {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .step p, .step li {
+            font-size: 1rem;
+            line-height: 1.7;
+            max-width: 800px;
+            margin-bottom: 15px;
+            color: var(--text-muted);
+        }
+        
+        .step .highlight {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        /* Interactive Visualization styling */
+        .visualization-area {
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        canvas {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            background-color: #111720;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .controls label {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .controls input[type="range"] {
+            -webkit-appearance: none;
+            width: 200px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            outline: none;
+            transition: opacity 0.2s;
+        }
+        
+        .controls input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--primary-color);
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        #bit-depth-value {
+            font-weight: 700;
+            color: white;
+            min-width: 120px;
+            text-align: left;
+        }
+        #quantization-levels {
+            color: #4dd0e1;
+            font-weight: 700;
+            min-width: 200px;
+        }
+
+        /* Quiz section styles */
+        .quiz-container {
+            width: 100%;
+            max-width: 700px;
+            margin-top: 20px;
+        }
+        .question {
+            margin-bottom: 25px;
+        }
+        .question p {
+            font-size: 1.1rem;
+            color: var(--text-color);
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .option {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+        }
+        
+        .option:hover {
+            background: rgba(233, 69, 96, 0.2);
+            border-color: var(--primary-color);
+            transform: translateY(-3px);
+        }
+
+        .option.selected {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .option.correct { background-color: rgba(76, 175, 80, 0.5); border-color: var(--success-color); }
+        .option.incorrect { background-color: rgba(244, 67, 54, 0.5); border-color: var(--error-color); }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-family: var(--font-family);
+            font-size: 1rem;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* Footer with navigation buttons */
+        .sim-footer {
+            padding: 20px 30px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .sim-footer .btn {
+            padding: 10px 20px;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            background: transparent;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn:hover {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 0 15px var(--primary-color);
+        }
+        
+        .btn#reset-btn { border-color: var(--text-muted); color: var(--text-muted); }
+        .btn#reset-btn:hover { background: var(--text-muted); color: var(--bg-color); box-shadow: 0 0 15px var(--text-muted); }
+        
+        .btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        #step-indicator {
+            font-size: 1rem;
+            color: var(--text-muted);
+        }
+
+        /* Modal / Popup styling */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .modal.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--bg-color);
+            padding: 30px;
+            border-radius: 15px;
+            border: 1px solid var(--primary-color);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal.visible .modal-content {
+            transform: scale(1);
+        }
+        
+        .modal-content h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+        
+        .modal-content p {
+            margin-bottom: 20px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+        
+        .modal-content .btn {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .final-score {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        /* Reduced motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+            body, .step, .btn, .modal, .modal-content {
+                animation: none;
+                transition: none;
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .simulation-container {
+                height: 100%;
+                max-height: 100%;
+                border-radius: 0;
+            }
+            .sim-header h1 { font-size: 1.4rem; }
+            .step h2 { font-size: 1.3rem; }
+            .step p, .step li { font-size: 0.9rem; }
+            .sim-footer { flex-direction: column; gap: 15px; }
+            .nav-buttons { display: flex; justify-content: space-between; width: 100%; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="simulation-container">
+        <header class="sim-header">
+            <h1>A-Level CS 9618: Sample Resolution</h1>
+        </header>
+
+        <main class="sim-content">
+            <!-- Step 1: Introduction -->
+            <section class="step active" id="step-1">
+                <h2>Welcome! What is Sound?</h2>
+                <p>Sound travels as an <span class="highlight">analogue wave</span>. To store it on a computer, we need to convert this continuous wave into a series of discrete digital values. This process is called <span class="highlight">Analogue-to-Digital Conversion (ADC)</span>.</p>
+                <p>The first part of this is <span class="highlight">sampling</span>, where we measure the amplitude (height) of the wave at regular time intervals.</p>
+                <p>This simulation focuses on the next crucial part: <span class="highlight">Quantization</span> and <span class="highlight">Sample Resolution</span>.</p>
+                 <div class="instructions" style="margin-top: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
+                    <h3 style="color:var(--primary-color); margin-bottom:10px;">How to Use</h3>
+                    <p style="margin:0;">Use the <span class="highlight">Next</span> and <span class="highlight">Previous</span> buttons, or the <span class="highlight">left/right arrow keys</span> on your keyboard to navigate through the steps.</p>
+                </div>
+            </section>
+            
+            <!-- Step 2: Visualizing Sample Resolution -->
+            <section class="step" id="step-2">
+                <h2>Visualizing Sample Resolution (Bit Depth)</h2>
+                <p>Sample resolution (or <span class="highlight">bit depth</span>) determines how many bits are used to store each sample. This dictates the number of possible amplitude values we can record. Let's see it in action!</p>
+                <div class="visualization-area">
+                    <canvas id="sound-wave-canvas" width="800" height="300"></canvas>
+                    <div class="controls">
+                        <label for="bit-depth-slider">Bit Depth:</label>
+                        <input type="range" id="bit-depth-slider" min="1" max="8" value="3" step="1">
+                        <span id="bit-depth-value">3-bit</span>
+                        <span id="quantization-levels">Levels: 8</span>
+                    </div>
+                </div>
+                <p style="margin-top:15px;">Notice how a <span class="highlight">lower bit depth</span> makes the digital signal (red steps) a poor approximation of the original analogue wave (blue line). A <span class="highlight">higher bit depth</span> results in a much more accurate representation.</p>
+                <p>The gap between the original wave and the stepped digital version is called <span class="highlight">Quantization Error</span>. More bits = less error!</p>
+            </section>
+
+            <!-- Step 3: The Math Behind It -->
+            <section class="step" id="step-3">
+                <h2>The Math: How Many Levels?</h2>
+                <p>The number of distinct amplitude values is directly related to the bit depth (<span class="highlight">n</span>). The formula is simple:</p>
+                <p style="font-size: 1.5rem; font-weight: 600; color: white;">Number of Levels = 2<sup>n</sup></p>
+                <p>Where 'n' is the bit depth. Let's explore this:</p>
+                <ul style="text-align: left; max-width: 400px; margin: 15px auto; list-style: none;">
+                    <li><strong>2-bit:</strong> 2<sup>2</sup> = 4 levels</li>
+                    <li><strong>4-bit:</strong> 2<sup>4</sup> = 16 levels</li>
+                    <li><strong>8-bit (common in early computing):</strong> 2<sup>8</sup> = 256 levels</li>
+                    <li><strong>16-bit (CD Quality):</strong> 2<sup>16</sup> = 65,536 levels</li>
+                    <li><strong>24-bit (Professional Audio):</strong> 2<sup>24</sup> = 16,777,216 levels</li>
+                </ul>
+                <p>As you can see, each extra bit <span class="highlight">doubles</span> the number of levels, dramatically increasing the potential accuracy of the recording.</p>
+            </section>
+            
+            <!-- Step 4: Quality vs. File Size -->
+            <section class="step" id="step-4">
+                <h2>The Trade-Off: Quality vs. File Size</h2>
+                <p>Higher sample resolution gives you better audio quality, but there's a cost: <span class="highlight">larger file sizes</span>.</p>
+                <p>The file size of a raw audio recording is calculated as:</p>
+                <p class="highlight">File Size (in bits) = Sample Rate (Hz) × Resolution (bits) × Time (s) × Channels</p>
+                <div class="quiz-container">
+                    <p>Let's calculate the size for a 10-second mono audio clip at a sample rate of 44,100 Hz. Change the resolution to see the impact.</p>
+                    <div class="controls">
+                        <label for="filesize-bit-depth">Resolution:</label>
+                        <select id="filesize-bit-depth" style="padding: 8px; font-size: 1rem; background: #333; color: white; border: none; border-radius: 5px;">
+                            <option value="8">8-bit</option>
+                            <option value="16" selected>16-bit (CD Quality)</option>
+                            <option value="24">24-bit (Studio Quality)</option>
+                            <option value="32">32-bit</option>
+                        </select>
+                        <p id="file-size-result" style="font-weight: 600; color: white; font-size: 1.2rem; margin-top: 10px;"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 5: Quiz -->
+            <section class="step" id="step-5">
+                <h2>Knowledge Check!</h2>
+                <p>Let's see what you've learned. Answer the questions below.</p>
+                <div class="quiz-container">
+                    <!-- Question 1 -->
+                    <div class="question" data-question-id="1" data-type="mc">
+                        <p>1. Which of the following terms is another name for Sample Resolution?</p>
+                        <div class="options">
+                            <div class="option" data-value="a">Bit Rate</div>
+                            <div class="option" data-value="b">Bit Depth</div>
+                            <div class="option" data-value="c">Sample Rate</div>
+                            <div class="option" data-value="d">Frequency Range</div>
+                        </div>
+                    </div>
+                    <!-- Question 2 -->
+                    <div class="question" data-question-id="2" data-type="input">
+                        <p>2. How many distinct amplitude levels can be represented by a 12-bit sample?</p>
+                        <input type="text" id="q2-answer" placeholder="Enter a number">
+                        <button class="btn check-btn" style="margin-top: 10px;">Check Answer</button>
+                    </div>
+                    <!-- Question 3 -->
+                    <div class="question" data-question-id="3" data-type="text">
+                         <p>3. Explain why increasing the bit depth of a recording improves its accuracy.</p>
+                        <textarea id="q3-answer" placeholder="Type your explanation here..."></textarea>
+                        <button class="btn check-btn" style="margin-top: 10px;">Check Answer</button>
+                    </div>
+
+                    <button class="btn" id="finish-quiz-btn" style="display:none; margin: 20px auto; background: var(--primary-color); color: white;">Finish Quiz</button>
+                </div>
+            </section>
+
+            <!-- Step 6: Summary -->
+            <section class="step" id="step-6">
+                <h2>Summary & Key Takeaways</h2>
+                <p>You've completed the simulation! Here are the most important points:</p>
+                <ul style="text-align: left; max-width: 600px; margin: 15px auto; padding-left: 20px;">
+                    <li>Sample Resolution is also known as <span class="highlight">Bit Depth</span>.</li>
+                    <li>It's the number of <span class="highlight">bits used to store each sample</span> of an analogue wave.</li>
+                    <li>The number of available amplitude levels is calculated by <span class="highlight">2<sup>n</sup></span>, where n is the bit depth.</li>
+                    <li>A <span class="highlight">higher bit depth</span> reduces quantization error, resulting in a more accurate sound recording with less distortion.</li>
+                    <li>The trade-off for higher quality is a <span class="highlight">larger file size</span>.</li>
+                </ul>
+                <div id="final-score-display" class="final-score"></div>
+                <p>Click the reset button to start over.</p>
+            </section>
+        </main>
+
+        <footer class="sim-footer">
+            <button class="btn" id="reset-btn">Reset</button>
+            <div id="step-indicator">Step 1 of 6</div>
+            <div class="nav-buttons">
+                <button class="btn disabled" id="prev-btn">Previous Step</button>
+                <button class="btn" id="next-btn">Next Step</button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modal for feedback and instructions -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title">Welcome!</h3>
+            <p id="modal-text">This is a modal.</p>
+            <button id="modal-close-btn" class="btn">Close</button>
+        </div>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Element Caching ---
+        const steps = document.querySelectorAll('.step');
+        const nextBtn = document.getElementById('next-btn');
+        const prevBtn = document.getElementById('prev-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const stepIndicator = document.getElementById('step-indicator');
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalText = document.getElementById('modal-text');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        // Simulation State
+        let currentStep = 0;
+        const totalSteps = steps.length;
+        let quizAnswers = {};
+        let score = 0;
+        let quizFinished = false;
+
+        // --- Canvas Visualization (Step 2) ---
+        const canvas = document.getElementById('sound-wave-canvas');
+        const ctx = canvas ? canvas.getContext('2d') : null;
+        const bitDepthSlider = document.getElementById('bit-depth-slider');
+        const bitDepthValue = document.getElementById('bit-depth-value');
+        const quantizationLevels = document.getElementById('quantization-levels');
+        let animationFrameId;
+
+        // --- File Size Calculator (Step 4) ---
+        const fileSizeSelect = document.getElementById('filesize-bit-depth');
+        const fileSizeResult = document.getElementById('file-size-result');
+        
+        // --- Quiz Elements ---
+        const quizContainer = document.querySelector('.quiz-container');
+        const finishQuizBtn = document.getElementById('finish-quiz-btn');
+
+        const stopCurrentAnimation = () => {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+        };
+
+        const showStep = (stepIndex) => {
+            stopCurrentAnimation();
+            steps.forEach((step, index) => {
+                step.classList.toggle('active', index === stepIndex);
+            });
+            updateNavButtons();
+            stepIndicator.textContent = `Step ${stepIndex + 1} of ${totalSteps}`;
+
+            // Start animation only if the canvas step is active
+            if (steps[stepIndex].id === 'step-2' && ctx) {
+                drawVisualization();
+            }
+            if (steps[stepIndex].id === 'step-4') {
+                updateFileSize();
+            }
+        };
+
+        const updateNavButtons = () => {
+            prevBtn.classList.toggle('disabled', currentStep === 0);
+            nextBtn.classList.toggle('disabled', currentStep === totalSteps - 1);
+        };
+
+        const nextStep = () => {
+            if (currentStep < totalSteps - 1) {
+                currentStep++;
+                showStep(currentStep);
+            }
+        };
+
+        const prevStep = () => {
+            if (currentStep > 0) {
+                currentStep--;
+                showStep(currentStep);
+            }
+        };
+
+        const resetSimulation = () => {
+            currentStep = 0;
+            score = 0;
+            quizAnswers = {};
+            quizFinished = false;
+            showStep(0);
+            
+            // Reset quiz UI
+            document.querySelectorAll('.option.selected, .option.correct, .option.incorrect').forEach(el => {
+                el.classList.remove('selected', 'correct', 'incorrect');
+            });
+            document.querySelectorAll('.question input, .question textarea').forEach(input => {
+                input.value = '';
+                input.disabled = false;
+            });
+            document.querySelectorAll('.question .check-btn').forEach(btn => {
+                btn.style.display = 'block';
+                btn.disabled = false;
+            });
+            document.getElementById('final-score-display').textContent = '';
+            finishQuizBtn.style.display = 'none';
+        };
+
+        const showModal = (title, text) => {
+            stopCurrentAnimation(); // Pause animation when modal is shown
+            modalTitle.innerHTML = title;
+            modalText.innerHTML = text;
+            modal.classList.add('visible');
+        };
+
+        const hideModal = () => {
+            modal.classList.remove('visible');
+            // Resume animation if on the correct step
+            if (steps[currentStep].id === 'step-2' && ctx) {
+                 if (!animationFrameId) drawVisualization();
+            }
+        };
+
+        // --- Step 2: Canvas Drawing Logic ---
+        const drawVisualization = () => {
+            if (!ctx) return;
+            const bitDepth = parseInt(bitDepthSlider.value);
+            const numLevels = Math.pow(2, bitDepth);
+            
+            bitDepthValue.textContent = `${bitDepth}-bit`;
+            quantizationLevels.textContent = `Levels: ${numLevels.toLocaleString()}`;
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const midY = height / 2;
+            const amplitude = height * 0.4;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw quantization levels
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            const stepHeight = height / numLevels;
+            for (let i = 0; i <= numLevels; i++) {
+                const y = i * stepHeight;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+
+            // Draw original sine wave
+            ctx.strokeStyle = '#4A90E2'; // Blue
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let x = 0; x < width; x++) {
+                const y = midY - Math.sin(x * 0.02) * amplitude;
+                ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Draw quantized wave (the steps)
+            ctx.strokeStyle = '#E94560'; // Red
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            const sampleRate = 40; // How many samples to draw
+            for (let i = 0; i < sampleRate; i++) {
+                const x = (width / sampleRate) * i;
+                const waveY = midY - Math.sin(x * 0.02) * amplitude;
+                
+                // Find nearest quantization level
+                const level = Math.round((waveY / height) * numLevels);
+                const quantizedY = (level / numLevels) * height;
+
+                if (i === 0) {
+                    ctx.moveTo(x, quantizedY);
+                } else {
+                    const prevX = (width / sampleRate) * (i - 1);
+                    ctx.lineTo(x, quantizedY);
+                }
+            }
+            ctx.stroke();
+        };
+        
+        // --- Step 4: File Size Calculation ---
+        const updateFileSize = () => {
+            if(!fileSizeSelect) return;
+            const resolution = parseInt(fileSizeSelect.value);
+            const sampleRate = 44100; // Hz
+            const time = 10; // seconds
+            const channels = 1; // mono
+            
+            const sizeInBits = sampleRate * resolution * time * channels;
+            const sizeInKilobytes = sizeInBits / 8 / 1024;
+            const sizeInMegabytes = sizeInKilobytes / 1024;
+
+            let displaySize;
+            if (sizeInMegabytes >= 1) {
+                displaySize = `${sizeInMegabytes.toFixed(2)} MB`;
+            } else {
+                displaySize = `${sizeInKilobytes.toFixed(2)} KB`;
+            }
+            fileSizeResult.textContent = `File Size: ≈ ${displaySize}`;
+        };
+
+        // --- Step 5: Quiz Logic ---
+        const checkAllQuestionsAnswered = () => {
+             const answeredCount = Object.keys(quizAnswers).length;
+             if(answeredCount === 3 && !quizFinished){
+                 finishQuizBtn.style.display = 'block';
+             }
+        };
+
+        const handleMcqAnswer = (e) => {
+            const selectedOption = e.target.closest('.option');
+            if (!selectedOption) return;
+            const questionDiv = selectedOption.closest('.question');
+            const questionId = questionDiv.dataset.questionId;
+            
+            if (quizAnswers[questionId]) return; // Already answered
+
+            const answer = selectedOption.dataset.value;
+            let isCorrect = false;
+            let correctValue = '';
+            
+            switch(questionId) {
+                case '1':
+                    isCorrect = answer === 'b';
+                    correctValue = 'b';
+                    break;
+            }
+
+            quizAnswers[questionId] = { answer, isCorrect };
+            if (isCorrect) score++;
+
+            // Visual feedback
+            const options = questionDiv.querySelectorAll('.option');
+            options.forEach(opt => {
+                opt.style.pointerEvents = 'none'; // Disable further clicks
+                if (opt.dataset.value === correctValue) {
+                    opt.classList.add('correct');
+                } else if (opt === selectedOption) {
+                    opt.classList.add('incorrect');
+                }
+            });
+            checkAllQuestionsAnswered();
+        };
+
+        const handleTextAnswer = (e) => {
+            const checkButton = e.target;
+            const questionDiv = checkButton.closest('.question');
+            const questionId = questionDiv.dataset.questionId;
+            const input = questionDiv.querySelector('input, textarea');
+
+            if (input.value.length < 5) {
+                showModal('Answer too short', 'Please provide a more detailed answer before checking.');
+                return;
+            }
+            
+            let isCorrect = false;
+            let feedback = '';
+            
+            if (questionId === '2') {
+                const numericAnswer = parseInt(input.value.replace(/[^0-9]/g, ''));
+                isCorrect = numericAnswer === 4096;
+                feedback = isCorrect 
+                    ? `Correct! 2<sup>12</sup> is 4096.` 
+                    : `Not quite. The correct answer is 2<sup>12</sup>, which equals 4096. Your answer was ${numericAnswer || 'not a valid number'}.`;
+            } else if (questionId === '3') {
+                const text = input.value.toLowerCase();
+                const keywords = ['levels', 'quantization', 'accurate', 'error', 'closer', 'original', 'steps'];
+                let matches = keywords.filter(kw => text.includes(kw)).length;
+                isCorrect = matches >= 3; // Simple check for key concepts
+                 feedback = isCorrect
+                    ? `Good explanation! You correctly identified the key concepts. A higher bit depth provides more quantization levels, which allows the digital representation to be a closer approximation of the original analogue wave, reducing quantization error.`
+                    : `Your explanation could be more detailed. A good answer would mention that a higher bit depth increases the number of available <span class='highlight'>quantization levels</span>. This means each sample's amplitude can be measured more <span class='highlight'>accurately</span>, making the stepped digital signal a closer match to the original analogue wave and reducing <span class='highlight'>quantization error</span>.`;
+            }
+
+            quizAnswers[questionId] = { answer: input.value, isCorrect };
+            if (isCorrect) score++;
+            
+            showModal(isCorrect ? 'Correct!' : 'Review This', feedback);
+            
+            checkButton.disabled = true;
+            input.disabled = true;
+            checkAllQuestionsAnswered();
+        };
+        
+        const finishQuiz = () => {
+            quizFinished = true;
+            document.getElementById('final-score-display').innerHTML = `Your final score is: <span class="highlight">${score} out of 3</span>`;
+            finishQuizBtn.style.display = 'none';
+            showModal('Quiz Complete!', `You scored ${score} out of 3. You can review the summary on the final page or reset the simulation to try again.`);
+            nextStep();
+        };
+        
+        // --- Event Listeners ---
+        nextBtn.addEventListener('click', nextStep);
+        prevBtn.addEventListener('click', prevStep);
+        resetBtn.addEventListener('click', resetSimulation);
+        modalCloseBtn.addEventListener('click', hideModal);
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            // Do not navigate if user is typing in an input field
+            if(document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                return;
+            }
+            if (e.key === 'ArrowRight') {
+                nextBtn.click();
+            } else if (e.key === 'ArrowLeft') {
+                prevBtn.click();
+            }
+        });
+
+        // Event listener for canvas controls
+        if (bitDepthSlider) {
+            bitDepthSlider.addEventListener('input', drawVisualization);
+        }
+        
+        // Event listener for file size calculator
+        if(fileSizeSelect) {
+            fileSizeSelect.addEventListener('change', updateFileSize);
+        }
+
+        // Event delegation for quiz
+        if (quizContainer) {
+            quizContainer.addEventListener('click', (e) => {
+                if (e.target.closest('.option')) {
+                    handleMcqAnswer(e);
+                }
+                if (e.target.classList.contains('check-btn')) {
+                    handleTextAnswer(e);
+                }
+            });
+        }
+        
+        if (finishQuizBtn) {
+            finishQuizBtn.addEventListener('click', finishQuiz);
+        }
+
+        // Initial setup
+        showStep(currentStep);
+    });
+    </script>
+</body>
+</html>

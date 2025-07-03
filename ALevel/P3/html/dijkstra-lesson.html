@@ -1,0 +1,3934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dijkstra's Algorithm | Interactive Lesson</title>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary-color: #8b5cf6;
+            --secondary-dark: #7c3aed;
+            --success-color: #10b981;
+            --success-dark: #059669;
+            --error-color: #ef4444;
+            --error-dark: #dc2626;
+            --warning-color: #f59e0b;
+            --warning-dark: #d97706;
+            --bg-color: #ffffff;
+            --bg-secondary: #f8fafc;
+            --text-color: #1e293b;
+            --text-secondary: #64748b;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --highlight-color: #fef3c7;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-success: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            --gradient-gold: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --animation-duration: 0.3s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Performance: Use transform for animations */
+        * {
+            will-change: auto;
+        }
+
+        /* High Contrast Mode */
+        body.high-contrast {
+            --bg-color: #000000;
+            --bg-secondary: #0a0a0a;
+            --text-color: #ffffff;
+            --text-secondary: #e0e0e0;
+            --card-bg: #1a1a1a;
+            --border-color: #ffffff;
+            --primary-color: #00ff00;
+            --secondary-color: #ffff00;
+            --gradient-primary: linear-gradient(135deg, #00ff00 0%, #ffff00 100%);
+        }
+
+        /* Dyslexia-Friendly Font */
+        body.dyslexia-font {
+            font-family: 'Comic Sans MS', 'OpenDyslexic', sans-serif;
+            letter-spacing: 0.05em;
+            word-spacing: 0.1em;
+            line-height: 1.8;
+        }
+
+        /* Modern Glass Header */
+        .header {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 1.5rem 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.1) 100%);
+            pointer-events: none;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Modern XP Container */
+        .xp-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(255,255,255,0.15);
+            padding: 0.5rem 1.5rem;
+            border-radius: 2rem;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+            transition: transform var(--animation-duration) ease;
+        }
+
+        .xp-container:hover {
+            transform: translateY(-2px);
+        }
+
+        .xp-bar {
+            width: 200px;
+            height: 24px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+        }
+
+        .xp-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .level-badge {
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 1.5rem;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        /* Modern Navigation */
+        .nav-container {
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(20px);
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 80px;
+            z-index: 999;
+            box-shadow: var(--shadow-md);
+        }
+
+        .nav-pills {
+            display: flex;
+            gap: 0.75rem;
+            overflow-x: auto;
+            padding: 0.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .nav-pills::-webkit-scrollbar {
+            display: none;
+        }
+
+        .nav-pill {
+            padding: 0.625rem 1.25rem;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 2rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.875rem;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-pill::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: var(--primary-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .nav-pill:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .nav-pill:hover::before {
+            width: 100%;
+            height: 100%;
+        }
+
+        .nav-pill.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .nav-pill.completed {
+            border-color: var(--success-color);
+            position: relative;
+        }
+
+        .nav-pill.completed::after {
+            content: '✓';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--gradient-success);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            box-shadow: var(--shadow-md);
+            animation: bounceIn 0.5s ease;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            min-height: calc(100vh - 200px);
+        }
+
+        .section {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .section.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Modern Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            transition: transform var(--animation-duration) ease, box-shadow var(--animation-duration) ease;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.6s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .card-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-title span {
+            font-size: 2rem;
+            -webkit-text-fill-color: initial;
+        }
+
+        /* Interactive Areas */
+        .interactive-area {
+            background: var(--bg-secondary);
+            border: 2px dashed var(--border-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            min-height: 120px;
+            position: relative;
+            transition: all var(--animation-duration) ease;
+        }
+
+        .interactive-area:hover {
+            border-color: var(--primary-light);
+            background: rgba(99, 102, 241, 0.02);
+        }
+
+        .highlight-active {
+            border-color: var(--primary-color);
+            background: rgba(99, 102, 241, 0.05);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+            50% { box-shadow: 0 0 0 12px rgba(99, 102, 241, 0); }
+        }
+
+        /* Modern Buttons */
+        .btn {
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            text-transform: none;
+            letter-spacing: 0.025em;
+            touch-action: manipulation;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--card-bg);
+            color: var(--text-color);
+            border: 2px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-secondary);
+            border-color: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success-color), var(--success-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        /* Modern Achievement Popup */
+        .achievement-popup {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: white;
+            border-radius: 1.5rem;
+            padding: 1.5rem 2rem;
+            box-shadow: var(--shadow-xl);
+            transform: translateX(400px);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2000;
+            max-width: 320px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .achievement-popup::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-gold);
+        }
+
+        .achievement-popup.show {
+            transform: translateX(0);
+        }
+
+        .achievement-icon {
+            font-size: 3.5rem;
+            text-align: center;
+            margin-bottom: 0.75rem;
+            animation: bounceRotate 0.6s ease;
+        }
+
+        @keyframes bounceRotate {
+            0% { transform: scale(0) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(180deg); }
+            100% { transform: scale(1) rotate(360deg); }
+        }
+
+        /* Quiz Elements */
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 1.25rem;
+            margin: 0.75rem 0;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            font-weight: 500;
+        }
+
+        .quiz-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .quiz-option:hover {
+            background: var(--bg-secondary);
+            border-color: var(--primary-light);
+            transform: translateX(8px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .quiz-option:hover::before {
+            left: 100%;
+        }
+
+        .quiz-option.selected {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .quiz-option.correct {
+            background: linear-gradient(135deg, var(--success-color), var(--success-dark));
+            color: white;
+            border-color: var(--success-color);
+            animation: correctAnswer 0.6s ease;
+        }
+
+        .quiz-option.incorrect {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            border-color: var(--error-color);
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes correctAnswer {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        /* Modern Input Fields */
+        .input-field {
+            width: 100%;
+            padding: 0.875rem 1.25rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            transition: all var(--animation-duration) ease;
+            background: var(--card-bg);
+            font-family: inherit;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            background: white;
+        }
+
+        .input-field::placeholder {
+            color: var(--text-secondary);
+        }
+
+        /* Graph Visualization */
+        .graph-container {
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .graph-svg {
+            width: 100%;
+            height: 400px;
+            cursor: grab;
+        }
+
+        .graph-svg:active {
+            cursor: grabbing;
+        }
+
+        .node {
+            fill: var(--primary-color);
+            stroke: var(--primary-dark);
+            stroke-width: 3;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .node:hover {
+            fill: var(--primary-light);
+            transform: scale(1.1);
+        }
+
+        .node.current {
+            fill: var(--warning-color);
+            stroke: var(--warning-dark);
+            animation: nodePulse 1s infinite;
+        }
+
+        .node.visited {
+            fill: var(--success-color);
+            stroke: var(--success-dark);
+        }
+
+        .node.start {
+            fill: var(--secondary-color);
+            stroke: var(--secondary-dark);
+        }
+
+        .node.target {
+            fill: var(--error-color);
+            stroke: var(--error-dark);
+        }
+
+        @keyframes nodePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .edge {
+            stroke: var(--text-secondary);
+            stroke-width: 2;
+            fill: none;
+            transition: all 0.3s ease;
+        }
+
+        .edge.highlighted {
+            stroke: var(--primary-color);
+            stroke-width: 4;
+            animation: edgeFlow 2s infinite;
+        }
+
+        @keyframes edgeFlow {
+            0% { stroke-dasharray: 0 20; }
+            100% { stroke-dasharray: 20 0; }
+        }
+
+        .edge-weight {
+            fill: var(--text-color);
+            font-size: 14px;
+            font-weight: bold;
+            text-anchor: middle;
+            background: white;
+            pointer-events: none;
+        }
+
+        .node-label {
+            fill: white;
+            font-size: 16px;
+            font-weight: bold;
+            text-anchor: middle;
+            pointer-events: none;
+        }
+
+        /* Trace Table */
+        .trace-table {
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            overflow: hidden;
+            margin: 1.5rem 0;
+            box-shadow: var(--shadow-md);
+        }
+
+        .trace-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .trace-table th {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .trace-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .trace-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .trace-table tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        .trace-table td.editable {
+            cursor: pointer;
+            position: relative;
+        }
+
+        .trace-table td.editable:hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .trace-table td.correct {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-dark);
+        }
+
+        .trace-table td.incorrect {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error-dark);
+        }
+
+        /* Simulation Controls */
+        .simulation-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .speed-slider {
+            width: 150px;
+            height: 6px;
+            background: var(--border-color);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .speed-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        /* Algorithm Steps */
+        .algorithm-steps {
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--primary-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 0.5rem;
+        }
+
+        .algorithm-steps h4 {
+            color: var(--primary-dark);
+            margin-bottom: 1rem;
+        }
+
+        .step-item {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .step-item:last-child {
+            border-bottom: none;
+        }
+
+        .step-item:hover {
+            background: rgba(99, 102, 241, 0.05);
+            padding-left: 1rem;
+        }
+
+        .step-item.active {
+            background: rgba(99, 102, 241, 0.1);
+            font-weight: 600;
+            color: var(--primary-dark);
+            padding-left: 1rem;
+        }
+
+        /* Drawing Canvas */
+        .drawing-canvas {
+            border: 3px solid var(--border-color);
+            border-radius: 1rem;
+            background: white;
+            touch-action: none;
+            cursor: crosshair;
+            margin: 1.5rem 0;
+            box-shadow: var(--shadow-md);
+            transition: border-color var(--animation-duration) ease;
+        }
+
+        .drawing-canvas:hover {
+            border-color: var(--primary-light);
+        }
+
+        /* Modern Feedback Button */
+        .feedback-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            font-size: 1.5rem;
+        }
+
+        .feedback-btn:hover {
+            transform: scale(1.1) rotate(15deg);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .feedback-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Modern Modal */
+        .feedback-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .feedback-content {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Modern Accessibility Controls */
+        .accessibility-controls {
+            position: fixed;
+            top: 150px;
+            right: 20px;
+            background: white;
+            border-radius: 1rem;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            border: 1px solid var(--border-color);
+            transition: transform var(--animation-duration) ease;
+        }
+
+        .accessibility-controls:hover {
+            transform: translateX(-5px);
+        }
+
+        .accessibility-controls h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .accessibility-controls button {
+            display: block;
+            width: 100%;
+            margin: 0.5rem 0;
+            padding: 0.625rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all var(--animation-duration) ease;
+            font-weight: 500;
+        }
+
+        .accessibility-controls button:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            transform: translateX(-2px);
+        }
+
+        /* Progress Indicators */
+        .progress-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--border-color);
+            transition: all var(--animation-duration) ease;
+            cursor: pointer;
+        }
+
+        .progress-dot:hover {
+            transform: scale(1.2);
+        }
+
+        .progress-dot.active {
+            background: var(--primary-color);
+            transform: scale(1.5);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .progress-dot.completed {
+            background: var(--success-color);
+            position: relative;
+        }
+
+        .progress-dot.completed::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 0.6rem;
+            font-weight: bold;
+        }
+
+        /* Shame Message */
+        .shame-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            padding: 2rem 3rem;
+            border-radius: 1.5rem;
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-align: center;
+            z-index: 3000;
+            box-shadow: var(--shadow-xl);
+            animation: shameAnimation 3s ease forwards;
+        }
+
+        @keyframes shameAnimation {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+            20% { transform: translate(-50%, -50%) scale(1.2) rotate(-5deg); }
+            40% { transform: translate(-50%, -50%) scale(0.9) rotate(5deg); }
+            60% { transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
+            80% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+        }
+
+        /* Modern Hint Container */
+        .hint-container {
+            margin-top: 1rem;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+            border-left: 4px solid var(--warning-color);
+            border-radius: 0.75rem;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        .hint-container.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Code Display */
+        .code-block {
+            background: #1a1b26;
+            color: #a9b1d6;
+            padding: 1.75rem;
+            border-radius: 1rem;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.95rem;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            line-height: 1.6;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+        }
+
+        .code-block::before {
+            content: 'PSEUDOCODE';
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            font-size: 0.75rem;
+            color: #565f89;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .code-block .keyword {
+            color: #bb9af7;
+            font-weight: 600;
+        }
+
+        .code-block .string {
+            color: #9ece6a;
+        }
+
+        .code-block .comment {
+            color: #565f89;
+            font-style: italic;
+        }
+
+        .code-block .number {
+            color: #ff9e64;
+        }
+
+        /* Mark Scheme */
+        .mark-scheme {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            border: 2px solid var(--success-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-top: 1.5rem;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .mark-scheme.show {
+            display: block;
+        }
+
+        .mark-scheme h5 {
+            color: var(--success-dark);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        /* Font Size Controls */
+        .font-size-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+
+        .font-size-controls button {
+            padding: 0.5rem 0.75rem;
+            margin: 0;
+        }
+
+        body.font-small { font-size: 14px; }
+        body.font-large { font-size: 18px; }
+        body.font-xlarge { font-size: 20px; }
+
+        /* Loading State */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid transparent;
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Matching Container */
+        .matching-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .draggable-item, .drop-zone {
+            padding: 1.25rem;
+            margin: 0.75rem 0;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            cursor: pointer;
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            touch-action: manipulation;
+            position: relative;
+            font-weight: 500;
+        }
+
+        .draggable-item:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .draggable-item.selected {
+            background: var(--gradient-primary);
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .draggable-item.matched {
+            opacity: 0.5;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+
+        .drop-zone {
+            min-height: 80px;
+            border-style: dashed;
+            border-width: 3px;
+            background: var(--bg-secondary);
+        }
+
+        .drop-zone.highlight {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: var(--primary-color);
+            animation: dropZonePulse 1s infinite;
+        }
+
+        @keyframes dropZonePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .drop-zone.correct {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            border-color: var(--success-color);
+        }
+
+        /* Performance Optimizations */
+        .section:not(.active) {
+            visibility: hidden;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .xp-container {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .xp-bar {
+                width: 150px;
+            }
+
+            .matching-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .nav-container {
+                top: 140px;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .accessibility-controls {
+                top: auto;
+                bottom: 90px;
+                right: 10px;
+                padding: 1rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .achievement-popup {
+                right: 10px;
+                left: 10px;
+                max-width: none;
+            }
+
+            .interactive-area {
+                padding: 1.5rem;
+            }
+
+            .graph-svg {
+                height: 300px;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            .header, .nav-container, .feedback-btn, .accessibility-controls, .btn {
+                display: none !important;
+            }
+
+            .section {
+                display: block !important;
+                opacity: 1 !important;
+                transform: none !important;
+                page-break-after: always;
+            }
+
+            .card {
+                box-shadow: none;
+                border: 1px solid #000;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 6px;
+            border: 2px solid var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-color);
+        }
+
+        /* Particle Container */
+        #particle-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2999;
+        }
+
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFall 2s linear forwards;
+        }
+
+        @keyframes particleFall {
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+
+        /* Quiz Question Styling */
+        .quiz-question {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .quiz-question p {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-color);
+        }
+
+        /* Success Animation */
+        @keyframes successPulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .success-animation {
+            animation: successPulse 1s ease;
+        }
+
+        /* Iframe Support */
+        iframe {
+            width: 100%;
+            height: 80vh;
+            border: none;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="header-content">
+            <h1>Dijkstra's Algorithm</h1>
+            <div class="xp-container" role="status" aria-live="polite">
+                <span class="level-badge">Level <span id="current-level">1</span></span>
+                <div class="xp-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
+                </div>
+                <span id="xp-text">0 / 100 XP</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-container" role="navigation" aria-label="Lesson sections">
+        <div class="nav-pills" id="nav-pills">
+            <button class="nav-pill active" data-section="intro" aria-current="page">Introduction</button>
+            <button class="nav-pill" data-section="starter">Starter Activity</button>
+            <button class="nav-pill" data-section="basics">Algorithm Basics</button>
+            <button class="nav-pill" data-section="simulation">Interactive Simulation</button>
+            <button class="nav-pill" data-section="trace">Trace Tables</button>
+            <button class="nav-pill" data-section="applications">Real Applications</button>
+            <button class="nav-pill" data-section="mistakes">Common Mistakes</button>
+            <button class="nav-pill" data-section="complexity">Complexity Analysis</button>
+            <button class="nav-pill" data-section="comparisons">Algorithm Comparisons</button>
+            <button class="nav-pill" data-section="summary">Summary & Quiz</button>
+            <button class="nav-pill" data-section="exam">Exam Practice</button>
+            <button class="nav-pill" data-section="extension">Extension</button>
+            <button class="nav-pill" data-section="videos">Videos</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" role="main">
+        <!-- Introduction Section -->
+        <section id="intro" class="section active">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🗺️</span> Welcome to Dijkstra's Algorithm!
+                </h2>
+                <div class="progress-indicator" role="group" aria-label="Section progress">
+                    <span class="progress-dot active" title="Current section"></span>
+                    <span class="progress-dot" title="Not started"></span>
+                    <span class="progress-dot" title="Not started"></span>
+                    <span class="progress-dot" title="Not started"></span>
+                    <span class="progress-dot" title="Not started"></span>
+                </div>
+                
+                <h3>Learning Outcomes</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem; line-height: 1.8;">
+                    <li>Understand the purpose and applications of Dijkstra's algorithm</li>
+                    <li>Explain how the algorithm finds shortest paths in weighted graphs</li>
+                    <li>Trace through the algorithm step-by-step using trace tables</li>
+                    <li>Implement the algorithm for simple graphs</li>
+                    <li>Analyze the time complexity (O((V + E) log V))</li>
+                    <li>Apply the algorithm to real-world scenarios</li>
+                    <li>Identify when Dijkstra's algorithm is and isn't appropriate</li>
+                </ul>
+
+                <div class="interactive-area highlight-active">
+                    <h4>Pre-Assessment: Test Your Knowledge</h4>
+                    <p>Let's see what you already know about graph algorithms!</p>
+                    
+                    <div id="pre-quiz">
+                        <p><strong>Question 1:</strong> What type of graph does Dijkstra's algorithm work on?</p>
+                        <button class="quiz-option" data-answer="a">Directed graphs only</button>
+                        <button class="quiz-option" data-answer="b">Weighted graphs with non-negative edges</button>
+                        <button class="quiz-option" data-answer="c">Unweighted graphs only</button>
+                        <button class="quiz-option" data-answer="d">Any type of graph</button>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkPreQuiz()" style="margin-top: 1rem;">
+                        Check Answer
+                    </button>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>What is Dijkstra's Algorithm?</h4>
+                    <p>Dijkstra's algorithm is a graph search algorithm that solves the single-source shortest path problem for a graph with non-negative edge weights. It was conceived by computer scientist Edsger W. Dijkstra in 1956.</p>
+                    
+                    <p style="margin-top: 1rem;"><strong>Key Applications:</strong></p>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>GPS navigation systems</li>
+                        <li>Network routing protocols</li>
+                        <li>Flight path planning</li>
+                        <li>Social network analysis</li>
+                    </ul>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="navigateSection('next')">
+                        Start Learning →
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Starter Activity -->
+        <section id="starter" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎯</span> Starter Activity: Graph Theory Recap
+                </h2>
+                
+                <p>Match the graph theory terms to their definitions by clicking items to connect them!</p>
+                
+                <div class="matching-container" id="starter-matching">
+                    <div>
+                        <h4>Terms</h4>
+                        <div class="draggable-item" data-id="1">Weighted Graph</div>
+                        <div class="draggable-item" data-id="2">Vertex (Node)</div>
+                        <div class="draggable-item" data-id="3">Edge</div>
+                        <div class="draggable-item" data-id="4">Path</div>
+                        <div class="draggable-item" data-id="5">Adjacency</div>
+                        <div class="draggable-item" data-id="6">Distance</div>
+                    </div>
+                    <div>
+                        <h4>Definitions</h4>
+                        <div class="drop-zone" data-type="weighted">
+                            <strong>Graph where edges have numerical values</strong>
+                            <div class="dropped-items"></div>
+                        </div>
+                        <div class="drop-zone" data-type="vertex">
+                            <strong>A point in the graph</strong>
+                            <div class="dropped-items"></div>
+                        </div>
+                        <div class="drop-zone" data-type="edge">
+                            <strong>Connection between two vertices</strong>
+                            <div class="dropped-items"></div>
+                        </div>
+                        <div class="drop-zone" data-type="path">
+                            <strong>Sequence of edges connecting vertices</strong>
+                            <div class="dropped-items"></div>
+                        </div>
+                        <div class="drop-zone" data-type="adjacency">
+                            <strong>When two vertices are directly connected</strong>
+                            <div class="dropped-items"></div>
+                        </div>
+                        <div class="drop-zone" data-type="distance">
+                            <strong>Sum of weights along a path</strong>
+                            <div class="dropped-items"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetStarterActivity()">Reset Activity</button>
+                <button class="btn btn-primary" onclick="checkStarterActivity()">Check Answers</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Algorithm Basics -->
+        <section id="basics" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🔧</span> Algorithm Basics
+                </h2>
+                
+                <h3>How Dijkstra's Algorithm Works</h3>
+                <p>The algorithm maintains a set of vertices whose shortest distance from the source is known. It repeatedly selects the vertex with the minimum distance and updates distances to its neighbors.</p>
+                
+                <div class="algorithm-steps">
+                    <h4>Algorithm Steps:</h4>
+                    <div class="step-item">1. Initialize distances: Set source to 0, all others to infinity</div>
+                    <div class="step-item">2. Create a set of unvisited vertices</div>
+                    <div class="step-item">3. Select the unvisited vertex with minimum distance</div>
+                    <div class="step-item">4. Update distances to its unvisited neighbors</div>
+                    <div class="step-item">5. Mark current vertex as visited</div>
+                    <div class="step-item">6. Repeat until all vertices are visited or target is reached</div>
+                </div>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Key Concepts Check</h4>
+                    <p>Fill in the blanks with the correct terms:</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>1. Dijkstra's algorithm finds the 
+                            <select class="input-field" style="width: 150px;" id="concept1">
+                                <option value="">Choose...</option>
+                                <option value="longest">longest</option>
+                                <option value="shortest">shortest</option>
+                                <option value="average">average</option>
+                                <option value="median">median</option>
+                            </select>
+                            path from a source vertex.
+                        </p>
+                        
+                        <p>2. The algorithm only works with 
+                            <select class="input-field" style="width: 150px;" id="concept2">
+                                <option value="">Choose...</option>
+                                <option value="negative">negative</option>
+                                <option value="positive">positive</option>
+                                <option value="non-negative">non-negative</option>
+                                <option value="zero">zero</option>
+                            </select>
+                            edge weights.
+                        </p>
+                        
+                        <p>3. Initially, all distances except the source are set to 
+                            <select class="input-field" style="width: 150px;" id="concept3">
+                                <option value="">Choose...</option>
+                                <option value="zero">zero</option>
+                                <option value="one">one</option>
+                                <option value="infinity">infinity</option>
+                                <option value="null">null</option>
+                            </select>
+                        </p>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkConcepts()">Check Answers</button>
+                </div>
+                
+                <div class="code-block">
+                    <span class="comment">// Dijkstra's Algorithm Pseudocode</span><br>
+                    <span class="keyword">FUNCTION</span> Dijkstra(Graph, source):<br>
+                    &nbsp;&nbsp;<span class="comment">// Initialize distances</span><br>
+                    &nbsp;&nbsp;<span class="keyword">FOR EACH</span> vertex v <span class="keyword">IN</span> Graph:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;distance[v] ← <span class="number">INFINITY</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;previous[v] ← <span class="keyword">UNDEFINED</span><br>
+                    &nbsp;&nbsp;<br>
+                    &nbsp;&nbsp;distance[source] ← <span class="number">0</span><br>
+                    &nbsp;&nbsp;unvisited ← <span class="keyword">SET</span> <span class="keyword">OF ALL</span> vertices<br>
+                    &nbsp;&nbsp;<br>
+                    &nbsp;&nbsp;<span class="keyword">WHILE</span> unvisited <span class="keyword">IS NOT EMPTY</span>:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;current ← vertex <span class="keyword">IN</span> unvisited <span class="keyword">WITH</span> minimum distance[current]<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">REMOVE</span> current <span class="keyword">FROM</span> unvisited<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">FOR EACH</span> neighbor <span class="keyword">OF</span> current:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;alt ← distance[current] + weight(current, neighbor)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">IF</span> alt < distance[neighbor]:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;distance[neighbor] ← alt<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;previous[neighbor] ← current<br>
+                    &nbsp;&nbsp;<br>
+                    &nbsp;&nbsp;<span class="keyword">RETURN</span> distance, previous
+                </div>
+                
+                <button class="btn btn-secondary" onclick="showHint('basics')">Need a Hint?</button>
+                
+                <div class="hint-container" id="basics-hint">
+                    <p>💡 Hint: Think about what "non-negative" means - it includes zero but excludes negative numbers. The algorithm starts with infinite distances because we haven't found any paths yet!</p>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive Simulation -->
+        <section id="simulation" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎮</span> Interactive Simulation
+                </h2>
+                
+                <p>Watch Dijkstra's algorithm find the shortest path from node A to all other nodes. Use the controls to step through the algorithm!</p>
+                
+                <div class="graph-container">
+                    <svg class="graph-svg" id="dijkstra-graph">
+                        <!-- Graph will be drawn here by JavaScript -->
+                    </svg>
+                </div>
+                
+                <div class="simulation-controls">
+                    <button class="btn btn-secondary" onclick="previousStep()" id="prev-step-btn" disabled>
+                        ← Previous Step
+                    </button>
+                    <button class="btn btn-primary" onclick="playPause()" id="play-pause-btn">
+                        ▶️ Play
+                    </button>
+                    <button class="btn btn-secondary" onclick="nextStep()" id="next-step-btn">
+                        Next Step →
+                    </button>
+                    <button class="btn btn-danger" onclick="resetSimulation()">
+                        Reset
+                    </button>
+                    
+                    <div class="speed-control">
+                        <label>Speed:</label>
+                        <input type="range" class="speed-slider" id="speed-slider" min="1" max="10" value="5">
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Current Step: <span id="current-step-desc">Initializing...</span></h4>
+                    
+                    <div class="trace-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Vertex</th>
+                                    <th>Distance</th>
+                                    <th>Previous</th>
+                                    <th>Visited</th>
+                                </tr>
+                            </thead>
+                            <tbody id="simulation-trace">
+                                <!-- Trace data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Reflection Questions</h4>
+                    <p>After watching the simulation, answer these questions:</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>1. Why does the algorithm always choose the unvisited vertex with the smallest distance?</p>
+                        <textarea class="input-field" id="reflection1" rows="3" placeholder="Your answer..."></textarea>
+                        
+                        <p style="margin-top: 1rem;">2. What would happen if the graph had negative edge weights?</p>
+                        <textarea class="input-field" id="reflection2" rows="3" placeholder="Your answer..."></textarea>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkReflections()">Submit Reflections</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Trace Tables -->
+        <section id="trace" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📝</span> Practice with Trace Tables
+                </h2>
+                
+                <p>Complete the trace table for Dijkstra's algorithm on this graph. Click on cells to edit them!</p>
+                
+                <div class="graph-container" style="height: 300px;">
+                    <svg class="graph-svg" id="trace-graph">
+                        <!-- Practice graph will be drawn here -->
+                    </svg>
+                </div>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Complete the Trace Table</h4>
+                    <p>Starting from vertex A, fill in the distances at each step. Use ∞ for infinity.</p>
+                    
+                    <div class="trace-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Step</th>
+                                    <th>Current</th>
+                                    <th>A</th>
+                                    <th>B</th>
+                                    <th>C</th>
+                                    <th>D</th>
+                                    <th>E</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>0</td>
+                                    <td>-</td>
+                                    <td>0</td>
+                                    <td class="editable" onclick="editCell(this, 0, 'B')">∞</td>
+                                    <td class="editable" onclick="editCell(this, 0, 'C')">∞</td>
+                                    <td class="editable" onclick="editCell(this, 0, 'D')">∞</td>
+                                    <td class="editable" onclick="editCell(this, 0, 'E')">∞</td>
+                                </tr>
+                                <tr>
+                                    <td>1</td>
+                                    <td>A</td>
+                                    <td>0</td>
+                                    <td class="editable" onclick="editCell(this, 1, 'B')">?</td>
+                                    <td class="editable" onclick="editCell(this, 1, 'C')">?</td>
+                                    <td class="editable" onclick="editCell(this, 1, 'D')">?</td>
+                                    <td class="editable" onclick="editCell(this, 1, 'E')">?</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td class="editable" onclick="editCell(this, 2, 'current')">?</td>
+                                    <td>0</td>
+                                    <td class="editable" onclick="editCell(this, 2, 'B')">?</td>
+                                    <td class="editable" onclick="editCell(this, 2, 'C')">?</td>
+                                    <td class="editable" onclick="editCell(this, 2, 'D')">?</td>
+                                    <td class="editable" onclick="editCell(this, 2, 'E')">?</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkTraceTable()">Check Answers</button>
+                    <button class="btn btn-secondary" onclick="resetTraceTable()">Reset Table</button>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Challenge: Find the Shortest Path</h4>
+                    <p>Using your completed trace table, what is the shortest path from A to E?</p>
+                    
+                    <input type="text" class="input-field" id="shortest-path" placeholder="Enter path (e.g., A → B → E)">
+                    
+                    <p style="margin-top: 1rem;">What is the total distance?</p>
+                    <input type="number" class="input-field" id="path-distance" placeholder="Enter distance" style="width: 150px;">
+                    
+                    <button class="btn btn-primary" onclick="checkShortestPath()" style="margin-top: 1rem;">Check Path</button>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Real Applications -->
+        <section id="applications" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🌍</span> Real-World Applications
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>GPS Navigation Systems</h4>
+                    <p>Modern GPS systems use variations of Dijkstra's algorithm to find the shortest route between locations. The graph represents the road network where:</p>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>Vertices are intersections or points of interest</li>
+                        <li>Edges are road segments</li>
+                        <li>Weights can represent distance, time, or fuel consumption</li>
+                    </ul>
+                </div>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Scenario Analysis</h4>
+                    <p>A delivery company wants to optimize their routes. They have the following requirements:</p>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>Minimize fuel costs</li>
+                        <li>Avoid traffic congestion</li>
+                        <li>Consider one-way streets</li>
+                    </ul>
+                    
+                    <p style="margin-top: 1rem;"><strong>Question:</strong> How would you modify the graph representation for each requirement?</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>1. For fuel costs, edge weights should represent:</p>
+                        <button class="quiz-option" onclick="checkApplication('fuel', 'a')">Distance only</button>
+                        <button class="quiz-option" onclick="checkApplication('fuel', 'b')">Time only</button>
+                        <button class="quiz-option" onclick="checkApplication('fuel', 'c')">Fuel consumption based on distance and road type</button>
+                        <button class="quiz-option" onclick="checkApplication('fuel', 'd')">Number of traffic lights</button>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Other Applications</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                        <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                            <h5>Network Routing</h5>
+                            <p>Internet routers use Dijkstra's algorithm to find optimal paths for data packets.</p>
+                        </div>
+                        <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                            <h5>Social Networks</h5>
+                            <p>Finding degrees of separation between users or influence paths.</p>
+                        </div>
+                        <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                            <h5>Game Development</h5>
+                            <p>AI pathfinding for NPCs in video games.</p>
+                        </div>
+                        <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                            <h5>Flight Planning</h5>
+                            <p>Airlines optimize routes considering distance, fuel, and air traffic.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Common Mistakes -->
+        <section id="mistakes" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>⚠️</span> Common Mistakes to Avoid
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Mistake #1: Forgetting to Update All Neighbors</h4>
+                    <p>When visiting a vertex, you must check ALL unvisited neighbors, not just the first one you find.</p>
+                    
+                    <div style="background: rgba(239, 68, 68, 0.1); padding: 1rem; border-radius: 0.5rem; margin: 1rem 0;">
+                        <strong>❌ Wrong:</strong> Update only the closest neighbor<br>
+                        <strong>✓ Correct:</strong> Check all neighbors and update if a shorter path is found
+                    </div>
+                </div>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Identify the Mistake</h4>
+                    <p>Look at this trace table excerpt. What mistake was made?</p>
+                    
+                    <div class="trace-table" style="margin: 1rem 0;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Current</th>
+                                    <th>A</th>
+                                    <th>B</th>
+                                    <th>C</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>A</td>
+                                    <td>0</td>
+                                    <td>4</td>
+                                    <td>∞</td>
+                                    <td>Updated B to 4</td>
+                                </tr>
+                                <tr>
+                                    <td>B</td>
+                                    <td>0</td>
+                                    <td>4</td>
+                                    <td>9</td>
+                                    <td>Updated C to 9</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <p>The graph shows: A→B (weight 4), A→C (weight 7), B→C (weight 2)</p>
+                    
+                    <button class="quiz-option" onclick="checkMistake('a')">Forgot to mark vertices as visited</button>
+                    <button class="quiz-option" onclick="checkMistake('b')">Used wrong edge weights</button>
+                    <button class="quiz-option" onclick="checkMistake('c')">Should update C to 6 (4+2) not 9</button>
+                    <button class="quiz-option" onclick="checkMistake('d')">No mistake - this is correct</button>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Other Common Mistakes</h4>
+                    <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                        <li><strong>Using with negative weights:</strong> Dijkstra's doesn't work correctly with negative edge weights</li>
+                        <li><strong>Not initializing properly:</strong> Forgetting to set source distance to 0 or others to infinity</li>
+                        <li><strong>Revisiting vertices:</strong> Once marked as visited, a vertex should not be reconsidered</li>
+                        <li><strong>Wrong comparison:</strong> Using ≤ instead of < when comparing distances</li>
+                    </ul>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Complexity Analysis -->
+        <section id="complexity" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📊</span> Complexity Analysis
+                </h2>
+                
+                <h3>Time Complexity</h3>
+                <p>The time complexity of Dijkstra's algorithm depends on the data structures used:</p>
+                
+                <div class="interactive-area">
+                    <h4>Implementation Variants</h4>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <th style="padding: 0.75rem; background: var(--bg-secondary); text-align: left;">Implementation</th>
+                            <th style="padding: 0.75rem; background: var(--bg-secondary);">Time Complexity</th>
+                            <th style="padding: 0.75rem; background: var(--bg-secondary);">Best For</th>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">Array/List</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color); text-align: center;">O(V²)</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">Dense graphs</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">Binary Heap</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color); text-align: center;">O((V + E) log V)</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">Sparse graphs</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.75rem;">Fibonacci Heap</td>
+                            <td style="padding: 0.75rem; text-align: center;">O(E + V log V)</td>
+                            <td style="padding: 0.75rem;">Theoretical best</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Complexity Quiz</h4>
+                    <p>Test your understanding of the algorithm's complexity:</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>1. In a graph with V vertices and E edges, how many times do we extract the minimum?</p>
+                        <button class="quiz-option" onclick="checkComplexity('q1', 'a')">E times</button>
+                        <button class="quiz-option" onclick="checkComplexity('q1', 'b')">V times</button>
+                        <button class="quiz-option" onclick="checkComplexity('q1', 'c')">V + E times</button>
+                        <button class="quiz-option" onclick="checkComplexity('q1', 'd')">V × E times</button>
+                    </div>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>2. Why is the binary heap implementation more efficient for sparse graphs?</p>
+                        <textarea class="input-field" id="complexity-reason" rows="3" placeholder="Explain your reasoning..."></textarea>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkComplexityReason()">Submit Answer</button>
+                </div>
+                
+                <h3 style="margin-top: 2rem;">Space Complexity</h3>
+                <p>The space complexity is O(V) for storing:</p>
+                <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                    <li>Distance array: O(V)</li>
+                    <li>Previous/parent array: O(V)</li>
+                    <li>Priority queue: O(V)</li>
+                    <li>Visited set: O(V)</li>
+                </ul>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Algorithm Comparisons -->
+        <section id="comparisons" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🔄</span> Comparing Pathfinding Algorithms
+                </h2>
+                
+                <p>How does Dijkstra's algorithm compare to other pathfinding algorithms?</p>
+                
+                <div class="interactive-area">
+                    <h4>Algorithm Comparison Table</h4>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <th style="padding: 0.75rem; background: var(--bg-secondary);">Algorithm</th>
+                            <th style="padding: 0.75rem; background: var(--bg-secondary);">Best For</th>
+                            <th style="padding: 0.75rem; background: var(--bg-secondary);">Limitations</th>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);"><strong>Dijkstra's</strong></td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">Single-source shortest path, non-negative weights</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">Doesn't work with negative weights</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);"><strong>BFS</strong></td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">Unweighted graphs</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">Only for unweighted graphs</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);"><strong>Bellman-Ford</strong></td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">Graphs with negative weights</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">Slower: O(VE)</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.75rem;"><strong>A*</strong></td>
+                            <td style="padding: 0.75rem;">When you have a good heuristic</td>
+                            <td style="padding: 0.75rem;">Requires admissible heuristic</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Choose the Right Algorithm</h4>
+                    <p>For each scenario, select the most appropriate algorithm:</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>1. Finding the shortest path in a city map with distances:</p>
+                        <button class="quiz-option" onclick="checkAlgorithmChoice('1', 'a')">BFS</button>
+                        <button class="quiz-option" onclick="checkAlgorithmChoice('1', 'b')">DFS</button>
+                        <button class="quiz-option" onclick="checkAlgorithmChoice('1', 'c')">Dijkstra's</button>
+                        <button class="quiz-option" onclick="checkAlgorithmChoice('1', 'd')">Bubble Sort</button>
+                    </div>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>2. Finding paths in a graph that might have negative cycles:</p>
+                        <button class="quiz-option" onclick="checkAlgorithmChoice('2', 'a')">Dijkstra's</button>
+                        <button class="quiz-option" onclick="checkAlgorithmChoice('2', 'b')">Bellman-Ford</button>
+                        <button class="quiz-option" onclick="checkAlgorithmChoice('2', 'c')">BFS</button>
+                        <button class="quiz-option" onclick="checkAlgorithmChoice('2', 'd')">Quick Sort</button>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary & Quiz -->
+        <section id="summary" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📝</span> Summary & Final Quiz
+                </h2>
+                
+                <h3>Key Takeaways</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li><strong>Purpose:</strong> Finds shortest paths from a source to all other vertices</li>
+                    <li><strong>Requirements:</strong> Non-negative edge weights</li>
+                    <li><strong>Time Complexity:</strong> O((V + E) log V) with binary heap</li>
+                    <li><strong>Greedy Algorithm:</strong> Always selects minimum distance vertex</li>
+                    <li><strong>Applications:</strong> GPS, networking, gaming, and more</li>
+                </ul>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Final Assessment</h4>
+                    <div id="final-quiz">
+                        <!-- Question 1 -->
+                        <div class="quiz-question">
+                            <p><strong>1. What is the main limitation of Dijkstra's algorithm?</strong></p>
+                            <button class="quiz-option" data-q="1" data-a="a">It only works on directed graphs</button>
+                            <button class="quiz-option" data-q="1" data-a="b">It cannot handle negative edge weights</button>
+                            <button class="quiz-option" data-q="1" data-a="c">It only finds paths to one vertex</button>
+                            <button class="quiz-option" data-q="1" data-a="d">It requires sorted input</button>
+                        </div>
+                        
+                        <!-- Question 2 -->
+                        <div class="quiz-question">
+                            <p><strong>2. In Dijkstra's algorithm, what is the initial distance to the source vertex?</strong></p>
+                            <button class="quiz-option" data-q="2" data-a="a">Infinity</button>
+                            <button class="quiz-option" data-q="2" data-a="b">1</button>
+                            <button class="quiz-option" data-q="2" data-a="c">-1</button>
+                            <button class="quiz-option" data-q="2" data-a="d">0</button>
+                        </div>
+                        
+                        <!-- Question 3 -->
+                        <div class="quiz-question">
+                            <p><strong>3. Which data structure improves Dijkstra's time complexity?</strong></p>
+                            <button class="quiz-option" data-q="3" data-a="a">Stack</button>
+                            <button class="quiz-option" data-q="3" data-a="b">Queue</button>
+                            <button class="quiz-option" data-q="3" data-a="c">Priority Queue (Heap)</button>
+                            <button class="quiz-option" data-q="3" data-a="d">Linked List</button>
+                        </div>
+                        
+                        <!-- Question 4 -->
+                        <div class="quiz-question">
+                            <p><strong>4. True or False: Dijkstra's algorithm can find the shortest path between any two vertices.</strong></p>
+                            <button class="quiz-option" data-q="4" data-a="a">True</button>
+                            <button class="quiz-option" data-q="4" data-a="b">False - it finds paths from one source to all others</button>
+                        </div>
+                        
+                        <!-- Question 5 -->
+                        <div class="quiz-question">
+                            <p><strong>5. What type of algorithm is Dijkstra's?</strong></p>
+                            <button class="quiz-option" data-q="5" data-a="a">Divide and Conquer</button>
+                            <button class="quiz-option" data-q="5" data-a="b">Dynamic Programming</button>
+                            <button class="quiz-option" data-q="5" data-a="c">Greedy</button>
+                            <button class="quiz-option" data-q="5" data-a="d">Backtracking</button>
+                        </div>
+                        
+                        <!-- Question 6 -->
+                        <div class="quiz-question">
+                            <p><strong>6. When does Dijkstra's algorithm terminate?</strong></p>
+                            <button class="quiz-option" data-q="6" data-a="a">When the target is found</button>
+                            <button class="quiz-option" data-q="6" data-a="b">After V iterations</button>
+                            <button class="quiz-option" data-q="6" data-a="c">When all vertices are visited</button>
+                            <button class="quiz-option" data-q="6" data-a="d">After E iterations</button>
+                        </div>
+                        
+                        <!-- Question 7 -->
+                        <div class="quiz-question">
+                            <p><strong>7. What happens if we use Dijkstra's on a graph with negative weights?</strong></p>
+                            <button class="quiz-option" data-q="7" data-a="a">It works perfectly</button>
+                            <button class="quiz-option" data-q="7" data-a="b">It may not find the shortest paths</button>
+                            <button class="quiz-option" data-q="7" data-a="c">It runs faster</button>
+                            <button class="quiz-option" data-q="7" data-a="d">It uses less memory</button>
+                        </div>
+                        
+                        <!-- Question 8 -->
+                        <div class="quiz-question">
+                            <p><strong>8. Which statement about visited vertices is correct?</strong></p>
+                            <button class="quiz-option" data-q="8" data-a="a">They can be revisited if a shorter path is found</button>
+                            <button class="quiz-option" data-q="8" data-a="b">They are never reconsidered</button>
+                            <button class="quiz-option" data-q="8" data-a="c">They are only marked at the end</button>
+                            <button class="quiz-option" data-q="8" data-a="d">They don't affect the algorithm</button>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="submitFinalQuiz()">Submit Quiz</button>
+                    
+                    <div id="quiz-results" style="margin-top: 2rem; display: none;">
+                        <h4>Your Results:</h4>
+                        <p id="quiz-score"></p>
+                        <div id="quiz-feedback"></div>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exam Practice -->
+        <section id="exam" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📋</span> Exam Practice Questions
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Question 1 (6 marks)</h4>
+                    <p>A delivery company uses Dijkstra's algorithm to find optimal routes. Their graph represents:</p>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>Vertices: Distribution centers and delivery locations</li>
+                        <li>Edges: Roads between locations</li>
+                        <li>Weights: Travel time in minutes</li>
+                    </ul>
+                    
+                    <p style="margin-top: 1rem;">(a) Explain why Dijkstra's algorithm is suitable for this problem. (2 marks)</p>
+                    <textarea class="input-field" id="exam-q1a" rows="4" placeholder="Write your answer here..."></textarea>
+                    
+                    <p style="margin-top: 1rem;">(b) The company wants to consider fuel costs. How would you modify the graph? (2 marks)</p>
+                    <textarea class="input-field" id="exam-q1b" rows="4" placeholder="Write your answer here..."></textarea>
+                    
+                    <p style="margin-top: 1rem;">(c) State one limitation of using Dijkstra's algorithm for this system. (2 marks)</p>
+                    <textarea class="input-field" id="exam-q1c" rows="4" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q1" min="0" max="6" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q1')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="mark-scheme" id="mark-scheme-q1">
+                        <h5>Mark Scheme:</h5>
+                        <p><strong>(a) 2 marks:</strong></p>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>Finds shortest/optimal paths (1 mark)</li>
+                            <li>Works with weighted graphs / positive weights for time (1 mark)</li>
+                        </ul>
+                        <p><strong>(b) 2 marks:</strong></p>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>Change weights to represent fuel cost (1 mark)</li>
+                            <li>Consider factors like distance, vehicle type, road gradient (1 mark)</li>
+                        </ul>
+                        <p><strong>(c) 2 marks - any one of:</strong></p>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>Cannot handle dynamic changes (traffic) in real-time</li>
+                            <li>Finds paths from one source only</li>
+                            <li>Doesn't consider multiple criteria simultaneously</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Question 2 (8 marks)</h4>
+                    <p>Complete a trace of Dijkstra's algorithm for the following graph, starting from vertex S:</p>
+                    
+                    <div style="text-align: center; margin: 1rem 0;">
+                        <svg width="300" height="200" style="border: 1px solid var(--border-color);">
+                            <line x1="50" y1="50" x2="150" y2="50" stroke="#666" stroke-width="2"/>
+                            <line x1="50" y1="50" x2="100" y2="150" stroke="#666" stroke-width="2"/>
+                            <line x1="150" y1="50" x2="250" y2="50" stroke="#666" stroke-width="2"/>
+                            <line x1="150" y1="50" x2="100" y2="150" stroke="#666" stroke-width="2"/>
+                            <line x1="250" y1="50" x2="200" y2="150" stroke="#666" stroke-width="2"/>
+                            <line x1="100" y1="150" x2="200" y2="150" stroke="#666" stroke-width="2"/>
+                            
+                            <circle cx="50" cy="50" r="20" fill="#6366f1" stroke="#4f46e5" stroke-width="2"/>
+                            <circle cx="150" cy="50" r="20" fill="#6366f1" stroke="#4f46e5" stroke-width="2"/>
+                            <circle cx="250" cy="50" r="20" fill="#6366f1" stroke="#4f46e5" stroke-width="2"/>
+                            <circle cx="100" cy="150" r="20" fill="#6366f1" stroke="#4f46e5" stroke-width="2"/>
+                            <circle cx="200" cy="150" r="20" fill="#6366f1" stroke="#4f46e5" stroke-width="2"/>
+                            
+                            <text x="50" y="55" text-anchor="middle" fill="white" font-weight="bold">S</text>
+                            <text x="150" y="55" text-anchor="middle" fill="white" font-weight="bold">A</text>
+                            <text x="250" y="55" text-anchor="middle" fill="white" font-weight="bold">B</text>
+                            <text x="100" y="155" text-anchor="middle" fill="white" font-weight="bold">C</text>
+                            <text x="200" y="155" text-anchor="middle" fill="white" font-weight="bold">D</text>
+                            
+                            <text x="100" y="45" text-anchor="middle" fill="#666">3</text>
+                            <text x="200" y="45" text-anchor="middle" fill="#666">1</text>
+                            <text x="70" y="95" text-anchor="middle" fill="#666">5</text>
+                            <text x="130" y="95" text-anchor="middle" fill="#666">2</text>
+                            <text x="230" y="95" text-anchor="middle" fill="#666">4</text>
+                            <text x="150" y="165" text-anchor="middle" fill="#666">6</text>
+                        </svg>
+                    </div>
+                    
+                    <p>Show the distance values at each step. (1 mark per step, 8 marks total)</p>
+                    <textarea class="input-field" id="exam-q2" rows="10" placeholder="Create your trace table here..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q2" min="0" max="8" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q2')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="mark-scheme" id="mark-scheme-q2">
+                        <h5>Mark Scheme (1 mark per correct step):</h5>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <th style="padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color);">Step</th>
+                                <th style="padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color);">Current</th>
+                                <th style="padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color);">S</th>
+                                <th style="padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color);">A</th>
+                                <th style="padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color);">B</th>
+                                <th style="padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color);">C</th>
+                                <th style="padding: 0.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color);">D</th>
+                            </tr>
+                            <tr>
+                                <td style="padding: 0.5rem; border: 1px solid var(--border-color);">0</td>
+                                <td style="padding: 0.5rem; border: 1px solid var(--border-color);">-</td>
+                                <td style="padding: 0.5rem; border: 1px solid var(--border-color);">0</td>
+                                <td style="padding: 0.5rem; border: 1px solid var(--border-color);">∞</td>
+                                <td style="padding: 0.5rem; border: 1px solid var(--border-color);">∞</td>
+                                <td style="padding: 0.5rem; border: 1px solid var(--border-color);">∞</td>
+                                <td style="padding: 0.5rem; border: 1px solid var(--border-color);">∞</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 0.5rem; border: 1px solid var(--border-color);">1</td>
+                                <td style="padding: 0.5rem; border: 1px solid var(--border-color);">S</td>
+                                <td style="padding: 0.5rem; border: 1px solid var(--border-color);">0</td>
+                                <td style="padding: 0.5rem; border: 1px solid var(--border-color);">3</td>
+                                <td style="padding: 0.5rem; border: 1px solid var(--border-color);">∞</td>
+                                <td style="padding: 0.5rem; border: 1px solid var(--border-color);">5</td>
+                                <td style="padding: 0.5rem; border: 1px solid var(--border-color);">∞</td>
+                            </tr>
+                        </table>
+                        <p style="margin-top: 0.5rem;">Continue for all steps...</p>
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 2rem;">Drawing Canvas for Workings</h4>
+                <p>Use this canvas for any rough work or calculations:</p>
+                <canvas id="drawing-canvas" class="drawing-canvas" width="600" height="300"></canvas>
+                <button class="btn btn-secondary" onclick="clearCanvas()">Clear Canvas</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Extension Activities -->
+        <section id="extension" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🌟</span> Extension Activities
+                </h2>
+                
+                <h3>Beyond the Specification</h3>
+                
+                <div class="interactive-area">
+                    <h4>Bidirectional Dijkstra's</h4>
+                    <p>An optimization that runs Dijkstra's from both source and target simultaneously. Research and explain how this works:</p>
+                    
+                    <textarea class="input-field" rows="6" placeholder="Explain bidirectional Dijkstra's algorithm..."></textarea>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>A* Algorithm</h4>
+                    <p>A* is an extension of Dijkstra's that uses a heuristic. Compare the two algorithms:</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>1. What additional information does A* use?</p>
+                        <textarea class="input-field" rows="3" placeholder="Your answer..."></textarea>
+                        
+                        <p style="margin-top: 1rem;">2. When would you choose A* over Dijkstra's?</p>
+                        <textarea class="input-field" rows="3" placeholder="Your answer..."></textarea>
+                        
+                        <p style="margin-top: 1rem;">3. What is an "admissible heuristic"?</p>
+                        <textarea class="input-field" rows="3" placeholder="Your answer..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Implementation Challenge</h4>
+                    <p>Write pseudocode for a function that reconstructs the shortest path after Dijkstra's algorithm has run:</p>
+                    
+                    <textarea class="input-field" rows="10" placeholder="Write your pseudocode here..."></textarea>
+                </div>
+                
+                <button class="btn btn-primary" onclick="submitExtension()">Submit Extension Work</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Videos Section -->
+        <section id="videos" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎥</span> Video Resources
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Supplementary Videos</h4>
+                    <p>Your teacher will add video links here to support your learning:</p>
+                    
+                    <div style="background: var(--bg-secondary); padding: 3rem; border-radius: 1rem; text-align: center; margin: 2rem 0;">
+                        <p style="color: var(--text-secondary); font-size: 4rem;">📹</p>
+                        <p style="color: var(--text-secondary);">Video content will be added here</p>
+                    </div>
+                </div>
+                
+                <h4>Additional Resources</h4>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li>Cambridge 9618 Specification</li>
+                    <li>Graph Algorithm Visualizers</li>
+                    <li>Practice Problems</li>
+                    <li>Past Paper Questions</li>
+                </ul>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('intro')">Start Over</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Achievement Popup -->
+    <div class="achievement-popup" id="achievement-popup">
+        <div class="achievement-icon" id="achievement-icon">🏆</div>
+        <h4 id="achievement-title">Achievement Unlocked!</h4>
+        <p id="achievement-desc">You've earned a new achievement</p>
+    </div>
+
+    <!-- Shame Message -->
+    <div class="shame-message" id="shame-message">
+        🚫 No pasting allowed! Do your own work! 🚫
+    </div>
+
+    <!-- Particle Container -->
+    <div id="particle-container"></div>
+
+    <!-- Feedback Button & Modal -->
+    <button class="feedback-btn" onclick="openFeedback()" aria-label="Send feedback">
+        <span>💬</span>
+    </button>
+
+    <div class="feedback-modal" id="feedback-modal">
+        <div class="feedback-content">
+            <h3 style="margin-bottom: 1rem; color: var(--primary-color);">Send Feedback</h3>
+            <p>Found a bug or have a suggestion? Let us know!</p>
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                Current page: <span id="feedback-page" style="font-weight: 600;"></span>
+            </p>
+            <textarea class="input-field" id="feedback-text" rows="5" placeholder="Describe the issue or suggestion..." style="margin-top: 1rem;"></textarea>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeFeedback()">Cancel</button>
+                <button class="btn btn-primary" onclick="sendFeedback()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accessibility Controls -->
+    <div class="accessibility-controls">
+        <h4>Accessibility</h4>
+        <button onclick="toggleHighContrast()">High Contrast</button>
+        <button onclick="toggleDyslexiaFont()">Dyslexia Font</button>
+        <div class="font-size-controls">
+            <button onclick="changeFontSize('small')">A-</button>
+            <button onclick="changeFontSize('normal')">A</button>
+            <button onclick="changeFontSize('large')">A+</button>
+        </div>
+    </div>
+
+    <script>
+        // Performance optimization: Cache DOM elements
+        const DOM = {
+            xpFill: null,
+            xpText: null,
+            currentLevel: null,
+            navPills: null,
+            sections: null,
+            achievementPopup: null,
+            shameMessage: null,
+            feedbackModal: null,
+            feedbackPage: null,
+            feedbackText: null,
+            particleContainer: null
+        };
+
+        // Initialize DOM cache
+        function initializeDOM() {
+            DOM.xpFill = document.getElementById('xp-fill');
+            DOM.xpText = document.getElementById('xp-text');
+            DOM.currentLevel = document.getElementById('current-level');
+            DOM.navPills = document.querySelectorAll('.nav-pill');
+            DOM.sections = document.querySelectorAll('.section');
+            DOM.achievementPopup = document.getElementById('achievement-popup');
+            DOM.shameMessage = document.getElementById('shame-message');
+            DOM.feedbackModal = document.getElementById('feedback-modal');
+            DOM.feedbackPage = document.getElementById('feedback-page');
+            DOM.feedbackText = document.getElementById('feedback-text');
+            DOM.particleContainer = document.getElementById('particle-container');
+        }
+
+        // Game State
+        let gameState = {
+            xp: 0,
+            level: 1,
+            completedSections: new Set(),
+            achievements: new Set(),
+            actionsPerformed: new Set(),
+            currentSection: 'intro',
+            sectionScores: {},
+            selectedItems: {},
+            hintUsage: {},
+            simulationStep: 0,
+            isPlaying: false,
+            simulationInterval: null,
+            graphData: null,
+            traceAnswers: {}
+        };
+
+        // XP Requirements per level
+        const XP_PER_LEVEL = [0, 100, 250, 450, 700, 1000];
+
+        // Graph data for simulation
+        const SIMULATION_GRAPH = {
+            nodes: [
+                {id: 'A', x: 150, y: 100, label: 'A'},
+                {id: 'B', x: 300, y: 50, label: 'B'},
+                {id: 'C', x: 300, y: 150, label: 'C'},
+                {id: 'D', x: 450, y: 100, label: 'D'},
+                {id: 'E', x: 600, y: 100, label: 'E'}
+            ],
+            edges: [
+                {from: 'A', to: 'B', weight: 4},
+                {from: 'A', to: 'C', weight: 2},
+                {from: 'B', to: 'C', weight: 1},
+                {from: 'B', to: 'D', weight: 5},
+                {from: 'C', to: 'D', weight: 8},
+                {from: 'C', to: 'E', weight: 10},
+                {from: 'D', to: 'E', weight: 2}
+            ]
+        };
+
+        // Performance: Debounce function
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Performance: Throttle function
+        function throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDOM();
+            setupEventListeners();
+            loadProgress();
+            updateXPDisplay();
+            
+            // Initialize matching activities
+            setTimeout(setupMatchingActivities, 200);
+            
+            // Initialize graphs
+            setTimeout(() => {
+                initializeSimulationGraph();
+                initializeTraceGraph();
+            }, 300);
+            
+            // Initialize canvas
+            setTimeout(() => {
+                const canvas = document.getElementById('drawing-canvas');
+                if (canvas && !canvas.hasAttribute('data-initialized')) {
+                    initializeCanvas();
+                    canvas.setAttribute('data-initialized', 'true');
+                }
+            }, 100);
+        });
+
+        // Starter Activity Functions
+        function setupMatchingActivities() {
+            setupMatching('starter-matching', {
+                '1': 'weighted',
+                '2': 'vertex',
+                '3': 'edge',
+                '4': 'path',
+                '5': 'adjacency',
+                '6': 'distance'
+            });
+        }
+
+        function setupMatching(containerId, answers) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            const items = container.querySelectorAll('.draggable-item');
+            const zones = container.querySelectorAll('.drop-zone');
+            
+            items.forEach(item => {
+                item.addEventListener('click', function() {
+                    if (this.classList.contains('matched')) return;
+                    
+                    items.forEach(i => i.classList.remove('selected'));
+                    this.classList.add('selected');
+                    gameState.selectedItems[containerId] = this;
+                });
+            });
+            
+            zones.forEach(zone => {
+                zone.addEventListener('click', function() {
+                    const selected = gameState.selectedItems[containerId];
+                    if (!selected || selected.classList.contains('matched')) return;
+                    
+                    const itemId = selected.dataset.id;
+                    const zoneType = this.dataset.type;
+                    
+                    if (answers[itemId] === zoneType) {
+                        selected.classList.add('matched');
+                        selected.classList.remove('selected');
+                        const droppedArea = this.querySelector('.dropped-items') || this;
+                        droppedArea.appendChild(selected.cloneNode(true));
+                        this.classList.add('correct');
+                        awardXP(5, 'Correct Match', `match_${containerId}_${itemId}`);
+                    } else {
+                        this.classList.add('highlight');
+                        setTimeout(() => this.classList.remove('highlight'), 1000);
+                    }
+                });
+            });
+        }
+
+        function resetStarterActivity() {
+            resetMatching('starter-matching');
+        }
+
+        function resetMatching(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            container.querySelectorAll('.draggable-item').forEach(item => {
+                item.classList.remove('matched', 'selected');
+            });
+            
+            container.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.classList.remove('correct', 'highlight');
+                const droppedItems = zone.querySelector('.dropped-items');
+                if (droppedItems) droppedItems.innerHTML = '';
+            });
+        }
+
+        function checkStarterActivity() {
+            const matchingContainer = document.getElementById('starter-matching');
+            if (!matchingContainer) return;
+            
+            const correct = matchingContainer.querySelectorAll('.drop-zone.correct').length;
+            if (correct === 6) {
+                awardXP(20, 'Starter Complete', 'starter_activity');
+                markSectionComplete('starter');
+                showAchievement('Graph Theory Master', 'Perfect matching!', '📊');
+            }
+        }
+
+        // Algorithm Basics Functions
+        function checkConcepts() {
+            const answers = {
+                'concept1': 'shortest',
+                'concept2': 'non-negative',
+                'concept3': 'infinity'
+            };
+            
+            let correct = 0;
+            Object.keys(answers).forEach(id => {
+                const select = document.getElementById(id);
+                if (!select) return;
+                
+                if (select.value === answers[id]) {
+                    select.style.borderColor = 'var(--success-color)';
+                    correct++;
+                } else {
+                    select.style.borderColor = 'var(--error-color)';
+                }
+            });
+            
+            if (correct === 3) {
+                awardXP(15, 'Concepts Mastered', 'basic_concepts');
+                markSectionComplete('basics');
+            }
+        }
+
+        function showHint(section) {
+            const hint = document.getElementById(section + '-hint');
+            if (!hint) return;
+            
+            hint.classList.add('show');
+            const xpReduction = gameState.hintUsage[section] ? 0 : -5;
+            gameState.hintUsage[section] = true;
+            if (xpReduction < 0) {
+                gameState.xp = Math.max(0, gameState.xp + xpReduction);
+                updateXPDisplay();
+            }
+        }
+
+        // Graph Visualization Functions
+        function initializeSimulationGraph() {
+            const svg = document.getElementById('dijkstra-graph');
+            if (!svg) return;
+            
+            // Clear existing content
+            svg.innerHTML = '';
+            
+            // Draw edges
+            SIMULATION_GRAPH.edges.forEach(edge => {
+                const fromNode = SIMULATION_GRAPH.nodes.find(n => n.id === edge.from);
+                const toNode = SIMULATION_GRAPH.nodes.find(n => n.id === edge.to);
+                
+                // Edge line
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', fromNode.x);
+                line.setAttribute('y1', fromNode.y);
+                line.setAttribute('x2', toNode.x);
+                line.setAttribute('y2', toNode.y);
+                line.setAttribute('class', 'edge');
+                line.setAttribute('id', `edge-${edge.from}-${edge.to}`);
+                svg.appendChild(line);
+                
+                // Edge weight label
+                const midX = (fromNode.x + toNode.x) / 2;
+                const midY = (fromNode.y + toNode.y) / 2;
+                
+                const weightBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                weightBg.setAttribute('x', midX - 15);
+                weightBg.setAttribute('y', midY - 10);
+                weightBg.setAttribute('width', 30);
+                weightBg.setAttribute('height', 20);
+                weightBg.setAttribute('fill', 'white');
+                weightBg.setAttribute('rx', 5);
+                svg.appendChild(weightBg);
+                
+                const weight = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                weight.setAttribute('x', midX);
+                weight.setAttribute('y', midY + 5);
+                weight.setAttribute('class', 'edge-weight');
+                weight.textContent = edge.weight;
+                svg.appendChild(weight);
+            });
+            
+            // Draw nodes
+            SIMULATION_GRAPH.nodes.forEach(node => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', node.x);
+                circle.setAttribute('cy', node.y);
+                circle.setAttribute('r', 25);
+                circle.setAttribute('class', 'node');
+                circle.setAttribute('id', `node-${node.id}`);
+                if (node.id === 'A') circle.classList.add('start');
+                svg.appendChild(circle);
+                
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', node.x);
+                label.setAttribute('y', node.y + 5);
+                label.setAttribute('class', 'node-label');
+                label.textContent = node.label;
+                svg.appendChild(label);
+            });
+            
+            // Initialize simulation data
+            initializeSimulationData();
+        }
+
+        function initializeTraceGraph() {
+            const svg = document.getElementById('trace-graph');
+            if (!svg) return;
+            
+            // Simple graph for trace practice
+            const nodes = [
+                {id: 'A', x: 100, y: 150, label: 'A'},
+                {id: 'B', x: 250, y: 50, label: 'B'},
+                {id: 'C', x: 250, y: 250, label: 'C'},
+                {id: 'D', x: 400, y: 50, label: 'D'},
+                {id: 'E', x: 400, y: 250, label: 'E'}
+            ];
+            
+            const edges = [
+                {from: 'A', to: 'B', weight: 6},
+                {from: 'A', to: 'C', weight: 4},
+                {from: 'B', to: 'D', weight: 2},
+                {from: 'C', to: 'D', weight: 3},
+                {from: 'C', to: 'E', weight: 2},
+                {from: 'D', to: 'E', weight: 1}
+            ];
+            
+            svg.innerHTML = '';
+            
+            // Draw edges
+            edges.forEach(edge => {
+                const fromNode = nodes.find(n => n.id === edge.from);
+                const toNode = nodes.find(n => n.id === edge.to);
+                
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', fromNode.x);
+                line.setAttribute('y1', fromNode.y);
+                line.setAttribute('x2', toNode.x);
+                line.setAttribute('y2', toNode.y);
+                line.setAttribute('class', 'edge');
+                svg.appendChild(line);
+                
+                const midX = (fromNode.x + toNode.x) / 2;
+                const midY = (fromNode.y + toNode.y) / 2;
+                
+                const weightBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                weightBg.setAttribute('x', midX - 15);
+                weightBg.setAttribute('y', midY - 10);
+                weightBg.setAttribute('width', 30);
+                weightBg.setAttribute('height', 20);
+                weightBg.setAttribute('fill', 'white');
+                weightBg.setAttribute('rx', 5);
+                svg.appendChild(weightBg);
+                
+                const weight = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                weight.setAttribute('x', midX);
+                weight.setAttribute('y', midY + 5);
+                weight.setAttribute('class', 'edge-weight');
+                weight.textContent = edge.weight;
+                svg.appendChild(weight);
+            });
+            
+            // Draw nodes
+            nodes.forEach(node => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', node.x);
+                circle.setAttribute('cy', node.y);
+                circle.setAttribute('r', 25);
+                circle.setAttribute('class', 'node');
+                if (node.id === 'A') circle.classList.add('start');
+                svg.appendChild(circle);
+                
+                const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                label.setAttribute('x', node.x);
+                label.setAttribute('y', node.y + 5);
+                label.setAttribute('class', 'node-label');
+                label.textContent = node.label;
+                svg.appendChild(label);
+            });
+            
+            // Store trace answers
+            gameState.traceAnswers = {
+                '0': {B: '∞', C: '∞', D: '∞', E: '∞'},
+                '1': {B: '6', C: '4', D: '∞', E: '∞'},
+                '2': {current: 'C', B: '6', C: '4', D: '7', E: '6'}
+            };
+        }
+
+        // Simulation Control Functions
+        function initializeSimulationData() {
+            gameState.simulationData = {
+                distances: {A: 0, B: Infinity, C: Infinity, D: Infinity, E: Infinity},
+                previous: {A: null, B: null, C: null, D: null, E: null},
+                visited: new Set(),
+                current: null,
+                steps: []
+            };
+            
+            // Generate algorithm steps
+            generateSimulationSteps();
+            updateSimulationDisplay();
+        }
+
+        function generateSimulationSteps() {
+            const data = gameState.simulationData;
+            const steps = [];
+            
+            // Step 0: Initialization
+            steps.push({
+                current: null,
+                distances: {...data.distances},
+                visited: new Set(),
+                description: 'Initialize: Set source A to 0, all others to infinity'
+            });
+            
+            // Run Dijkstra's algorithm
+            const unvisited = new Set(['A', 'B', 'C', 'D', 'E']);
+            const distances = {...data.distances};
+            const previous = {...data.previous};
+            const visited = new Set();
+            
+            while (unvisited.size > 0) {
+                // Find minimum distance vertex
+                let minVertex = null;
+                let minDist = Infinity;
+                for (const v of unvisited) {
+                    if (distances[v] < minDist) {
+                        minDist = distances[v];
+                        minVertex = v;
+                    }
+                }
+                
+                if (minVertex === null) break;
+                
+                // Update neighbors
+                const edges = SIMULATION_GRAPH.edges.filter(e => e.from === minVertex);
+                for (const edge of edges) {
+                    if (!visited.has(edge.to)) {
+                        const alt = distances[minVertex] + edge.weight;
+                        if (alt < distances[edge.to]) {
+                            distances[edge.to] = alt;
+                            previous[edge.to] = minVertex;
+                        }
+                    }
+                }
+                
+                visited.add(minVertex);
+                unvisited.delete(minVertex);
+                
+                steps.push({
+                    current: minVertex,
+                    distances: {...distances},
+                    visited: new Set(visited),
+                    description: `Visit ${minVertex}: Update distances to unvisited neighbors`
+                });
+            }
+            
+            gameState.simulationData.steps = steps;
+        }
+
+        function updateSimulationDisplay() {
+            const step = gameState.simulationData.steps[gameState.simulationStep];
+            if (!step) return;
+            
+            // Update step description
+            const stepDesc = document.getElementById('current-step-desc');
+            if (stepDesc) stepDesc.textContent = step.description;
+            
+            // Update graph visualization
+            SIMULATION_GRAPH.nodes.forEach(node => {
+                const nodeEl = document.getElementById(`node-${node.id}`);
+                if (!nodeEl) return;
+                
+                nodeEl.classList.remove('current', 'visited');
+                if (node.id === step.current) {
+                    nodeEl.classList.add('current');
+                } else if (step.visited.has(node.id)) {
+                    nodeEl.classList.add('visited');
+                }
+            });
+            
+            // Update trace table
+            const tbody = document.getElementById('simulation-trace');
+            if (tbody) {
+                tbody.innerHTML = '';
+                ['A', 'B', 'C', 'D', 'E'].forEach(vertex => {
+                    const row = tbody.insertRow();
+                    row.insertCell().textContent = vertex;
+                    row.insertCell().textContent = step.distances[vertex] === Infinity ? '∞' : step.distances[vertex];
+                    row.insertCell().textContent = '-';
+                    row.insertCell().textContent = step.visited.has(vertex) ? '✓' : '';
+                });
+            }
+            
+            // Update button states
+            document.getElementById('prev-step-btn').disabled = gameState.simulationStep === 0;
+            document.getElementById('next-step-btn').disabled = gameState.simulationStep >= gameState.simulationData.steps.length - 1;
+        }
+
+        function nextStep() {
+            if (gameState.simulationStep < gameState.simulationData.steps.length - 1) {
+                gameState.simulationStep++;
+                updateSimulationDisplay();
+                awardXP(2, 'Step Through', `sim_step_${gameState.simulationStep}`);
+            }
+        }
+
+        function previousStep() {
+            if (gameState.simulationStep > 0) {
+                gameState.simulationStep--;
+                updateSimulationDisplay();
+            }
+        }
+
+        function playPause() {
+            const btn = document.getElementById('play-pause-btn');
+            if (gameState.isPlaying) {
+                gameState.isPlaying = false;
+                clearInterval(gameState.simulationInterval);
+                btn.textContent = '▶️ Play';
+            } else {
+                gameState.isPlaying = true;
+                btn.textContent = '⏸️ Pause';
+                const speed = 11 - parseInt(document.getElementById('speed-slider').value);
+                gameState.simulationInterval = setInterval(() => {
+                    if (gameState.simulationStep >= gameState.simulationData.steps.length - 1) {
+                        playPause();
+                    } else {
+                        nextStep();
+                    }
+                }, speed * 500);
+            }
+        }
+
+        function resetSimulation() {
+            if (gameState.isPlaying) playPause();
+            gameState.simulationStep = 0;
+            updateSimulationDisplay();
+        }
+
+        function checkReflections() {
+            const r1 = document.getElementById('reflection1').value.trim();
+            const r2 = document.getElementById('reflection2').value.trim();
+            
+            if (r1.length > 50 && r2.length > 50) {
+                // Check for key concepts
+                const keywords1 = ['greedy', 'optimal', 'smallest', 'shortest', 'minimum'];
+                const keywords2 = ['negative', 'cycle', 'incorrect', 'wrong', 'fail'];
+                
+                let score = 0;
+                if (keywords1.some(kw => r1.toLowerCase().includes(kw))) score += 10;
+                if (keywords2.some(kw => r2.toLowerCase().includes(kw))) score += 10;
+                
+                awardXP(score, 'Reflections', 'simulation_reflection');
+                markSectionComplete('simulation');
+                
+                if (score === 20) {
+                    showAchievement('Deep Thinker', 'Excellent reflections!', '🤔');
+                }
+            } else {
+                alert('Please provide more detailed reflections (at least 50 characters each).');
+            }
+        }
+
+        // Trace Table Functions
+        function editCell(cell, step, vertex) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = cell.textContent;
+            input.style.width = '60px';
+            input.style.padding = '2px';
+            
+            input.onblur = function() {
+                cell.textContent = this.value;
+                checkCellAnswer(cell, step, vertex);
+            };
+            
+            input.onkeypress = function(e) {
+                if (e.key === 'Enter') {
+                    this.blur();
+                }
+            };
+            
+            cell.textContent = '';
+            cell.appendChild(input);
+            input.focus();
+        }
+
+        function checkCellAnswer(cell, step, vertex) {
+            const expected = gameState.traceAnswers[step][vertex];
+            const answer = cell.textContent.trim();
+            
+            if (answer === expected || (expected === '∞' && answer.toLowerCase() === 'infinity')) {
+                cell.classList.add('correct');
+                cell.classList.remove('incorrect');
+            } else {
+                cell.classList.add('incorrect');
+                cell.classList.remove('correct');
+            }
+        }
+
+        function checkTraceTable() {
+            let correct = 0;
+            let total = 0;
+            
+            document.querySelectorAll('.trace-table .editable').forEach(cell => {
+                total++;
+                if (cell.classList.contains('correct')) correct++;
+            });
+            
+            if (correct === total) {
+                awardXP(25, 'Trace Master', 'trace_table_complete');
+                markSectionComplete('trace');
+                alert('Perfect! You\'ve mastered the trace table!');
+            } else {
+                alert(`You got ${correct} out of ${total} correct. Keep trying!`);
+            }
+        }
+
+        function resetTraceTable() {
+            document.querySelectorAll('.trace-table .editable').forEach(cell => {
+                cell.classList.remove('correct', 'incorrect');
+                if (cell.textContent !== '?') {
+                    cell.textContent = cell.textContent.includes('∞') ? '∞' : '?';
+                }
+            });
+        }
+
+        function checkShortestPath() {
+            const pathInput = document.getElementById('shortest-path').value.trim();
+            const distInput = document.getElementById('path-distance').value.trim();
+            
+            // Accept various formats
+            const validPaths = ['A → C → E', 'A->C->E', 'A-C-E', 'A C E'];
+            const pathCorrect = validPaths.some(p => pathInput.replace(/\s+/g, ' ').toLowerCase().includes(p.toLowerCase().replace(/[→\->]/g, ' ').replace(/\s+/g, ' ')));
+            const distCorrect = distInput === '6';
+            
+            if (pathCorrect && distCorrect) {
+                awardXP(15, 'Path Finder', 'shortest_path_found');
+                alert('Correct! The shortest path from A to E is A → C → E with distance 6.');
+            } else if (pathCorrect) {
+                alert('Path is correct, but check the distance.');
+            } else if (distCorrect) {
+                alert('Distance is correct, but check the path.');
+            } else {
+                alert('Not quite right. Try tracing through your table again.');
+            }
+        }
+
+        // Application Functions
+        function checkApplication(type, answer) {
+            const correct = type === 'fuel' && answer === 'c';
+            
+            document.querySelectorAll('.quiz-option').forEach(opt => {
+                opt.classList.remove('correct', 'incorrect');
+            });
+            
+            event.target.classList.add(correct ? 'correct' : 'incorrect');
+            
+            if (correct) {
+                awardXP(10, 'Real World', 'application_' + type);
+                markSectionComplete('applications');
+            }
+        }
+
+        // Common Mistakes Functions
+        function checkMistake(answer) {
+            const correct = answer === 'c';
+            
+            document.querySelectorAll('#mistakes .quiz-option').forEach(opt => {
+                opt.classList.remove('correct', 'incorrect');
+            });
+            
+            event.target.classList.add(correct ? 'correct' : 'incorrect');
+            
+            if (correct) {
+                awardXP(15, 'Error Detector', 'mistake_identified');
+                markSectionComplete('mistakes');
+            }
+        }
+
+        // Complexity Functions
+        function checkComplexity(question, answer) {
+            const correct = question === 'q1' && answer === 'b';
+            
+            const container = event.target.parentElement;
+            container.querySelectorAll('.quiz-option').forEach(opt => {
+                opt.classList.remove('correct', 'incorrect');
+            });
+            
+            event.target.classList.add(correct ? 'correct' : 'incorrect');
+            
+            if (correct) {
+                awardXP(10, 'Complexity Understanding', 'complexity_' + question);
+            }
+        }
+
+        function checkComplexityReason() {
+            const reason = document.getElementById('complexity-reason').value.trim();
+            
+            if (reason.length > 50) {
+                const keywords = ['sparse', 'fewer edges', 'heap', 'logarithmic', 'efficient'];
+                const hasKeyword = keywords.some(kw => reason.toLowerCase().includes(kw));
+                
+                if (hasKeyword) {
+                    awardXP(15, 'Complexity Expert', 'complexity_reason');
+                    markSectionComplete('complexity');
+                    alert('Great explanation!');
+                } else {
+                    alert('Good effort! Consider mentioning why heaps are efficient for sparse graphs.');
+                }
+            } else {
+                alert('Please provide a more detailed explanation (at least 50 characters).');
+            }
+        }
+
+        // Comparison Functions
+        function checkAlgorithmChoice(scenario, answer) {
+            const correct = (scenario === '1' && answer === 'c') || (scenario === '2' && answer === 'b');
+            
+            const container = event.target.parentElement;
+            container.querySelectorAll('.quiz-option').forEach(opt => {
+                opt.classList.remove('correct', 'incorrect');
+            });
+            
+            event.target.classList.add(correct ? 'correct' : 'incorrect');
+            
+            if (correct) {
+                awardXP(10, 'Algorithm Selector', 'algo_choice_' + scenario);
+                if (scenario === '2') markSectionComplete('comparisons');
+            }
+        }
+
+        // Final Quiz Functions
+        function submitFinalQuiz() {
+            const answers = {
+                '1': 'b', '2': 'd', '3': 'c', '4': 'b',
+                '5': 'c', '6': 'c', '7': 'b', '8': 'b'
+            };
+            
+            let score = 0;
+            const feedback = [];
+            
+            Object.keys(answers).forEach(q => {
+                const selected = document.querySelector(`.quiz-option[data-q="${q}"].selected`);
+                if (selected && selected.dataset.a === answers[q]) {
+                    selected.classList.add('correct');
+                    score++;
+                } else {
+                    if (selected) selected.classList.add('incorrect');
+                    const correctOption = document.querySelector(`.quiz-option[data-q="${q}"][data-a="${answers[q]}"]`);
+                    if (correctOption) correctOption.classList.add('correct');
+                    
+                    // Add feedback
+                    const topics = {
+                        '1': 'Cannot handle negative edge weights',
+                        '2': 'Source vertex distance is always 0',
+                        '3': 'Priority Queue (Heap) improves efficiency',
+                        '4': 'Finds paths from one source to all vertices',
+                        '5': 'Dijkstra\'s is a Greedy algorithm',
+                        '6': 'Terminates when all vertices are visited',
+                        '7': 'May not find shortest paths with negative weights',
+                        '8': 'Visited vertices are never reconsidered'
+                    };
+                    feedback.push(`Q${q}: ${topics[q]}`);
+                }
+            });
+            
+            gameState.sectionScores.finalQuiz = score;
+            
+            const scoreEl = document.getElementById('quiz-score');
+            const feedbackEl = document.getElementById('quiz-feedback');
+            const resultsEl = document.getElementById('quiz-results');
+            
+            if (scoreEl) scoreEl.textContent = `You scored ${score}/8 (${Math.round(score/8*100)}%)`;
+            
+            if (feedbackEl) {
+                if (feedback.length > 0) {
+                    feedbackEl.innerHTML = 
+                        '<h5>Review these topics:</h5><ul>' + 
+                        feedback.map(f => `<li>${f}</li>`).join('') + 
+                        '</ul>';
+                } else {
+                    feedbackEl.innerHTML = '<p style="color: var(--success-color);">Perfect score! Excellent work!</p>';
+                }
+            }
+            
+            if (resultsEl) resultsEl.style.display = 'block';
+            
+            awardXP(score * 10, 'Final Quiz', 'final_quiz_complete');
+            markSectionComplete('summary');
+            
+            if (score === 8) {
+                showAchievement('Dijkstra Master', 'Perfect quiz score!', '🎯');
+            }
+        }
+
+        // Exam Practice Functions
+        function showMarkScheme(question) {
+            const textarea = document.getElementById(`exam-${question}`);
+            const marks = document.getElementById(`marks-${question}`);
+            const scheme = document.getElementById(`mark-scheme-${question}`);
+            
+            if (!textarea || !marks || !scheme) return;
+            
+            const minLength = 100;
+            
+            if (question === 'q1') {
+                const q1a = document.getElementById('exam-q1a');
+                const q1b = document.getElementById('exam-q1b');
+                const q1c = document.getElementById('exam-q1c');
+                
+                if ((q1a.value.length + q1b.value.length + q1c.value.length) < minLength || !marks.value) {
+                    alert(`Please write more detailed answers and enter predicted marks`);
+                    return;
+                }
+            } else if (textarea.value.length < minLength || !marks.value) {
+                alert(`Please write a more detailed answer (minimum ${minLength} characters) and enter predicted marks`);
+                return;
+            }
+            
+            scheme.classList.add('show');
+            awardXP(10, 'Exam Practice', `exam_${question}`);
+            markSectionComplete('exam');
+        }
+
+        // Extension Functions
+        function submitExtension() {
+            const textareas = document.querySelectorAll('#extension .input-field');
+            let totalWords = 0;
+            
+            textareas.forEach(ta => {
+                totalWords += ta.value.split(' ').filter(word => word.length > 0).length;
+            });
+            
+            if (totalWords > 50) {
+                awardXP(30, 'Extension Work', 'extension_complete');
+                markSectionComplete('extension');
+                showAchievement('Going Beyond', 'Completed extension activities!', '🚀');
+                alert('Excellent extension work! Your teacher will review your responses.');
+            } else {
+                alert('Please provide more detailed responses for the extension activities.');
+            }
+        }
+
+        // Final Quiz Event Setup
+        document.addEventListener('click', function(e) {
+            if (e.target.matches('#final-quiz .quiz-option')) {
+                const option = e.target;
+                const question = option.dataset.q;
+                const siblings = document.querySelectorAll(`.quiz-option[data-q="${question}"]`);
+                siblings.forEach(s => s.classList.remove('selected'));
+                option.classList.add('selected');
+            }
+        });
+
+        // Pre-quiz function
+        function checkPreQuiz() {
+            const selected = document.querySelector('#pre-quiz .quiz-option.selected');
+            if (!selected) return;
+            
+            const correct = selected.dataset.answer === 'b';
+            if (correct) {
+                selected.classList.add('correct');
+                awardXP(10, 'Correct Answer', 'pre_quiz');
+                gameState.actionsPerformed.add('correct_answer');
+            } else {
+                selected.classList.add('incorrect');
+                document.querySelector('#pre-quiz .quiz-option[data-answer="b"]').classList.add('correct');
+            }
+        }
+
+        // Optimized Event Listeners
+        function setupEventListeners() {
+            // Navigation with event delegation
+            const navContainer = document.querySelector('.nav-pills');
+            if (navContainer) {
+                navContainer.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('nav-pill')) {
+                        navigateToSection(e.target.dataset.section);
+                    }
+                });
+            }
+
+            // Quiz options with event delegation
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('quiz-option')) {
+                    if (!e.target.classList.contains('correct') && !e.target.classList.contains('incorrect')) {
+                        selectQuizOption(e.target);
+                    }
+                }
+            });
+
+            // Prevent paste with better performance
+            document.addEventListener('paste', function(e) {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showShameMessage();
+                    return false;
+                }
+            });
+
+            // Keyboard navigation
+            document.addEventListener('keydown', throttle(function(e) {
+                if (e.key === 'ArrowLeft') navigateSection('prev');
+                if (e.key === 'ArrowRight') navigateSection('next');
+                if (e.ctrlKey && e.key === 'v') {
+                    e.preventDefault();
+                    showShameMessage();
+                }
+            }, 100));
+
+            // Touch support with improved performance
+            let touchStartX = 0;
+            let touchStartY = 0;
+            
+            document.addEventListener('touchstart', function(e) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            document.addEventListener('touchend', function(e) {
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const diffX = touchStartX - touchEndX;
+                const diffY = Math.abs(touchStartY - touchEndY);
+                
+                if (Math.abs(diffX) > 50 && diffY < 100) {
+                    if (diffX > 0) navigateSection('next');
+                    else navigateSection('prev');
+                }
+            }, { passive: true });
+
+            // Optimized scroll handler
+            window.addEventListener('scroll', debounce(function() {
+                if (!DOM.sections) return;
+                
+                const scrollY = window.scrollY;
+                const windowHeight = window.innerHeight;
+                
+                DOM.sections.forEach(section => {
+                    if (section && section.classList.contains('active')) {
+                        const rect = section.getBoundingClientRect();
+                        section.style.visibility = 
+                            (rect.bottom > 0 && rect.top < windowHeight) ? 'visible' : 'hidden';
+                    }
+                });
+            }, 100));
+        }
+
+        // Navigation with performance optimization
+        function navigateToSection(sectionId) {
+            if (!DOM.sections || !DOM.navPills) return;
+            
+            // Use CSS classes instead of inline styles for better performance
+            DOM.sections.forEach(s => {
+                if (s) {
+                    s.classList.remove('active');
+                    s.style.visibility = 'hidden';
+                }
+            });
+            DOM.navPills.forEach(p => {
+                if (p) p.classList.remove('active');
+            });
+            
+            const targetSection = document.getElementById(sectionId);
+            const targetPill = document.querySelector(`[data-section="${sectionId}"]`);
+            
+            if (targetSection) {
+                targetSection.classList.add('active');
+                targetSection.style.visibility = 'visible';
+            }
+            if (targetPill) {
+                targetPill.classList.add('active');
+            }
+            
+            gameState.currentSection = sectionId;
+            updateFeedbackPage();
+            
+            if (!gameState.completedSections.has(sectionId)) {
+                awardXP(5, 'Section Visit', `section_${sectionId}`);
+            }
+            
+            // Smooth scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function navigateSection(direction) {
+            if (!DOM.navPills) return;
+            
+            const sections = Array.from(DOM.navPills).filter(p => p).map(p => p.dataset.section);
+            const currentIndex = sections.indexOf(gameState.currentSection);
+            
+            if (direction === 'next' && currentIndex < sections.length - 1) {
+                navigateToSection(sections[currentIndex + 1]);
+            } else if (direction === 'prev' && currentIndex > 0) {
+                navigateToSection(sections[currentIndex - 1]);
+            }
+        }
+
+        // Optimized XP System
+        function awardXP(amount, action, actionId = null) {
+            if (actionId && gameState.actionsPerformed.has(actionId)) return;
+            if (actionId) gameState.actionsPerformed.add(actionId);
+            
+            gameState.xp += amount;
+            updateXPDisplay();
+            checkLevelUp();
+            checkAchievements();
+            saveProgress();
+            
+            // Create floating XP indicator
+            createFloatingXP(amount);
+        }
+
+        function createFloatingXP(amount) {
+            try {
+                const xpFloat = document.createElement('div');
+                xpFloat.style.cssText = `
+                    position: fixed;
+                    top: 120px;
+                    right: 100px;
+                    color: var(--warning-color);
+                    font-weight: bold;
+                    font-size: 1.5rem;
+                    pointer-events: none;
+                    z-index: 3000;
+                    animation: floatUp 2s ease-out forwards;
+                `;
+                xpFloat.textContent = `+${amount} XP`;
+                document.body.appendChild(xpFloat);
+                
+                setTimeout(() => {
+                    if (xpFloat && xpFloat.parentNode) {
+                        xpFloat.remove();
+                    }
+                }, 2000);
+            } catch (e) {
+                console.warn('Could not create floating XP indicator:', e);
+            }
+        }
+
+        // Add floating animation
+        try {
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes floatUp {
+                    0% { transform: translateY(0); opacity: 1; }
+                    100% { transform: translateY(-50px); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        } catch (e) {
+            console.warn('Could not add floating animation style:', e);
+        }
+
+        function updateXPDisplay() {
+            if (!DOM.xpFill || !DOM.xpText || !DOM.currentLevel) return;
+            
+            const xpForNextLevel = XP_PER_LEVEL[gameState.level] || XP_PER_LEVEL[XP_PER_LEVEL.length - 1];
+            const xpProgress = Math.min((gameState.xp / xpForNextLevel) * 100, 100);
+            
+            DOM.xpFill.style.width = xpProgress + '%';
+            DOM.xpText.textContent = `${gameState.xp} / ${xpForNextLevel} XP`;
+            DOM.currentLevel.textContent = gameState.level;
+        }
+
+        function checkLevelUp() {
+            if (gameState.level < 5 && gameState.xp >= XP_PER_LEVEL[gameState.level]) {
+                gameState.level++;
+                showAchievement('Level Up!', `You reached Level ${gameState.level}!`, '⬆️');
+                createParticleEffect();
+            }
+        }
+
+        // Enhanced particle effect
+        function createParticleEffect() {
+            if (!DOM.particleContainer) return;
+            
+            const colors = ['#fbbf24', '#f59e0b', '#6366f1', '#8b5cf6', '#10b981'];
+            const particleCount = 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.cssText = `
+                        left: ${Math.random() * window.innerWidth}px;
+                        top: -10px;
+                        background: ${colors[Math.floor(Math.random() * colors.length)]};
+                        animation-duration: ${2 + Math.random() * 2}s;
+                        animation-delay: ${Math.random() * 0.5}s;
+                    `;
+                    DOM.particleContainer.appendChild(particle);
+                    
+                    particle.addEventListener('animationend', () => particle.remove());
+                }, i * 50);
+            }
+        }
+
+        function checkAchievements() {
+            // First correct answer
+            if (!gameState.achievements.has('first_correct') && gameState.actionsPerformed.has('correct_answer')) {
+                gameState.achievements.add('first_correct');
+                showAchievement('First Steps', 'Got your first correct answer!', '✅');
+            }
+            
+            // Algorithm Master
+            if (!gameState.achievements.has('algorithm_master') && gameState.completedSections.size >= 10) {
+                gameState.achievements.add('algorithm_master');
+                showAchievement('Algorithm Master', 'Completed most sections!', '🎓');
+            }
+            
+            // Perfect Quiz
+            if (!gameState.achievements.has('perfect_quiz') && gameState.sectionScores.finalQuiz === 8) {
+                gameState.achievements.add('perfect_quiz');
+                showAchievement('Perfect Score', 'Aced the final quiz!', '💯');
+            }
+            
+            // Speed Learner
+            if (!gameState.achievements.has('speed_learner') && gameState.completedSections.size >= 5 && Date.now() - startTime < 600000) {
+                gameState.achievements.add('speed_learner');
+                showAchievement('Speed Learner', 'Completed 5 sections in under 10 minutes!', '⚡');
+            }
+        }
+
+        function showAchievement(title, desc, icon) {
+            if (!DOM.achievementPopup) return;
+            
+            const titleEl = DOM.achievementPopup.querySelector('#achievement-title');
+            const descEl = DOM.achievementPopup.querySelector('#achievement-desc');
+            const iconEl = DOM.achievementPopup.querySelector('#achievement-icon');
+            
+            if (titleEl) titleEl.textContent = title;
+            if (descEl) descEl.textContent = desc;
+            if (iconEl) iconEl.textContent = icon;
+            
+            DOM.achievementPopup.classList.add('show');
+            setTimeout(() => {
+                if (DOM.achievementPopup) DOM.achievementPopup.classList.remove('show');
+            }, 3000);
+            
+            awardXP(50, 'Achievement');
+            
+            // Haptic feedback for mobile
+            if ('vibrate' in navigator) {
+                navigator.vibrate([100, 50, 100]);
+            }
+        }
+
+        // Quiz Functions with improved performance
+        function selectQuizOption(option) {
+            const siblings = option.parentElement.querySelectorAll('.quiz-option');
+            siblings.forEach(s => s.classList.remove('selected'));
+            option.classList.add('selected');
+        }
+
+        // Utility Functions
+        function markSectionComplete(section) {
+            gameState.completedSections.add(section);
+            const pill = document.querySelector(`[data-section="${section}"]`);
+            if (pill) pill.classList.add('completed');
+            updateProgressDots(section);
+            saveProgress();
+        }
+
+        function updateProgressDots(section) {
+            const sectionIndex = Array.from(DOM.navPills).findIndex(p => p && p.dataset && p.dataset.section === section);
+            const dots = document.querySelectorAll(`#${section} .progress-dot`);
+            if (dots.length > 0) {
+                dots.forEach((dot, index) => {
+                    if (dot && index <= sectionIndex) {
+                        dot.classList.add('completed');
+                    }
+                });
+            }
+        }
+
+        function showShameMessage() {
+            if (!DOM.shameMessage) return;
+            
+            DOM.shameMessage.style.display = 'block';
+            DOM.shameMessage.style.animation = 'shameAnimation 3s ease forwards';
+            
+            // Remove XP for trying to paste
+            gameState.xp = Math.max(0, gameState.xp - 10);
+            updateXPDisplay();
+            
+            setTimeout(() => {
+                if (DOM.shameMessage) DOM.shameMessage.style.display = 'none';
+            }, 3000);
+        }
+
+        // Feedback System
+        function openFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'flex';
+                updateFeedbackPage();
+            }
+        }
+
+        function closeFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'none';
+            }
+            if (DOM.feedbackText) {
+                DOM.feedbackText.value = '';
+            }
+        }
+
+        function updateFeedbackPage() {
+            const sectionTitles = {
+                'intro': 'Introduction',
+                'starter': 'Starter Activity',
+                'basics': 'Algorithm Basics',
+                'simulation': 'Interactive Simulation',
+                'trace': 'Trace Tables',
+                'applications': 'Real Applications',
+                'mistakes': 'Common Mistakes',
+                'complexity': 'Complexity Analysis',
+                'comparisons': 'Algorithm Comparisons',
+                'summary': 'Summary & Quiz',
+                'exam': 'Exam Practice',
+                'extension': 'Extension Activities',
+                'videos': 'Videos'
+            };
+            
+            if (DOM.feedbackPage) {
+                DOM.feedbackPage.textContent = sectionTitles[gameState.currentSection] || 'Unknown';
+            }
+        }
+
+        function sendFeedback() {
+            if (!DOM.feedbackText) return;
+            
+            const text = DOM.feedbackText.value.trim();
+            if (!text) {
+                alert('Please enter your feedback');
+                return;
+            }
+            
+            const subject = encodeURIComponent('Dijkstra\'s Algorithm Lesson Feedback');
+            const body = encodeURIComponent(
+                `Page: ${DOM.feedbackPage ? DOM.feedbackPage.textContent : 'Unknown'}\n\n` +
+                `Feedback: ${text}\n\n` +
+                `Section ID: ${gameState.currentSection}\n` +
+                `Level: ${gameState.level}, XP: ${gameState.xp}`
+            );
+            
+            window.location.href = `mailto:millingtond@mgs.org?subject=${subject}&body=${body}`;
+            closeFeedback();
+            awardXP(5, 'Feedback Sent', 'feedback');
+        }
+
+        // Accessibility Functions
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+            saveProgress();
+        }
+
+        function toggleDyslexiaFont() {
+            document.body.classList.toggle('dyslexia-font');
+            saveProgress();
+        }
+
+        function changeFontSize(size) {
+            document.body.classList.remove('font-small', 'font-large', 'font-xlarge');
+            if (size !== 'normal') {
+                document.body.classList.add('font-' + size);
+            }
+            saveProgress();
+        }
+
+        // Save/Load Progress using sessionStorage
+        function saveProgress() {
+            const data = {
+                gameState: {
+                    xp: gameState.xp,
+                    level: gameState.level,
+                    completedSections: Array.from(gameState.completedSections),
+                    achievements: Array.from(gameState.achievements),
+                    actionsPerformed: Array.from(gameState.actionsPerformed),
+                    currentSection: gameState.currentSection,
+                    sectionScores: gameState.sectionScores,
+                    hintUsage: gameState.hintUsage
+                },
+                accessibility: {
+                    highContrast: document.body.classList.contains('high-contrast'),
+                    dyslexiaFont: document.body.classList.contains('dyslexia-font'),
+                    fontSize: Array.from(document.body.classList).find(c => c.startsWith('font-')) || 'normal'
+                }
+            };
+            
+            try {
+                sessionStorage.setItem('dijkstraLessonProgress', JSON.stringify(data));
+            } catch (e) {
+                console.warn('Could not save progress:', e);
+            }
+        }
+
+        function loadProgress() {
+            try {
+                const saved = sessionStorage.getItem('dijkstraLessonProgress');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    
+                    // Restore game state
+                    gameState.xp = data.gameState.xp || 0;
+                    gameState.level = data.gameState.level || 1;
+                    gameState.completedSections = new Set(data.gameState.completedSections || []);
+                    gameState.achievements = new Set(data.gameState.achievements || []);
+                    gameState.actionsPerformed = new Set(data.gameState.actionsPerformed || []);
+                    gameState.currentSection = data.gameState.currentSection || 'intro';
+                    gameState.sectionScores = data.gameState.sectionScores || {};
+                    gameState.hintUsage = data.gameState.hintUsage || {};
+                    
+                    // Restore accessibility settings
+                    if (data.accessibility) {
+                        if (data.accessibility.highContrast) {
+                            document.body.classList.add('high-contrast');
+                        }
+                        if (data.accessibility.dyslexiaFont) {
+                            document.body.classList.add('dyslexia-font');
+                        }
+                        if (data.accessibility.fontSize && data.accessibility.fontSize !== 'normal') {
+                            document.body.classList.add(data.accessibility.fontSize);
+                        }
+                    }
+                    
+                    // Restore completed sections visual state
+                    gameState.completedSections.forEach(section => {
+                        const pill = document.querySelector(`[data-section="${section}"]`);
+                        if (pill) pill.classList.add('completed');
+                    });
+                }
+            } catch (e) {
+                console.error('Error loading progress:', e);
+            }
+        }
+
+        // Canvas initialization
+        function initializeCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            
+            // Set canvas size
+            canvas.width = 600;
+            canvas.height = 300;
+            
+            function getCoordinates(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                
+                if (e.touches) {
+                    return {
+                        x: (e.touches[0].clientX - rect.left) * scaleX,
+                        y: (e.touches[0].clientY - rect.top) * scaleY
+                    };
+                } else {
+                    return {
+                        x: (e.clientX - rect.left) * scaleX,
+                        y: (e.clientY - rect.top) * scaleY
+                    };
+                }
+            }
+            
+            function startDrawing(e) {
+                isDrawing = true;
+                const coords = getCoordinates(e);
+                lastX = coords.x;
+                lastY = coords.y;
+                e.preventDefault();
+            }
+            
+            function draw(e) {
+                if (!isDrawing) return;
+                
+                const coords = getCoordinates(e);
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(coords.x, coords.y);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+                
+                lastX = coords.x;
+                lastY = coords.y;
+                e.preventDefault();
+            }
+            
+            function stopDrawing(e) {
+                isDrawing = false;
+                e.preventDefault();
+            }
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events
+            canvas.addEventListener('touchstart', startDrawing, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing, { passive: false });
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Auto-save every 30 seconds
+        setInterval(saveProgress, 30000);
+
+        // Easter egg: Dijkstra tribute
+        const dijkstraCode = ['d', 'i', 'j', 'k', 's', 't', 'r', 'a'];
+        let dijkstraIndex = 0;
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === dijkstraCode[dijkstraIndex]) {
+                dijkstraIndex++;
+                if (dijkstraIndex === dijkstraCode.length) {
+                    showAchievement('Tribute to Edsger', 'You honored the creator!', '🎖️');
+                    awardXP(100, 'Easter Egg', 'dijkstra_tribute');
+                    dijkstraIndex = 0;
+                    createParticleEffect();
+                }
+            } else {
+                dijkstraIndex = 0;
+            }
+        });
+
+        // Performance monitoring
+        const startTime = Date.now();
+        
+        // Log performance metrics
+        window.addEventListener('load', function() {
+            console.log('Page load time:', Date.now() - startTime, 'ms');
+            console.log('Dijkstra\'s Algorithm Lesson initialized successfully');
+        });
+
+        // Prevent right-click
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+    </script>
+</body>
+</html>

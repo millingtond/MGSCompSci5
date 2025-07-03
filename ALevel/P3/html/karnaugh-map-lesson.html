@@ -1,0 +1,3617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karnaugh Maps - Interactive Lesson</title>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary-color: #8b5cf6;
+            --secondary-dark: #7c3aed;
+            --success-color: #10b981;
+            --success-dark: #059669;
+            --error-color: #ef4444;
+            --error-dark: #dc2626;
+            --warning-color: #f59e0b;
+            --warning-dark: #d97706;
+            --bg-color: #ffffff;
+            --bg-secondary: #f8fafc;
+            --text-color: #1e293b;
+            --text-secondary: #64748b;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --highlight-color: #fef3c7;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-success: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            --gradient-gold: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --gradient-error: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            --animation-duration: 0.3s;
+            --animation-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+            transition: background-color 0.3s ease;
+        }
+
+        /* Smooth scroll */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* High Contrast Mode */
+        body.high-contrast {
+            --bg-color: #000000;
+            --bg-secondary: #0a0a0a;
+            --text-color: #ffffff;
+            --text-secondary: #e0e0e0;
+            --card-bg: #1a1a1a;
+            --border-color: #ffffff;
+            --primary-color: #00ff00;
+            --secondary-color: #ffff00;
+            --gradient-primary: linear-gradient(135deg, #00ff00 0%, #00ff00 100%);
+        }
+
+        /* Dyslexia Font */
+        body.dyslexia-font {
+            font-family: 'Comic Sans MS', 'OpenDyslexic', sans-serif;
+            letter-spacing: 0.05em;
+            word-spacing: 0.1em;
+            line-height: 1.8;
+        }
+
+        /* Reduce motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        /* Header */
+        .header {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 1.5rem 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-lg);
+            will-change: transform;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.1) 100%);
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: clamp(1.25rem, 3vw, 1.75rem);
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            letter-spacing: -0.025em;
+        }
+
+        /* XP Container */
+        .xp-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(255,255,255,0.15);
+            padding: 0.5rem 1.5rem;
+            border-radius: 2rem;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: transform var(--animation-duration) ease;
+            will-change: transform;
+        }
+
+        .xp-container:hover {
+            transform: translateY(-2px);
+        }
+
+        .xp-bar {
+            width: 200px;
+            height: 24px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+            will-change: width;
+        }
+
+        .xp-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .level-badge {
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 1.5rem;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            transition: all var(--animation-duration) ease;
+        }
+
+        /* Navigation */
+        .nav-container {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(20px);
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 80px;
+            z-index: 999;
+            box-shadow: var(--shadow-md);
+            transition: all var(--animation-duration) ease;
+        }
+
+        .nav-pills {
+            display: flex;
+            gap: 0.75rem;
+            overflow-x: auto;
+            padding: 0.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-light) transparent;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .nav-pills::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .nav-pills::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .nav-pills::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 3px;
+        }
+
+        .nav-pill {
+            padding: 0.625rem 1.25rem;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 2rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all var(--animation-duration) var(--animation-bounce);
+            font-size: 0.875rem;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+            will-change: transform;
+        }
+
+        .nav-pill::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: var(--primary-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            opacity: 0.1;
+        }
+
+        .nav-pill:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .nav-pill:hover::before {
+            width: 100%;
+            height: 100%;
+        }
+
+        .nav-pill.active {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+            transform: scale(1.05);
+        }
+
+        .nav-pill.completed {
+            border-color: var(--success-color);
+            position: relative;
+        }
+
+        .nav-pill.completed::after {
+            content: '✓';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--gradient-success);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            box-shadow: var(--shadow-md);
+            animation: bounceIn 0.5s ease;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            min-height: calc(100vh - 200px);
+        }
+
+        .section {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .section.active {
+            display: block;
+            animation: fadeInUp 0.5s ease forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            transition: transform var(--animation-duration) ease, box-shadow var(--animation-duration) ease;
+            will-change: transform;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.6s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .card-title {
+            font-size: clamp(1.5rem, 3vw, 1.75rem);
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-title span {
+            font-size: 2rem;
+            -webkit-text-fill-color: initial;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* K-Map Grid */
+        .kmap-grid {
+            display: inline-block;
+            border: 3px solid var(--primary-color);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            margin: 1rem 0;
+            box-shadow: var(--shadow-lg);
+            background: white;
+        }
+
+        .kmap-cell {
+            width: 60px;
+            height: 60px;
+            border: 1px solid var(--border-color);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all var(--animation-duration) var(--animation-bounce);
+            background: white;
+            position: relative;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .kmap-cell:hover:not(.kmap-header) {
+            background: var(--highlight-color);
+            transform: scale(1.1);
+            z-index: 10;
+            box-shadow: var(--shadow-md);
+        }
+
+        .kmap-cell.selected {
+            background: var(--primary-light);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .kmap-cell.group-1 {
+            background: rgba(99, 102, 241, 0.3);
+            border: 2px solid var(--primary-color);
+        }
+
+        .kmap-cell.group-2 {
+            background: rgba(139, 92, 246, 0.3);
+            border: 2px solid var(--secondary-color);
+        }
+
+        .kmap-cell.group-3 {
+            background: rgba(16, 185, 129, 0.3);
+            border: 2px solid var(--success-color);
+        }
+
+        .kmap-header {
+            background: var(--gradient-primary);
+            color: white;
+            font-weight: 700;
+            font-size: 0.875rem;
+            cursor: default;
+        }
+
+        .kmap-header:hover {
+            transform: none !important;
+            background: var(--gradient-primary) !important;
+        }
+
+        /* Interactive Areas */
+        .interactive-area {
+            background: var(--bg-secondary);
+            border: 2px dashed var(--border-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            position: relative;
+            transition: all var(--animation-duration) ease;
+            overflow: hidden;
+        }
+
+        .interactive-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(99, 102, 241, 0.02) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 1s ease;
+        }
+
+        .interactive-area:hover {
+            border-color: var(--primary-light);
+            background: rgba(99, 102, 241, 0.02);
+        }
+
+        .interactive-area:hover::before {
+            transform: translateX(100%);
+        }
+
+        .highlight-active {
+            border-color: var(--primary-color);
+            background: rgba(99, 102, 241, 0.05);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+            50% { box-shadow: 0 0 0 12px rgba(99, 102, 241, 0); }
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.875rem 2rem;
+            border: none;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--animation-duration) cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            text-transform: none;
+            letter-spacing: 0.025em;
+            touch-action: manipulation;
+            will-change: transform;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--card-bg);
+            color: var(--text-color);
+            border: 2px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--bg-secondary);
+            border-color: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success-color), var(--success-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        /* Quiz Options */
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 1.25rem;
+            margin: 0.75rem 0;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all var(--animation-duration) var(--animation-bounce);
+            position: relative;
+            overflow: hidden;
+            font-weight: 500;
+            will-change: transform;
+        }
+
+        .quiz-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .quiz-option:hover:not(.correct):not(.incorrect) {
+            background: var(--bg-secondary);
+            border-color: var(--primary-light);
+            transform: translateX(8px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .quiz-option:hover::before {
+            left: 100%;
+        }
+
+        .quiz-option.selected {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .quiz-option.correct {
+            background: linear-gradient(135deg, var(--success-color), var(--success-dark));
+            color: white;
+            border-color: var(--success-color);
+            animation: correctAnswer 0.6s ease;
+        }
+
+        .quiz-option.incorrect {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            border-color: var(--error-color);
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes correctAnswer {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        /* Input Fields */
+        .input-field {
+            width: 100%;
+            padding: 0.875rem 1.25rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            transition: all var(--animation-duration) ease;
+            background: var(--card-bg);
+            font-family: inherit;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+            background: white;
+        }
+
+        .input-field::placeholder {
+            color: var(--text-secondary);
+        }
+
+        /* Matching Container */
+        .matching-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .match-item {
+            padding: 1rem;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all var(--animation-duration) var(--animation-bounce);
+            margin: 0.5rem 0;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .match-item::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: var(--primary-light);
+            opacity: 0.1;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s, height 0.4s;
+        }
+
+        .match-item:hover:not(.matched) {
+            background: var(--bg-secondary);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .match-item:hover::after {
+            width: 200%;
+            height: 200%;
+        }
+
+        .match-item.selected {
+            background: var(--gradient-primary);
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .match-item.matched {
+            opacity: 0.5;
+            transform: scale(0.95);
+            pointer-events: none;
+            background: var(--bg-secondary);
+        }
+
+        /* Achievement Popup */
+        .achievement-popup {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: white;
+            border-radius: 1.5rem;
+            padding: 1.5rem 2rem;
+            box-shadow: var(--shadow-xl);
+            transform: translateX(400px);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 2000;
+            max-width: 320px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .achievement-popup::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-gold);
+        }
+
+        .achievement-popup.show {
+            transform: translateX(0);
+        }
+
+        .achievement-icon {
+            font-size: 3.5rem;
+            text-align: center;
+            margin-bottom: 0.75rem;
+            animation: bounceRotate 0.6s ease;
+        }
+
+        @keyframes bounceRotate {
+            0% { transform: scale(0) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(180deg); }
+            100% { transform: scale(1) rotate(360deg); }
+        }
+
+        /* Canvas */
+        .drawing-canvas {
+            border: 3px solid var(--border-color);
+            border-radius: 1rem;
+            background: white;
+            touch-action: none;
+            cursor: crosshair;
+            margin: 1.5rem 0;
+            box-shadow: var(--shadow-md);
+            transition: border-color var(--animation-duration) ease;
+            display: block;
+            max-width: 100%;
+        }
+
+        .drawing-canvas:hover {
+            border-color: var(--primary-light);
+        }
+
+        /* Feedback Button */
+        .feedback-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: all var(--animation-duration) var(--animation-bounce);
+            z-index: 1000;
+            font-size: 1.5rem;
+            will-change: transform;
+        }
+
+        .feedback-btn:hover {
+            transform: scale(1.1) rotate(15deg);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .feedback-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Modal */
+        .feedback-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .feedback-content {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Accessibility Controls */
+        .accessibility-controls {
+            position: fixed;
+            top: 150px;
+            right: 20px;
+            background: white;
+            border-radius: 1rem;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            border: 1px solid var(--border-color);
+            transition: transform var(--animation-duration) ease;
+            will-change: transform;
+        }
+
+        .accessibility-controls:hover {
+            transform: translateX(-5px);
+        }
+
+        .accessibility-controls h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .accessibility-controls button {
+            display: block;
+            width: 100%;
+            margin: 0.5rem 0;
+            padding: 0.625rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all var(--animation-duration) ease;
+            font-weight: 500;
+        }
+
+        .accessibility-controls button:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            transform: translateX(-2px);
+        }
+
+        /* Hint Container */
+        .hint-container {
+            margin-top: 1rem;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+            border-left: 4px solid var(--warning-color);
+            border-radius: 0.75rem;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        .hint-container.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Simulation Controls */
+        .sim-controls {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .sim-step {
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-secondary);
+            border-radius: 0.75rem;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Mark Scheme */
+        .mark-scheme {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            border: 2px solid var(--success-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-top: 1.5rem;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .mark-scheme.show {
+            display: block;
+        }
+
+        .mark-scheme h5 {
+            color: var(--success-dark);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        /* Shame Message */
+        .shame-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: var(--gradient-error);
+            color: white;
+            padding: 2rem 3rem;
+            border-radius: 1.5rem;
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-align: center;
+            z-index: 3000;
+            box-shadow: var(--shadow-xl);
+            animation: shameAnimation 3s ease forwards;
+        }
+
+        @keyframes shameAnimation {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+            20% { transform: translate(-50%, -50%) scale(1.2) rotate(-5deg); }
+            40% { transform: translate(-50%, -50%) scale(0.9) rotate(5deg); }
+            60% { transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
+            80% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) scale(0) rotate(0deg); }
+        }
+
+        /* Rule Cards */
+        .rule-card {
+            padding: 1rem;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all var(--animation-duration) ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .rule-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(99, 102, 241, 0.05) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .rule-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+
+        .rule-card:hover::before {
+            transform: translateX(100%);
+        }
+
+        .rule-card h5 {
+            margin-bottom: 0.5rem;
+            color: var(--primary-dark);
+        }
+
+        .rule-card p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        /* Progress Indicators */
+        .progress-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            justify-content: center;
+        }
+
+        .progress-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--border-color);
+            transition: all var(--animation-duration) ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-dot:hover {
+            transform: scale(1.2);
+        }
+
+        .progress-dot.active {
+            background: var(--primary-color);
+            transform: scale(1.5);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .progress-dot.completed {
+            background: var(--success-color);
+        }
+
+        .progress-dot.completed::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 0.6rem;
+            font-weight: bold;
+        }
+
+        /* Font Size Controls */
+        .font-size-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+
+        .font-size-controls button {
+            padding: 0.5rem 0.75rem;
+            margin: 0;
+        }
+
+        body.font-small { font-size: 14px; }
+        body.font-large { font-size: 18px; }
+        body.font-xlarge { font-size: 20px; }
+
+        /* Loading */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid transparent;
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Success Animation */
+        @keyframes successPulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .success-animation {
+            animation: successPulse 1s ease;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .xp-container {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .xp-bar {
+                width: 150px;
+            }
+
+            .matching-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .nav-container {
+                top: 140px;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .kmap-cell {
+                width: 50px;
+                height: 50px;
+                font-size: 1rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .accessibility-controls {
+                top: auto;
+                bottom: 90px;
+                right: 10px;
+                padding: 1rem;
+            }
+
+            .rule-card {
+                padding: 0.75rem;
+            }
+
+            .sim-controls {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .sim-controls button {
+                width: 100%;
+            }
+        }
+
+        /* Particle Container */
+        #particle-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2999;
+        }
+
+        .particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            will-change: transform;
+            animation: particleFall 2s linear forwards;
+        }
+
+        @keyframes particleFall {
+            to {
+                transform: translateY(100vh);
+                opacity: 0;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 6px;
+            border: 2px solid var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-color);
+        }
+
+        /* Performance optimizations */
+        .section:not(.active) {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        /* Iframe support */
+        iframe {
+            width: 100%;
+            height: 80vh;
+            border: none;
+            display: block;
+        }
+
+        /* Floating XP */
+        @keyframes floatUp {
+            0% { 
+                transform: translateY(0) scale(1); 
+                opacity: 1; 
+            }
+            100% { 
+                transform: translateY(-50px) scale(0.8); 
+                opacity: 0; 
+            }
+        }
+
+        .xp-float {
+            position: fixed;
+            color: var(--warning-color);
+            font-weight: bold;
+            font-size: 1.5rem;
+            pointer-events: none;
+            z-index: 3000;
+            animation: floatUp 2s ease-out forwards;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Keyboard shortcuts popup */
+        .keyboard-shortcuts {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            display: none;
+            z-index: 1000;
+        }
+
+        .keyboard-shortcuts.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Tooltips */
+        [data-tooltip] {
+            position: relative;
+        }
+
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            z-index: 1000;
+            pointer-events: none;
+            animation: fadeIn 0.2s ease;
+        }
+
+        /* Focus visible for accessibility */
+        :focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        /* Skip to content link */
+        .skip-to-content {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            text-decoration: none;
+            border-radius: 0.375rem;
+            z-index: 1001;
+        }
+
+        .skip-to-content:focus {
+            top: 0.5rem;
+            left: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip to Content -->
+    <a href="#main-content" class="skip-to-content">Skip to main content</a>
+
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="header-content">
+            <h1>Karnaugh Maps - Logic Simplification</h1>
+            <div class="xp-container" role="status" aria-live="polite">
+                <span class="level-badge">Level <span id="current-level">1</span></span>
+                <div class="xp-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
+                </div>
+                <span id="xp-text">0 / 100 XP</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-container" role="navigation" aria-label="Lesson sections">
+        <div class="nav-pills" id="nav-pills">
+            <button class="nav-pill active" data-section="intro" aria-current="page">Introduction</button>
+            <button class="nav-pill" data-section="starter">Starter Activity</button>
+            <button class="nav-pill" data-section="fundamentals">K-Map Basics</button>
+            <button class="nav-pill" data-section="grouping">Grouping Rules</button>
+            <button class="nav-pill" data-section="derivation">Expression Derivation</button>
+            <button class="nav-pill" data-section="wrapping">Torus Wrapping</button>
+            <button class="nav-pill" data-section="practice">Practice Problems</button>
+            <button class="nav-pill" data-section="advanced">Advanced K-Maps</button>
+            <button class="nav-pill" data-section="summary">Summary & Quiz</button>
+            <button class="nav-pill" data-section="exam">Exam Practice</button>
+            <button class="nav-pill" data-section="extension">Extension</button>
+            <button class="nav-pill" data-section="videos">Videos</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" role="main" id="main-content">
+        <!-- Introduction Section -->
+        <section id="intro" class="section active">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🗺️</span> Welcome to Karnaugh Maps!
+                </h2>
+                
+                <div class="progress-indicator">
+                    <div class="progress-dot active" data-tooltip="Introduction"></div>
+                    <div class="progress-dot" data-tooltip="Starter"></div>
+                    <div class="progress-dot" data-tooltip="Fundamentals"></div>
+                    <div class="progress-dot" data-tooltip="Rules"></div>
+                    <div class="progress-dot" data-tooltip="More sections..."></div>
+                </div>
+                
+                <h3>Learning Outcomes</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem; line-height: 1.8;">
+                    <li>Understand what Karnaugh Maps are and their purpose</li>
+                    <li>Apply all 8 grouping rules correctly</li>
+                    <li>Derive simplified Boolean expressions from K-maps</li>
+                    <li>Understand the torus wrapping concept</li>
+                    <li>Create K-maps from truth tables</li>
+                    <li>Compare K-map simplification with algebraic methods</li>
+                </ul>
+
+                <div class="interactive-area highlight-active">
+                    <h4>Pre-Assessment: Test Your Boolean Knowledge</h4>
+                    <p>Which Boolean expression is equivalent to: A.B + A.B̄</p>
+                    
+                    <button class="quiz-option" data-answer="a">A + B</button>
+                    <button class="quiz-option" data-answer="b">A</button>
+                    <button class="quiz-option" data-answer="c">B</button>
+                    <button class="quiz-option" data-answer="d">A.B</button>
+                    
+                    <button class="btn btn-primary" onclick="checkPreQuiz()" style="margin-top: 1rem;">
+                        Check Answer
+                    </button>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="navigateSection('next')">
+                        Start Learning →
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Starter Activity -->
+        <section id="starter" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎯</span> Starter Activity: Boolean Logic Review
+                </h2>
+                
+                <p>Match the logic gates to their Boolean expressions by clicking first on a gate, then on its expression!</p>
+                
+                <div class="matching-container" id="starter-matching">
+                    <div>
+                        <h4>Logic Gates</h4>
+                        <div class="match-item" data-id="1">AND Gate (A,B)</div>
+                        <div class="match-item" data-id="2">OR Gate (A,B)</div>
+                        <div class="match-item" data-id="3">NOT Gate (A)</div>
+                        <div class="match-item" data-id="4">NAND Gate (A,B)</div>
+                        <div class="match-item" data-id="5">XOR Gate (A,B)</div>
+                    </div>
+                    <div>
+                        <h4>Boolean Expressions</h4>
+                        <div class="match-item" data-match="2">A + B</div>
+                        <div class="match-item" data-match="3">Ā</div>
+                        <div class="match-item" data-match="5">A ⊕ B</div>
+                        <div class="match-item" data-match="1">A.B</div>
+                        <div class="match-item" data-match="4">(A.B)̄</div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetStarterActivity()">Reset Activity</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- K-Map Fundamentals -->
+        <section id="fundamentals" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📊</span> K-Map Fundamentals
+                </h2>
+                
+                <h3>What are Karnaugh Maps?</h3>
+                <p>Karnaugh Maps (K-Maps) are a graphical method for simplifying Boolean expressions. They provide a visual way to identify patterns and minimize logic circuits.</p>
+                
+                <div class="interactive-area">
+                    <h4>Interactive: K-Map Structure</h4>
+                    <p>Click on different cells to see their binary representation:</p>
+                    
+                    <div style="display: inline-block;">
+                        <table class="kmap-grid">
+                            <tr>
+                                <td class="kmap-cell kmap-header"></td>
+                                <td class="kmap-cell kmap-header">B̄</td>
+                                <td class="kmap-cell kmap-header">B</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">Ā</td>
+                                <td class="kmap-cell" onclick="showCellInfo('00')">00</td>
+                                <td class="kmap-cell" onclick="showCellInfo('01')">01</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">A</td>
+                                <td class="kmap-cell" onclick="showCellInfo('10')">10</td>
+                                <td class="kmap-cell" onclick="showCellInfo('11')">11</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div id="cell-info" style="margin-top: 1rem; padding: 1rem; background: var(--highlight-color); border-radius: 0.5rem; display: none;">
+                        <p id="cell-description"></p>
+                    </div>
+                </div>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Quick Check</h4>
+                    <p>In a 2-variable K-map, how many cells are there?</p>
+                    
+                    <select class="input-field" style="width: 200px;" id="cell-count">
+                        <option value="">Choose...</option>
+                        <option value="2">2 cells</option>
+                        <option value="3">3 cells</option>
+                        <option value="4">4 cells</option>
+                        <option value="8">8 cells</option>
+                    </select>
+                    
+                    <button class="btn btn-primary" onclick="checkCellCount()" style="margin-top: 1rem;">Check Answer</button>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetFundamentalsSection()">Reset Section</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Grouping Rules -->
+        <section id="grouping" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📏</span> The 8 Grouping Rules
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Interactive Rule Explorer</h4>
+                    <p>Click on each rule to see an example:</p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin: 1rem 0;">
+                        <div class="rule-card" onclick="showRule(1)">
+                            <h5>Rule 1: Only 1s</h5>
+                            <p>Groups must only contain cells with value 1</p>
+                        </div>
+                        <div class="rule-card" onclick="showRule(2)">
+                            <h5>Rule 2: No Diagonals</h5>
+                            <p>Groups must be horizontal or vertical</p>
+                        </div>
+                        <div class="rule-card" onclick="showRule(3)">
+                            <h5>Rule 3: Powers of 2</h5>
+                            <p>Groups must contain 2^n cells (1,2,4,8...)</p>
+                        </div>
+                        <div class="rule-card" onclick="showRule(4)">
+                            <h5>Rule 4: Maximize Groups</h5>
+                            <p>Each group should be as large as possible</p>
+                        </div>
+                        <div class="rule-card" onclick="showRule(5)">
+                            <h5>Rule 5: Overlapping Allowed</h5>
+                            <p>Groups may overlap each other</p>
+                        </div>
+                        <div class="rule-card" onclick="showRule(6)">
+                            <h5>Rule 6: Wrapping Allowed</h5>
+                            <p>Groups may wrap around edges</p>
+                        </div>
+                        <div class="rule-card" onclick="showRule(7)">
+                            <h5>Rule 7: Cover All 1s</h5>
+                            <p>Every 1 must be in at least one group</p>
+                        </div>
+                        <div class="rule-card" onclick="showRule(8)">
+                            <h5>Rule 8: Minimize Groups</h5>
+                            <p>Use as few groups as possible</p>
+                        </div>
+                    </div>
+                    
+                    <div id="rule-example" style="margin-top: 2rem; text-align: center;"></div>
+                </div>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Rule Check</h4>
+                    <p>Which of these is NOT a valid group size in a K-map?</p>
+                    
+                    <button class="quiz-option" onclick="checkGroupSize('a')">1 cell</button>
+                    <button class="quiz-option" onclick="checkGroupSize('b')">3 cells</button>
+                    <button class="quiz-option" onclick="checkGroupSize('c')">4 cells</button>
+                    <button class="quiz-option" onclick="checkGroupSize('d')">8 cells</button>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetGroupingSection()">Reset Section</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Expression Derivation -->
+        <section id="derivation" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>✏️</span> Deriving Expressions from Groups
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Step-by-Step Derivation</h4>
+                    <p>Learn how to derive Boolean expressions from K-map groups:</p>
+                    
+                    <div class="sim-controls">
+                        <button class="btn btn-secondary" onclick="prevDerivationStep()">← Previous</button>
+                        <span class="sim-step" id="derivation-step">Step 1 of 4</span>
+                        <button class="btn btn-secondary" onclick="nextDerivationStep()">Next →</button>
+                    </div>
+                    
+                    <div id="derivation-content" style="margin: 2rem 0;">
+                        <!-- Content will be dynamically updated -->
+                    </div>
+                </div>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Practice: Derive the Expression</h4>
+                    <p>Given the highlighted group below, what is the Boolean expression?</p>
+                    
+                    <div style="display: inline-block;">
+                        <table class="kmap-grid">
+                            <tr>
+                                <td class="kmap-cell kmap-header"></td>
+                                <td class="kmap-cell kmap-header">B̄</td>
+                                <td class="kmap-cell kmap-header">B</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">Ā</td>
+                                <td class="kmap-cell group-1">1</td>
+                                <td class="kmap-cell group-1">1</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">A</td>
+                                <td class="kmap-cell">0</td>
+                                <td class="kmap-cell">0</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <input type="text" class="input-field" id="expression-answer" placeholder="Enter Boolean expression..." style="margin-top: 1rem;">
+                    
+                    <button class="btn btn-primary" onclick="checkExpression()">Check Answer</button>
+                    <button class="btn btn-secondary" onclick="showHint('derivation')">Need a Hint?</button>
+                </div>
+                
+                <div class="hint-container" id="derivation-hint">
+                    <p>💡 Hint: Look for variables that remain constant in the group. In this horizontal group, what stays the same?</p>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetDerivationSection()">Reset Section</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Torus Wrapping -->
+        <section id="wrapping" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🔄</span> The Torus Wrapping Concept
+                </h2>
+                
+                <p>K-maps act like a torus (donut shape) - edges wrap around and connect to opposite sides!</p>
+                
+                <div class="interactive-area">
+                    <h4>Interactive Wrapping Demo</h4>
+                    <p>Click cells to create groups that wrap around edges:</p>
+                    
+                    <div style="display: inline-block;">
+                        <table class="kmap-grid" id="wrap-demo">
+                            <tr>
+                                <td class="kmap-cell kmap-header"></td>
+                                <td class="kmap-cell kmap-header">C̄D̄</td>
+                                <td class="kmap-cell kmap-header">C̄D</td>
+                                <td class="kmap-cell kmap-header">CD</td>
+                                <td class="kmap-cell kmap-header">CD̄</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">ĀB̄</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(0,0)">1</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(0,1)">0</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(0,2)">0</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(0,3)">1</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">ĀB</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(1,0)">0</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(1,1)">1</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(1,2)">1</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(1,3)">0</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">AB</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(2,0)">0</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(2,1)">1</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(2,2)">1</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(2,3)">0</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">AB̄</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(3,0)">1</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(3,1)">0</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(3,2)">0</td>
+                                <td class="kmap-cell" onclick="toggleWrapCell(3,3)">1</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <p style="margin-top: 1rem;">Try to identify the corner wrap group!</p>
+                    <button class="btn btn-primary" onclick="checkWrapGroup()">Check Group</button>
+                </div>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Wrapping Quiz</h4>
+                    <p>True or False: A group can wrap both horizontally AND vertically at the same time</p>
+                    
+                    <button class="quiz-option" onclick="checkWrapQuiz('true')">True</button>
+                    <button class="quiz-option" onclick="checkWrapQuiz('false')">False</button>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetWrappingSection()">Reset Section</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Practice Problems -->
+        <section id="practice" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎮</span> Practice Problems
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Problem 1: Build a K-Map</h4>
+                    <p>Create a K-map from this truth table:</p>
+                    
+                    <table style="margin: 1rem 0; border-collapse: collapse;">
+                        <tr style="background: var(--primary-color); color: white;">
+                            <th style="padding: 0.5rem; border: 1px solid var(--border-color);">A</th>
+                            <th style="padding: 0.5rem; border: 1px solid var(--border-color);">B</th>
+                            <th style="padding: 0.5rem; border: 1px solid var(--border-color);">Output</th>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.5rem; border: 1px solid var(--border-color); text-align: center;">0</td>
+                            <td style="padding: 0.5rem; border: 1px solid var(--border-color); text-align: center;">0</td>
+                            <td style="padding: 0.5rem; border: 1px solid var(--border-color); text-align: center;">1</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.5rem; border: 1px solid var(--border-color); text-align: center;">0</td>
+                            <td style="padding: 0.5rem; border: 1px solid var(--border-color); text-align: center;">1</td>
+                            <td style="padding: 0.5rem; border: 1px solid var(--border-color); text-align: center;">0</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.5rem; border: 1px solid var(--border-color); text-align: center;">1</td>
+                            <td style="padding: 0.5rem; border: 1px solid var(--border-color); text-align: center;">0</td>
+                            <td style="padding: 0.5rem; border: 1px solid var(--border-color); text-align: center;">1</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.5rem; border: 1px solid var(--border-color); text-align: center;">1</td>
+                            <td style="padding: 0.5rem; border: 1px solid var(--border-color); text-align: center;">1</td>
+                            <td style="padding: 0.5rem; border: 1px solid var(--border-color); text-align: center;">1</td>
+                        </tr>
+                    </table>
+                    
+                    <p>Click cells to place 1s in the K-map:</p>
+                    <div style="display: inline-block;">
+                        <table class="kmap-grid" id="practice-kmap">
+                            <tr>
+                                <td class="kmap-cell kmap-header"></td>
+                                <td class="kmap-cell kmap-header">B̄</td>
+                                <td class="kmap-cell kmap-header">B</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">Ā</td>
+                                <td class="kmap-cell" onclick="togglePracticeCell(0,0)">0</td>
+                                <td class="kmap-cell" onclick="togglePracticeCell(0,1)">0</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">A</td>
+                                <td class="kmap-cell" onclick="togglePracticeCell(1,0)">0</td>
+                                <td class="kmap-cell" onclick="togglePracticeCell(1,1)">0</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkPracticeKmap()">Check K-Map</button>
+                </div>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Problem 2: Find Optimal Groups</h4>
+                    <p>How many groups are needed to cover all 1s optimally in this K-map?</p>
+                    
+                    <div style="display: inline-block;">
+                        <table class="kmap-grid">
+                            <tr>
+                                <td class="kmap-cell kmap-header"></td>
+                                <td class="kmap-cell kmap-header">B̄</td>
+                                <td class="kmap-cell kmap-header">B</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">Ā</td>
+                                <td class="kmap-cell">1</td>
+                                <td class="kmap-cell">1</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">A</td>
+                                <td class="kmap-cell">1</td>
+                                <td class="kmap-cell">0</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <input type="number" class="input-field" id="group-count" min="1" max="5" style="width: 100px;" placeholder="#">
+                    
+                    <button class="btn btn-primary" onclick="checkGroupCount()">Check Answer</button>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetPracticeSection()">Reset Section</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Advanced K-Maps -->
+        <section id="advanced" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🚀</span> Advanced K-Maps
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>3-Variable K-Map Challenge</h4>
+                    <p>Simplify this 3-variable function:</p>
+                    
+                    <div style="display: inline-block;">
+                        <table class="kmap-grid">
+                            <tr>
+                                <td class="kmap-cell kmap-header"></td>
+                                <td class="kmap-cell kmap-header">C̄</td>
+                                <td class="kmap-cell kmap-header">C</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">ĀB̄</td>
+                                <td class="kmap-cell">1</td>
+                                <td class="kmap-cell">0</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">ĀB</td>
+                                <td class="kmap-cell">1</td>
+                                <td class="kmap-cell">1</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">AB</td>
+                                <td class="kmap-cell">0</td>
+                                <td class="kmap-cell">1</td>
+                            </tr>
+                            <tr>
+                                <td class="kmap-cell kmap-header">AB̄</td>
+                                <td class="kmap-cell">0</td>
+                                <td class="kmap-cell">0</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <p>What is the simplified expression? Choose all terms that apply:</p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.5rem; margin: 1rem 0;">
+                        <label><input type="checkbox" id="term-ac"> ĀC̄</label>
+                        <label><input type="checkbox" id="term-ab"> ĀB</label>
+                        <label><input type="checkbox" id="term-bc"> BC</label>
+                        <label><input type="checkbox" id="term-a"> Ā</label>
+                        <label><input type="checkbox" id="term-b"> B</label>
+                        <label><input type="checkbox" id="term-c"> C</label>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkAdvancedAnswer()">Check Answer</button>
+                </div>
+                
+                <button class="btn btn-secondary" onclick="resetAdvancedSection()">Reset Section</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary & Quiz -->
+        <section id="summary" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📝</span> Summary & Final Quiz
+                </h2>
+                
+                <h3>Key Takeaways</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li>K-maps provide a visual method for Boolean simplification</li>
+                    <li>Groups must follow all 8 rules to be valid</li>
+                    <li>Expressions are derived from constant variables in groups</li>
+                    <li>K-maps wrap like a torus - edges connect</li>
+                    <li>Optimal grouping minimizes the final expression</li>
+                </ul>
+                
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Final Assessment</h4>
+                    <div id="final-quiz">
+                        <!-- Question 1 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>1. What shape must K-map groups be?</strong></p>
+                            <button class="quiz-option" data-q="1" data-a="a">Square</button>
+                            <button class="quiz-option" data-q="1" data-a="b">Rectangular</button>
+                            <button class="quiz-option" data-q="1" data-a="c">Diagonal</button>
+                            <button class="quiz-option" data-q="1" data-a="d">Circular</button>
+                        </div>
+                        
+                        <!-- Question 2 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>2. Groups must contain how many cells?</strong></p>
+                            <button class="quiz-option" data-q="2" data-a="a">Any number</button>
+                            <button class="quiz-option" data-q="2" data-a="b">Even numbers only</button>
+                            <button class="quiz-option" data-q="2" data-a="c">Powers of 2</button>
+                            <button class="quiz-option" data-q="2" data-a="d">Prime numbers</button>
+                        </div>
+                        
+                        <!-- Question 3 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>3. Can groups overlap in a K-map?</strong></p>
+                            <button class="quiz-option" data-q="3" data-a="a">Never</button>
+                            <button class="quiz-option" data-q="3" data-a="b">Yes, always</button>
+                            <button class="quiz-option" data-q="3" data-a="c">Only at edges</button>
+                            <button class="quiz-option" data-q="3" data-a="d">Sometimes</button>
+                        </div>
+                        
+                        <!-- Question 4 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>4. What is the torus property of K-maps?</strong></p>
+                            <button class="quiz-option" data-q="4" data-a="a">They are 3D</button>
+                            <button class="quiz-option" data-q="4" data-a="b">Edges wrap around</button>
+                            <button class="quiz-option" data-q="4" data-a="c">They rotate</button>
+                            <button class="quiz-option" data-q="4" data-a="d">They have holes</button>
+                        </div>
+                        
+                        <!-- Question 5 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>5. What do we look for when deriving expressions?</strong></p>
+                            <button class="quiz-option" data-q="5" data-a="a">Changing variables</button>
+                            <button class="quiz-option" data-q="5" data-a="b">Constant variables</button>
+                            <button class="quiz-option" data-q="5" data-a="c">Zero values</button>
+                            <button class="quiz-option" data-q="5" data-a="d">Maximum values</button>
+                        </div>
+                        
+                        <!-- Question 6 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>6. Groups should be as ___ as possible</strong></p>
+                            <button class="quiz-option" data-q="6" data-a="a">Small</button>
+                            <button class="quiz-option" data-q="6" data-a="b">Square</button>
+                            <button class="quiz-option" data-q="6" data-a="c">Large</button>
+                            <button class="quiz-option" data-q="6" data-a="d">Complex</button>
+                        </div>
+                        
+                        <!-- Question 7 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>7. True or False: Every 1 must be covered</strong></p>
+                            <button class="quiz-option" data-q="7" data-a="a">True</button>
+                            <button class="quiz-option" data-q="7" data-a="b">False</button>
+                        </div>
+                        
+                        <!-- Question 8 -->
+                        <div style="margin-bottom: 2rem;">
+                            <p><strong>8. K-maps are an alternative to:</strong></p>
+                            <button class="quiz-option" data-q="8" data-a="a">Truth tables</button>
+                            <button class="quiz-option" data-q="8" data-a="b">Logic gates</button>
+                            <button class="quiz-option" data-q="8" data-a="c">Boolean algebra</button>
+                            <button class="quiz-option" data-q="8" data-a="d">Binary numbers</button>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="submitFinalQuiz()">Submit Quiz</button>
+                    
+                    <div id="quiz-results" style="margin-top: 2rem; display: none;">
+                        <h4>Your Results:</h4>
+                        <p id="quiz-score"></p>
+                        <div id="quiz-feedback"></div>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exam Practice -->
+        <section id="exam" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📋</span> Exam Practice Questions
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Question 1 (6 marks)</h4>
+                    <p>A student is designing a circuit with 3 inputs (A, B, C). The output is 1 when:</p>
+                    <ul style="margin: 0.5rem 0; padding-left: 2rem;">
+                        <li>All inputs are 0</li>
+                        <li>A and B are 1, C is 0</li>
+                        <li>A is 0, B and C are 1</li>
+                    </ul>
+                    <p>a) Draw the K-map (3 marks)<br>
+                    b) Find the minimal expression (3 marks)</p>
+                    
+                    <textarea class="input-field" id="exam-q1" rows="8" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q1" min="0" max="6" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q1')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="mark-scheme" id="mark-scheme-q1">
+                        <h5>Mark Scheme:</h5>
+                        <p><strong>Part a) K-map (3 marks):</strong></p>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>Correct K-map structure with labels (1 mark)</li>
+                            <li>Correct placement of 1s: positions 000, 110, 011 (2 marks)</li>
+                        </ul>
+                        <p><strong>Part b) Expression (3 marks):</strong></p>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>Identifying valid groups (1 mark)</li>
+                            <li>Correct terms from groups (1 mark)</li>
+                            <li>Final expression: ĀB̄C̄ + BC̄ + ĀBC or equivalent (1 mark)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Question 2 (4 marks)</h4>
+                    <p>Explain two advantages of using Karnaugh Maps over Boolean algebra for logic simplification.</p>
+                    
+                    <textarea class="input-field" id="exam-q2" rows="6" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q2" min="0" max="4" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q2')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="mark-scheme" id="mark-scheme-q2">
+                        <h5>Mark Scheme:</h5>
+                        <p>Award 2 marks per advantage (1 for stating, 1 for explanation):</p>
+                        <ul style="padding-left: 1.5rem;">
+                            <li>Visual method - easier to spot patterns</li>
+                            <li>Systematic approach - reduces errors</li>
+                            <li>Handles don't care conditions easily</li>
+                            <li>No need to remember Boolean laws</li>
+                            <li>Faster for small number of variables</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 2rem;">Calculation Space</h4>
+                <p>Use this canvas for working:</p>
+                <canvas id="drawing-canvas" class="drawing-canvas" width="600" height="300"></canvas>
+                <button class="btn btn-secondary" onclick="clearCanvas()">Clear Canvas</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Extension Activities -->
+        <section id="extension" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🌟</span> Extension Activities
+                </h2>
+                
+                <h3>Beyond the Specification</h3>
+                
+                <div class="interactive-area">
+                    <h4>5-Variable K-Maps</h4>
+                    <p>Research how K-maps work with 5 or more variables. What are the limitations?</p>
+                    
+                    <textarea class="input-field" rows="4" placeholder="Explain your findings..."></textarea>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Quine-McCluskey Method</h4>
+                    <p>This is an algorithmic approach to Boolean simplification. Research and compare it with K-maps:</p>
+                    
+                    <textarea class="input-field" rows="6" placeholder="Compare the methods..."></textarea>
+                </div>
+                
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Real-World Application</h4>
+                    <p>Design a 7-segment display decoder using K-maps. Show your work for at least one segment:</p>
+                    
+                    <textarea class="input-field" rows="8" placeholder="Show your design process..."></textarea>
+                </div>
+                
+                <button class="btn btn-primary" onclick="submitExtension()">Submit Extension Work</button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Videos Section -->
+        <section id="videos" class="section">
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🎥</span> Video Resources
+                </h2>
+                
+                <div class="interactive-area">
+                    <h4>Supplementary Videos</h4>
+                    <p>Your teacher will add video links here to support your learning:</p>
+                    
+                    <div style="background: var(--bg-secondary); padding: 3rem; border-radius: 1rem; text-align: center; margin: 2rem 0;">
+                        <p style="color: var(--text-secondary); font-size: 4rem;">📹</p>
+                        <p style="color: var(--text-secondary);">Video content will be added here</p>
+                    </div>
+                </div>
+                
+                <h4>Additional Resources</h4>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li>Cambridge 9618 Specification</li>
+                    <li>K-map Practice Tools</li>
+                    <li>Boolean Algebra Reference</li>
+                    <li>Past Paper Questions</li>
+                </ul>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('intro')">Start Over</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Achievement Popup -->
+    <div class="achievement-popup" id="achievement-popup">
+        <div class="achievement-icon" id="achievement-icon">🏆</div>
+        <h4 id="achievement-title">Achievement Unlocked!</h4>
+        <p id="achievement-desc">You've earned a new achievement</p>
+    </div>
+
+    <!-- Shame Message -->
+    <div class="shame-message" id="shame-message">
+        🚫 No pasting allowed! Do your own work! 🚫
+    </div>
+
+    <!-- Particle Container -->
+    <div id="particle-container"></div>
+
+    <!-- Feedback Button & Modal -->
+    <button class="feedback-btn" onclick="openFeedback()" aria-label="Send feedback" data-tooltip="Send Feedback">
+        <span>💬</span>
+    </button>
+
+    <div class="feedback-modal" id="feedback-modal">
+        <div class="feedback-content">
+            <h3 style="margin-bottom: 1rem; color: var(--primary-color);">Send Feedback</h3>
+            <p>Found a bug or have a suggestion? Let us know!</p>
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                Current page: <span id="feedback-page" style="font-weight: 600;"></span>
+            </p>
+            <textarea class="input-field" id="feedback-text" rows="5" placeholder="Describe the issue or suggestion..." style="margin-top: 1rem;"></textarea>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeFeedback()">Cancel</button>
+                <button class="btn btn-primary" onclick="sendFeedback()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accessibility Controls -->
+    <div class="accessibility-controls">
+        <h4>Accessibility</h4>
+        <button onclick="toggleHighContrast()" data-tooltip="Toggle high contrast mode">High Contrast</button>
+        <button onclick="toggleDyslexiaFont()" data-tooltip="Toggle dyslexia-friendly font">Dyslexia Font</button>
+        <div class="font-size-controls">
+            <button onclick="changeFontSize('small')" data-tooltip="Decrease font size">A-</button>
+            <button onclick="changeFontSize('normal')" data-tooltip="Reset font size">A</button>
+            <button onclick="changeFontSize('large')" data-tooltip="Increase font size">A+</button>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts -->
+    <div class="keyboard-shortcuts" id="keyboard-shortcuts">
+        <p><strong>Keyboard Shortcuts:</strong></p>
+        <p>← → Arrow keys: Navigate sections</p>
+        <p>? : Show/hide shortcuts</p>
+    </div>
+
+    <script>
+        'use strict';
+
+        // Performance: Cache DOM elements
+        const DOM = {
+            xpFill: null,
+            xpText: null,
+            currentLevel: null,
+            navPills: null,
+            sections: null,
+            achievementPopup: null,
+            shameMessage: null,
+            feedbackModal: null,
+            feedbackPage: null,
+            feedbackText: null,
+            particleContainer: null,
+            keyboardShortcuts: null
+        };
+
+        // Initialize DOM cache
+        function initializeDOM() {
+            DOM.xpFill = document.getElementById('xp-fill');
+            DOM.xpText = document.getElementById('xp-text');
+            DOM.currentLevel = document.getElementById('current-level');
+            DOM.navPills = document.querySelectorAll('.nav-pill');
+            DOM.sections = document.querySelectorAll('.section');
+            DOM.achievementPopup = document.getElementById('achievement-popup');
+            DOM.shameMessage = document.getElementById('shame-message');
+            DOM.feedbackModal = document.getElementById('feedback-modal');
+            DOM.feedbackPage = document.getElementById('feedback-page');
+            DOM.feedbackText = document.getElementById('feedback-text');
+            DOM.particleContainer = document.getElementById('particle-container');
+            DOM.keyboardShortcuts = document.getElementById('keyboard-shortcuts');
+        }
+
+        // Game State
+        let gameState = {
+            xp: 0,
+            level: 1,
+            completedSections: new Set(),
+            achievements: new Set(),
+            actionsPerformed: new Set(),
+            currentSection: 'intro',
+            sectionScores: {},
+            selectedItems: {},
+            hintUsage: {},
+            derivationStep: 1,
+            wrapSelection: new Set()
+        };
+
+        // XP Requirements per level
+        const XP_PER_LEVEL = [0, 100, 250, 450, 700, 1000];
+
+        // Performance: Debounce function
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Performance: Throttle function
+        function throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDOM();
+            setupEventListeners();
+            loadProgress();
+            updateXPDisplay();
+            initializeDerivationContent();
+            updateMobileLayout();
+            
+            // Initialize canvas with delay
+            requestAnimationFrame(() => {
+                const canvas = document.getElementById('drawing-canvas');
+                if (canvas) initializeCanvas();
+            });
+        });
+
+        // Setup Event Listeners
+        function setupEventListeners() {
+            // Navigation with event delegation
+            const navContainer = document.querySelector('.nav-pills');
+            if (navContainer) {
+                navContainer.addEventListener('click', function(e) {
+                    const pill = e.target.closest('.nav-pill');
+                    if (pill) {
+                        navigateToSection(pill.dataset.section);
+                    }
+                });
+            }
+
+            // Quiz options with event delegation
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('quiz-option')) {
+                    if (!e.target.classList.contains('correct') && !e.target.classList.contains('incorrect')) {
+                        selectQuizOption(e.target);
+                    }
+                }
+            });
+
+            // Prevent paste
+            document.addEventListener('paste', function(e) {
+                const target = e.target;
+                if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showShameMessage();
+                    return false;
+                }
+            });
+
+            // Keyboard navigation
+            document.addEventListener('keydown', throttle(function(e) {
+                if (e.key === 'ArrowLeft') navigateSection('prev');
+                if (e.key === 'ArrowRight') navigateSection('next');
+                if (e.key === '?') toggleKeyboardShortcuts();
+                if (e.ctrlKey && e.key === 'v') {
+                    e.preventDefault();
+                    showShameMessage();
+                }
+            }, 100));
+
+            // Touch support with improved performance
+            let touchStartX = 0;
+            let touchStartY = 0;
+            
+            document.addEventListener('touchstart', function(e) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            document.addEventListener('touchend', function(e) {
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const diffX = touchStartX - touchEndX;
+                const diffY = Math.abs(touchStartY - touchEndY);
+                
+                if (Math.abs(diffX) > 50 && diffY < 100) {
+                    if (diffX > 0) navigateSection('next');
+                    else navigateSection('prev');
+                }
+            }, { passive: true });
+
+            // Window resize
+            window.addEventListener('resize', debounce(updateMobileLayout, 250));
+
+            // Close modal on outside click
+            DOM.feedbackModal?.addEventListener('click', function(e) {
+                if (e.target === DOM.feedbackModal) {
+                    closeFeedback();
+                }
+            });
+        }
+
+        // Pre-Quiz
+        function checkPreQuiz() {
+            const selected = document.querySelector('#intro .quiz-option.selected');
+            if (!selected) {
+                showMessage('Please select an answer first', 'warning');
+                return;
+            }
+            
+            const correct = selected.dataset.answer === 'b';
+            if (correct) {
+                selected.classList.add('correct');
+                awardXP(10, 'Pre-quiz Correct', 'pre_quiz');
+                showMessage('Correct! A.B + A.B̄ = A(B + B̄) = A.1 = A', 'success');
+            } else {
+                selected.classList.add('incorrect');
+                const correctOption = document.querySelector('#intro .quiz-option[data-answer="b"]');
+                if (correctOption) correctOption.classList.add('correct');
+                showMessage('Not quite. Remember: A.B + A.B̄ = A(B + B̄) = A', 'error');
+            }
+        }
+
+        // Starter Activity Functions
+        function resetStarterActivity() {
+            const container = document.getElementById('starter-matching');
+            if (!container) return;
+            
+            container.querySelectorAll('.match-item').forEach(item => {
+                item.classList.remove('selected', 'matched');
+            });
+            gameState.selectedItems.starter = null;
+        }
+
+        // Matching logic
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('match-item')) {
+                handleMatchClick(e.target);
+            }
+        });
+
+        function handleMatchClick(item) {
+            const container = item.closest('.matching-container');
+            if (!container || item.classList.contains('matched')) return;
+            
+            const isLeftColumn = item.parentElement.querySelector('h4')?.textContent.includes('Logic Gates');
+            
+            if (isLeftColumn) {
+                // Select from left column
+                container.querySelectorAll('.match-item').forEach(i => {
+                    if (i.parentElement === item.parentElement) {
+                        i.classList.remove('selected');
+                    }
+                });
+                item.classList.add('selected');
+                gameState.selectedItems[container.id] = item;
+            } else {
+                // Match with right column
+                const selected = gameState.selectedItems[container.id];
+                if (selected && !selected.classList.contains('matched')) {
+                    if (selected.dataset.id === item.dataset.match) {
+                        // Correct match
+                        selected.classList.add('matched', 'success-animation');
+                        item.classList.add('matched', 'success-animation');
+                        selected.classList.remove('selected');
+                        awardXP(5, 'Correct Match', 'match_' + selected.dataset.id);
+                        
+                        // Check if all matched
+                        checkAllMatched(container);
+                    } else {
+                        // Incorrect match
+                        item.classList.add('incorrect');
+                        setTimeout(() => item.classList.remove('incorrect'), 500);
+                    }
+                }
+            }
+        }
+
+        function checkAllMatched(container) {
+            const unmatched = container.querySelectorAll('.match-item:not(.matched)');
+            if (unmatched.length === 0) {
+                awardXP(20, 'All Matched', 'starter_complete');
+                markSectionComplete('starter');
+                showMessage('Perfect! You matched all logic gates correctly!', 'success');
+            }
+        }
+
+        // K-Map Fundamentals
+        function showCellInfo(binary) {
+            const info = document.getElementById('cell-info');
+            const desc = document.getElementById('cell-description');
+            
+            if (!info || !desc) return;
+            
+            const descriptions = {
+                '00': 'This cell represents A=0, B=0 (both inputs are false)',
+                '01': 'This cell represents A=0, B=1 (A is false, B is true)',
+                '10': 'This cell represents A=1, B=0 (A is true, B is false)',
+                '11': 'This cell represents A=1, B=1 (both inputs are true)'
+            };
+            
+            desc.textContent = descriptions[binary];
+            info.style.display = 'block';
+            awardXP(2, 'Explore Cell', 'cell_' + binary);
+        }
+
+        function checkCellCount() {
+            const select = document.getElementById('cell-count');
+            if (!select) return;
+            
+            if (select.value === '4') {
+                select.style.borderColor = 'var(--success-color)';
+                awardXP(10, 'Cell Count Correct', 'cell_count');
+                markSectionComplete('fundamentals');
+                showMessage('Correct! A 2-variable K-map has 2² = 4 cells', 'success');
+            } else if (select.value) {
+                select.style.borderColor = 'var(--error-color)';
+                showMessage('Think about it: 2 variables, each can be 0 or 1...', 'error');
+            }
+        }
+
+        function resetFundamentalsSection() {
+            const cellCount = document.getElementById('cell-count');
+            const cellInfo = document.getElementById('cell-info');
+            
+            if (cellCount) {
+                cellCount.value = '';
+                cellCount.style.borderColor = '';
+            }
+            if (cellInfo) {
+                cellInfo.style.display = 'none';
+            }
+        }
+
+        // Grouping Rules
+        function showRule(ruleNum) {
+            const exampleEl = document.getElementById('rule-example');
+            if (!exampleEl) return;
+            
+            const examples = {
+                1: '<div style="text-align: center;">✅ Groups contain only 1s<br>❌ No 0s allowed in groups<br><div style="margin-top: 1rem;">This ensures we only simplify where the function outputs 1</div></div>',
+                2: '<div style="text-align: center;">✅ Horizontal/Vertical groups<br>❌ No diagonal groups<br><div style="margin-top: 1rem;">Adjacent cells differ by only one variable</div></div>',
+                3: '<div style="text-align: center;">✅ Valid sizes: 1, 2, 4, 8, 16...<br>❌ Invalid: 3, 5, 6, 7...<br><div style="margin-top: 1rem;">Powers of 2 ensure proper simplification</div></div>',
+                4: '<div style="text-align: center;">✅ Group of 4 is better than two groups of 2<br><div style="margin-top: 1rem;">Larger groups = simpler expressions</div></div>',
+                5: '<div style="text-align: center;">✅ Groups can share cells<br><div style="margin-top: 1rem;">One 1 can belong to multiple groups</div></div>',
+                6: '<div style="text-align: center;">✅ Groups can wrap around edges<br><div style="margin-top: 1rem;">K-maps are like a torus!</div></div>',
+                7: '<div style="text-align: center;">✅ Every 1 must be covered<br><div style="margin-top: 1rem;">No 1s can be left out</div></div>',
+                8: '<div style="text-align: center;">✅ Use minimum number of groups<br><div style="margin-top: 1rem;">Fewer groups = simpler expression</div></div>'
+            };
+            
+            exampleEl.innerHTML = examples[ruleNum];
+            awardXP(3, 'Explore Rule', 'rule_' + ruleNum);
+            
+            // Highlight the clicked rule card
+            document.querySelectorAll('.rule-card').forEach(card => {
+                card.style.borderColor = '';
+            });
+            event.currentTarget.style.borderColor = 'var(--primary-color)';
+        }
+
+        function checkGroupSize(answer) {
+            const options = document.querySelectorAll('#grouping .quiz-option');
+            options.forEach(opt => opt.classList.remove('correct', 'incorrect', 'selected'));
+            
+            if (answer === 'b') {
+                options[1].classList.add('correct');
+                awardXP(15, 'Group Size Correct', 'group_size');
+                markSectionComplete('grouping');
+                showMessage('Correct! 3 is not a power of 2', 'success');
+            } else {
+                const index = answer.charCodeAt(0) - 97;
+                if (options[index]) {
+                    options[index].classList.add('incorrect');
+                }
+                options[1].classList.add('correct');
+                showMessage('Remember: groups must be powers of 2 (1, 2, 4, 8...)', 'error');
+            }
+        }
+
+        function resetGroupingSection() {
+            const ruleExample = document.getElementById('rule-example');
+            if (ruleExample) ruleExample.innerHTML = '';
+            
+            document.querySelectorAll('#grouping .quiz-option').forEach(opt => {
+                opt.classList.remove('correct', 'incorrect', 'selected');
+            });
+            
+            document.querySelectorAll('.rule-card').forEach(card => {
+                card.style.borderColor = '';
+            });
+        }
+
+        // Expression Derivation
+        let derivationContent = {};
+
+        function initializeDerivationContent() {
+            derivationContent = {
+                1: `<h5>Step 1: Identify the Group</h5>
+                    <p>Look at the highlighted cells. This is our group containing two 1s.</p>
+                    <table class="kmap-grid" style="display: inline-block;">
+                        <tr>
+                            <td class="kmap-cell kmap-header"></td>
+                            <td class="kmap-cell kmap-header">B̄</td>
+                            <td class="kmap-cell kmap-header">B</td>
+                        </tr>
+                        <tr>
+                            <td class="kmap-cell kmap-header">Ā</td>
+                            <td class="kmap-cell group-1">1</td>
+                            <td class="kmap-cell group-1">1</td>
+                        </tr>
+                        <tr>
+                            <td class="kmap-cell kmap-header">A</td>
+                            <td class="kmap-cell">0</td>
+                            <td class="kmap-cell">0</td>
+                        </tr>
+                    </table>
+                    <p style="margin-top: 1rem;">The group is highlighted in blue - it's a horizontal group of 2 cells.</p>`,
+                2: `<h5>Step 2: Check Variable A</h5>
+                    <p>In both cells of our group, A = 0 (we're in the Ā row).</p>
+                    <p style="background: var(--highlight-color); padding: 1rem; border-radius: 0.5rem; margin-top: 1rem;">
+                        <strong>Key Point:</strong> Since A is constant (always 0) in the group, Ā will be part of our expression.
+                    </p>`,
+                3: `<h5>Step 3: Check Variable B</h5>
+                    <p>In the left cell: B = 0 (B̄ column)</p>
+                    <p>In the right cell: B = 1 (B column)</p>
+                    <p style="background: var(--highlight-color); padding: 1rem; border-radius: 0.5rem; margin-top: 1rem;">
+                        <strong>Key Point:</strong> B changes within the group (0→1), so it's NOT part of our expression.
+                    </p>`,
+                4: `<h5>Step 4: Final Expression</h5>
+                    <p>Only Ā remained constant throughout the group.</p>
+                    <p style="font-size: 1.5rem; text-align: center; margin: 2rem 0; padding: 1rem; background: var(--success-color); color: white; border-radius: 0.5rem;">
+                        <strong>Therefore, the expression for this group is: Ā</strong>
+                    </p>
+                    <p>This makes sense: the group covers all cases where A=0, regardless of B's value!</p>`
+            };
+            updateDerivationContent();
+        }
+
+        function updateDerivationContent() {
+            const content = document.getElementById('derivation-content');
+            const stepText = document.getElementById('derivation-step');
+            
+            if (content && derivationContent[gameState.derivationStep]) {
+                content.innerHTML = derivationContent[gameState.derivationStep];
+                if (stepText) {
+                    stepText.textContent = 'Step ' + gameState.derivationStep + ' of 4';
+                }
+            }
+        }
+
+        function nextDerivationStep() {
+            if (gameState.derivationStep < 4) {
+                gameState.derivationStep++;
+                updateDerivationContent();
+                awardXP(5, 'Derivation Step', 'deriv_step_' + gameState.derivationStep);
+            }
+        }
+
+        function prevDerivationStep() {
+            if (gameState.derivationStep > 1) {
+                gameState.derivationStep--;
+                updateDerivationContent();
+            }
+        }
+
+        function checkExpression() {
+            const input = document.getElementById('expression-answer');
+            if (!input) return;
+            
+            const answer = input.value.trim().toLowerCase();
+            
+            // Accept various formats
+            const correctAnswers = ['a̅', 'ā', 'a\'', 'not a', '!a', '~a', 'a bar', 'abar', 'not(a)', 'a-bar'];
+            
+            if (correctAnswers.includes(answer)) {
+                input.style.borderColor = 'var(--success-color)';
+                awardXP(20, 'Expression Correct', 'expression_derivation');
+                markSectionComplete('derivation');
+                showMessage('Perfect! You correctly identified that only Ā is constant.', 'success');
+            } else if (answer) {
+                input.style.borderColor = 'var(--error-color)';
+                showMessage('Not quite. Remember to check which variable stays constant.', 'error');
+            }
+        }
+
+        function showHint(section) {
+            const hint = document.getElementById(section + '-hint');
+            if (!hint) return;
+            
+            hint.classList.add('show');
+            
+            // Only deduct XP once per hint
+            if (!gameState.hintUsage[section]) {
+                gameState.hintUsage[section] = true;
+                gameState.xp = Math.max(0, gameState.xp - 5);
+                updateXPDisplay();
+                showMessage('Hint revealed (-5 XP)', 'warning');
+            }
+        }
+
+        function resetDerivationSection() {
+            gameState.derivationStep = 1;
+            updateDerivationContent();
+            
+            const expressionAnswer = document.getElementById('expression-answer');
+            const derivationHint = document.getElementById('derivation-hint');
+            
+            if (expressionAnswer) {
+                expressionAnswer.value = '';
+                expressionAnswer.style.borderColor = '';
+            }
+            if (derivationHint) {
+                derivationHint.classList.remove('show');
+            }
+        }
+
+        // Wrapping Section
+        function toggleWrapCell(row, col) {
+            const key = row + ',' + col;
+            if (gameState.wrapSelection.has(key)) {
+                gameState.wrapSelection.delete(key);
+            } else {
+                gameState.wrapSelection.add(key);
+            }
+            updateWrapDisplay();
+        }
+
+        function updateWrapDisplay() {
+            const table = document.getElementById('wrap-demo');
+            if (!table) return;
+            
+            const cells = table.querySelectorAll('.kmap-cell:not(.kmap-header)');
+            
+            cells.forEach((cell, index) => {
+                const row = Math.floor(index / 4);
+                const col = index % 4;
+                const key = row + ',' + col;
+                
+                if (gameState.wrapSelection.has(key)) {
+                    cell.classList.add('selected');
+                } else {
+                    cell.classList.remove('selected');
+                }
+            });
+        }
+
+        function checkWrapGroup() {
+            // Check if they selected the corner wrap group
+            const corners = ['0,0', '0,3', '3,0', '3,3'];
+            const selectedCorners = corners.filter(corner => gameState.wrapSelection.has(corner));
+            
+            if (selectedCorners.length === 4 && gameState.wrapSelection.size === 4) {
+                awardXP(25, 'Corner Wrap Found', 'wrap_corners');
+                showMessage('Excellent! You found the corner wrap group! This demonstrates the torus property.', 'success');
+                markSectionComplete('wrapping');
+                
+                // Highlight the corners
+                corners.forEach(corner => {
+                    const [row, col] = corner.split(',');
+                    const cell = document.querySelector(`#wrap-demo .kmap-cell:not(.kmap-header):nth-of-type(${parseInt(row) * 4 + parseInt(col) + 2})`);
+                    if (cell) cell.classList.add('success-animation');
+                });
+            } else {
+                showMessage('Try selecting all four corner cells - they form a valid group!', 'warning');
+            }
+        }
+
+        function checkWrapQuiz(answer) {
+            const options = document.querySelectorAll('#wrapping .quiz-option');
+            options.forEach(opt => opt.classList.remove('correct', 'incorrect', 'selected'));
+            
+            if (answer === 'true') {
+                options[0].classList.add('correct');
+                awardXP(10, 'Wrap Quiz Correct', 'wrap_quiz');
+                showMessage('Correct! Groups can wrap in both directions simultaneously.', 'success');
+            } else {
+                options[1].classList.add('incorrect');
+                options[0].classList.add('correct');
+                showMessage('Actually, groups CAN wrap both horizontally and vertically!', 'error');
+            }
+        }
+
+        function resetWrappingSection() {
+            gameState.wrapSelection.clear();
+            updateWrapDisplay();
+            document.querySelectorAll('#wrapping .quiz-option').forEach(opt => {
+                opt.classList.remove('correct', 'incorrect', 'selected');
+            });
+        }
+
+        // Practice Section
+        const practiceKmapState = [[0,0],[0,0]];
+
+        function togglePracticeCell(row, col) {
+            practiceKmapState[row][col] = practiceKmapState[row][col] === 0 ? 1 : 0;
+            updatePracticeDisplay();
+        }
+
+        function updatePracticeDisplay() {
+            const table = document.getElementById('practice-kmap');
+            if (!table) return;
+            
+            const cells = table.querySelectorAll('.kmap-cell:not(.kmap-header)');
+            
+            let index = 0;
+            for (let r = 0; r < 2; r++) {
+                for (let c = 0; c < 2; c++) {
+                    if (cells[index]) {
+                        cells[index].textContent = practiceKmapState[r][c];
+                        if (practiceKmapState[r][c] === 1) {
+                            cells[index].classList.add('selected');
+                        } else {
+                            cells[index].classList.remove('selected');
+                        }
+                    }
+                    index++;
+                }
+            }
+        }
+
+        function checkPracticeKmap() {
+            // Expected: [1,0],[1,1]
+            if (practiceKmapState[0][0] === 1 && practiceKmapState[0][1] === 0 &&
+                practiceKmapState[1][0] === 1 && practiceKmapState[1][1] === 1) {
+                awardXP(20, 'K-map Built', 'practice_kmap');
+                showMessage('Perfect! Your K-map matches the truth table!', 'success');
+            } else {
+                showMessage('Check your K-map against the truth table. Remember: top-left is ĀB̄ (00)', 'error');
+            }
+        }
+
+        function checkGroupCount() {
+            const input = document.getElementById('group-count');
+            if (!input) return;
+            
+            if (input.value === '2') {
+                input.style.borderColor = 'var(--success-color)';
+                awardXP(15, 'Group Count Correct', 'group_count');
+                markSectionComplete('practice');
+                showMessage('Correct! One group of 2 (top row) and one group of 1 (bottom-left)', 'success');
+            } else if (input.value) {
+                input.style.borderColor = 'var(--error-color)';
+                showMessage('Think about the optimal grouping - can you make larger groups?', 'error');
+            }
+        }
+
+        function resetPracticeSection() {
+            practiceKmapState[0] = [0,0];
+            practiceKmapState[1] = [0,0];
+            updatePracticeDisplay();
+            
+            const groupCount = document.getElementById('group-count');
+            if (groupCount) {
+                groupCount.value = '';
+                groupCount.style.borderColor = '';
+            }
+        }
+
+        // Advanced Section
+        function checkAdvancedAnswer() {
+            const correctTerms = ['term-ac', 'term-bc'];
+            const checkedTerms = [];
+            
+            ['term-ac', 'term-ab', 'term-bc', 'term-a', 'term-b', 'term-c'].forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox && checkbox.checked) {
+                    checkedTerms.push(id);
+                }
+            });
+            
+            const isCorrect = correctTerms.length === checkedTerms.length &&
+                             correctTerms.every(term => checkedTerms.includes(term));
+            
+            if (isCorrect) {
+                awardXP(30, 'Advanced K-map', 'advanced_complete');
+                markSectionComplete('advanced');
+                showMessage('Excellent! The expression is ĀC̄ + BC', 'success');
+            } else {
+                showMessage('Not quite. Look for the optimal groups in the K-map.', 'error');
+            }
+        }
+
+        function resetAdvancedSection() {
+            ['term-ac', 'term-ab', 'term-bc', 'term-a', 'term-b', 'term-c'].forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox) checkbox.checked = false;
+            });
+        }
+
+        // Final Quiz
+        function submitFinalQuiz() {
+            const answers = {
+                '1': 'b', '2': 'c', '3': 'b', '4': 'b',
+                '5': 'b', '6': 'c', '7': 'a', '8': 'c'
+            };
+            
+            let score = 0;
+            const feedback = [];
+            
+            Object.keys(answers).forEach(q => {
+                const selected = document.querySelector(`.quiz-option[data-q="${q}"].selected`);
+                if (selected && selected.dataset.a === answers[q]) {
+                    selected.classList.add('correct');
+                    score++;
+                } else {
+                    if (selected) selected.classList.add('incorrect');
+                    const correctOption = document.querySelector(`.quiz-option[data-q="${q}"][data-a="${answers[q]}"]`);
+                    if (correctOption) correctOption.classList.add('correct');
+                    
+                    const topics = {
+                        '1': 'Groups must be rectangular (horizontal/vertical)',
+                        '2': 'Groups must contain powers of 2 cells',
+                        '3': 'Groups can overlap',
+                        '4': 'K-maps wrap like a torus',
+                        '5': 'Look for constant variables in groups',
+                        '6': 'Groups should be as large as possible',
+                        '7': 'Every 1 must be covered',
+                        '8': 'K-maps simplify Boolean algebra'
+                    };
+                    feedback.push(`Q${q}: ${topics[q]}`);
+                }
+            });
+            
+            gameState.sectionScores.finalQuiz = score;
+            
+            const scoreEl = document.getElementById('quiz-score');
+            const feedbackEl = document.getElementById('quiz-feedback');
+            const resultsEl = document.getElementById('quiz-results');
+            
+            if (scoreEl) {
+                scoreEl.textContent = `You scored ${score}/8 (${Math.round(score/8*100)}%)`;
+            }
+            
+            if (feedbackEl) {
+                if (feedback.length > 0) {
+                    feedbackEl.innerHTML = 
+                        '<h5>Review these topics:</h5><ul>' + 
+                        feedback.map(f => `<li>${f}</li>`).join('') + 
+                        '</ul>';
+                } else {
+                    feedbackEl.innerHTML = '<p style="color: var(--success-color);">Perfect score! Excellent work!</p>';
+                }
+            }
+            
+            if (resultsEl) {
+                resultsEl.style.display = 'block';
+            }
+            
+            awardXP(score * 10, 'Final Quiz', 'final_quiz_complete');
+            markSectionComplete('summary');
+            
+            if (score === 8) {
+                showAchievement('Perfect Quiz', 'Scored 100% on the final quiz!', '💯');
+            }
+        }
+
+        // Quiz option selection
+        document.addEventListener('click', function(e) {
+            if (e.target.matches('#final-quiz .quiz-option')) {
+                const option = e.target;
+                const question = option.dataset.q;
+                const siblings = document.querySelectorAll(`.quiz-option[data-q="${question}"]`);
+                siblings.forEach(s => s.classList.remove('selected'));
+                option.classList.add('selected');
+            }
+        });
+
+        // Exam Practice
+        function showMarkScheme(question) {
+            const textarea = document.getElementById(`exam-${question}`);
+            const marks = document.getElementById(`marks-${question}`);
+            const scheme = document.getElementById(`mark-scheme-${question}`);
+            
+            if (!textarea || !marks || !scheme) return;
+            
+            const minLength = question === 'q1' ? 50 : 100;
+            
+            if (textarea.value.length < minLength || !marks.value) {
+                showMessage(`Please write a more detailed answer (minimum ${minLength} characters) and enter predicted marks`, 'warning');
+                return;
+            }
+            
+            scheme.classList.add('show');
+            awardXP(10, 'Exam Practice', `exam_${question}`);
+        }
+
+        // Extension
+        function submitExtension() {
+            const textareas = document.querySelectorAll('#extension .input-field');
+            let totalWords = 0;
+            
+            textareas.forEach(ta => {
+                totalWords += ta.value.split(' ').filter(word => word.length > 0).length;
+            });
+            
+            if (totalWords > 50) {
+                awardXP(30, 'Extension Work', 'extension_complete');
+                markSectionComplete('extension');
+                showMessage('Excellent extension work! Your teacher will review your responses.', 'success');
+            } else {
+                showMessage('Please provide more detailed responses for the extension activities.', 'warning');
+            }
+        }
+
+        // Canvas
+        function initializeCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            
+            // Set canvas size
+            const updateCanvasSize = () => {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = Math.min(600, rect.width);
+                canvas.height = 300;
+            };
+            
+            updateCanvasSize();
+            window.addEventListener('resize', debounce(updateCanvasSize, 250));
+            
+            function getCoordinates(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                
+                if (e.touches) {
+                    return {
+                        x: (e.touches[0].clientX - rect.left) * scaleX,
+                        y: (e.touches[0].clientY - rect.top) * scaleY
+                    };
+                } else {
+                    return {
+                        x: (e.clientX - rect.left) * scaleX,
+                        y: (e.clientY - rect.top) * scaleY
+                    };
+                }
+            }
+            
+            function startDrawing(e) {
+                isDrawing = true;
+                const coords = getCoordinates(e);
+                lastX = coords.x;
+                lastY = coords.y;
+                e.preventDefault();
+            }
+            
+            function draw(e) {
+                if (!isDrawing) return;
+                
+                const coords = getCoordinates(e);
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(coords.x, coords.y);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+                
+                lastX = coords.x;
+                lastY = coords.y;
+                e.preventDefault();
+            }
+            
+            function stopDrawing(e) {
+                isDrawing = false;
+                e.preventDefault();
+            }
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events
+            canvas.addEventListener('touchstart', startDrawing, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing, { passive: false });
+            canvas.addEventListener('touchcancel', stopDrawing, { passive: false });
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            showMessage('Canvas cleared', 'info');
+        }
+
+        // Navigation
+        function navigateToSection(sectionId) {
+            if (!sectionId) return;
+            
+            // Deactivate all sections
+            DOM.sections.forEach(s => {
+                s.classList.remove('active');
+                s.style.visibility = 'hidden';
+            });
+            
+            // Deactivate all nav pills
+            DOM.navPills.forEach(p => p.classList.remove('active'));
+            
+            // Activate target section
+            const targetSection = document.getElementById(sectionId);
+            const targetPill = document.querySelector(`[data-section="${sectionId}"]`);
+            
+            if (targetSection) {
+                targetSection.classList.add('active');
+                targetSection.style.visibility = 'visible';
+            }
+            
+            if (targetPill) {
+                targetPill.classList.add('active');
+                
+                // Scroll nav pill into view
+                const navContainer = targetPill.parentElement;
+                if (navContainer) {
+                    const pillRect = targetPill.getBoundingClientRect();
+                    const containerRect = navContainer.getBoundingClientRect();
+                    
+                    if (pillRect.left < containerRect.left || pillRect.right > containerRect.right) {
+                        targetPill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    }
+                }
+            }
+            
+            gameState.currentSection = sectionId;
+            updateFeedbackPage();
+            updateProgressIndicators();
+            
+            if (!gameState.completedSections.has(sectionId)) {
+                awardXP(5, 'Section Visit', `section_${sectionId}`);
+            }
+            
+            // Smooth scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Save progress
+            saveProgress();
+        }
+
+        function navigateSection(direction) {
+            const sections = Array.from(DOM.navPills).map(p => p.dataset.section);
+            const currentIndex = sections.indexOf(gameState.currentSection);
+            
+            if (direction === 'next' && currentIndex < sections.length - 1) {
+                navigateToSection(sections[currentIndex + 1]);
+            } else if (direction === 'prev' && currentIndex > 0) {
+                navigateToSection(sections[currentIndex - 1]);
+            }
+        }
+
+        function updateProgressIndicators() {
+            const indicators = document.querySelectorAll('.progress-dot');
+            const currentIndex = Array.from(DOM.navPills).findIndex(p => p.dataset.section === gameState.currentSection);
+            
+            indicators.forEach((dot, index) => {
+                dot.classList.remove('active');
+                if (index === currentIndex % indicators.length) {
+                    dot.classList.add('active');
+                }
+            });
+        }
+
+        // XP System
+        function awardXP(amount, action, actionId = null) {
+            if (actionId && gameState.actionsPerformed.has(actionId)) return;
+            if (actionId) gameState.actionsPerformed.add(actionId);
+            
+            gameState.xp += amount;
+            updateXPDisplay();
+            checkLevelUp();
+            checkAchievements();
+            saveProgress();
+            
+            createFloatingXP(amount);
+        }
+
+        function createFloatingXP(amount) {
+            const xpFloat = document.createElement('div');
+            xpFloat.className = 'xp-float';
+            xpFloat.style.top = '120px';
+            xpFloat.style.right = '100px';
+            xpFloat.textContent = `+${amount} XP`;
+            document.body.appendChild(xpFloat);
+            
+            setTimeout(() => xpFloat.remove(), 2000);
+        }
+
+        function updateXPDisplay() {
+            if (!DOM.xpFill || !DOM.xpText || !DOM.currentLevel) return;
+            
+            const xpForNextLevel = XP_PER_LEVEL[gameState.level] || XP_PER_LEVEL[XP_PER_LEVEL.length - 1];
+            const xpProgress = Math.min((gameState.xp / xpForNextLevel) * 100, 100);
+            
+            DOM.xpFill.style.width = xpProgress + '%';
+            DOM.xpText.textContent = `${gameState.xp} / ${xpForNextLevel} XP`;
+            DOM.currentLevel.textContent = gameState.level;
+        }
+
+        function checkLevelUp() {
+            if (gameState.level < 5 && gameState.xp >= XP_PER_LEVEL[gameState.level]) {
+                gameState.level++;
+                showAchievement('Level Up!', `You reached Level ${gameState.level}!`, '⬆️');
+                createParticleEffect();
+            }
+        }
+
+        function checkAchievements() {
+            // First correct
+            if (!gameState.achievements.has('first_correct') && gameState.actionsPerformed.has('pre_quiz')) {
+                gameState.achievements.add('first_correct');
+                showAchievement('First Steps', 'Got your first correct answer!', '✅');
+            }
+            
+            // K-Map Master
+            if (!gameState.achievements.has('kmap_master') && gameState.completedSections.size >= 8) {
+                gameState.achievements.add('kmap_master');
+                showAchievement('K-Map Master', 'Completed most sections!', '🎓');
+            }
+            
+            // Rule Expert
+            if (!gameState.achievements.has('rule_expert')) {
+                let rulesExplored = 0;
+                for (let i = 1; i <= 8; i++) {
+                    if (gameState.actionsPerformed.has(`rule_${i}`)) rulesExplored++;
+                }
+                if (rulesExplored === 8) {
+                    gameState.achievements.add('rule_expert');
+                    showAchievement('Rule Expert', 'Explored all 8 grouping rules!', '📏');
+                }
+            }
+            
+            // Speed Learner
+            const sessionTime = Date.now() - startTime;
+            if (!gameState.achievements.has('speed_learner') && gameState.completedSections.size >= 5 && sessionTime < 600000) {
+                gameState.achievements.add('speed_learner');
+                showAchievement('Speed Learner', 'Completed 5 sections in under 10 minutes!', '⚡');
+            }
+        }
+
+        function showAchievement(title, desc, icon) {
+            if (!DOM.achievementPopup) return;
+            
+            const titleEl = DOM.achievementPopup.querySelector('#achievement-title');
+            const descEl = DOM.achievementPopup.querySelector('#achievement-desc');
+            const iconEl = DOM.achievementPopup.querySelector('#achievement-icon');
+            
+            if (titleEl) titleEl.textContent = title;
+            if (descEl) descEl.textContent = desc;
+            if (iconEl) iconEl.textContent = icon;
+            
+            DOM.achievementPopup.classList.add('show');
+            setTimeout(() => {
+                if (DOM.achievementPopup) DOM.achievementPopup.classList.remove('show');
+            }, 3000);
+            
+            awardXP(50, 'Achievement');
+            
+            // Haptic feedback for mobile
+            if ('vibrate' in navigator) {
+                navigator.vibrate([100, 50, 100]);
+            }
+        }
+
+        function createParticleEffect() {
+            if (!DOM.particleContainer) return;
+            
+            const colors = ['#fbbf24', '#f59e0b', '#6366f1', '#8b5cf6', '#10b981'];
+            const particleCount = 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = Math.random() * window.innerWidth + 'px';
+                    particle.style.top = '-10px';
+                    particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    particle.style.animationDuration = (2 + Math.random() * 2) + 's';
+                    particle.style.animationDelay = Math.random() * 0.5 + 's';
+                    DOM.particleContainer.appendChild(particle);
+                    
+                    particle.addEventListener('animationend', () => particle.remove());
+                }, i * 50);
+            }
+        }
+
+        // Utility Functions
+        function selectQuizOption(option) {
+            const siblings = option.parentElement.querySelectorAll('.quiz-option');
+            siblings.forEach(s => s.classList.remove('selected'));
+            option.classList.add('selected');
+        }
+
+        function markSectionComplete(section) {
+            gameState.completedSections.add(section);
+            const pill = document.querySelector(`[data-section="${section}"]`);
+            if (pill) pill.classList.add('completed');
+            
+            // Update progress dots
+            const indicators = document.querySelectorAll('.progress-dot');
+            const sectionIndex = Array.from(DOM.navPills).findIndex(p => p.dataset.section === section);
+            if (indicators[sectionIndex % indicators.length]) {
+                indicators[sectionIndex % indicators.length].classList.add('completed');
+            }
+            
+            saveProgress();
+        }
+
+        function showShameMessage() {
+            if (!DOM.shameMessage) return;
+            
+            DOM.shameMessage.style.display = 'block';
+            DOM.shameMessage.style.animation = 'shameAnimation 3s ease forwards';
+            
+            // Reduce XP
+            gameState.xp = Math.max(0, gameState.xp - 10);
+            updateXPDisplay();
+            
+            setTimeout(() => {
+                if (DOM.shameMessage) DOM.shameMessage.style.display = 'none';
+            }, 3000);
+        }
+
+        function showMessage(text, type = 'info') {
+            // Create toast notification
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 1rem 2rem;
+                border-radius: 0.75rem;
+                font-weight: 600;
+                box-shadow: var(--shadow-lg);
+                z-index: 3000;
+                animation: slideDown 0.3s ease;
+            `;
+            
+            const colors = {
+                success: 'linear-gradient(135deg, var(--success-color), var(--success-dark))',
+                error: 'linear-gradient(135deg, var(--error-color), var(--error-dark))',
+                warning: 'linear-gradient(135deg, var(--warning-color), var(--warning-dark))',
+                info: 'var(--gradient-primary)'
+            };
+            
+            toast.style.background = colors[type] || colors.info;
+            toast.style.color = 'white';
+            toast.textContent = text;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s ease forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Feedback System
+        function openFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'flex';
+                updateFeedbackPage();
+            }
+        }
+
+        function closeFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'none';
+            }
+            if (DOM.feedbackText) {
+                DOM.feedbackText.value = '';
+            }
+        }
+
+        function updateFeedbackPage() {
+            const sectionTitles = {
+                'intro': 'Introduction',
+                'starter': 'Starter Activity',
+                'fundamentals': 'K-Map Basics',
+                'grouping': 'Grouping Rules',
+                'derivation': 'Expression Derivation',
+                'wrapping': 'Torus Wrapping',
+                'practice': 'Practice Problems',
+                'advanced': 'Advanced K-Maps',
+                'summary': 'Summary & Quiz',
+                'exam': 'Exam Practice',
+                'extension': 'Extension',
+                'videos': 'Videos'
+            };
+            
+            if (DOM.feedbackPage) {
+                DOM.feedbackPage.textContent = sectionTitles[gameState.currentSection] || 'Unknown';
+            }
+        }
+
+        function sendFeedback() {
+            if (!DOM.feedbackText) return;
+            
+            const text = DOM.feedbackText.value.trim();
+            if (!text) {
+                showMessage('Please enter your feedback', 'warning');
+                return;
+            }
+            
+            const subject = encodeURIComponent('Karnaugh Map Lesson Feedback');
+            const body = encodeURIComponent(
+                `Page: ${DOM.feedbackPage ? DOM.feedbackPage.textContent : 'Unknown'}\n\n` +
+                `Feedback: ${text}\n\n` +
+                `Section ID: ${gameState.currentSection}\n` +
+                `Level: ${gameState.level}, XP: ${gameState.xp}`
+            );
+            
+            window.location.href = `mailto:millingtond@mgs.org?subject=${subject}&body=${body}`;
+            closeFeedback();
+            awardXP(5, 'Feedback Sent', 'feedback');
+            showMessage('Thank you for your feedback!', 'success');
+        }
+
+        // Accessibility
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+            saveProgress();
+            showMessage('High contrast ' + (document.body.classList.contains('high-contrast') ? 'enabled' : 'disabled'), 'info');
+        }
+
+        function toggleDyslexiaFont() {
+            document.body.classList.toggle('dyslexia-font');
+            saveProgress();
+            showMessage('Dyslexia font ' + (document.body.classList.contains('dyslexia-font') ? 'enabled' : 'disabled'), 'info');
+        }
+
+        function changeFontSize(size) {
+            document.body.classList.remove('font-small', 'font-large', 'font-xlarge');
+            if (size !== 'normal') {
+                document.body.classList.add(`font-${size}`);
+            }
+            saveProgress();
+            showMessage(`Font size: ${size}`, 'info');
+        }
+
+        function toggleKeyboardShortcuts() {
+            if (DOM.keyboardShortcuts) {
+                DOM.keyboardShortcuts.classList.toggle('show');
+            }
+        }
+
+        // Mobile Layout
+        function updateMobileLayout() {
+            const isMobile = window.innerWidth < 768;
+            const navContainer = document.querySelector('.nav-container');
+            
+            if (navContainer) {
+                navContainer.style.top = isMobile ? '140px' : '80px';
+            }
+        }
+
+        // Save/Load Progress
+        function saveProgress() {
+            const data = {
+                gameState: {
+                    xp: gameState.xp,
+                    level: gameState.level,
+                    completedSections: Array.from(gameState.completedSections),
+                    achievements: Array.from(gameState.achievements),
+                    actionsPerformed: Array.from(gameState.actionsPerformed),
+                    currentSection: gameState.currentSection,
+                    sectionScores: gameState.sectionScores,
+                    hintUsage: gameState.hintUsage
+                },
+                accessibility: {
+                    highContrast: document.body.classList.contains('high-contrast'),
+                    dyslexiaFont: document.body.classList.contains('dyslexia-font'),
+                    fontSize: Array.from(document.body.classList).find(c => c.startsWith('font-')) || 'normal'
+                }
+            };
+            
+            try {
+                sessionStorage.setItem('kmapLessonProgress', JSON.stringify(data));
+            } catch (e) {
+                console.warn('Could not save progress:', e);
+            }
+        }
+
+        function loadProgress() {
+            try {
+                const saved = sessionStorage.getItem('kmapLessonProgress');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    
+                    // Restore game state
+                    gameState.xp = data.gameState.xp || 0;
+                    gameState.level = data.gameState.level || 1;
+                    gameState.completedSections = new Set(data.gameState.completedSections || []);
+                    gameState.achievements = new Set(data.gameState.achievements || []);
+                    gameState.actionsPerformed = new Set(data.gameState.actionsPerformed || []);
+                    gameState.currentSection = data.gameState.currentSection || 'intro';
+                    gameState.sectionScores = data.gameState.sectionScores || {};
+                    gameState.hintUsage = data.gameState.hintUsage || {};
+                    
+                    // Restore accessibility settings
+                    if (data.accessibility) {
+                        if (data.accessibility.highContrast) {
+                            document.body.classList.add('high-contrast');
+                        }
+                        if (data.accessibility.dyslexiaFont) {
+                            document.body.classList.add('dyslexia-font');
+                        }
+                        if (data.accessibility.fontSize && data.accessibility.fontSize !== 'normal') {
+                            document.body.classList.add(data.accessibility.fontSize);
+                        }
+                    }
+                    
+                    // Restore completed sections visual state
+                    gameState.completedSections.forEach(section => {
+                        const pill = document.querySelector(`[data-section="${section}"]`);
+                        if (pill) pill.classList.add('completed');
+                    });
+                    
+                    // Navigate to last section
+                    if (gameState.currentSection !== 'intro') {
+                        setTimeout(() => navigateToSection(gameState.currentSection), 100);
+                    }
+                }
+            } catch (e) {
+                console.error('Error loading progress:', e);
+            }
+        }
+
+        // Auto-save every 30 seconds
+        setInterval(saveProgress, 30000);
+
+        // Easter egg: Konami code
+        const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+        let konamiIndex = 0;
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === konamiCode[konamiIndex]) {
+                konamiIndex++;
+                if (konamiIndex === konamiCode.length) {
+                    showAchievement('Secret Found!', 'You discovered the Konami code!', '🎮');
+                    awardXP(100, 'Easter Egg', 'konami_code');
+                    konamiIndex = 0;
+                    createParticleEffect();
+                }
+            } else {
+                konamiIndex = 0;
+            }
+        });
+
+        // Performance monitoring
+        const startTime = Date.now();
+        
+        window.addEventListener('load', function() {
+            console.log('Page load time:', Date.now() - startTime, 'ms');
+            console.log('Karnaugh Map Lesson initialized successfully');
+        });
+
+        // Prevent right-click
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // Add fade out animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeOut {
+                from { opacity: 1; transform: translateY(0); }
+                to { opacity: 0; transform: translateY(-10px); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Visibility API - pause animations when tab is not visible
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // Pause animations
+                document.querySelectorAll('*').forEach(el => {
+                    if (el.style.animationPlayState) {
+                        el.dataset.pausedAnimation = el.style.animationPlayState;
+                        el.style.animationPlayState = 'paused';
+                    }
+                });
+            } else {
+                // Resume animations
+                document.querySelectorAll('[data-paused-animation]').forEach(el => {
+                    el.style.animationPlayState = el.dataset.pausedAnimation || 'running';
+                    delete el.dataset.pausedAnimation;
+                });
+            }
+        });
+    </script>
+</body>
+</html>

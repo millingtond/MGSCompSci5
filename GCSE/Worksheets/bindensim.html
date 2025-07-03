@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary Conversion Simulator - OCR J277 GCSE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom CSS to complement Tailwind */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.98);
+        }
+        .bit, .quiz-option, button {
+            transition: all 0.2s ease-in-out;
+        }
+        .bit.active {
+            background-color: #4f46e5;
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(79, 70, 229, 0.4);
+        }
+        .bit:hover {
+            transform: translateY(-2px);
+        }
+        .feedback.correct {
+            background-color: #dcfce7;
+            color: #166534;
+            border-color: #4ade80;
+        }
+        .feedback.incorrect {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border-color: #f87171;
+        }
+        #workingCanvas {
+            cursor: crosshair;
+            touch-action: none; /* Prevents scrolling on canvas on touch devices */
+        }
+        .streak-counter {
+            animation: pulse-streak 1s ease-in-out;
+        }
+        @keyframes pulse-streak {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .step-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transform: scale(0.95);
+            opacity: 0;
+            animation: fadeInStep 0.5s forwards;
+        }
+        @keyframes fadeInStep {
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 p-4 md:p-8">
+    <div class="container max-w-7xl mx-auto rounded-2xl p-6 md:p-10 shadow-lg">
+        <h1 class="text-3xl md:text-4xl font-bold text-center text-indigo-600 dark:text-indigo-400">🔢 Binary Conversion Simulator</h1>
+        <p class="text-center text-gray-500 dark:text-gray-400 mb-6">OCR J277 GCSE Computer Science - Interactive Learning Tool</p>
+
+        <!-- Instructions Section -->
+        <div class="bg-indigo-50 dark:bg-gray-800 p-4 rounded-lg border-l-4 border-indigo-500 mb-8">
+            <h3 class="font-bold text-indigo-800 dark:text-indigo-300 mb-2">📖 How to Use This Simulator</h3>
+            <ul class="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300">
+                <li><strong>Binary to Denary:</strong> Click the bits (0/1) to see the denary value update in real-time.</li>
+                <li><strong>Denary to Binary:</strong> Enter a denary number (0-255) and click "Convert" for a visual step-by-step guide.</li>
+                <li><strong>Infinite Quiz:</strong> Test your knowledge with randomly generated questions and build your streak!</li>
+                <li><strong>Working Canvas:</strong> Use the canvas to do your manual calculations.</li>
+                <li><strong>Reset:</strong> Use the reset button to clear all values and start fresh.</li>
+            </ul>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Left Column: Converters -->
+            <div class="space-y-8">
+                <!-- Binary to Denary Section -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h2 class="text-xl font-bold text-indigo-600 dark:text-indigo-400 mb-4">Binary → Denary Conversion</h2>
+                    <div class="flex justify-center gap-2 md:gap-3 flex-wrap mb-4">
+                        <!-- Bit containers -->
+                        <div class="bit-container text-center"><div class="text-xs font-bold text-gray-500">128</div><div class="bit w-12 h-12 md:w-14 md:h-14 flex items-center justify-center border-2 border-indigo-400 rounded-lg text-2xl font-bold cursor-pointer" data-value="128">0</div></div>
+                        <div class="bit-container text-center"><div class="text-xs font-bold text-gray-500">64</div><div class="bit w-12 h-12 md:w-14 md:h-14 flex items-center justify-center border-2 border-indigo-400 rounded-lg text-2xl font-bold cursor-pointer" data-value="64">0</div></div>
+                        <div class="bit-container text-center"><div class="text-xs font-bold text-gray-500">32</div><div class="bit w-12 h-12 md:w-14 md:h-14 flex items-center justify-center border-2 border-indigo-400 rounded-lg text-2xl font-bold cursor-pointer" data-value="32">0</div></div>
+                        <div class="bit-container text-center"><div class="text-xs font-bold text-gray-500">16</div><div class="bit w-12 h-12 md:w-14 md:h-14 flex items-center justify-center border-2 border-indigo-400 rounded-lg text-2xl font-bold cursor-pointer" data-value="16">0</div></div>
+                        <div class="bit-container text-center"><div class="text-xs font-bold text-gray-500">8</div><div class="bit w-12 h-12 md:w-14 md:h-14 flex items-center justify-center border-2 border-indigo-400 rounded-lg text-2xl font-bold cursor-pointer" data-value="8">0</div></div>
+                        <div class="bit-container text-center"><div class="text-xs font-bold text-gray-500">4</div><div class="bit w-12 h-12 md:w-14 md:h-14 flex items-center justify-center border-2 border-indigo-400 rounded-lg text-2xl font-bold cursor-pointer" data-value="4">0</div></div>
+                        <div class="bit-container text-center"><div class="text-xs font-bold text-gray-500">2</div><div class="bit w-12 h-12 md:w-14 md:h-14 flex items-center justify-center border-2 border-indigo-400 rounded-lg text-2xl font-bold cursor-pointer" data-value="2">0</div></div>
+                        <div class="bit-container text-center"><div class="text-xs font-bold text-gray-500">1</div><div class="bit w-12 h-12 md:w-14 md:h-14 flex items-center justify-center border-2 border-indigo-400 rounded-lg text-2xl font-bold cursor-pointer" data-value="1">0</div></div>
+                    </div>
+                    <div id="binaryCalculation" class="text-center p-3 bg-gray-100 dark:bg-gray-700 rounded-md min-h-[60px] flex items-center justify-center text-sm md:text-base">Click bits to see calculation.</div>
+                    <div id="binaryResult" class="text-center mt-3 p-3 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-md text-lg font-bold">Denary Value: 0</div>
+                </div>
+
+                <!-- Denary to Binary Section -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h2 class="text-xl font-bold text-indigo-600 dark:text-indigo-400 mb-4">Denary → Binary Conversion</h2>
+                    <div class="flex flex-col sm:flex-row gap-4 items-center justify-center">
+                        <input type="number" id="denaryInput" min="0" max="255" placeholder="Enter 0-255" class="w-full sm:w-48 p-3 text-center border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700">
+                        <button id="convertBtn" class="w-full sm:w-auto bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Convert</button>
+                    </div>
+                    <div id="denaryStepsContainer" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+                    <div id="denaryResult" class="text-center mt-4 p-3 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-md text-lg font-bold">Binary Value: --------</div>
+                </div>
+
+                <!-- Working Canvas Section -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                    <h2 class="text-xl font-bold text-indigo-600 dark:text-indigo-400 mb-4">📝 Working Canvas</h2>
+                    <canvas id="workingCanvas" class="w-full h-64 bg-gray-50 dark:bg-gray-700 rounded-lg border-2 border-gray-300 dark:border-gray-600"></canvas>
+                    <div class="flex flex-wrap gap-4 mt-4 items-center justify-center">
+                        <div class="flex items-center gap-2">
+                            <label for="penColor" class="text-sm font-medium">Color:</label>
+                            <input type="color" id="penColor" value="#000000" class="w-8 h-8 rounded-md">
+                        </div>
+                        <div class="flex items-center gap-2">
+                             <label for="penWidth" class="text-sm font-medium">Size:</label>
+                             <input type="range" id="penWidth" min="1" max="10" value="2" class="w-24">
+                        </div>
+                        <button id="clearCanvasBtn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600">Clear</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Infinite Quiz -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
+                <h2 class="text-xl font-bold text-center text-indigo-600 dark:text-indigo-400 mb-2">♾️ Infinite Quiz Mode</h2>
+                 <div id="streakContainer" class="text-center mb-4 text-2xl font-bold text-amber-500">🔥 Streak: <span id="streakCounter">0</span></div>
+                <div id="quizContainer" class="space-y-4">
+                    <div id="quizQuestion" class="text-lg font-semibold text-center p-4 bg-gray-100 dark:bg-gray-700 rounded-lg min-h-[80px] flex items-center justify-center">Click "Start Quiz" to begin!</div>
+                    <div id="quizAnswerContainer" class="space-y-3">
+                        <!-- Options or input field will be injected here -->
+                    </div>
+                    <div id="feedback" class="p-4 rounded-lg text-center font-semibold hidden"></div>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                       <button id="quizActionBtn" class="bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700">Start Quiz</button>
+                       <button id="resetAllBtn" class="bg-gray-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-600">Reset All</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- Dark Mode ---
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+
+        // --- Binary to Denary ---
+        const bits = document.querySelectorAll('.bit');
+        const binaryCalculationEl = document.getElementById('binaryCalculation');
+        const binaryResultEl = document.getElementById('binaryResult');
+
+        bits.forEach(bit => {
+            bit.addEventListener('click', () => {
+                bit.textContent = bit.textContent === '0' ? '1' : '0';
+                bit.classList.toggle('active');
+                updateBinaryToDenary();
+            });
+        });
+
+        function updateBinaryToDenary() {
+            let total = 0;
+            let calculationParts = [];
+            let binaryString = '';
+            bits.forEach(bit => {
+                binaryString += bit.textContent;
+                if (bit.classList.contains('active')) {
+                    const value = parseInt(bit.dataset.value);
+                    total += value;
+                    calculationParts.push(value);
+                }
+            });
+
+            if (calculationParts.length === 0) {
+                binaryCalculationEl.innerHTML = `<strong>Binary:</strong> ${binaryString} <br> All bits are 0.`;
+            } else {
+                binaryCalculationEl.innerHTML = `<strong>Binary:</strong> ${binaryString} <br> <strong>Calculation:</strong> ${calculationParts.join(' + ')} = <strong>${total}</strong>`;
+            }
+            binaryResultEl.textContent = `Denary Value: ${total}`;
+        }
+
+        // --- Denary to Binary ---
+        const denaryInput = document.getElementById('denaryInput');
+        const convertBtn = document.getElementById('convertBtn');
+        const denaryStepsContainerEl = document.getElementById('denaryStepsContainer');
+        const denaryResultEl = document.getElementById('denaryResult');
+        
+        const convertDenaryToBinary = () => {
+            const value = parseInt(denaryInput.value);
+            denaryStepsContainerEl.innerHTML = '';
+            if (isNaN(value) || value < 0 || value > 255) {
+                denaryResultEl.textContent = "Invalid input (0-255)";
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'col-span-full text-center text-red-500';
+                errorDiv.textContent = 'Please enter a number between 0 and 255.';
+                denaryStepsContainerEl.appendChild(errorDiv);
+                return;
+            }
+
+            let remaining = value;
+            let binary = '';
+            const powers = [128, 64, 32, 16, 8, 4, 2, 1];
+            
+            powers.forEach((power, index) => {
+                const stepCard = document.createElement('div');
+                stepCard.className = 'step-card bg-gray-100 dark:bg-gray-700 p-3 rounded-lg text-center text-sm';
+                stepCard.style.animationDelay = `${index * 100}ms`;
+
+                let content = `<div class="font-bold text-indigo-500">${power}</div>`;
+                if (remaining >= power) {
+                    binary += '1';
+                    content += `<div>fits in ${remaining}?</div><div class="font-bold text-green-500">YES</div><div>Write '1'</div>`;
+                    remaining -= power;
+                } else {
+                    binary += '0';
+                    content += `<div>fits in ${remaining}?</div><div class="font-bold text-red-500">NO</div><div>Write '0'</div>`;
+                }
+                stepCard.innerHTML = content;
+                denaryStepsContainerEl.appendChild(stepCard);
+            });
+
+            denaryResultEl.textContent = `Binary Value: ${binary}`;
+        };
+
+        convertBtn.addEventListener('click', convertDenaryToBinary);
+        denaryInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') convertDenaryToBinary();
+        });
+
+
+        // --- Canvas Functionality ---
+        const canvas = document.getElementById('workingCanvas');
+        const ctx = canvas.getContext('2d');
+        const penColorInput = document.getElementById('penColor');
+        const penWidthInput = document.getElementById('penWidth');
+        const clearCanvasBtn = document.getElementById('clearCanvasBtn');
+
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+
+        function getEventPosition(event) {
+            const rect = canvas.getBoundingClientRect();
+            if (event.touches && event.touches.length > 0) {
+                return {
+                    x: event.touches[0].clientX - rect.left,
+                    y: event.touches[0].clientY - rect.top
+                };
+            }
+            return {
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top
+            };
+        }
+
+        function startDrawing(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getEventPosition(e);
+            [lastX, lastY] = [pos.x, pos.y];
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const pos = getEventPosition(e);
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.strokeStyle = penColorInput.value;
+            ctx.lineWidth = penWidthInput.value;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+            [lastX, lastY] = [pos.x, pos.y];
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+        
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+
+        clearCanvasBtn.addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        // --- Infinite Quiz ---
+        const quizQuestionEl = document.getElementById('quizQuestion');
+        const quizAnswerContainerEl = document.getElementById('quizAnswerContainer');
+        const feedbackEl = document.getElementById('feedback');
+        const quizActionBtn = document.getElementById('quizActionBtn');
+        const streakCounterEl = document.getElementById('streakCounter');
+        const resetAllBtn = document.getElementById('resetAllBtn');
+
+        let streak = 0;
+        let currentQuizQuestion = null;
+
+        function generateQuestion() {
+            const questionTypes = ['b2d_mc', 'd2b_mc', 'b2d_written', 'd2b_written', 'theory_mc'];
+            const type = questionTypes[Math.floor(Math.random() * questionTypes.length)];
+
+            let questionText = '';
+            let correctAnswer = '';
+            let options = [];
+            
+            const randomNumber = () => Math.floor(Math.random() * 256);
+            const toBinary = (n) => n.toString(2).padStart(8, '0');
+
+            if (type === 'b2d_mc' || type === 'b2d_written') {
+                const num = randomNumber();
+                const binary = toBinary(num);
+                questionText = `What is the denary value of <strong>${binary}</strong>?`;
+                correctAnswer = num.toString();
+                 if (type === 'b2d_mc') {
+                    options = generateMcOptions(num, 3, 255);
+                }
+            } else if (type === 'd2b_mc' || type === 'd2b_written') {
+                const num = randomNumber();
+                questionText = `What is the binary value of <strong>${num}</strong>?`;
+                correctAnswer = toBinary(num);
+                 if (type === 'd2b_mc') {
+                    options = generateMcOptions(num, 3, 255, toBinary);
+                }
+            } else if (type === 'theory_mc') {
+                const theoryQuestions = [
+                    { q: 'What is the largest denary number you can represent with 8 bits?', a: '255', o: ['256', '128', '127'] },
+                    { q: 'How many different values can be represented with 8 bits?', a: '256', o: ['255', '128', '512'] },
+                    { q: 'What is the place value of the leftmost bit in an 8-bit number?', a: '128', o: ['1', '256', '2'] },
+                    { q: 'What does the term "bit" stand for?', a: 'Binary Digit', o: ['Binary Integer', 'Binary Item', 'Byte'] }
+                ];
+                const selected = theoryQuestions[Math.floor(Math.random() * theoryQuestions.length)];
+                questionText = selected.q;
+                correctAnswer = selected.a;
+                options = [...selected.o, correctAnswer].sort(() => Math.random() - 0.5);
+            }
+            
+            currentQuizQuestion = { questionText, correctAnswer, options, type };
+            displayQuestion();
+        }
+        
+        function generateMcOptions(correctNum, count, max, formatFn = (n) => n.toString()) {
+            const opts = new Set([correctNum]);
+            while (opts.size < count + 1) {
+                let randomOpt = Math.floor(Math.random() * (max + 1));
+                if(Math.abs(randomOpt - correctNum) > 5) {
+                   opts.add(randomOpt);
+                }
+            }
+            return Array.from(opts).map(formatFn).sort(() => Math.random() - 0.5);
+        }
+
+        function displayQuestion() {
+            quizQuestionEl.innerHTML = currentQuizQuestion.questionText;
+            quizAnswerContainerEl.innerHTML = '';
+            feedbackEl.classList.add('hidden');
+
+            if (currentQuizQuestion.type.includes('_mc')) {
+                currentQuizQuestion.options.forEach(option => {
+                    const button = document.createElement('button');
+                    button.innerHTML = option;
+                    button.className = 'w-full p-3 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-left hover:bg-indigo-100 dark:hover:bg-gray-600';
+                    button.onclick = () => checkAnswer(option);
+                    quizAnswerContainerEl.appendChild(button);
+                });
+            } else { // written
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'w-full p-3 text-center border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700';
+                input.placeholder = 'Type your answer here';
+                input.id = 'writtenAnswerInput';
+                input.onkeypress = (e) => {
+                    if (e.key === 'Enter') {
+                        checkAnswer(input.value);
+                    }
+                };
+                quizAnswerContainerEl.appendChild(input);
+            }
+             quizActionBtn.textContent = 'Next Question';
+        }
+
+        function getDenaryToBinaryExplanation(value) {
+            let remaining = value;
+            let steps = [];
+            const powers = [128, 64, 32, 16, 8, 4, 2, 1];
+            powers.forEach(power => {
+                if (remaining >= power) {
+                    steps.push(`• <strong>${power}</strong> fits in ${remaining}? <strong class="text-green-600">YES</strong> → Write 1. (${remaining}-${power}=${remaining-power})`);
+                    remaining -= power;
+                } else {
+                    steps.push(`• <strong>${power}</strong> fits in ${remaining}? <strong class="text-red-600">NO</strong> → Write 0.`);
+                }
+            });
+            return steps.join('<br>');
+        }
+        
+        function getBinaryToDenaryExplanation(binaryString) {
+            let total = 0;
+            let calculationParts = [];
+            const powers = [128, 64, 32, 16, 8, 4, 2, 1];
+            binaryString.split('').forEach((bit, index) => {
+                if (bit === '1') {
+                    const value = powers[index];
+                    total += value;
+                    calculationParts.push(value);
+                }
+            });
+            if (calculationParts.length === 0) {
+                return 'All bits are 0, so the total is 0.';
+            }
+            return `Add the place values for each '1': ${calculationParts.join(' + ')} = <strong>${total}</strong>`;
+        }
+
+        function checkAnswer(selectedAnswer) {
+            const isCorrect = selectedAnswer.trim() === currentQuizQuestion.correctAnswer;
+            
+            Array.from(quizAnswerContainerEl.children).forEach(child => child.disabled = true);
+            
+            feedbackEl.classList.remove('hidden');
+            if (isCorrect) {
+                streak++;
+                feedbackEl.innerHTML = `✅ Correct! Well done.`;
+                feedbackEl.className = 'feedback correct p-4 rounded-lg text-center font-semibold';
+                 streakCounterEl.textContent = streak;
+                 streakCounterEl.parentElement.classList.add('streak-counter');
+                 setTimeout(() => streakCounterEl.parentElement.classList.remove('streak-counter'), 1000);
+            } else {
+                streak = 0;
+                let explanation = `The correct answer was <strong>${currentQuizQuestion.correctAnswer}</strong>.`;
+                
+                if (currentQuizQuestion.type.startsWith('d2b')) {
+                    const originalNumber = parseInt(currentQuizQuestion.questionText.match(/<strong>(\d+)<\/strong>/)[1]);
+                    explanation += '<br><br><div class="text-left mt-2"><strong>Subtraction Method Steps:</strong><br>' + getDenaryToBinaryExplanation(originalNumber) + '</div>';
+                } else if (currentQuizQuestion.type.startsWith('b2d')) {
+                     const originalBinary = currentQuizQuestion.questionText.match(/<strong>([01]{8})<\/strong>/)[1];
+                     explanation += '<br><br><div class="text-left mt-2"><strong>Place Value Method Steps:</strong><br>' + getBinaryToDenaryExplanation(originalBinary) + '</div>';
+                }
+
+                feedbackEl.innerHTML = `❌ Incorrect. ${explanation}`;
+                feedbackEl.className = 'feedback incorrect p-4 rounded-lg text-center font-semibold';
+                 streakCounterEl.textContent = streak;
+            }
+            
+            if (currentQuizQuestion.type.includes('_mc')) {
+                Array.from(quizAnswerContainerEl.children).forEach(button => {
+                    if (button.textContent === currentQuizQuestion.correctAnswer) {
+                        button.classList.add('bg-green-200', 'dark:bg-green-800', 'border-green-500');
+                    }
+                    if (button.textContent === selectedAnswer && !isCorrect) {
+                        button.classList.add('bg-red-200', 'dark:bg-red-800', 'border-red-500');
+                    }
+                });
+            } else {
+                 document.getElementById('writtenAnswerInput').classList.add(isCorrect ? 'border-green-500' : 'border-red-500');
+            }
+        }
+        
+        quizActionBtn.addEventListener('click', () => {
+            if (quizActionBtn.textContent === 'Start Quiz' || quizActionBtn.textContent === 'Try Again') {
+                streak = 0;
+                streakCounterEl.textContent = streak;
+            }
+            generateQuestion();
+        });
+
+        function resetAll() {
+             // Reset B2D
+            bits.forEach(bit => {
+                bit.textContent = '0';
+                bit.classList.remove('active');
+            });
+            updateBinaryToDenary();
+            
+            // Reset D2B
+            denaryInput.value = '';
+            denaryStepsContainerEl.innerHTML = '';
+            denaryResultEl.textContent = "Binary Value: --------";
+            
+            // Reset Canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Reset Quiz
+            streak = 0;
+            streakCounterEl.textContent = streak;
+            quizQuestionEl.innerHTML = 'Click "Start Quiz" to begin!';
+            quizAnswerContainerEl.innerHTML = '';
+            feedbackEl.classList.add('hidden');
+            quizActionBtn.textContent = 'Start Quiz';
+        }
+
+        resetAllBtn.addEventListener('click', resetAll);
+
+        // --- Initial Setup ---
+        updateBinaryToDenary();
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+    });
+    </script>
+</body>
+</html>

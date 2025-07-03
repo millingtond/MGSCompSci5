@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How a Network Switch Works</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Prevents scrollbars during animation */
+        }
+        .device {
+            transition: all 0.5s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 2; /* Ensure devices are above lines */
+            position: absolute;
+        }
+        .switch {
+            transition: all 0.5s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: absolute;
+            z-index: 5; /* Ensure switch is above the lines */
+        }
+        .packet {
+            position: absolute;
+            width: 25px;
+            height: 20px;
+            background-color: #f59e0b;
+            border: 2px solid #d97706;
+            border-radius: 4px;
+            color: white;
+            font-size: 10px;
+            text-align: center;
+            padding-top: 1px;
+            z-index: 10;
+            opacity: 0;
+            transition: all 1.5s ease-in-out;
+        }
+        .line {
+            position: absolute;
+            background-color: #4b5563;
+            z-index: 1; /* Lines are at the bottom */
+            transform-origin: 0 0;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .mac-table {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+        }
+        .quiz-modal {
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            z-index: 50; /* Ensures quiz is on top of everything */
+        }
+        .explanation-box {
+             backdrop-filter: blur(10px);
+             -webkit-backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+
+    <div class="container mx-auto p-4 lg:p-8 rounded-lg max-w-7xl w-full h-full flex flex-col">
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-800 text-center mb-4">Interactive Simulation: How a Network Switch Works</h1>
+
+        <!-- Simulation Area -->
+        <div id="simulationArea" class="relative bg-white rounded-xl shadow-inner border border-gray-200 flex-grow w-full">
+            <!-- Devices -->
+            <div id="pc1" class="device top-8 left-8 md:left-20 flex flex-col items-center">
+                <div class="w-16 h-12 bg-gray-700 rounded-t-md flex items-center justify-center text-white text-xs">PC A</div>
+                <div class="w-20 h-2 bg-gray-500 rounded-b-md"></div>
+                <div class="text-xs mt-1 font-mono">0A:1B:C2:D3:E4:F5</div>
+            </div>
+
+            <div id="pc2" class="device top-8 right-8 md:right-20 flex flex-col items-center">
+                <div class="w-16 h-12 bg-gray-700 rounded-t-md flex items-center justify-center text-white text-xs">PC B</div>
+                <div class="w-20 h-2 bg-gray-500 rounded-b-md"></div>
+                <div class="text-xs mt-1 font-mono">2C:3D:4E:5F:6G:7H</div>
+            </div>
+
+            <div id="pc3" class="device bottom-8 left-8 md:left-20 flex flex-col items-center">
+                 <div class="w-16 h-12 bg-gray-700 rounded-t-md flex items-center justify-center text-white text-xs">PC C</div>
+                 <div class="w-20 h-2 bg-gray-500 rounded-b-md"></div>
+                 <div class="text-xs mt-1 font-mono">4E:5F:6G:7H:8I:9J</div>
+            </div>
+
+            <div id="pc4" class="device bottom-8 right-8 md:right-20 flex flex-col items-center">
+                 <div class="w-16 h-12 bg-gray-700 rounded-t-md flex items-center justify-center text-white text-xs">PC D</div>
+                 <div class="w-20 h-2 bg-gray-500 rounded-b-md"></div>
+                 <div class="text-xs mt-1 font-mono">6G:7H:8I:9J:0K:1L</div>
+            </div>
+
+            <!-- Switch -->
+            <div id="switch" class="switch flex items-center justify-center" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                <div class="bg-gray-800 text-white rounded-lg p-4 w-56 h-24 flex flex-col justify-center items-center">
+                    <span class="font-bold">SWITCH</span>
+                    <div class="flex space-x-2 mt-2">
+                        <div id="port1" class="w-4 h-4 bg-gray-500 rounded-sm border-2 border-gray-400"></div>
+                        <div id="port2" class="w-4 h-4 bg-gray-500 rounded-sm border-2 border-gray-400"></div>
+                        <div id="port3" class="w-4 h-4 bg-gray-500 rounded-sm border-2 border-gray-400"></div>
+                        <div id="port4" class="w-4 h-4 bg-gray-500 rounded-sm border-2 border-gray-400"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- MAC Address Table -->
+            <div id="macTable" class="mac-table absolute bg-gray-800 bg-opacity-80 text-white p-3 rounded-lg opacity-0 transform scale-90" style="top: calc(50% + 80px); left: 50%; transform: translate(-50%, -50%); width: 220px;">
+                <h3 class="text-sm font-bold border-b border-gray-400 mb-2 text-center">MAC Address Table</h3>
+                <table class="text-xs w-full">
+                    <thead>
+                        <tr>
+                            <th class="px-2 font-semibold">MAC Address</th>
+                            <th class="px-2 font-semibold">Port</th>
+                        </tr>
+                    </thead>
+                    <tbody id="macTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Explanation and Controls -->
+        <div class="mt-4 flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 md:space-x-4">
+             <div id="explanationBox" class="explanation-box text-center md:text-left bg-white bg-opacity-70 p-4 rounded-lg shadow-md w-full md:flex-grow">
+                <h2 id="stepTitle" class="text-lg font-bold text-gray-800"></h2>
+                <p id="stepDescription" class="text-gray-600 mt-1"></p>
+            </div>
+            <div class="flex space-x-2">
+                 <button id="prevBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>Previous</button>
+                 <button id="nextBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">Next Step</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quiz Modal -->
+    <div id="quizModal" class="quiz-modal fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm flex items-center justify-center opacity-0 transform scale-90 pointer-events-none">
+        <div class="bg-white rounded-lg shadow-2xl p-8 max-w-lg w-full">
+            <h2 id="quizQuestion" class="text-2xl font-bold mb-4">Quiz Question?</h2>
+            <div id="quizOptions" class="space-y-3">
+                <!-- Options will be injected here -->
+            </div>
+            <p id="quizFeedback" class="mt-4 text-sm font-semibold"></p>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="nextQuestionBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg hidden">Next Question</button>
+                <button id="finishQuizBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg hidden">Finish & Restart</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // DOM Elements
+        const simulationArea = document.getElementById('simulationArea');
+        const nextBtn = document.getElementById('nextBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const stepTitle = document.getElementById('stepTitle');
+        const stepDescription = document.getElementById('stepDescription');
+        const macTable = document.getElementById('macTable');
+        const macTableBody = document.getElementById('macTableBody');
+        const quizModal = document.getElementById('quizModal');
+        const quizQuestion = document.getElementById('quizQuestion');
+        const quizOptions = document.getElementById('quizOptions');
+        const quizFeedback = document.getElementById('quizFeedback');
+        const nextQuestionBtn = document.getElementById('nextQuestionBtn');
+        const finishQuizBtn = document.getElementById('finishQuizBtn');
+
+        // State
+        let currentStep = 0;
+        let macAddressData = {};
+
+        const devices = {
+            pc1: { id: 'pc1', mac: '0A:1B:C2:D3:E4:F5', port: 1 },
+            pc2: { id: 'pc2', mac: '2C:3D:4E:5F:6G:7H', port: 2 },
+            pc3: { id: 'pc3', mac: '4E:5F:6G:7H:8I:9J', port: 3 },
+            pc4: { id: 'pc4', mac: '6G:7H:8I:9J:0K:1L', port: 4 },
+        };
+        
+        let quizCurrentQuestionIndex = 0;
+        const quizData = [
+            {
+                question: "What is the primary job of a network switch?",
+                options: [
+                    "To connect to the internet",
+                    "To send data to the correct device on a local network",
+                    "To block viruses",
+                    "To boost Wi-Fi signal"
+                ],
+                answer: "To send data to the correct device on a local network"
+            },
+            {
+                question: "How does a switch learn where devices are on the network?",
+                options: [
+                    "It asks the user to type them in",
+                    "It has a pre-configured list",
+                    "By reading the source MAC address from incoming data packets",
+                    "By guessing"
+                ],
+                answer: "By reading the source MAC address from incoming data packets"
+            },
+            {
+                question: "What unique identifier does a switch use to forward packets to the right device?",
+                options: [
+                    "IP Address",
+                    "Username",
+                    "Serial Number",
+                    "MAC Address"
+                ],
+                answer: "MAC Address"
+            },
+             {
+                question: "When a switch receives a packet for an unknown destination, what does it do?",
+                options: [
+                    "Deletes the packet",
+                    "Sends it back to the source",
+                    "Sends (floods) it to all devices except the sender",
+                    "Waits until it learns the location"
+                ],
+                answer: "Sends (floods) it to all devices except the sender"
+            }
+        ];
+
+
+        // Utility Functions
+        function getElementPosition(el) {
+            const rect = el.getBoundingClientRect();
+            const parentRect = simulationArea.getBoundingClientRect();
+            return {
+                x: rect.left - parentRect.left + (rect.width / 2),
+                y: rect.top - parentRect.top + (rect.height / 2)
+            };
+        }
+
+        function createLine(from, to, id) {
+            const fromPos = getElementPosition(document.getElementById(from));
+            const toPos = getElementPosition(document.getElementById(to));
+
+            const line = document.createElement('div');
+            line.id = `line-${id}`;
+            line.className = 'line';
+
+            const length = Math.hypot(toPos.x - fromPos.x, toPos.y - fromPos.y);
+            const angle = Math.atan2(toPos.y - fromPos.y, toPos.x - fromPos.x) * (180 / Math.PI);
+
+            line.style.width = `${length}px`;
+            line.style.height = '3px';
+            line.style.left = `${fromPos.x}px`;
+            line.style.top = `${fromPos.y}px`;
+            line.style.transform = `rotate(${angle}deg)`;
+            
+            simulationArea.prepend(line);
+            return line;
+        }
+        
+        function createPacket(id) {
+            let packet = document.getElementById(id);
+            if (!packet) {
+                packet = document.createElement('div');
+                packet.id = id;
+                packet.className = 'packet';
+                simulationArea.appendChild(packet);
+            }
+             // Ensure packet is visually reset
+            packet.style.opacity = '0';
+            return packet;
+        }
+
+        async function movePacket(packet, fromEl, toEl) {
+            return new Promise(resolve => {
+                const startPos = getElementPosition(fromEl);
+                const endPos = getElementPosition(toEl);
+                packet.style.left = `${startPos.x - 12}px`;
+                packet.style.top = `${startPos.y - 10}px`;
+                packet.style.opacity = '1';
+
+                setTimeout(() => {
+                    packet.style.left = `${endPos.x - 12}px`;
+                    packet.style.top = `${endPos.y - 10}px`;
+                }, 100);
+                
+                setTimeout(() => {
+                    packet.style.opacity = '0';
+                    resolve();
+                }, 1600); // 1.5s transition + 0.1s buffer
+            });
+        }
+        
+        function updateMacTable() {
+            macTableBody.innerHTML = '';
+            for (const mac in macAddressData) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td class="px-2 py-1 font-mono">${mac}</td><td class="px-2 py-1 text-center">${macAddressData[mac]}</td>`;
+                macTableBody.appendChild(row);
+            }
+            macTable.classList.remove('opacity-0', 'scale-90');
+        }
+        
+        function resetSimulation(runFirstStep = true) {
+            // Remove lines and packets
+            document.querySelectorAll('.line, .packet').forEach(el => el.remove());
+            
+            // Reset MAC table
+            macAddressData = {};
+            macTableBody.innerHTML = '';
+            macTable.classList.add('opacity-0', 'scale-90');
+
+            // Reset port colors
+             document.querySelectorAll('[id^="port"]').forEach(p => p.style.backgroundColor = '#4b5563');
+            
+             // Reset device opacity
+             document.querySelectorAll('.device').forEach(d => d.classList.remove('opacity-50'));
+            
+            // Go to step 0
+            currentStep = 0;
+            if (runFirstStep) {
+                runStep();
+            }
+        }
+
+
+        // Simulation Steps
+        const steps = [
+            // Step 0: Initial State
+            () => {
+                stepTitle.textContent = "Step 1: Connecting Devices";
+                stepDescription.textContent = "A network switch is a device used to connect multiple devices together on a Local Area Network (LAN). Click 'Next Step' to connect the PCs to the switch.";
+            },
+            // Step 1: Animate Connections
+            () => {
+                stepTitle.textContent = "Step 1: Connecting Devices";
+                stepDescription.textContent = "Each device is plugged into a 'port' on the switch. This creates a physical link for data to travel across.";
+                Object.values(devices).forEach(device => {
+                    const line = createLine(device.id, 'switch', device.id);
+                    setTimeout(() => line.style.opacity = '1', 100);
+                });
+            },
+            // Step 2: PC A sends packet to switch
+            async () => {
+                stepTitle.textContent = "Step 2: Receiving Data";
+                stepDescription.textContent = "PC A sends a data packet to the switch. The switch will inspect this packet to learn about the network.";
+                const packet = createPacket('packet1');
+                await movePacket(packet, document.getElementById('pc1'), document.getElementById('switch'));
+            },
+            // Step 3: Switch learns PC A's MAC
+            () => {
+                stepTitle.textContent = "Step 2: Building a MAC Table";
+                stepDescription.textContent = "The switch reads the sender's (source) MAC address from the packet and adds it to its internal table, noting it came from Port 1.";
+                macAddressData[devices.pc1.mac] = devices.pc1.port;
+                document.getElementById('port1').style.backgroundColor = '#34d399';
+                updateMacTable();
+            },
+            // Step 4: Switch floods packet
+            async () => {
+                stepTitle.textContent = "Step 3: Finding an Unknown Device";
+                stepDescription.textContent = "The switch doesn't know where the destination (PC D) is, so it 'floods' the packet to all ports except the one it came from.";
+
+                const switchEl = document.getElementById('switch');
+                const pc2 = document.getElementById('pc2');
+                const pc3 = document.getElementById('pc3');
+                const pc4 = document.getElementById('pc4');
+
+                const packet2 = createPacket('packet2');
+                const packet3 = createPacket('packet3');
+                const packet4 = createPacket('packet4');
+                
+                // We don't await here, so the text doesn't wait
+                movePacket(packet2, switchEl, pc2);
+                movePacket(packet3, switchEl, pc3);
+                await movePacket(packet4, switchEl, pc4);
+            },
+            // Step 5: Other PCs ignore
+            () => {
+                stepTitle.textContent = "Step 3: Finding an Unknown Device";
+                stepDescription.textContent = "PC B and PC C see the packet isn't for them and ignore it. PC D accepts it. The other PCs are shown faded.";
+                document.getElementById('pc2').classList.add('opacity-50');
+                document.getElementById('pc3').classList.add('opacity-50');
+            },
+            // Step 6: PC D replies
+            async () => {
+                document.querySelectorAll('.device').forEach(d => d.classList.remove('opacity-50'));
+                stepTitle.textContent = "Step 4: Learning from the Reply";
+                stepDescription.textContent = "Now, PC D sends a reply to PC A. The switch receives this new packet and will learn PC D's location.";
+                const packet = createPacket('packet1');
+                await movePacket(packet, document.getElementById('pc4'), document.getElementById('switch'));
+            },
+            // Step 7: Switch learns PC D's MAC
+            () => {
+                stepTitle.textContent = "Step 4: Learning from the Reply";
+                stepDescription.textContent = "The switch adds PC D's MAC address to its table, noting it came from Port 4. The table is now more complete.";
+                macAddressData[devices.pc4.mac] = devices.pc4.port;
+                document.getElementById('port4').style.backgroundColor = '#34d399';
+                updateMacTable();
+            },
+            // Step 8: PC A sends another packet
+            async () => {
+                stepTitle.textContent = "Step 5: Directing Traffic (Unicast)";
+                stepDescription.textContent = "Later, PC A sends another packet to PC D. Let's see how the switch handles it now.";
+                const packet = createPacket('packet1');
+                await movePacket(packet, document.getElementById('pc1'), document.getElementById('switch'));
+            },
+            // Step 9: Switch forwards directly
+            async () => {
+                stepTitle.textContent = "Step 5: Directing Traffic (Unicast)";
+                stepDescription.textContent = "The switch checks its table, finds PC D's MAC address, and forwards the packet *only* to Port 4. This is efficient!";
+                document.getElementById('port1').style.backgroundColor = '#f59e0b';
+                document.getElementById('port4').style.backgroundColor = '#f59e0b';
+                
+                const packet = createPacket('packet1');
+                await movePacket(packet, document.getElementById('switch'), document.getElementById('pc4'));
+                
+                // Reset port colors after animation
+                document.getElementById('port1').style.backgroundColor = '#34d399';
+                document.getElementById('port4').style.backgroundColor = '#34d399';
+            },
+            // Step 10: Quiz Time
+            () => {
+                stepTitle.textContent = "Simulation Complete!";
+                stepDescription.textContent = "You've seen how a switch connects devices, learns their locations using MAC addresses, and directs traffic efficiently. Now, let's test your knowledge with a short quiz.";
+                nextBtn.textContent = "Start Quiz";
+            },
+            // Step 11: Show quiz
+             () => {
+                showQuiz();
+             }
+        ];
+
+        function runStep() {
+            // Disable buttons during animation
+            nextBtn.disabled = true;
+            prevBtn.disabled = true;
+            nextBtn.textContent = "Next Step";
+
+            const stepFunction = steps[currentStep];
+            const result = stepFunction();
+
+            if (result instanceof Promise) {
+                result.then(() => {
+                    nextBtn.disabled = false;
+                    prevBtn.disabled = currentStep === 0;
+                });
+            } else {
+                nextBtn.disabled = false;
+                prevBtn.disabled = currentStep === 0;
+            }
+        }
+        
+        function handleNext() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                runStep();
+            }
+        }
+        
+        function handlePrev() {
+            if (currentStep > 0) {
+                 const targetStep = currentStep - 1;
+                 resetSimulation(false); // Reset visuals without running step 0 text/animation
+
+                 // Re-run all steps up to the target step without animation to rebuild the state
+                 for(let i = 0; i <= targetStep; i++) {
+                     const stepFunction = steps[i];
+                     // We just call the function to set state, not waiting for animations
+                     stepFunction(); 
+                 }
+                 
+                 // Final state set, now run the target step's text update one last time
+                 currentStep = targetStep;
+                 const finalStepFunction = steps[currentStep];
+                 finalStepFunction(); // This ensures the text is correct for the target step
+                 
+                 // Re-enable buttons
+                 nextBtn.disabled = false;
+                 prevBtn.disabled = currentStep === 0;
+            }
+        }
+        
+        // Quiz Logic
+        function showQuiz() {
+            quizModal.classList.remove('opacity-0', 'scale-90', 'pointer-events-none');
+            quizModal.classList.add('opacity-100', 'scale-100');
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            // Reset state
+            quizFeedback.textContent = '';
+            quizFeedback.className = 'mt-4 text-sm font-semibold';
+            nextQuestionBtn.classList.add('hidden');
+
+            const q = quizData[quizCurrentQuestionIndex];
+            quizQuestion.textContent = q.question;
+            quizOptions.innerHTML = '';
+            
+            q.options.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.className = "block w-full text-left p-3 bg-gray-100 hover:bg-blue-100 rounded-lg transition-colors";
+                button.onclick = () => checkAnswer(option, q.answer, button);
+                quizOptions.appendChild(button);
+            });
+        }
+        
+        function checkAnswer(selected, correct, button) {
+             // Disable all option buttons
+            quizOptions.querySelectorAll('button').forEach(btn => btn.disabled = true);
+            
+            if (selected === correct) {
+                quizFeedback.textContent = "Correct! Well done.";
+                quizFeedback.classList.add('text-green-600');
+                button.classList.remove('bg-gray-100', 'hover:bg-blue-100');
+                button.classList.add('bg-green-200', 'border-green-500', 'border-2');
+            } else {
+                quizFeedback.textContent = `Not quite. The correct answer was: "${correct}"`;
+                quizFeedback.classList.add('text-red-600');
+                button.classList.remove('bg-gray-100', 'hover:bg-blue-100');
+                button.classList.add('bg-red-200', 'border-red-500', 'border-2');
+            }
+            
+            if (quizCurrentQuestionIndex < quizData.length - 1) {
+                nextQuestionBtn.classList.remove('hidden');
+            } else {
+                finishQuizBtn.classList.remove('hidden');
+            }
+        }
+        
+        nextQuestionBtn.addEventListener('click', () => {
+            quizCurrentQuestionIndex++;
+            loadQuestion();
+        });
+        
+        finishQuizBtn.addEventListener('click', () => {
+            quizModal.classList.add('opacity-0', 'scale-90', 'pointer-events-none');
+            quizModal.classList.remove('opacity-100', 'scale-100');
+            
+            // Reset quiz for next time
+            quizCurrentQuestionIndex = 0;
+            finishQuizBtn.classList.add('hidden');
+            
+            resetSimulation(true);
+        });
+
+
+        // Event Listeners
+        nextBtn.addEventListener('click', handleNext);
+        prevBtn.addEventListener('click', handlePrev);
+        window.addEventListener('load', runStep);
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,2788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BitTorrent Protocol - Interactive Lesson</title>
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --primary-dark: #2563eb;
+            --primary-light: #60a5fa;
+            --secondary-color: #8b5cf6;
+            --secondary-dark: #7c3aed;
+            --success-color: #10b981;
+            --success-dark: #059669;
+            --error-color: #ef4444;
+            --error-dark: #dc2626;
+            --warning-color: #f59e0b;
+            --warning-dark: #d97706;
+            --bg-color: #f8fafc;
+            --text-color: #1e293b;
+            --text-secondary: #64748b;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-success: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+            --gradient-warm: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.1) 0%, transparent 50%);
+        }
+
+        /* Performance: Use transform for animations */
+        * {
+            will-change: auto;
+        }
+
+        /* High Contrast Mode */
+        body.high-contrast {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --card-bg: #1a1a1a;
+            --border-color: #ffffff;
+            --primary-color: #00ff00;
+            --secondary-color: #ffff00;
+        }
+
+        /* Dyslexia Font */
+        body.dyslexia-font {
+            font-family: 'Comic Sans MS', 'OpenDyslexic', sans-serif;
+            letter-spacing: 0.05em;
+            word-spacing: 0.1em;
+        }
+
+        /* Font Sizes */
+        body.font-small { font-size: 14px; }
+        body.font-large { font-size: 18px; }
+        body.font-xlarge { font-size: 20px; }
+
+        /* Modern Header with Glassmorphism */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: shimmer 8s linear infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Enhanced XP System */
+        .xp-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .xp-container:hover {
+            transform: translateY(-2px);
+        }
+
+        .xp-bar {
+            width: 200px;
+            height: 24px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .xp-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: xp-shine 2s ease-in-out infinite;
+        }
+
+        @keyframes xp-shine {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .level-badge {
+            font-weight: bold;
+            background: rgba(255,255,255,0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            letter-spacing: 0.05em;
+        }
+
+        /* Enhanced Navigation */
+        .nav-container {
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .nav-pills {
+            display: flex;
+            gap: 0.75rem;
+            overflow-x: auto;
+            padding: 0.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-light) transparent;
+        }
+
+        .nav-pills::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .nav-pills::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .nav-pills::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 3px;
+        }
+
+        .nav-pill {
+            padding: 0.625rem 1.25rem;
+            background: var(--bg-color);
+            border: 2px solid transparent;
+            border-radius: 25px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-pill::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: var(--primary-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+            opacity: 0.3;
+        }
+
+        .nav-pill:hover::before {
+            width: 100px;
+            height: 100px;
+        }
+
+        .nav-pill:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: var(--primary-light);
+        }
+
+        .nav-pill.active {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .nav-pill.completed::after {
+            content: '✓';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--gradient-success);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            animation: bounceIn 0.5s ease;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            60% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            min-height: calc(100vh - 200px);
+        }
+
+        .section {
+            display: none;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeInUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(30px);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0);
+            }
+        }
+
+        /* Enhanced Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient-primary);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.6s ease;
+        }
+
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+
+        .card-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Enhanced Buttons */
+        .btn {
+            padding: 0.875rem 1.75rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            text-transform: none;
+            letter-spacing: 0.02em;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::after {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--text-color);
+            border: 2px solid var(--border-color);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-color);
+            border-color: var(--primary-color);
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--gradient-success);
+            color: white;
+            box-shadow: 0 4px 15px rgba(132, 250, 176, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        /* Enhanced Interactive Areas */
+        .interactive-area {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .interactive-area::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 12px;
+            padding: 2px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: exclude;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .highlight-active {
+            animation: pulse-border 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { 
+                border-color: var(--primary-light);
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+            }
+            50% { 
+                border-color: var(--primary-color);
+                box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+        }
+
+        .interactive-area:hover::before {
+            opacity: 1;
+        }
+
+        /* Enhanced Quiz Elements */
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 1.125rem 1.5rem;
+            margin: 0.75rem 0;
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            font-weight: 500;
+        }
+
+        .quiz-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .quiz-option:hover::before {
+            left: 100%;
+        }
+
+        .quiz-option:hover {
+            background: var(--bg-color);
+            border-color: var(--primary-color);
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .quiz-option.selected {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .quiz-option.correct {
+            background: var(--gradient-success);
+            color: white;
+            border-color: var(--success-color);
+            animation: correctAnswer 0.6s ease;
+        }
+
+        .quiz-option.incorrect {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            border-color: var(--error-color);
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes correctAnswer {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        /* Enhanced Input Fields */
+        .input-field {
+            width: 100%;
+            padding: 0.875rem 1.25rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Enhanced Matching Container */
+        .matching-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 1.5rem 0;
+        }
+
+        .draggable-item, .drop-zone {
+            padding: 1.25rem;
+            margin: 0.75rem 0;
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            font-weight: 500;
+        }
+
+        .draggable-item:hover {
+            background: var(--bg-color);
+            transform: translateX(8px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: var(--primary-light);
+        }
+
+        .draggable-item.selected {
+            background: var(--gradient-primary);
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .drop-zone {
+            min-height: 80px;
+            border-style: dashed;
+            border-width: 3px;
+            background: rgba(255,255,255,0.5);
+        }
+
+        .drop-zone.highlight {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: var(--primary-color);
+            transform: scale(1.02);
+        }
+
+        .drop-zone.correct {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: var(--success-color);
+        }
+
+        /* Enhanced Simulation Container */
+        .simulation-container {
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            position: relative;
+            min-height: 400px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .simulation-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .network-node {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 2;
+        }
+
+        .network-node:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+
+        .network-node.seed {
+            background: var(--gradient-success);
+        }
+
+        .network-node.leech {
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+        }
+
+        .network-node.tracker {
+            background: linear-gradient(135deg, var(--secondary-color), var(--secondary-dark));
+            width: 100px;
+            height: 100px;
+        }
+
+        .connection-line {
+            position: absolute;
+            height: 2px;
+            background: rgba(255,255,255,0.2);
+            transform-origin: left center;
+            transition: all 0.3s ease;
+            z-index: 1;
+        }
+
+        .connection-line.active {
+            background: var(--success-color);
+            height: 3px;
+            box-shadow: 0 0 10px var(--success-color);
+        }
+
+        /* Enhanced Achievement Popup */
+        .achievement-popup {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            transform: translateX(400px);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            max-width: 320px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+
+        .achievement-popup::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 12px;
+            padding: 2px;
+            background: var(--gradient-warm);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: exclude;
+            mask-composite: exclude;
+        }
+
+        .achievement-popup.show {
+            transform: translateX(0);
+        }
+
+        .achievement-icon {
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            animation: iconBounce 0.6s ease;
+        }
+
+        @keyframes iconBounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        /* Shame Message */
+        .shame-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, var(--error-color), var(--error-dark));
+            color: white;
+            padding: 2rem 3rem;
+            border-radius: 12px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            z-index: 2000;
+            box-shadow: 0 10px 40px rgba(239, 68, 68, 0.4);
+        }
+
+        .shame-message.show {
+            animation: shameAnimation 3s ease forwards;
+        }
+
+        @keyframes shameAnimation {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(0); }
+            20% { transform: translate(-50%, -50%) scale(1.2) rotate(-5deg); }
+            40% { transform: translate(-50%, -50%) scale(0.9) rotate(5deg); }
+            60% { transform: translate(-50%, -50%) scale(1.05) rotate(-3deg); }
+            80% { transform: translate(-50%, -50%) scale(0.95) rotate(1deg); }
+            100% { transform: translate(-50%, -50%) scale(0) rotate(0); }
+        }
+
+        /* Enhanced Feedback Button */
+        .feedback-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+            font-size: 1.5rem;
+        }
+
+        .feedback-btn:hover {
+            transform: scale(1.1) rotate(15deg);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.3);
+        }
+
+        /* Feedback Modal */
+        .feedback-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .feedback-content {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Enhanced Accessibility Controls */
+        .accessibility-controls {
+            position: fixed;
+            top: 120px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            z-index: 100;
+            border: 1px solid var(--border-color);
+        }
+
+        .accessibility-controls h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .accessibility-controls button {
+            display: block;
+            width: 100%;
+            margin: 0.5rem 0;
+            padding: 0.625rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+        }
+
+        .accessibility-controls button:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            transform: translateX(-2px);
+        }
+
+        /* Drawing Canvas */
+        .drawing-canvas {
+            border: 3px solid var(--border-color);
+            border-radius: 8px;
+            background: white;
+            touch-action: none;
+            cursor: crosshair;
+            margin: 1rem 0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* Mark Scheme */
+        .mark-scheme {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            border: 2px solid var(--success-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .mark-scheme.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Progress Steps */
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+
+        .progress-steps::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--border-color);
+            z-index: 0;
+        }
+
+        .progress-step {
+            flex: 1;
+            text-align: center;
+            padding: 0.625rem 0.75rem;
+            background: white;
+            border: 2px solid var(--border-color);
+            margin: 0 0.25rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .progress-step:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .progress-step.active {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .progress-step.completed {
+            background: var(--gradient-success);
+            color: white;
+            border-color: var(--success-color);
+        }
+
+        /* File Piece Visualization */
+        .file-piece {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            margin: 3px;
+            background: #e2e8f0;
+            border: 2px solid #cbd5e1;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .file-piece.downloaded {
+            background: var(--success-color);
+            border-color: var(--success-dark);
+            transform: scale(1.05);
+        }
+
+        .file-piece.downloading {
+            background: var(--warning-color);
+            border-color: var(--warning-dark);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+
+        /* Scenario Cards */
+        .scenario-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 2rem;
+            border-radius: 12px;
+            margin: 1rem 0;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .scenario-card h5 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        /* Hint Container */
+        .hint-container {
+            margin-top: 1rem;
+            padding: 1rem 1.25rem;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+            border-left: 4px solid var(--warning-color);
+            border-radius: 8px;
+            display: none;
+        }
+
+        .hint-container.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        /* Floating XP */
+        .floating-xp {
+            position: fixed;
+            color: var(--warning-color);
+            font-weight: bold;
+            font-size: 1.5rem;
+            pointer-events: none;
+            z-index: 1000;
+            animation: floatUp 2s ease-out forwards;
+        }
+
+        @keyframes floatUp {
+            0% { 
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% { 
+                transform: translateY(-80px) scale(0.8);
+                opacity: 0;
+            }
+        }
+
+        /* Particles */
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 999;
+        }
+
+        .particle.star {
+            width: 4px;
+            height: 4px;
+            background: var(--warning-color);
+            animation: particleStar 2s ease-out forwards;
+        }
+
+        @keyframes particleStar {
+            0% {
+                transform: translate(0, 0) scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* Loading State */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .xp-container {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .xp-bar {
+                width: 150px;
+            }
+
+            .matching-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .nav-pills {
+                justify-content: start;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .accessibility-controls {
+                display: none;
+            }
+
+            .progress-step {
+                font-size: 0.75rem;
+                padding: 0.5rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            .header, .nav-container, .feedback-btn, .accessibility-controls {
+                display: none !important;
+            }
+
+            .section {
+                display: block !important;
+                page-break-after: always;
+            }
+
+            .card {
+                box-shadow: none;
+                border: 1px solid #000;
+            }
+        }
+
+        /* Performance optimizations */
+        .section:not(.active) {
+            visibility: hidden;
+            position: absolute;
+            top: -9999px;
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" role="banner">
+        <div class="header-content">
+            <h1>BitTorrent Protocol</h1>
+            <div class="xp-container" role="status" aria-live="polite">
+                <span class="level-badge">Level <span id="current-level">1</span></span>
+                <div class="xp-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
+                </div>
+                <span id="xp-text">0 / 100 XP</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-container" role="navigation" aria-label="Lesson sections">
+        <div class="nav-pills" id="nav-pills">
+            <button class="nav-pill active" data-section="intro">Introduction</button>
+            <button class="nav-pill" data-section="basics">BitTorrent Basics</button>
+            <button class="nav-pill" data-section="process">Exchange Process</button>
+            <button class="nav-pill" data-section="components">Key Components</button>
+            <button class="nav-pill" data-section="realworld">Real World</button>
+            <button class="nav-pill" data-section="summary">Summary & Quiz</button>
+            <button class="nav-pill" data-section="exam">Exam Practice</button>
+            <button class="nav-pill" data-section="extension">Extension</button>
+            <button class="nav-pill" data-section="videos">Videos</button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" role="main">
+        <!-- Introduction Section -->
+        <section id="intro" class="section active">
+            <div class="card">
+                <h2 class="card-title">Welcome to BitTorrent Protocol!</h2>
+                <h3>Learning Outcomes</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li>Understand the BitTorrent protocol and P2P network model</li>
+                    <li>Explain the complete BitTorrent exchange process</li>
+                    <li>Define and differentiate between tracker, seed, swarm, and leech</li>
+                    <li>Analyze advantages and challenges of P2P file sharing</li>
+                    <li>Apply knowledge to real-world scenarios</li>
+                </ul>
+
+                <div class="interactive-area highlight-active">
+                    <h4>Starter Activity: Network Topology Assessment</h4>
+                    <p>Let's test your current understanding of network models. How would you categorize these scenarios?</p>
+                    
+                    <div id="starter-quiz">
+                        <p><strong>1. A single server hosts a website that thousands of users access daily.</strong></p>
+                        <button class="quiz-option" data-answer="a">Peer-to-Peer Network</button>
+                        <button class="quiz-option" data-answer="b">Client-Server Network</button>
+                        <button class="quiz-option" data-answer="c">Mesh Network</button>
+                        <button class="quiz-option" data-answer="d">Ring Network</button>
+                        
+                        <div style="margin-top: 1.5rem;">
+                            <p><strong>2. Users share files directly with each other without a central server storing the files.</strong></p>
+                            <button class="quiz-option" data-answer="a">Client-Server Network</button>
+                            <button class="quiz-option" data-answer="b">Star Network</button>
+                            <button class="quiz-option" data-answer="c">Peer-to-Peer Network</button>
+                            <button class="quiz-option" data-answer="d">Bus Network</button>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkStarterQuiz()">Check Answers</button>
+                    <button class="btn btn-secondary" onclick="resetStarterQuiz()">Reset</button>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next Section →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- BitTorrent Basics Section -->
+        <section id="basics" class="section">
+            <div class="card">
+                <h2 class="card-title">BitTorrent Basics</h2>
+                
+                <h3>What is BitTorrent?</h3>
+                <p>BitTorrent is a peer-to-peer (P2P) file-sharing protocol used for distributing large amounts of data over the internet. Unlike traditional downloads from a single server, BitTorrent allows users to download pieces of files from multiple sources simultaneously.</p>
+                
+                <div class="interactive-area">
+                    <h4>Traditional vs BitTorrent Download</h4>
+                    <div id="download-comparison" class="simulation-container">
+                        <div style="display: flex; justify-content: space-around; height: 100%;">
+                            <div style="text-align: center; width: 45%;">
+                                <h5 style="color: white;">Traditional Download</h5>
+                                <div id="traditional-sim" style="position: relative; height: 300px;">
+                                    <!-- Simulation will be populated by JavaScript -->
+                                </div>
+                            </div>
+                            <div style="text-align: center; width: 45%;">
+                                <h5 style="color: white;">BitTorrent Download</h5>
+                                <div id="bittorrent-sim" style="position: relative; height: 300px;">
+                                    <!-- Simulation will be populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="btn-group" style="justify-content: center;">
+                        <button class="btn btn-primary" onclick="startDownloadSimulation()">Start Simulation</button>
+                        <button class="btn btn-secondary" onclick="resetDownloadSimulation()">Reset</button>
+                    </div>
+                </div>
+
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Fill in the Blanks: P2P Network Model</h4>
+                    <p>Complete the following statements about peer-to-peer networks:</p>
+                    
+                    <div style="margin: 1rem 0;">
+                        <p>1. In a P2P network, each computer can act as both a 
+                            <select class="input-field" style="width: 150px; display: inline;" id="blank1">
+                                <option value="">Choose...</option>
+                                <option value="server">server</option>
+                                <option value="router">router</option>
+                                <option value="switch">switch</option>
+                                <option value="firewall">firewall</option>
+                                <option value="hub">hub</option>
+                                <option value="modem">modem</option>
+                            </select>
+                            and a client.
+                        </p>
+                        
+                        <p>2. BitTorrent splits files into smaller 
+                            <select class="input-field" style="width: 150px; display: inline;" id="blank2">
+                                <option value="">Choose...</option>
+                                <option value="packets">packets</option>
+                                <option value="pieces">pieces</option>
+                                <option value="fragments">fragments</option>
+                                <option value="segments">segments</option>
+                                <option value="blocks">blocks</option>
+                                <option value="chunks">chunks</option>
+                            </select>
+                            for distribution.
+                        </p>
+                        
+                        <p>3. Users can download from multiple 
+                            <select class="input-field" style="width: 150px; display: inline;" id="blank3">
+                                <option value="">Choose...</option>
+                                <option value="servers">servers</option>
+                                <option value="clients">clients</option>
+                                <option value="sources">sources</option>
+                                <option value="databases">databases</option>
+                                <option value="websites">websites</option>
+                                <option value="providers">providers</option>
+                            </select>
+                            simultaneously.
+                        </p>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkFillBlanks()">Check Answers</button>
+                    <button class="btn btn-secondary" onclick="showHint('basics')">Show Hint</button>
+                    
+                    <div class="hint-container" id="basics-hint">
+                        <p>💡 Hint: Think about how P2P differs from traditional client-server models. What makes each peer special?</p>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exchange Process Section -->
+        <section id="process" class="section">
+            <div class="card">
+                <h2 class="card-title">BitTorrent Exchange Process</h2>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Step-by-Step Process Simulation</h4>
+                    <div id="process-simulation" class="simulation-container">
+                        <div id="sim-content" style="color: white; padding: 1rem;">
+                            <!-- Simulation content will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    
+                    <div class="progress-steps" id="process-steps">
+                        <div class="progress-step active" data-step="1">Torrent Created</div>
+                        <div class="progress-step" data-step="2">File Split</div>
+                        <div class="progress-step" data-step="3">Peers Join</div>
+                        <div class="progress-step" data-step="4">Downloading</div>
+                        <div class="progress-step" data-step="5">Seeding</div>
+                        <div class="progress-step" data-step="6">Complete</div>
+                    </div>
+                    
+                    <div class="btn-group" style="justify-content: center;">
+                        <button class="btn btn-secondary" onclick="previousStep()">← Previous Step</button>
+                        <button class="btn btn-primary" onclick="nextStep()">Next Step →</button>
+                        <button class="btn btn-secondary" onclick="resetProcessSimulation()">Reset</button>
+                    </div>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Sequence the Process</h4>
+                    <p>Put these steps in the correct order by clicking them in sequence:</p>
+                    
+                    <div id="sequence-items">
+                        <button class="quiz-option" data-order="3">BitTorrent client software connects to peers</button>
+                        <button class="quiz-option" data-order="1">Torrent descriptor file is created</button>
+                        <button class="quiz-option" data-order="5">Peer becomes a seed for downloaded pieces</button>
+                        <button class="quiz-option" data-order="4">Peer downloads pieces from multiple seeds</button>
+                        <button class="quiz-option" data-order="2">File is split into pieces</button>
+                        <button class="quiz-option" data-order="6">Tracker keeps record of all peers</button>
+                    </div>
+                    
+                    <div id="sequence-result" style="margin-top: 1rem;"></div>
+                    
+                    <button class="btn btn-primary" onclick="checkSequence()">Check Order</button>
+                    <button class="btn btn-secondary" onclick="resetSequence()">Reset</button>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Key Components Section -->
+        <section id="components" class="section">
+            <div class="card">
+                <h2 class="card-title">Key Components</h2>
+                
+                <div class="interactive-area highlight-active">
+                    <h4>Match the Terms</h4>
+                    <p>Click a term, then click its matching definition:</p>
+                    
+                    <div class="matching-container">
+                        <div>
+                            <h5>Terms</h5>
+                            <div class="draggable-item" data-id="tracker">Tracker</div>
+                            <div class="draggable-item" data-id="seed">Seed</div>
+                            <div class="draggable-item" data-id="swarm">Swarm</div>
+                            <div class="draggable-item" data-id="leech">Leech</div>
+                        </div>
+                        <div>
+                            <h5>Definitions</h5>
+                            <div class="drop-zone" data-match="swarm">All connected peers with all or part of the file</div>
+                            <div class="drop-zone" data-match="tracker">Central server storing details of peers and their file pieces</div>
+                            <div class="drop-zone" data-match="leech">Peer that downloads much more than they upload</div>
+                            <div class="drop-zone" data-match="seed">Peer uploading downloaded content</div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-secondary" onclick="resetMatching()">Reset</button>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>True or False</h4>
+                    <div id="true-false-quiz">
+                        <div style="margin: 1rem 0;">
+                            <p>1. A seed must have 100% of the file before it can upload.</p>
+                            <div data-question="tf1">
+                                <button class="quiz-option" data-answer="true">True</button>
+                                <button class="quiz-option" data-answer="false">False</button>
+                            </div>
+                        </div>
+                        
+                        <div style="margin: 1rem 0;">
+                            <p>2. The tracker stores the actual file pieces being shared.</p>
+                            <div data-question="tf2">
+                                <button class="quiz-option" data-answer="true">True</button>
+                                <button class="quiz-option" data-answer="false">False</button>
+                            </div>
+                        </div>
+                        
+                        <div style="margin: 1rem 0;">
+                            <p>3. Users can pause and restart downloads at any time.</p>
+                            <div data-question="tf3">
+                                <button class="quiz-option" data-answer="true">True</button>
+                                <button class="quiz-option" data-answer="false">False</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkTrueFalse()">Check Answers</button>
+                    <button class="btn btn-secondary" onclick="resetTrueFalse()">Reset</button>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Short Answer</h4>
+                    <p>Explain in your own words what makes a peer a "leech" and why this might be problematic for the BitTorrent network:</p>
+                    <textarea class="input-field" id="leech-explanation" rows="4" placeholder="Start your answer here..."></textarea>
+                    <button class="btn btn-primary" onclick="checkShortAnswer()">Submit Answer</button>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Real World Section -->
+        <section id="realworld" class="section">
+            <div class="card">
+                <h2 class="card-title">Real-World Application</h2>
+                
+                <div class="interactive-area">
+                    <h4>Scenario Analysis</h4>
+                    <div class="scenario-card">
+                        <h5>Scenario 1: Linux Distribution</h5>
+                        <p>A popular Linux distribution needs to release a new 4GB version to millions of users worldwide. They have limited server bandwidth.</p>
+                        <p><strong>Question:</strong> Why would BitTorrent be an ideal solution for this scenario?</p>
+                        
+                        <div style="margin: 1rem 0;">
+                            <button class="quiz-option" data-scenario="s1">To encrypt the files for security</button>
+                            <button class="quiz-option" data-scenario="s1">To distribute server load across peers</button>
+                            <button class="quiz-option" data-scenario="s1">To compress the files smaller</button>
+                            <button class="quiz-option" data-scenario="s1">To prevent piracy</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Advantages vs Disadvantages</h4>
+                    <p>Categorize these points as either advantages or disadvantages of BitTorrent:</p>
+                    
+                    <div id="categorize-items">
+                        <button class="quiz-option" data-category="advantage">Reduces server bandwidth costs</button>
+                        <button class="quiz-option" data-category="disadvantage">Difficult to remove content once shared</button>
+                        <button class="quiz-option" data-category="advantage">Faster downloads with more peers</button>
+                        <button class="quiz-option" data-category="disadvantage">Potential for malware distribution</button>
+                        <button class="quiz-option" data-category="advantage">Resilient to server failures</button>
+                        <button class="quiz-option" data-category="disadvantage">ISPs may throttle P2P traffic</button>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div>
+                            <h5>Advantages</h5>
+                            <div id="advantages-box" class="drop-zone" style="min-height: 150px;"></div>
+                        </div>
+                        <div>
+                            <h5>Disadvantages</h5>
+                            <div id="disadvantages-box" class="drop-zone" style="min-height: 150px;"></div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="checkCategorization()">Check Categories</button>
+                    <button class="btn btn-secondary" onclick="resetCategorization()">Reset</button>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary Section -->
+        <section id="summary" class="section">
+            <div class="card">
+                <h2 class="card-title">Summary & Quiz</h2>
+                
+                <h3>Key Takeaways</h3>
+                <ul style="margin: 1rem 0; padding-left: 1.5rem;">
+                    <li>BitTorrent uses P2P technology for efficient file distribution</li>
+                    <li>Files are split into pieces and distributed across multiple peers</li>
+                    <li>Trackers coordinate the network but don't store files</li>
+                    <li>Seeds upload, leeches download excessively</li>
+                    <li>The swarm includes all peers sharing a file</li>
+                </ul>
+
+                <div class="interactive-area highlight-active" style="margin-top: 2rem;">
+                    <h4>Final Assessment</h4>
+                    <div id="final-quiz">
+                        <div style="margin-bottom: 1.5rem;">
+                            <p><strong>1. What network model does BitTorrent use?</strong></p>
+                            <button class="quiz-option" data-q="1">Client-Server</button>
+                            <button class="quiz-option" data-q="1">Hierarchical</button>
+                            <button class="quiz-option" data-q="1">Peer-to-Peer</button>
+                            <button class="quiz-option" data-q="1">Centralized</button>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <p><strong>2. What does a tracker store?</strong></p>
+                            <button class="quiz-option" data-q="2">The complete files being shared</button>
+                            <button class="quiz-option" data-q="2">Details of peers and their file pieces</button>
+                            <button class="quiz-option" data-q="2">User passwords and credentials</button>
+                            <button class="quiz-option" data-q="2">Encrypted file backups</button>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <p><strong>3. A peer that has downloaded some pieces can:</strong></p>
+                            <button class="quiz-option" data-q="3">Immediately become a seed for those pieces</button>
+                            <button class="quiz-option" data-q="3">Only download, not upload</button>
+                            <button class="quiz-option" data-q="3">Must wait until 100% complete to share</button>
+                            <button class="quiz-option" data-q="3">Delete the tracker information</button>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <p><strong>4. What is the main characteristic of a leech?</strong></p>
+                            <button class="quiz-option" data-q="4">Has corrupted file pieces</button>
+                            <button class="quiz-option" data-q="4">Uploads more than downloads</button>
+                            <button class="quiz-option" data-q="4">Runs the tracker server</button>
+                            <button class="quiz-option" data-q="4">Downloads much more than uploads</button>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <p><strong>5. The swarm refers to:</strong></p>
+                            <button class="quiz-option" data-q="5">All connected peers sharing a file</button>
+                            <button class="quiz-option" data-q="5">Only the tracker servers</button>
+                            <button class="quiz-option" data-q="5">Peers with 100% of the file</button>
+                            <button class="quiz-option" data-q="5">Malicious users in the network</button>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <p><strong>6. BitTorrent allows users to:</strong></p>
+                            <button class="quiz-option" data-q="6">Only download complete files</button>
+                            <button class="quiz-option" data-q="6">Stream videos in real-time</button>
+                            <button class="quiz-option" data-q="6">Pause and restart downloads</button>
+                            <button class="quiz-option" data-q="6">Edit files while downloading</button>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <p><strong>7. Files in BitTorrent are:</strong></p>
+                            <button class="quiz-option" data-q="7">Compressed into one large file</button>
+                            <button class="quiz-option" data-q="7">Split into pieces</button>
+                            <button class="quiz-option" data-q="7">Encrypted by default</button>
+                            <button class="quiz-option" data-q="7">Stored on the tracker</button>
+                        </div>
+
+                        <div style="margin-bottom: 1.5rem;">
+                            <p><strong>8. The torrent descriptor file contains:</strong></p>
+                            <button class="quiz-option" data-q="8">The actual file data</button>
+                            <button class="quiz-option" data-q="8">Only the file name</button>
+                            <button class="quiz-option" data-q="8">User login credentials</button>
+                            <button class="quiz-option" data-q="8">Information about the file and tracker</button>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="submitFinalQuiz()">Submit Quiz</button>
+                    
+                    <div id="quiz-results" style="margin-top: 1rem; display: none;">
+                        <h4>Results:</h4>
+                        <p id="quiz-score"></p>
+                        <div id="quiz-feedback"></div>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Exam Practice Section -->
+        <section id="exam" class="section">
+            <div class="card">
+                <h2 class="card-title">Exam Practice</h2>
+                
+                <div class="interactive-area">
+                    <h4>Question 1 (4 marks)</h4>
+                    <p>Describe the BitTorrent exchange process, including the role of the tracker and how files are distributed. [4 marks]</p>
+                    
+                    <textarea class="input-field" id="exam-q1" rows="8" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q1" min="0" max="4" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q1')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="mark-scheme" id="mark-scheme-q1">
+                        <h5>Mark Scheme:</h5>
+                        <ul>
+                            <li>Torrent descriptor file created/made available (1 mark)</li>
+                            <li>File split into pieces (1 mark)</li>
+                            <li>Tracker keeps records of peers and pieces (1 mark)</li>
+                            <li>Peers download from multiple sources simultaneously (1 mark)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Question 2 (3 marks)</h4>
+                    <p>Explain the difference between a seed and a leech in a BitTorrent network. [3 marks]</p>
+                    
+                    <textarea class="input-field" id="exam-q2" rows="6" placeholder="Write your answer here..."></textarea>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label>Predicted marks: 
+                            <input type="number" id="marks-q2" min="0" max="3" style="width: 50px;" class="input-field">
+                        </label>
+                        <button class="btn btn-secondary" onclick="showMarkScheme('q2')">Show Mark Scheme</button>
+                    </div>
+                    
+                    <div class="mark-scheme" id="mark-scheme-q2">
+                        <h5>Mark Scheme:</h5>
+                        <ul>
+                            <li>Seed: Peer that uploads/shares file pieces (1 mark)</li>
+                            <li>Can have partial or complete file (1 mark)</li>
+                            <li>Leech: Downloads much more than uploads (1 mark)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <h4 style="margin-top: 2rem;">Drawing Canvas for Rough Work</h4>
+                <canvas id="drawing-canvas" class="drawing-canvas" width="600" height="300"></canvas>
+                <button class="btn btn-secondary" onclick="clearCanvas()">Clear Canvas</button>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Extension Section -->
+        <section id="extension" class="section">
+            <div class="card">
+                <h2 class="card-title">Extension Activities</h2>
+                
+                <div class="interactive-area">
+                    <h4>Research Task</h4>
+                    <p>Research and compare BitTorrent with other P2P protocols like Gnutella or eDonkey. What are the key differences in their approaches?</p>
+                    <textarea class="input-field" rows="6" placeholder="Write your research findings here..."></textarea>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Technical Deep Dive</h4>
+                    <p>Investigate how BitTorrent handles these technical challenges:</p>
+                    <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <li>Piece selection algorithms (rarest first, random first)</li>
+                        <li>Choking and optimistic unchoking</li>
+                        <li>DHT (Distributed Hash Table) for trackerless torrents</li>
+                    </ul>
+                    <textarea class="input-field" rows="8" placeholder="Explain your findings..."></textarea>
+                </div>
+
+                <div class="interactive-area" style="margin-top: 2rem;">
+                    <h4>Ethical Considerations</h4>
+                    <p>Discuss the ethical implications of P2P file sharing. Consider both legitimate uses and potential for misuse.</p>
+                    <textarea class="input-field" rows="6" placeholder="Present your arguments..."></textarea>
+                </div>
+
+                <button class="btn btn-primary" onclick="submitExtension()">Submit Extension Work</button>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateSection('next')">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Videos Section -->
+        <section id="videos" class="section">
+            <div class="card">
+                <h2 class="card-title">Video Resources</h2>
+                
+                <div class="interactive-area">
+                    <h4>Supplementary Videos</h4>
+                    <p>Your teacher will add video links here to support your learning:</p>
+                    
+                    <div style="background: var(--bg-color); padding: 4rem; text-align: center; border-radius: 8px; margin: 2rem 0;">
+                        <p style="color: var(--text-secondary); font-size: 3rem;">📹</p>
+                        <p style="color: var(--text-secondary);">Video content will be added here</p>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="navigateSection('prev')">← Previous</button>
+                    <button class="btn btn-primary" onclick="navigateToSection('intro')">Start Over</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Achievement Popup -->
+    <div class="achievement-popup" id="achievement-popup">
+        <div class="achievement-icon" id="achievement-icon">🏆</div>
+        <h4 id="achievement-title">Achievement Unlocked!</h4>
+        <p id="achievement-desc">You've earned a new achievement</p>
+    </div>
+
+    <!-- Shame Message -->
+    <div class="shame-message" id="shame-message">
+        🚫 No pasting allowed! Do your own work! 🚫
+    </div>
+
+    <!-- Feedback Button -->
+    <button class="feedback-btn" onclick="openFeedback()" aria-label="Send feedback">
+        💬
+    </button>
+
+    <!-- Feedback Modal -->
+    <div class="feedback-modal" id="feedback-modal">
+        <div class="feedback-content">
+            <h3 style="margin-bottom: 1rem;">Send Feedback</h3>
+            <p>Found a bug or have a suggestion? Let us know!</p>
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                Current page: <span id="feedback-page"></span>
+            </p>
+            <textarea class="input-field" id="feedback-text" rows="5" placeholder="Describe the issue or suggestion..."></textarea>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeFeedback()">Cancel</button>
+                <button class="btn btn-primary" onclick="sendFeedback()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accessibility Controls -->
+    <div class="accessibility-controls">
+        <h4>Accessibility</h4>
+        <button onclick="toggleHighContrast()">High Contrast</button>
+        <button onclick="toggleDyslexiaFont()">Dyslexia Font</button>
+        <button onclick="changeFontSize('small')">A-</button>
+        <button onclick="changeFontSize('normal')">A</button>
+        <button onclick="changeFontSize('large')">A+</button>
+    </div>
+
+    <script>
+        // Performance: Cache DOM elements
+        const DOM = {
+            xpFill: null,
+            xpText: null,
+            currentLevel: null,
+            navPills: null,
+            sections: null,
+            achievementPopup: null,
+            shameMessage: null,
+            feedbackModal: null,
+            feedbackPage: null,
+            feedbackText: null
+        };
+
+        // Initialize DOM cache
+        function initializeDOM() {
+            DOM.xpFill = document.getElementById('xp-fill');
+            DOM.xpText = document.getElementById('xp-text');
+            DOM.currentLevel = document.getElementById('current-level');
+            DOM.navPills = document.querySelectorAll('.nav-pill');
+            DOM.sections = document.querySelectorAll('.section');
+            DOM.achievementPopup = document.getElementById('achievement-popup');
+            DOM.shameMessage = document.getElementById('shame-message');
+            DOM.feedbackModal = document.getElementById('feedback-modal');
+            DOM.feedbackPage = document.getElementById('feedback-page');
+            DOM.feedbackText = document.getElementById('feedback-text');
+        }
+
+        // Game State
+        let gameState = {
+            xp: 0,
+            level: 1,
+            completedSections: new Set(),
+            achievements: new Set(),
+            currentSection: 'intro',
+            selectedTerm: null,
+            sequenceOrder: [],
+            processStep: 1,
+            actions: new Set(),
+            animations: new WeakMap()
+        };
+
+        // XP Requirements per level
+        const XP_PER_LEVEL = [0, 100, 250, 450, 700, 1000];
+
+        // Performance: Debounce function
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Performance: Throttle function
+        function throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDOM();
+            updateXPDisplay();
+            setupEventListeners();
+            updateProcessSimulation();
+        });
+
+        // Event Listeners with delegation
+        function setupEventListeners() {
+            // Navigation
+            const navContainer = document.getElementById('nav-pills');
+            if (navContainer) {
+                navContainer.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('nav-pill')) {
+                        navigateToSection(e.target.dataset.section);
+                    }
+                });
+            }
+
+            // Quiz options
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('quiz-option')) {
+                    handleQuizOptionClick(e.target);
+                }
+            });
+
+            // Prevent paste
+            document.addEventListener('paste', function(e) {
+                e.preventDefault();
+                showShameMessage();
+                return false;
+            });
+
+            // Prevent right-click
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // Keyboard navigation
+            document.addEventListener('keydown', throttle(function(e) {
+                if (e.key === 'ArrowRight') navigateSection('next');
+                if (e.key === 'ArrowLeft') navigateSection('prev');
+            }, 100));
+
+            // Touch support
+            let touchStartX = 0;
+            document.addEventListener('touchstart', function(e) {
+                touchStartX = e.touches[0].clientX;
+            }, { passive: true });
+
+            document.addEventListener('touchend', function(e) {
+                const touchEndX = e.changedTouches[0].clientX;
+                const diff = touchStartX - touchEndX;
+                if (Math.abs(diff) > 50) {
+                    if (diff > 0) navigateSection('next');
+                    else navigateSection('prev');
+                }
+            }, { passive: true });
+
+            // Canvas initialization
+            requestAnimationFrame(initializeCanvas);
+        }
+
+        // Handle quiz option clicks
+        function handleQuizOptionClick(option) {
+            const parent = option.parentElement;
+            
+            // Starter quiz
+            if (parent.id === 'starter-quiz') {
+                selectQuizOption(option);
+            }
+            // True/False
+            else if (parent.dataset.question) {
+                selectTrueFalse(option);
+            }
+            // Scenario
+            else if (option.dataset.scenario) {
+                selectScenario(option);
+            }
+            // Categorization
+            else if (option.dataset.category) {
+                categorizeItem(option);
+            }
+            // Sequence
+            else if (option.dataset.order) {
+                selectSequence(option);
+            }
+            // Final quiz
+            else if (option.dataset.q) {
+                selectFinalQuizOption(option);
+            }
+        }
+
+        // Navigation
+        function navigateToSection(sectionId) {
+            if (!DOM.sections || !DOM.navPills) return;
+            
+            // Use CSS for performance
+            DOM.sections.forEach(s => {
+                s.classList.remove('active');
+            });
+            DOM.navPills.forEach(p => {
+                p.classList.remove('active');
+            });
+            
+            const targetSection = document.getElementById(sectionId);
+            const targetPill = document.querySelector(`[data-section="${sectionId}"]`);
+            
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+            if (targetPill) {
+                targetPill.classList.add('active');
+            }
+            
+            gameState.currentSection = sectionId;
+            updateFeedbackPage();
+            
+            // Award XP for first visit
+            if (!gameState.completedSections.has(sectionId)) {
+                awardXP(5, 'Section Visit', `visit_${sectionId}`);
+            }
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function navigateSection(direction) {
+            const sections = ['intro', 'basics', 'process', 'components', 'realworld', 'summary', 'exam', 'extension', 'videos'];
+            const currentIndex = sections.indexOf(gameState.currentSection);
+            
+            if (direction === 'next' && currentIndex < sections.length - 1) {
+                navigateToSection(sections[currentIndex + 1]);
+            } else if (direction === 'prev' && currentIndex > 0) {
+                navigateToSection(sections[currentIndex - 1]);
+            }
+        }
+
+        // XP System
+        function awardXP(amount, action, actionId = null) {
+            if (actionId && gameState.actions.has(actionId)) return;
+            if (actionId) gameState.actions.add(actionId);
+            
+            gameState.xp += amount;
+            updateXPDisplay();
+            checkLevelUp();
+            
+            // Show floating XP
+            showFloatingXP(amount);
+        }
+
+        function updateXPDisplay() {
+            if (!DOM.xpFill || !DOM.xpText || !DOM.currentLevel) return;
+            
+            const xpForNextLevel = XP_PER_LEVEL[gameState.level] || XP_PER_LEVEL[XP_PER_LEVEL.length - 1];
+            const xpProgress = Math.min((gameState.xp / xpForNextLevel) * 100, 100);
+            
+            DOM.xpFill.style.width = xpProgress + '%';
+            DOM.xpText.textContent = `${gameState.xp} / ${xpForNextLevel} XP`;
+            DOM.currentLevel.textContent = gameState.level;
+        }
+
+        function checkLevelUp() {
+            if (gameState.level < 5 && gameState.xp >= XP_PER_LEVEL[gameState.level]) {
+                gameState.level++;
+                showAchievement('Level Up!', `You reached Level ${gameState.level}!`, '⬆️');
+                createParticleEffect();
+            }
+        }
+
+        function showFloatingXP(amount) {
+            const xpFloat = document.createElement('div');
+            xpFloat.className = 'floating-xp';
+            xpFloat.style.top = '120px';
+            xpFloat.style.right = '100px';
+            xpFloat.textContent = `+${amount} XP`;
+            document.body.appendChild(xpFloat);
+            
+            // Remove after animation
+            xpFloat.addEventListener('animationend', () => xpFloat.remove());
+        }
+
+        // Achievements
+        function showAchievement(title, desc, icon) {
+            if (!DOM.achievementPopup) return;
+            
+            document.getElementById('achievement-title').textContent = title;
+            document.getElementById('achievement-desc').textContent = desc;
+            document.getElementById('achievement-icon').textContent = icon;
+            
+            DOM.achievementPopup.classList.add('show');
+            setTimeout(() => {
+                DOM.achievementPopup.classList.remove('show');
+            }, 3000);
+            
+            // Haptic feedback
+            if ('vibrate' in navigator) {
+                navigator.vibrate(200);
+            }
+        }
+
+        // Particle Effect
+        function createParticleEffect() {
+            const particleCount = 20;
+            const colors = ['#fbbf24', '#f59e0b', '#3b82f6', '#8b5cf6'];
+            
+            for (let i = 0; i < particleCount; i++) {
+                requestAnimationFrame(() => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle star';
+                    particle.style.left = Math.random() * window.innerWidth + 'px';
+                    particle.style.top = '150px';
+                    particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    particle.style.setProperty('--tx', (Math.random() - 0.5) * 200 + 'px');
+                    particle.style.setProperty('--ty', (Math.random() - 0.5) * 200 + 'px');
+                    document.body.appendChild(particle);
+                    
+                    particle.addEventListener('animationend', () => particle.remove());
+                });
+            }
+        }
+
+        // Starter Quiz
+        function selectQuizOption(option) {
+            const siblings = option.parentElement.querySelectorAll('.quiz-option');
+            siblings.forEach(s => s.classList.remove('selected'));
+            option.classList.add('selected');
+        }
+
+        function checkStarterQuiz() {
+            const questions = document.querySelectorAll('#starter-quiz > div');
+            let correct = 0;
+            
+            // Question 1: Client-Server (answer b)
+            const q1Selected = questions[0].querySelector('.selected');
+            if (q1Selected && q1Selected.dataset.answer === 'b') {
+                q1Selected.classList.add('correct');
+                correct++;
+            } else if (q1Selected) {
+                q1Selected.classList.add('incorrect');
+            }
+            
+            // Question 2: Peer-to-Peer (answer c)
+            const q2Selected = questions[1].querySelector('.selected');
+            if (q2Selected && q2Selected.dataset.answer === 'c') {
+                q2Selected.classList.add('correct');
+                correct++;
+            } else if (q2Selected) {
+                q2Selected.classList.add('incorrect');
+            }
+            
+            if (correct === 2) {
+                awardXP(20, 'Perfect Starter', 'starter_perfect');
+                showAchievement('Quick Start!', 'Perfect score on starter quiz!', '🚀');
+            } else {
+                awardXP(10 * correct, 'Starter Quiz', 'starter_quiz');
+            }
+        }
+
+        function resetStarterQuiz() {
+            document.querySelectorAll('#starter-quiz .quiz-option').forEach(opt => {
+                opt.classList.remove('selected', 'correct', 'incorrect');
+            });
+        }
+
+        // Download Simulation
+        function startDownloadSimulation() {
+            // Traditional download
+            const tradSim = document.getElementById('traditional-sim');
+            tradSim.innerHTML = `
+                <div class="network-node" style="top: 20px; left: 50%; transform: translateX(-50%);">Server</div>
+                <div class="network-node" style="bottom: 20px; left: 50%; transform: translateX(-50%);">Client</div>
+                <div class="connection-line active" id="trad-line" style="top: 100px; left: 50%; width: 2px; height: 100px; transform: translateX(-50%) rotate(90deg);"></div>
+                <div style="position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); color: white;">
+                    Progress: <span id="trad-progress">0%</span>
+                </div>
+            `;
+
+            // BitTorrent download
+            const btSim = document.getElementById('bittorrent-sim');
+            btSim.innerHTML = `
+                <div class="network-node tracker" style="top: 20px; left: 50%; transform: translateX(-50%);">Tracker</div>
+                <div class="network-node seed" style="top: 100px; left: 20px;">Seed 1</div>
+                <div class="network-node seed" style="top: 100px; right: 20px;">Seed 2</div>
+                <div class="network-node" style="bottom: 20px; left: 50%; transform: translateX(-50%);">Client</div>
+                <div class="connection-line active" style="top: 120px; left: 60px; width: 100px; height: 2px; transform: rotate(45deg);"></div>
+                <div class="connection-line active" style="top: 120px; right: 60px; width: 100px; height: 2px; transform: rotate(-45deg);"></div>
+                <div style="position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); color: white;">
+                    Progress: <span id="bt-progress">0%</span>
+                </div>
+            `;
+
+            // Animate progress
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 2;
+                const tradProgress = document.getElementById('trad-progress');
+                const btProgress = document.getElementById('bt-progress');
+                
+                if (tradProgress) tradProgress.textContent = Math.min(progress/2, 100) + '%';
+                if (btProgress) btProgress.textContent = Math.min(progress, 100) + '%';
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    awardXP(15, 'Simulation Complete', 'download_sim');
+                }
+            }, 100);
+        }
+
+        function resetDownloadSimulation() {
+            const tradSim = document.getElementById('traditional-sim');
+            const btSim = document.getElementById('bittorrent-sim');
+            if (tradSim) tradSim.innerHTML = '';
+            if (btSim) btSim.innerHTML = '';
+        }
+
+        // Fill in the Blanks
+        function checkFillBlanks() {
+            const answers = {
+                'blank1': 'server',
+                'blank2': 'pieces',
+                'blank3': 'sources'
+            };
+            
+            let correct = 0;
+            for (let id in answers) {
+                const select = document.getElementById(id);
+                if (select && select.value === answers[id]) {
+                    select.style.borderColor = 'var(--success-color)';
+                    correct++;
+                } else if (select) {
+                    select.style.borderColor = 'var(--error-color)';
+                }
+            }
+            
+            if (correct === 3) {
+                awardXP(20, 'Fill Blanks Perfect', 'fill_blanks');
+                markSectionComplete('basics');
+            } else {
+                awardXP(5 * correct, 'Fill Blanks', 'fill_blanks_partial');
+            }
+        }
+
+        function showHint(section) {
+            const hint = document.getElementById(section + '-hint');
+            if (hint) {
+                hint.classList.add('show');
+                // Reduce XP for using hint
+                if (!gameState.actions.has(`hint_${section}`)) {
+                    gameState.xp = Math.max(0, gameState.xp - 5);
+                    updateXPDisplay();
+                    gameState.actions.add(`hint_${section}`);
+                }
+            }
+        }
+
+        // Process Simulation
+        function nextStep() {
+            if (gameState.processStep < 6) {
+                gameState.processStep++;
+                updateProcessSimulation();
+            }
+        }
+
+        function previousStep() {
+            if (gameState.processStep > 1) {
+                gameState.processStep--;
+                updateProcessSimulation();
+            }
+        }
+
+        function updateProcessSimulation() {
+            const steps = document.querySelectorAll('.progress-step');
+            steps.forEach((step, index) => {
+                step.classList.remove('active', 'completed');
+                if (index + 1 < gameState.processStep) {
+                    step.classList.add('completed');
+                } else if (index + 1 === gameState.processStep) {
+                    step.classList.add('active');
+                }
+            });
+
+            const simContent = document.getElementById('sim-content');
+            if (!simContent) return;
+
+            const stepDescriptions = {
+                1: '<h4>Step 1: Torrent Descriptor Created</h4><p>A .torrent file is created containing metadata about the file, piece checksums, and tracker information.</p><div style="margin-top: 1rem;">📄 example.torrent (2 KB)</div>',
+                2: '<h4>Step 2: File Split into Pieces</h4><p>The original file is divided into fixed-size pieces (typically 256KB to 1MB each).</p><div style="margin-top: 1rem;">' + generateFilePieces() + '</div>',
+                3: '<h4>Step 3: Peers Join the Network</h4><p>BitTorrent clients connect to the tracker and join the swarm.</p><div style="margin-top: 1rem;">🖥️ Peer 1 joined<br>🖥️ Peer 2 joined<br>🖥️ Peer 3 joined</div>',
+                4: '<h4>Step 4: Downloading Begins</h4><p>Peers download different pieces from multiple sources simultaneously.</p><div style="margin-top: 1rem;">' + generateDownloadingPieces() + '</div>',
+                5: '<h4>Step 5: Peers Become Seeds</h4><p>As peers download pieces, they immediately become seeds for those pieces.</p><div style="margin-top: 1rem;">🌱 Peer 1: Seeding pieces 1, 3, 5<br>🌱 Peer 2: Seeding pieces 2, 4, 6</div>',
+                6: '<h4>Step 6: Download Complete</h4><p>All pieces have been downloaded and verified. The peer now has the complete file and can seed to others.</p><div style="margin-top: 1rem;">' + generateCompletePieces() + '</div>'
+            };
+
+            simContent.innerHTML = stepDescriptions[gameState.processStep];
+            
+            if (gameState.processStep === 6) {
+                awardXP(25, 'Process Complete', 'process_simulation');
+            }
+        }
+
+        function generateFilePieces() {
+            let pieces = '';
+            for (let i = 0; i < 12; i++) {
+                pieces += '<div class="file-piece"></div>';
+            }
+            return pieces;
+        }
+
+        function generateDownloadingPieces() {
+            let pieces = '';
+            for (let i = 0; i < 12; i++) {
+                const state = i < 4 ? 'downloaded' : i < 8 ? 'downloading' : '';
+                pieces += `<div class="file-piece ${state}"></div>`;
+            }
+            return pieces;
+        }
+
+        function generateCompletePieces() {
+            let pieces = '';
+            for (let i = 0; i < 12; i++) {
+                pieces += '<div class="file-piece downloaded"></div>';
+            }
+            return pieces;
+        }
+
+        function resetProcessSimulation() {
+            gameState.processStep = 1;
+            updateProcessSimulation();
+        }
+
+        // Sequence Activity
+        function selectSequence(item) {
+            item.classList.add('selected');
+            gameState.sequenceOrder.push(item);
+            item.style.pointerEvents = 'none';
+            
+            const result = document.getElementById('sequence-result');
+            if (result) {
+                result.innerHTML = '<strong>Your sequence:</strong><br>' + 
+                    gameState.sequenceOrder.map((el, i) => `${i + 1}. ${el.textContent}`).join('<br>');
+            }
+        }
+
+        function checkSequence() {
+            const correctOrder = [1, 2, 3, 4, 5, 6];
+            const userOrder = gameState.sequenceOrder.map(el => parseInt(el.dataset.order));
+            
+            let correct = 0;
+            for (let i = 0; i < userOrder.length; i++) {
+                if (userOrder[i] === correctOrder[i]) correct++;
+            }
+            
+            if (correct === 6) {
+                awardXP(30, 'Perfect Sequence', 'sequence_perfect');
+                showAchievement('Sequence Master!', 'Perfect ordering!', '📝');
+                markSectionComplete('process');
+            } else {
+                awardXP(5 * correct, 'Sequence Attempt', 'sequence_attempt');
+            }
+        }
+
+        function resetSequence() {
+            gameState.sequenceOrder = [];
+            document.querySelectorAll('#sequence-items .quiz-option').forEach(opt => {
+                opt.classList.remove('selected');
+                opt.style.pointerEvents = 'auto';
+            });
+            const result = document.getElementById('sequence-result');
+            if (result) result.innerHTML = '';
+        }
+
+        // Matching Activity
+        function selectTerm(term) {
+            document.querySelectorAll('.draggable-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            term.classList.add('selected');
+            gameState.selectedTerm = term.dataset.id;
+        }
+
+        function matchDefinition(def) {
+            if (!gameState.selectedTerm) return;
+            
+            if (def.dataset.match === gameState.selectedTerm) {
+                def.classList.add('correct');
+                def.innerHTML += `<br><strong>${gameState.selectedTerm.toUpperCase()}</strong>`;
+                const selectedElement = document.querySelector(`[data-id="${gameState.selectedTerm}"]`);
+                if (selectedElement) selectedElement.style.display = 'none';
+                awardXP(10, 'Correct Match', `match_${gameState.selectedTerm}`);
+                gameState.selectedTerm = null;
+                
+                // Check if all matched
+                const remaining = document.querySelectorAll('.draggable-item:not([style*="display: none"])');
+                if (remaining.length === 0) {
+                    awardXP(10, 'All Matched', 'match_complete');
+                    markSectionComplete('components');
+                }
+            } else {
+                def.classList.add('highlight');
+                setTimeout(() => def.classList.remove('highlight'), 1000);
+            }
+        }
+
+        function resetMatching() {
+            document.querySelectorAll('.draggable-item').forEach(item => {
+                item.style.display = 'block';
+                item.classList.remove('selected');
+            });
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.classList.remove('correct', 'highlight');
+                zone.innerHTML = zone.innerHTML.split('<br>')[0];
+            });
+            gameState.selectedTerm = null;
+        }
+
+        // Add click handlers for matching
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('draggable-item')) {
+                selectTerm(e.target);
+            } else if (e.target.classList.contains('drop-zone')) {
+                matchDefinition(e.target);
+            }
+        });
+
+        // True/False Quiz
+        function selectTrueFalse(option) {
+            const siblings = option.parentElement.querySelectorAll('.quiz-option');
+            siblings.forEach(s => s.classList.remove('selected'));
+            option.classList.add('selected');
+        }
+
+        function checkTrueFalse() {
+            const correctAnswers = {
+                'tf1': 'false',  // Seed doesn't need 100%
+                'tf2': 'false',  // Tracker doesn't store files
+                'tf3': 'true'    // Can pause and restart
+            };
+            
+            let correct = 0;
+            
+            for (let q in correctAnswers) {
+                const selected = document.querySelector(`[data-question="${q}"] .selected`);
+                if (selected && selected.dataset.answer === correctAnswers[q]) {
+                    selected.classList.add('correct');
+                    correct++;
+                } else if (selected) {
+                    selected.classList.add('incorrect');
+                }
+            }
+            
+            awardXP(10 * correct, 'True/False Quiz', 'tf_quiz');
+        }
+
+        function resetTrueFalse() {
+            document.querySelectorAll('#true-false-quiz .quiz-option').forEach(opt => {
+                opt.classList.remove('selected', 'correct', 'incorrect');
+            });
+        }
+
+        // Short Answer
+        function checkShortAnswer() {
+            const answer = document.getElementById('leech-explanation').value.toLowerCase();
+            const keywords = ['download', 'upload', 'more', 'share', 'selfish', 'bandwidth', 'contribute', 'take', 'give'];
+            
+            let keywordCount = 0;
+            keywords.forEach(keyword => {
+                if (answer.includes(keyword)) keywordCount++;
+            });
+            
+            if (answer.length > 50) {
+                const xp = Math.min(keywordCount * 5, 25);
+                awardXP(xp, 'Short Answer', 'leech_explanation');
+                
+                if (keywordCount >= 4) {
+                    showAchievement('Great Explanation!', 'Comprehensive answer!', '💭');
+                }
+            } else {
+                alert('Please provide a more detailed answer (minimum 50 characters).');
+            }
+        }
+
+        // Scenario Analysis
+        function selectScenario(option) {
+            const siblings = option.parentElement.querySelectorAll('.quiz-option');
+            siblings.forEach(s => s.classList.remove('selected'));
+            option.classList.add('selected');
+            
+            if (option.textContent.includes('distribute server load')) {
+                option.classList.add('correct');
+                awardXP(15, 'Scenario Analysis', 'scenario_s1');
+            } else {
+                option.classList.add('incorrect');
+            }
+        }
+
+        // Categorization
+        function categorizeItem(item) {
+            const category = item.dataset.category;
+            const box = document.getElementById(category + 's-box');
+            
+            if (box) {
+                item.style.display = 'none';
+                const clone = item.cloneNode(true);
+                clone.style.display = 'block';
+                clone.classList.remove('quiz-option');
+                clone.style.margin = '0.5rem';
+                box.appendChild(clone);
+            }
+        }
+
+        function checkCategorization() {
+            const advantagesBox = document.getElementById('advantages-box');
+            const disadvantagesBox = document.getElementById('disadvantages-box');
+            
+            if (!advantagesBox || !disadvantagesBox) return;
+            
+            const advantages = advantagesBox.children.length;
+            const disadvantages = disadvantagesBox.children.length;
+            
+            if (advantages === 3 && disadvantages === 3) {
+                awardXP(30, 'Perfect Categorization', 'categorization');
+                showAchievement('Categorization Expert!', 'All items correctly sorted!', '📊');
+                markSectionComplete('realworld');
+            } else {
+                awardXP(5 * (advantages + disadvantages), 'Categorization Attempt', 'categorization_attempt');
+            }
+        }
+
+        function resetCategorization() {
+            const advantagesBox = document.getElementById('advantages-box');
+            const disadvantagesBox = document.getElementById('disadvantages-box');
+            
+            if (advantagesBox) advantagesBox.innerHTML = '';
+            if (disadvantagesBox) disadvantagesBox.innerHTML = '';
+            
+            document.querySelectorAll('#categorize-items .quiz-option').forEach(item => {
+                item.style.display = 'block';
+            });
+        }
+
+        // Final Quiz
+        function selectFinalQuizOption(option) {
+            const question = option.dataset.q;
+            const siblings = document.querySelectorAll(`[data-q="${question}"]`);
+            siblings.forEach(s => s.classList.remove('selected'));
+            option.classList.add('selected');
+        }
+
+        function submitFinalQuiz() {
+            const answers = {
+                '1': 'Peer-to-Peer',
+                '2': 'Details of peers',
+                '3': 'Immediately become',
+                '4': 'Downloads much more',
+                '5': 'All connected peers',
+                '6': 'Pause and restart',
+                '7': 'Split into pieces',
+                '8': 'Information about'
+            };
+            
+            let score = 0;
+            for (let q in answers) {
+                const selected = document.querySelector(`[data-q="${q}"].selected`);
+                if (selected && selected.textContent.includes(answers[q])) {
+                    selected.classList.add('correct');
+                    score++;
+                } else if (selected) {
+                    selected.classList.add('incorrect');
+                }
+            }
+            
+            const scoreEl = document.getElementById('quiz-score');
+            const resultsEl = document.getElementById('quiz-results');
+            const feedbackEl = document.getElementById('quiz-feedback');
+            
+            if (scoreEl) scoreEl.textContent = `You scored ${score}/8 (${Math.round(score/8*100)}%)`;
+            if (resultsEl) resultsEl.style.display = 'block';
+            
+            const feedback = score === 8 ? 'Perfect score! Excellent understanding!' :
+                          score >= 6 ? 'Good job! Review the incorrect answers.' :
+                          score >= 4 ? 'Not bad, but more study needed.' :
+                          'Keep practicing! Review the material and try again.';
+            
+            if (feedbackEl) feedbackEl.textContent = feedback;
+            
+            awardXP(score * 10, 'Final Quiz', 'final_quiz');
+            
+            if (score === 8) {
+                showAchievement('Quiz Master!', 'Perfect score on final quiz!', '🎯');
+                markSectionComplete('summary');
+            }
+        }
+
+        // Exam Practice
+        function showMarkScheme(question) {
+            const textarea = document.getElementById(`exam-${question}`);
+            const marks = document.getElementById(`marks-${question}`);
+            const scheme = document.getElementById(`mark-scheme-${question}`);
+            
+            if (!textarea || !marks || !scheme) return;
+            
+            if (textarea.value.length < 50 || !marks.value) {
+                alert('Please write a reasonable answer and enter predicted marks before viewing the mark scheme.');
+                return;
+            }
+            
+            scheme.classList.add('show');
+            awardXP(20, 'Exam Practice', `exam_${question}`);
+        }
+
+        // Extension Activities
+        function submitExtension() {
+            const textareas = document.querySelectorAll('#extension .input-field');
+            let totalWords = 0;
+            
+            textareas.forEach(ta => {
+                totalWords += ta.value.split(' ').filter(word => word.length > 0).length;
+            });
+            
+            if (totalWords > 100) {
+                awardXP(50, 'Extension Complete', 'extension');
+                showAchievement('Going Beyond!', 'Completed extension activities!', '🌟');
+                markSectionComplete('extension');
+            } else {
+                alert('Please provide more detailed responses (minimum 100 words total).');
+            }
+        }
+
+        // Mark section as complete
+        function markSectionComplete(section) {
+            if (!gameState.completedSections.has(section)) {
+                gameState.completedSections.add(section);
+                const pill = document.querySelector(`[data-section="${section}"]`);
+                if (pill) pill.classList.add('completed');
+                
+                // Check for completion achievement
+                if (gameState.completedSections.size === 9) {
+                    showAchievement('Course Complete!', 'Completed all sections!', '🎓');
+                    awardXP(100, 'Course Completion', 'complete_all');
+                }
+            }
+        }
+
+        // Drawing Canvas
+        function initializeCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+
+            function getCoordinates(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                
+                if (e.touches) {
+                    return {
+                        x: (e.touches[0].clientX - rect.left) * scaleX,
+                        y: (e.touches[0].clientY - rect.top) * scaleY
+                    };
+                } else {
+                    return {
+                        x: (e.clientX - rect.left) * scaleX,
+                        y: (e.clientY - rect.top) * scaleY
+                    };
+                }
+            }
+
+            function startDrawing(e) {
+                isDrawing = true;
+                const coords = getCoordinates(e);
+                lastX = coords.x;
+                lastY = coords.y;
+                e.preventDefault();
+            }
+
+            function draw(e) {
+                if (!isDrawing) return;
+                
+                const coords = getCoordinates(e);
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(coords.x, coords.y);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+                
+                lastX = coords.x;
+                lastY = coords.y;
+                e.preventDefault();
+            }
+
+            function stopDrawing() {
+                isDrawing = false;
+            }
+
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+
+            // Touch events
+            canvas.addEventListener('touchstart', startDrawing, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Shame Message
+        function showShameMessage() {
+            if (!DOM.shameMessage) return;
+            DOM.shameMessage.classList.add('show');
+            setTimeout(() => {
+                DOM.shameMessage.classList.remove('show');
+            }, 3000);
+        }
+
+        // Feedback System
+        function updateFeedbackPage() {
+            if (!DOM.feedbackPage) return;
+            const sectionNames = {
+                'intro': 'Introduction',
+                'basics': 'BitTorrent Basics',
+                'process': 'Exchange Process',
+                'components': 'Key Components',
+                'realworld': 'Real World Application',
+                'summary': 'Summary & Quiz',
+                'exam': 'Exam Practice',
+                'extension': 'Extension Activities',
+                'videos': 'Video Resources'
+            };
+            DOM.feedbackPage.textContent = sectionNames[gameState.currentSection] || gameState.currentSection;
+        }
+
+        function openFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'flex';
+                updateFeedbackPage();
+            }
+        }
+
+        function closeFeedback() {
+            if (DOM.feedbackModal) {
+                DOM.feedbackModal.style.display = 'none';
+            }
+            if (DOM.feedbackText) {
+                DOM.feedbackText.value = '';
+            }
+        }
+
+        function sendFeedback() {
+            if (!DOM.feedbackText) return;
+            
+            const text = DOM.feedbackText.value.trim();
+            if (!text) {
+                alert('Please enter your feedback');
+                return;
+            }
+            
+            const subject = encodeURIComponent('BitTorrent Lesson Feedback');
+            const body = encodeURIComponent(
+                `Page: ${DOM.feedbackPage ? DOM.feedbackPage.textContent : 'Unknown'}\n\n` +
+                `Feedback: ${text}\n\n` +
+                `Section ID: ${gameState.currentSection}\n` +
+                `Level: ${gameState.level}, XP: ${gameState.xp}`
+            );
+            
+            window.location.href = `mailto:millingtond@mgs.org?subject=${subject}&body=${body}`;
+            
+            closeFeedback();
+            awardXP(10, 'Feedback Sent', 'feedback');
+        }
+
+        // Accessibility
+        function toggleHighContrast() {
+            document.body.classList.toggle('high-contrast');
+        }
+
+        function toggleDyslexiaFont() {
+            document.body.classList.toggle('dyslexia-font');
+        }
+
+        function changeFontSize(size) {
+            document.body.classList.remove('font-small', 'font-large', 'font-xlarge');
+            if (size !== 'normal') {
+                document.body.classList.add('font-' + size);
+            }
+        }
+
+        // Performance: Auto-save state every 30 seconds
+        const saveState = debounce(function() {
+            // In production, this would save to sessionStorage
+            console.log('Progress saved:', {
+                xp: gameState.xp,
+                level: gameState.level,
+                section: gameState.currentSection,
+                completed: Array.from(gameState.completedSections)
+            });
+        }, 30000);
+
+        // Call saveState periodically
+        setInterval(saveState, 30000);
+
+        // Easter egg
+        let konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+        let konamiIndex = 0;
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === konamiCode[konamiIndex]) {
+                konamiIndex++;
+                if (konamiIndex === konamiCode.length) {
+                    showAchievement('Easter Egg!', 'You found the secret code!', '🎮');
+                    awardXP(100, 'Easter Egg', 'konami');
+                    createParticleEffect();
+                    konamiIndex = 0;
+                }
+            } else {
+                konamiIndex = 0;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OS User Management Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .user-card.active, .admin-tab.active { border-color: #2563eb; background-color: #eff6ff; }
+        .file-icon { transition: all 0.3s ease-in-out; cursor: pointer; }
+        .file-icon:hover { transform: scale(1.05); }
+        .access-denied { animation: shake 0.5s; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); }
+        }
+        .quiz-option.correct { background-color: #22c55e; color: white; }
+        .quiz-option.incorrect { background-color: #ef4444; color: white; }
+        .admin-panel-content { display: none; }
+        .admin-panel-content.active { display: block; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="max-w-6xl mx-auto p-4 md:p-8">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-blue-600">Operating System: User Management</h1>
+            <p class="text-lg text-gray-600 mt-2">Learn how an OS controls who can do what.</p>
+        </header>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- Admin Control Panel -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border">
+                <h2 class="text-xl font-semibold mb-4 text-center">Admin Control Panel</h2>
+                <div class="text-sm p-2 bg-yellow-100 border-l-4 border-yellow-500 rounded mb-4">You are logged in as <strong>Admin</strong>.</div>
+                
+                <div class="flex border-b">
+                    <button data-tab="users" class="admin-tab flex-1 p-2 font-semibold border-b-4">Users</button>
+                    <button data-tab="groups" class="admin-tab flex-1 p-2 font-semibold border-b-4">Groups</button>
+                    <button data-tab="log" class="admin-tab flex-1 p-2 font-semibold border-b-4">Audit Log</button>
+                </div>
+
+                <!-- Users Panel -->
+                <div id="users-panel" class="admin-panel-content mt-4">
+                    <div class="flex gap-2">
+                        <input id="new-user-name" type="text" placeholder="New username..." class="flex-grow p-2 border rounded-md">
+                        <button id="create-user-btn" class="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Create</button>
+                    </div>
+                    <div id="user-management-list" class="mt-4 space-y-2"></div>
+                </div>
+                
+                <!-- Groups Panel -->
+                <div id="groups-panel" class="admin-panel-content mt-4">
+                    <p class="text-sm text-gray-600">Manage permissions for groups of users. User permissions are inherited from their group.</p>
+                     <div id="group-management-list" class="mt-4 space-y-4"></div>
+                </div>
+                
+                <!-- Audit Log Panel -->
+                <div id="log-panel" class="admin-panel-content mt-4">
+                    <div id="audit-log-display" class="h-64 overflow-y-auto bg-gray-900 text-green-400 font-mono text-xs p-2 rounded-md"></div>
+                </div>
+            </div>
+
+            <!-- Simulated Desktop -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border">
+                 <h2 class="text-xl font-semibold mb-4 text-center">Simulated Desktop</h2>
+                 <div class="mb-4 text-center p-3 rounded-lg bg-gray-100">
+                     <p>Currently logged in as: <strong id="current-user-display" class="text-blue-600">Admin</strong></p>
+                     <button id="logout-btn" class="text-sm text-blue-500 hover:underline">Log Out</button>
+                 </div>
+                 
+                 <div id="desktop-files" class="grid grid-cols-3 gap-4 text-center"></div>
+                 <div id="output-log" class="mt-6 p-4 bg-gray-200 rounded-lg min-h-[80px] text-center flex items-center justify-center"></div>
+            </div>
+        </div>
+
+        <div class="mt-10 bg-white p-6 rounded-xl shadow-lg border">
+            <h2 class="text-2xl font-bold text-center mb-6">Test Your Knowledge</h2>
+            <div id="quiz-container" class="max-w-3xl mx-auto"></div>
+            <div id="quiz-result" class="text-center mt-4 font-semibold text-xl h-8"></div>
+            <div class="text-center mt-6">
+                 <button id="btn-reset" class="px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700">Reset Simulation & Quiz</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const elements = {
+            adminTabs: document.querySelectorAll('.admin-tab'),
+            adminPanels: document.querySelectorAll('.admin-panel-content'),
+            newUserNameInput: document.getElementById('new-user-name'),
+            createUserBtn: document.getElementById('create-user-btn'),
+            userManagementList: document.getElementById('user-management-list'),
+            groupManagementList: document.getElementById('group-management-list'),
+            auditLogDisplay: document.getElementById('audit-log-display'),
+            currentUserDisplay: document.getElementById('current-user-display'),
+            logoutBtn: document.getElementById('logout-btn'),
+            desktopFiles: document.getElementById('desktop-files'),
+            outputLog: document.getElementById('output-log'),
+            quizContainer: document.getElementById('quiz-container'),
+            quizResult: document.getElementById('quiz-result'),
+            btnReset: document.getElementById('btn-reset'),
+        };
+
+        let systemState;
+
+        const initialState = () => ({
+            users: {
+                'Admin': { password: '123', group: 'Admins' },
+                'StudentA': { password: 'abc', group: 'Students' },
+                'StudentB': { password: 'def', group: 'Students' },
+                'Guest': { password: null, group: 'Guests' }
+            },
+            groups: {
+                'Admins': { permissions: { 'Exam_Answers.doc': 'rw', 'Homework.doc': 'rw', 'Public_Notice.txt': 'rw' } },
+                'Students': { permissions: { 'Exam_Answers.doc': 'r', 'Homework.doc': 'rw', 'Public_Notice.txt': 'r' } },
+                'Guests': { permissions: { 'Exam_Answers.doc': 'none', 'Homework.doc': 'none', 'Public_Notice.txt': 'r' } }
+            },
+            files: ['Exam_Answers.doc', 'Homework.doc', 'Public_Notice.txt'],
+            currentUser: 'Admin',
+            log: []
+        });
+
+        const quizData = [
+            { question: "What is the most efficient way to give 100 students the same file permissions?", answer: "Put them in a 'Students' group and set permissions for the group", options: ["Edit each user one-by-one", "Delete all other users", "Put them in a 'Students' group and set permissions for the group", "Make them all Admins"] },
+            { question: "What is the purpose of an OS audit log?", answer: "To track user actions and system events for security", options: ["To make the computer slower", "To track user actions and system events for security", "To store user passwords in plain text", "To delete old files automatically"] },
+            { question: "An Admin forces a password change for a user. This is an example of:", answer: "Enforcing security policy", options: ["A file permission", "Deleting a user", "Enforcing security policy", "An audit log"] },
+            { question: "If a user's individual permission is 'none' but their group permission is 'read', what can they do?", answer: "They can read the file", options: ["They can read the file", "They can do nothing", "They can write to the file", "They can delete the file"] }
+        ];
+        let currentQuestionIndex = 0, score = 0;
+
+        function logEvent(message) {
+            const time = new Date().toLocaleTimeString();
+            systemState.log.unshift(`[${time}] ${message}`);
+            renderAuditLog();
+        }
+
+        function switchAdminTab(tabName) {
+            elements.adminTabs.forEach(tab => tab.classList.toggle('active', tab.dataset.tab === tabName));
+            elements.adminPanels.forEach(panel => panel.classList.toggle('active', panel.id.startsWith(tabName)));
+        }
+
+        function renderAll() {
+            renderUserManagementList();
+            renderGroupManagementList();
+            renderAuditLog();
+            renderDesktopFiles();
+            elements.currentUserDisplay.textContent = systemState.currentUser || 'None (Logged Out)';
+        }
+
+        function renderUserManagementList() {
+            elements.userManagementList.innerHTML = '';
+            for (const username in systemState.users) {
+                if (username === 'Admin') continue;
+                const user = systemState.users[username];
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-gray-50 rounded border';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold">${username}</span>
+                        <div>
+                            <span class="text-sm text-gray-500 mr-2">Group:</span>
+                            <select class="p-1 border rounded" onchange="setUserGroup('${username}', this.value)">
+                                ${Object.keys(systemState.groups).map(g => `<option value="${g}" ${user.group === g ? 'selected' : ''}>${g}</option>`).join('')}
+                            </select>
+                            <button class="ml-2 text-sm text-blue-600 hover:underline" onclick="resetPassword('${username}')">Reset Pass</button>
+                            <button class="ml-2 text-sm text-red-600 hover:underline" onclick="deleteUser('${username}')">Delete</button>
+                        </div>
+                    </div>`;
+                elements.userManagementList.appendChild(div);
+            }
+        }
+        
+        function renderGroupManagementList() {
+            elements.groupManagementList.innerHTML = '';
+            for(const groupName in systemState.groups) {
+                const group = systemState.groups[groupName];
+                const container = document.createElement('div');
+                container.className = 'p-3 bg-gray-50 rounded border';
+                let permissionsHTML = systemState.files.map(filename => {
+                    const p = group.permissions[filename] || 'none';
+                    return `
+                        <div class="flex justify-between items-center mt-1">
+                            <span>${filename}</span>
+                            <select class="p-1 border rounded text-sm" onchange="setGroupPermission('${groupName}', '${filename}', this.value)">
+                                <option value="rw" ${p === 'rw' ? 'selected' : ''}>Read & Write</option>
+                                <option value="r" ${p === 'r' ? 'selected' : ''}>Read Only</option>
+                                <option value="none" ${p === 'none' ? 'selected' : ''}>No Access</option>
+                            </select>
+                        </div>`;
+                }).join('');
+
+                container.innerHTML = `
+                    <h4 class="font-bold text-lg">${groupName}</h4>
+                    <div class="text-sm mt-1"><strong>Members:</strong> ${Object.keys(systemState.users).filter(u => systemState.users[u].group === groupName).join(', ') || 'None'}</div>
+                    <div class="mt-2"><strong>Permissions:</strong></div>
+                    ${permissionsHTML}
+                `;
+                elements.groupManagementList.appendChild(container);
+            }
+        }
+        
+        function renderAuditLog() {
+            elements.auditLogDisplay.innerHTML = systemState.log.map(entry => `<div>${entry}</div>`).join('');
+        }
+        
+        function renderDesktopFiles() {
+            elements.desktopFiles.innerHTML = '';
+            systemState.files.forEach(filename => {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'file-icon p-4 rounded-lg bg-gray-100 border';
+                fileDiv.innerHTML = `<svg class="w-12 h-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                                   <span class="block text-sm mt-2 truncate">${filename}</span>`;
+                fileDiv.onclick = () => tryAccessFile(filename);
+                elements.desktopFiles.appendChild(fileDiv);
+            });
+        }
+        
+        // --- User Actions ---
+        function createUser() {
+            const username = elements.newUserNameInput.value.trim();
+            if (!username) { alert('Please enter a username.'); return; }
+            if (systemState.users[username]) { alert('User already exists.'); return; }
+            
+            systemState.users[username] = { password: 'password', group: 'Guests' };
+            elements.newUserNameInput.value = '';
+            logEvent(`Admin created new user: '${username}'.`);
+            renderAll();
+        }
+        
+        function deleteUser(username) {
+            if (confirm(`Are you sure you want to delete ${username}?`)) {
+                delete systemState.users[username];
+                logEvent(`Admin deleted user: '${username}'.`);
+                renderAll();
+            }
+        }
+
+        function resetPassword(username) {
+            const newPass = prompt(`Enter new password for ${username}:`, 'password');
+            if (newPass) {
+                systemState.users[username].password = newPass;
+                logEvent(`Admin reset password for '${username}'.`);
+            }
+        }
+        
+        function setUserGroup(username, groupName) {
+            systemState.users[username].group = groupName;
+            logEvent(`Admin moved user '${username}' to group '${groupName}'.`);
+            renderAll();
+        }
+
+        function setGroupPermission(groupName, filename, permission) {
+            systemState.groups[groupName].permissions[filename] = permission;
+            logEvent(`Admin changed permissions for group '${groupName}' on file '${filename}' to '${permission}'.`);
+            renderAll();
+        }
+        
+        function handleLogout() {
+            const oldUser = systemState.currentUser;
+            systemState.currentUser = null;
+            logEvent(`User '${oldUser}' logged out.`);
+            renderAll();
+            elements.outputLog.innerHTML = `<p class="font-bold text-blue-700">You are logged out.</p>`;
+        }
+
+        function tryLogin(username) {
+            const user = systemState.users[username];
+            if (!user.password) { // Guest login
+                systemState.currentUser = username;
+                logEvent(`User '${username}' logged in without a password.`);
+                renderAll();
+                elements.outputLog.innerHTML = `<p class="font-bold">Logged in as ${username}.</p>`;
+                return;
+            }
+            
+            const pass = prompt(`Enter password for ${username}:`);
+            if (pass === user.password) {
+                systemState.currentUser = username;
+                logEvent(`User '${username}' logged in successfully.`);
+                renderAll();
+                elements.outputLog.innerHTML = `<p class="font-bold text-green-700">Logged in as ${username}.</p>`;
+            } else {
+                logEvent(`Failed login attempt for user '${username}'.`);
+                elements.outputLog.innerHTML = `<p class="font-bold text-red-700">Incorrect password.</p>`;
+            }
+        }
+
+        function tryAccessFile(filename) {
+            const user = systemState.currentUser;
+            if (!user) {
+                const loginUser = prompt("You are not logged in. Enter a username to log in:", "StudentA");
+                if (loginUser && systemState.users[loginUser]) {
+                    tryLogin(loginUser);
+                } else if(loginUser) {
+                    alert('User not found.');
+                }
+                return;
+            }
+
+            const userGroup = systemState.users[user].group;
+            const groupPerms = systemState.groups[userGroup].permissions[filename];
+            
+            let logHtml;
+            elements.outputLog.classList.remove('access-denied');
+
+            switch (groupPerms) {
+                case 'rw':
+                    logHtml = `<p class="font-bold text-green-700">Access Granted: You can READ and WRITE '${filename}'.</p>`; break;
+                case 'r':
+                     logHtml = `<p class="font-bold text-yellow-700">Access Granted: You can READ '${filename}'.</p>`; break;
+                case 'none': default:
+                    logHtml = `<p class="font-bold text-red-700">Access DENIED to '${filename}'.</p>`;
+                    elements.outputLog.classList.add('access-denied'); break;
+            }
+            elements.outputLog.innerHTML = logHtml;
+            logEvent(`User '${user}' tried to access '${filename}'. Result: ${groupPerms || 'none'}`);
+        }
+        
+        function initialize() {
+            systemState = initialState();
+            switchAdminTab('users');
+            renderAll();
+            logEvent("System Initialized.");
+            elements.outputLog.innerHTML = `<p class="text-gray-600 font-semibold">Click a file to try and open it.</p>`;
+        }
+        
+        function resetAll() {
+            initialize();
+            currentQuestionIndex = 0;
+            score = 0;
+            loadQuiz();
+        }
+
+        function loadQuiz() { /* ... unchanged ... */ }
+        function selectAnswer(btn, opt, answer, wrapper) { /* ... unchanged ... */ }
+        
+        // Simplified functions
+        loadQuiz = () => { elements.quizContainer.innerHTML = ''; elements.quizResult.innerHTML = ''; if (currentQuestionIndex >= quizData.length) { elements.quizContainer.innerHTML = `<p class="text-center font-bold text-lg">Quiz Complete! Final Score: ${score}/${quizData.length}</p>`; return; } const q = quizData[currentQuestionIndex]; elements.quizContainer.innerHTML = `<p class="text-lg font-semibold mb-4">${currentQuestionIndex + 1}. ${q.question}</p>`; const o = document.createElement('div'); o.className = 'grid grid-cols-1 md:grid-cols-2 gap-3'; q.options.forEach(opt => { const b = document.createElement('button'); b.textContent = opt; b.className = 'quiz-option p-3 bg-gray-200 border rounded-lg hover:bg-gray-300 text-left'; b.onclick = () => selectAnswer(b, opt, q.answer, o); o.appendChild(b); }); elements.quizContainer.appendChild(o); };
+        selectAnswer = (btn, opt, answer, wrapper) => { Array.from(wrapper.children).forEach(b => { b.disabled = true; if (b.textContent === answer) b.classList.add('correct'); }); if (opt === answer) { score++; btn.classList.add('correct'); elements.quizResult.innerHTML = `<span class="text-green-600">Correct!</span>`; } else { btn.classList.add('incorrect'); elements.quizResult.innerHTML = `<span class="text-red-600">Incorrect. The answer was "${answer}".</span>`; } setTimeout(() => { currentQuestionIndex++; loadQuiz(); }, 3000); };
+        
+        // --- Event Listeners ---
+        elements.adminTabs.forEach(tab => tab.addEventListener('click', () => switchAdminTab(tab.dataset.tab)));
+        elements.createUserBtn.addEventListener('click', createUser);
+        elements.logoutBtn.addEventListener('click', handleLogout);
+        elements.btnReset.addEventListener('click', resetAll);
+
+        // --- Initial Load ---
+        initialize();
+        loadQuiz();
+    </script>
+</body>
+</html>

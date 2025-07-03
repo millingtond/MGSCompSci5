@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python to Flowchart Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .panel {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+            margin: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .panel-header {
+            margin-bottom: 20px;
+        }
+
+        .panel-header h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .secondary-btn {
+            background-color: #6c757d;
+        }
+
+        .secondary-btn:hover {
+            background-color: #5a6268;
+        }
+
+        #codeInput {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            resize: none;
+            background-color: #f8f9fa;
+        }
+
+        #exampleCounter {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        #flowchartPanel {
+            position: relative;
+            overflow: auto;
+        }
+
+        #flowchartDisplay {
+            min-height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #666;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #f5c6cb;
+            margin: 20px;
+        }
+
+        .mermaid {
+            text-align: center;
+        }
+
+        /* Style different node types */
+        .node rect {
+            fill: #f9f9f9;
+            stroke: #333;
+            stroke-width: 2px;
+        }
+
+        .node.start rect, .node.end rect {
+            fill: #e8f5e9;
+            stroke: #4caf50;
+            rx: 20;
+            ry: 20;
+        }
+
+        .node.decision polygon {
+            fill: #fff3e0;
+            stroke: #ff9800;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Python Code Input</h2>
+                <div class="controls">
+                    <button id="generateBtn">Generate Flowchart</button>
+                    <button id="randomBtn" class="secondary-btn">Random Basic Code</button>
+                    <button id="testBtn" class="secondary-btn">Test Mermaid</button>
+                </div>
+                <div class="controls">
+                    <button id="prevBtn" class="secondary-btn">Previous Example</button>
+                    <button id="nextBtn" class="secondary-btn">Next Example</button>
+                </div>
+                <div id="exampleCounter"></div>
+            </div>
+            <textarea id="codeInput" placeholder="Enter your Python code here..."></textarea>
+        </div>
+        
+        <div class="panel" id="flowchartPanel">
+            <div class="panel-header">
+                <h2>Flowchart Output</h2>
+            </div>
+            <div id="flowchartDisplay">
+                <div class="loading">
+                    <p>Processing...</p>
+                </div>
+                <div id="chartContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Mermaid with better error handling
+        mermaid.initialize({ 
+            startOnLoad: false,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: false,
+                curve: 'linear'
+            },
+            securityLevel: 'loose',
+            logLevel: 'error'
+        });
+
+        // Basic Python examples (30 examples)
+        const basicExamples = [
+            // Simple statements
+            `# Variable assignment
+x = 10
+y = 20
+z = x + y
+print(z)`,
+            
+            `# Basic arithmetic
+a = 5
+b = 3
+sum = a + b
+diff = a - b
+print(sum)
+print(diff)`,
+            
+            `# User input
+name = input("Enter your name: ")
+print("Hello, " + name)`,
+            
+            `# Simple if statement
+age = 18
+if age >= 18:
+    print("You are an adult")`,
+            
+            `# If-else statement
+score = 75
+if score >= 60:
+    print("Pass")
+else:
+    print("Fail")`,
+            
+            `# Multiple conditions
+x = 10
+y = 20
+if x > 5 and y < 30:
+    print("Both conditions met")`,
+            
+            `# While loop
+count = 0
+while count < 5:
+    print(count)
+    count = count + 1`,
+            
+            `# For loop with range
+for i in range(5):
+    print(i)`,
+            
+            `# For loop with step
+for i in range(0, 10, 2):
+    print(i)`,
+            
+            `# Nested if
+num = 15
+if num > 0:
+    if num % 2 == 0:
+        print("Positive even")
+    else:
+        print("Positive odd")`,
+            
+            `# Temperature converter
+celsius = 25
+fahrenheit = (celsius * 9/5) + 32
+print(fahrenheit)`,
+            
+            `# Simple calculator
+num1 = 10
+num2 = 5
+operation = "+"
+if operation == "+":
+    result = num1 + num2
+print(result)`,
+            
+            `# Even or odd
+number = 7
+if number % 2 == 0:
+    print("Even")
+else:
+    print("Odd")`,
+            
+            `# Maximum of two numbers
+a = 10
+b = 20
+if a > b:
+    max = a
+else:
+    max = b
+print(max)`,
+            
+            `# Factorial calculation
+n = 5
+factorial = 1
+for i in range(1, n + 1):
+    factorial = factorial * i
+print(factorial)`,
+            
+            `# Sum of numbers
+sum = 0
+for i in range(1, 6):
+    sum = sum + i
+print(sum)`,
+            
+            `# Countdown
+count = 5
+while count > 0:
+    print(count)
+    count = count - 1
+print("Blastoff!")`,
+            
+            `# Simple grade checker
+marks = 85
+if marks >= 90:
+    grade = "A"
+elif marks >= 80:
+    grade = "B"
+elif marks >= 70:
+    grade = "C"
+else:
+    grade = "F"
+print(grade)`,
+            
+            `# Password checker
+password = input("Enter password: ")
+if password == "secret123":
+    print("Access granted")
+else:
+    print("Access denied")`,
+            
+            `# Number guessing
+secret = 7
+guess = int(input("Guess a number: "))
+if guess == secret:
+    print("Correct!")
+elif guess < secret:
+    print("Too low")
+else:
+    print("Too high")`,
+            
+            `# Print pattern
+n = 5
+for i in range(1, n + 1):
+    print("*" * i)`,
+            
+            `# Check prime
+num = 17
+is_prime = True
+for i in range(2, num):
+    if num % i == 0:
+        is_prime = False
+print(is_prime)`,
+            
+            `# Fibonacci sequence
+a = 0
+b = 1
+for i in range(5):
+    print(a)
+    temp = a + b
+    a = b
+    b = temp`,
+            
+            `# Reverse a number
+num = 12345
+reverse = 0
+while num > 0:
+    digit = num % 10
+    reverse = reverse * 10 + digit
+    num = num // 10
+print(reverse)`,
+            
+            `# Check palindrome
+num = 121
+temp = num
+reverse = 0
+while temp > 0:
+    digit = temp % 10
+    reverse = reverse * 10 + digit
+    temp = temp // 10
+if num == reverse:
+    print("Palindrome")
+else:
+    print("Not palindrome")`,
+            
+            `# Sum of digits
+num = 123
+sum = 0
+while num > 0:
+    digit = num % 10
+    sum = sum + digit
+    num = num // 10
+print(sum)`,
+            
+            `# Multiplication table
+num = 5
+for i in range(1, 11):
+    result = num * i
+    print(result)`,
+            
+            `# Check leap year
+year = 2024
+if year % 400 == 0:
+    print("Leap year")
+elif year % 100 == 0:
+    print("Not leap year")
+elif year % 4 == 0:
+    print("Leap year")
+else:
+    print("Not leap year")`,
+            
+            `# Find minimum
+numbers = [5, 2, 8, 1, 9]
+min = numbers[0]
+for num in numbers:
+    if num < min:
+        min = num
+print(min)`,
+            
+            `# Count vowels
+text = "hello"
+count = 0
+for char in text:
+    if char in "aeiou":
+        count = count + 1
+print(count)`
+        ];
+
+        // Curated educational examples (10 examples)
+        const curatedExamples = [
+            {
+                title: "Sequential Statements",
+                code: `# Basic sequential execution
+x = 10
+y = 20
+sum = x + y
+print(sum)`
+            },
+            {
+                title: "Simple If Statement",
+                code: `# Conditional execution
+age = 18
+if age >= 18:
+    print("You can vote")
+print("Thank you")`
+            },
+            {
+                title: "If-Else Statement",
+                code: `# Two-way branching
+score = 75
+if score >= 60:
+    print("Pass")
+else:
+    print("Fail")
+print("End of grading")`
+            },
+            {
+                title: "If-Elif-Else Statement",
+                code: `# Multi-way branching
+marks = 85
+if marks >= 90:
+    grade = "A"
+elif marks >= 80:
+    grade = "B"
+elif marks >= 70:
+    grade = "C"
+else:
+    grade = "F"
+print(grade)`
+            },
+            {
+                title: "While Loop",
+                code: `# Repetition with condition
+count = 1
+while count <= 5:
+    print(count)
+    count = count + 1
+print("Loop finished")`
+            },
+            {
+                title: "For Loop with Range",
+                code: `# Counted repetition
+sum = 0
+for i in range(5):
+    sum = sum + i
+print(sum)`
+            },
+            {
+                title: "Nested If Statements",
+                code: `# Complex conditions
+num = 15
+if num > 0:
+    if num % 2 == 0:
+        print("Positive even")
+    else:
+        print("Positive odd")
+else:
+    print("Negative or zero")`
+            },
+            {
+                title: "While Loop with If",
+                code: `# Loop with condition
+n = 10
+while n > 0:
+    if n % 2 == 0:
+        print("Even:", n)
+    n = n - 1
+print("Done")`
+            },
+            {
+                title: "For Loop with Break",
+                code: `# Early loop exit
+for i in range(10):
+    if i == 5:
+        print("Found 5")
+        break
+    print(i)
+print("Loop ended")`
+            },
+            {
+                title: "Complex Control Flow",
+                code: `# Combined structures
+target = 7
+found = False
+for i in range(10):
+    if i == target:
+        found = True
+        break
+if found:
+    print("Target found")
+else:
+    print("Target not found")`
+            }
+        ];
+
+        let currentExample = 0;
+        let debugMode = false;
+
+        // Python AST Parser
+        class PythonParser {
+            constructor(code) {
+                this.lines = code.split('\n');
+                this.currentLine = 0;
+                this.indentStack = [0];
+            }
+
+            parse() {
+                const ast = [];
+                while (this.currentLine < this.lines.length) {
+                    const line = this.lines[this.currentLine];
+                    const trimmed = line.trim();
+                    
+                    if (trimmed === '' || trimmed.startsWith('#')) {
+                        this.currentLine++;
+                        continue;
+                    }
+
+                    const indent = this.getIndentation(line);
+                    const node = this.parseLine(trimmed, indent);
+                    if (node) {
+                        ast.push(node);
+                    }
+                    this.currentLine++;
+                }
+                return ast;
+            }
+
+            getIndentation(line) {
+                let count = 0;
+                for (let char of line) {
+                    if (char === ' ') count++;
+                    else if (char === '\t') count += 4;
+                    else break;
+                }
+                return count;
+            }
+
+            parseLine(line, indent) {
+                if (line.startsWith('if ')) {
+                    return this.parseIf(line, indent);
+                } else if (line.startsWith('elif ')) {
+                    return this.parseElif(line, indent);
+                } else if (line.startsWith('else:')) {
+                    return this.parseElse(indent);
+                } else if (line.startsWith('while ')) {
+                    return this.parseWhile(line, indent);
+                } else if (line.startsWith('for ')) {
+                    return this.parseFor(line, indent);
+                } else if (line.includes('print(')) {
+                    return { type: 'output', text: line, indent };
+                } else if (line.includes('input(')) {
+                    return { type: 'input', text: line, indent };
+                } else if (line === 'break') {
+                    return { type: 'break', indent };
+                } else if (line === 'continue') {
+                    return { type: 'continue', indent };
+                } else if (line.includes('=')) {
+                    return { type: 'process', text: line, indent };
+                } else {
+                    return { type: 'process', text: line, indent };
+                }
+            }
+
+            parseIf(line, indent) {
+                const condition = line.substring(3, line.length - 1);
+                const body = this.parseBlock(indent);
+                return { type: 'if', condition, body, indent };
+            }
+
+            parseElif(line, indent) {
+                const condition = line.substring(5, line.length - 1);
+                const body = this.parseBlock(indent);
+                return { type: 'elif', condition, body, indent };
+            }
+
+            parseElse(indent) {
+                const body = this.parseBlock(indent);
+                return { type: 'else', body, indent };
+            }
+
+            parseWhile(line, indent) {
+                const condition = line.substring(6, line.length - 1);
+                const body = this.parseBlock(indent);
+                return { type: 'while', condition, body, indent };
+            }
+
+            parseFor(line, indent) {
+                const forMatch = line.match(/for\s+(\w+)\s+in\s+(.+):/);
+                if (forMatch) {
+                    const variable = forMatch[1];
+                    const iterator = forMatch[2];
+                    const body = this.parseBlock(indent);
+                    
+                    // Check if it's a range-based for loop
+                    const rangeMatch = iterator.match(/range\s*\(\s*(.+)\s*\)/);
+                    if (rangeMatch) {
+                        const rangeArgs = rangeMatch[1].split(',').map(arg => arg.trim());
+                        return { type: 'for-range', variable, rangeArgs, body, indent };
+                    }
+                    
+                    return { type: 'for', variable, iterator, body, indent };
+                }
+                return null;
+            }
+
+            parseBlock(parentIndent) {
+                const block = [];
+                this.currentLine++;
+                
+                while (this.currentLine < this.lines.length) {
+                    const line = this.lines[this.currentLine];
+                    const trimmed = line.trim();
+                    
+                    if (trimmed === '' || trimmed.startsWith('#')) {
+                        this.currentLine++;
+                        continue;
+                    }
+                    
+                    const indent = this.getIndentation(line);
+                    if (indent <= parentIndent) {
+                        this.currentLine--;
+                        break;
+                    }
+                    
+                    const node = this.parseLine(trimmed, indent);
+                    if (node) {
+                        block.push(node);
+                    }
+                    this.currentLine++;
+                }
+                
+                return block;
+            }
+        }
+
+        // Flowchart Generator
+        class FlowchartGenerator {
+            constructor() {
+                this.nodeId = 0;
+                this.nodes = [];
+                this.edges = [];
+            }
+
+            generate(ast) {
+                this.nodeId = 0;
+                this.nodes = [];
+                this.edges = [];
+                
+                const startId = this.addNode('start', 'Start');
+                let lastId = startId;
+                
+                for (let node of ast) {
+                    lastId = this.processNode(node, lastId);
+                }
+                
+                const endId = this.addNode('end', 'End');
+                this.addEdge(lastId, endId);
+                
+                return this.generateMermaidCode();
+            }
+
+            addNode(type, text) {
+                const id = `node${this.nodeId++}`;
+                this.nodes.push({ id, type, text });
+                return id;
+            }
+
+            addEdge(from, to, label = '') {
+                this.edges.push({ from, to, label });
+            }
+
+            processNode(node, prevId) {
+                switch (node.type) {
+                    case 'process':
+                    case 'output':
+                    case 'input':
+                        return this.processSimpleNode(node, prevId);
+                    case 'if':
+                        return this.processIf(node, prevId);
+                    case 'while':
+                        return this.processWhile(node, prevId);
+                    case 'for-range':
+                        return this.processForRange(node, prevId);
+                    case 'for':
+                        return this.processFor(node, prevId);
+                    case 'break':
+                    case 'continue':
+                        return this.processBreakContinue(node, prevId);
+                    default:
+                        return prevId;
+                }
+            }
+
+            processSimpleNode(node, prevId) {
+                const nodeId = this.addNode(node.type, node.text);
+                this.addEdge(prevId, nodeId);
+                return nodeId;
+            }
+
+            processIf(node, prevId) {
+                const condId = this.addNode('decision', node.condition);
+                this.addEdge(prevId, condId);
+                
+                let endIds = [];
+                
+                // Process if body
+                let bodyLastId = condId;
+                for (let stmt of node.body) {
+                    bodyLastId = this.processNode(stmt, bodyLastId);
+                }
+                endIds.push(bodyLastId);
+                
+                // Check for elif/else in subsequent nodes
+                let falseId = condId;
+                let hasElse = false;
+                
+                // This is simplified - in a real implementation, you'd need to properly handle elif/else chains
+                const mergeId = this.addNode('merge', '');
+                this.addEdge(condId, bodyLastId, 'True');
+                this.addEdge(bodyLastId, mergeId);
+                this.addEdge(condId, mergeId, 'False');
+                
+                return mergeId;
+            }
+
+            processWhile(node, prevId) {
+                const condId = this.addNode('decision', node.condition);
+                this.addEdge(prevId, condId);
+                
+                let bodyLastId = condId;
+                for (let stmt of node.body) {
+                    bodyLastId = this.processNode(stmt, bodyLastId);
+                }
+                
+                this.addEdge(condId, bodyLastId, 'True');
+                this.addEdge(bodyLastId, condId);
+                
+                const exitId = this.addNode('merge', '');
+                this.addEdge(condId, exitId, 'False');
+                
+                return exitId;
+            }
+
+            processForRange(node, prevId) {
+                // Initialize counter
+                let start = '0', end = '0', step = '1';
+                if (node.rangeArgs.length === 1) {
+                    end = node.rangeArgs[0];
+                } else if (node.rangeArgs.length === 2) {
+                    start = node.rangeArgs[0];
+                    end = node.rangeArgs[1];
+                } else if (node.rangeArgs.length === 3) {
+                    start = node.rangeArgs[0];
+                    end = node.rangeArgs[1];
+                    step = node.rangeArgs[2];
+                }
+                
+                const initId = this.addNode('process', `${node.variable} = ${start}`);
+                this.addEdge(prevId, initId);
+                
+                const condId = this.addNode('decision', `${node.variable} < ${end}`);
+                this.addEdge(initId, condId);
+                
+                let bodyLastId = condId;
+                for (let stmt of node.body) {
+                    bodyLastId = this.processNode(stmt, bodyLastId);
+                }
+                
+                const updateId = this.addNode('process', `${node.variable} = ${node.variable} + ${step}`);
+                this.addEdge(condId, bodyLastId, 'True');
+                this.addEdge(bodyLastId, updateId);
+                this.addEdge(updateId, condId);
+                
+                const exitId = this.addNode('merge', '');
+                this.addEdge(condId, exitId, 'False');
+                
+                return exitId;
+            }
+
+            processFor(node, prevId) {
+                const condId = this.addNode('decision', `For each ${node.variable} in ${node.iterator}`);
+                this.addEdge(prevId, condId);
+                
+                let bodyLastId = condId;
+                for (let stmt of node.body) {
+                    bodyLastId = this.processNode(stmt, bodyLastId);
+                }
+                
+                this.addEdge(condId, bodyLastId, 'Loop');
+                this.addEdge(bodyLastId, condId);
+                
+                const exitId = this.addNode('merge', '');
+                this.addEdge(condId, exitId, 'End Loop');
+                
+                return exitId;
+            }
+
+            processBreakContinue(node, prevId) {
+                const nodeId = this.addNode('process', node.type);
+                this.addEdge(prevId, nodeId);
+                return nodeId;
+            }
+
+            generateMermaidCode() {
+                let code = 'flowchart TD\n';
+                
+                // Add styling
+                code += '    classDef startEnd fill:#e8f5e9,stroke:#4caf50,stroke-width:2px\n';
+                code += '    classDef decision fill:#fff3e0,stroke:#ff9800,stroke-width:2px\n';
+                code += '    classDef io fill:#e3f2fd,stroke:#2196f3,stroke-width:2px\n';
+                code += '    classDef process fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px\n\n';
+                
+                // Keep track of declared nodes to avoid duplicates
+                const declaredNodes = new Set();
+                
+                // First, define all nodes with very simple syntax
+                for (let node of this.nodes) {
+                    if (declaredNodes.has(node.id)) continue;
+                    declaredNodes.add(node.id);
+                    
+                    // Very aggressive text cleaning for Mermaid compatibility
+                    let text = node.text
+                        .replace(/print\s*\(/g, 'print ')
+                        .replace(/input\s*\(/g, 'input ')
+                        .replace(/[()'"`,\[\]{}|\\]/g, '')  // Remove all special chars
+                        .replace(/</g, ' lt ')
+                        .replace(/>/g, ' gt ')
+                        .replace(/<=/g, ' lte ')
+                        .replace(/>=/g, ' gte ')
+                        .replace(/==/g, ' eq ')
+                        .replace(/!=/g, ' neq ')
+                        .replace(/\+/g, ' + ')
+                        .replace(/\-/g, ' - ')
+                        .replace(/\*/g, ' * ')
+                        .replace(/\//g, ' / ')
+                        .replace(/%/g, ' mod ')
+                        .replace(/:/g, '')
+                        .replace(/\n/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                    
+                    // Ensure text is not empty
+                    if (!text) text = 'empty';
+                    
+                    // Limit text length
+                    if (text.length > 40) {
+                        text = text.substring(0, 37) + '...';
+                    }
+                    
+                    // Use simple node definitions
+                    switch (node.type) {
+                        case 'start':
+                        case 'end':
+                            code += `    ${node.id}([${text}])\n`;
+                            code += `    class ${node.id} startEnd\n`;
+                            break;
+                        case 'input':
+                        case 'output':
+                            code += `    ${node.id}[/${text}/]\n`;  // Parallelogram shape
+                            code += `    class ${node.id} io\n`;
+                            break;
+                        case 'decision':
+                            code += `    ${node.id}{${text}}\n`;
+                            code += `    class ${node.id} decision\n`;
+                            break;
+                        case 'merge':
+                            // Skip merge nodes - we don't want them
+                            break;
+                        default:
+                            code += `    ${node.id}[${text}]\n`;
+                            code += `    class ${node.id} process\n`;
+                            break;
+                    }
+                }
+                
+                code += '\n';
+                
+                // Then define all edges
+                const processedEdges = new Set();
+                for (let edge of this.edges) {
+                    if (!edge.from || !edge.to) continue;
+                    
+                    // Skip edges to/from merge nodes
+                    const fromNode = this.nodes.find(n => n.id === edge.from);
+                    const toNode = this.nodes.find(n => n.id === edge.to);
+                    if (fromNode?.type === 'merge' || toNode?.type === 'merge') continue;
+                    
+                    const edgeKey = `${edge.from}-${edge.to}`;
+                    if (processedEdges.has(edgeKey)) continue;
+                    processedEdges.add(edgeKey);
+                    
+                    if (edge.label) {
+                        // Change True/False to Yes/No for decision nodes
+                        let label = edge.label;
+                        if (label === 'True') label = 'Yes';
+                        if (label === 'False') label = 'No';
+                        code += `    ${edge.from} -->|${label}| ${edge.to}\n`;
+                    } else {
+                        code += `    ${edge.from} --> ${edge.to}\n`;
+                    }
+                }
+                
+                return code;
+            }
+        }
+
+        // UI Event Handlers
+        const codeInput = document.getElementById('codeInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const randomBtn = document.getElementById('randomBtn');
+        const testBtn = document.getElementById('testBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const exampleCounter = document.getElementById('exampleCounter');
+        const flowchartDisplay = document.getElementById('flowchartDisplay');
+        const chartContainer = document.getElementById('chartContainer');
+        const loading = document.querySelector('.loading');
+
+        function updateExampleCounter() {
+            exampleCounter.textContent = `Example ${currentExample + 1} of ${curatedExamples.length}: ${curatedExamples[currentExample].title}`;
+        }
+
+        function loadExample(index) {
+            currentExample = index;
+            codeInput.value = curatedExamples[currentExample].code;
+            updateExampleCounter();
+            // Don't auto-generate on load
+        }
+
+        function showError(message) {
+            chartContainer.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        // Test if Mermaid is working
+        async function testMermaid() {
+            const testCode = `flowchart TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great!]
+    B -->|No| D[Debug more]
+    C --> E[End]
+    D --> E`;
+            
+            chartContainer.innerHTML = '';
+            const testDiv = document.createElement('div');
+            testDiv.className = 'mermaid';
+            testDiv.textContent = testCode;
+            chartContainer.appendChild(testDiv);
+            
+            try {
+                await mermaid.run();
+                console.log('Mermaid test successful!');
+            } catch (err) {
+                console.error('Mermaid test failed:', err);
+                showError('Mermaid test failed: ' + err.message);
+            }
+        }
+
+        async function generateFlowchart() {
+            const code = codeInput.value.trim();
+            if (!code) {
+                showError('Please enter some Python code');
+                return;
+            }
+
+            loading.classList.add('active');
+            chartContainer.innerHTML = '';
+
+            try {
+                // Parse the Python code
+                const parser = new PythonParser(code);
+                const ast = parser.parse();
+                
+                // Generate flowchart
+                const generator = new FlowchartGenerator();
+                const mermaidCode = generator.generate(ast);
+                
+                console.log('Generated Mermaid code:', mermaidCode); // Debug output
+                
+                // Show the Mermaid code for debugging
+                const debugDiv = document.createElement('div');
+                debugDiv.style.cssText = 'background: #f0f0f0; padding: 10px; margin: 10px; font-family: monospace; font-size: 12px; white-space: pre-wrap;';
+                debugDiv.style.display = debugMode ? 'block' : 'none';
+                debugDiv.textContent = 'Generated Mermaid Code:\n' + mermaidCode;
+                chartContainer.appendChild(debugDiv);
+                
+                // Create the Mermaid diagram
+                const diagramDiv = document.createElement('div');
+                diagramDiv.className = 'mermaid';
+                diagramDiv.textContent = mermaidCode;
+                chartContainer.appendChild(diagramDiv);
+                
+                loading.classList.remove('active');
+                
+                // Try to render
+                try {
+                    await mermaid.run();
+                } catch (err) {
+                    console.error('Mermaid error:', err);
+                    debugDiv.style.display = 'block'; // Always show on error
+                    showError('Mermaid rendering failed. Check the generated code above for issues.');
+                }
+                
+            } catch (error) {
+                loading.classList.remove('active');
+                console.error('Flowchart generation error:', error);
+                showError(`Error generating flowchart: ${error.message || 'Unknown error'}`);
+            }
+        }
+
+        // Event listeners
+        generateBtn.addEventListener('click', generateFlowchart);
+
+        randomBtn.addEventListener('click', () => {
+            const randomIndex = Math.floor(Math.random() * basicExamples.length);
+            codeInput.value = basicExamples[randomIndex];
+            generateFlowchart();
+        });
+
+        testBtn.addEventListener('click', testMermaid);
+
+        prevBtn.addEventListener('click', () => {
+            currentExample = (currentExample - 1 + curatedExamples.length) % curatedExamples.length;
+            loadExample(currentExample);
+        });
+
+        nextBtn.addEventListener('click', () => {
+            currentExample = (currentExample + 1) % curatedExamples.length;
+            loadExample(currentExample);
+        });
+
+        // Load first example on page load
+        window.addEventListener('load', () => {
+            loadExample(0);
+            // Show instructions
+            chartContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;"><p>Click "Generate Flowchart" to visualize the Python code</p><p style="margin-top: 20px;">Or click "Test Mermaid" to verify the diagram renderer is working</p></div>';
+        });
+
+        // Add debug mode toggle with Ctrl+D
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'd') {
+                e.preventDefault();
+                debugMode = !debugMode;
+                console.log('Debug mode:', debugMode ? 'ON' : 'OFF');
+                if (debugMode) {
+                    // Show any debug divs
+                    document.querySelectorAll('[style*="display: none"]').forEach(el => {
+                        if (el.textContent.includes('Generated Mermaid Code:')) {
+                            el.style.display = 'block';
+                        }
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

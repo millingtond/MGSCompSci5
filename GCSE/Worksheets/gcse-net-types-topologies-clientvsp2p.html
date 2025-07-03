@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCSE CS: Networking Interactive Worksheet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        /* Base styling and fonts */
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .dyslexia-font {
+            font-family: 'Open Sans', sans-serif;
+        }
+        /* High contrast mode styles */
+        .high-contrast {
+            background-color: #000;
+            color: #fff;
+        }
+        .high-contrast .bg-white { background-color: #111 !important; }
+        .high-contrast .text-gray-800 { color: #fff !important; }
+        .high-contrast .text-gray-600 { color: #ccc !important; }
+        .high-contrast .text-gray-500 { color: #aaa !important; }
+        .high-contrast .border-gray-200 { border-color: #555 !important; }
+        .high-contrast .border-gray-300 { border-color: #666 !important; }
+        .high-contrast button.bg-blue-600 { background-color: #2563eb !important; color: #fff !important; }
+        .high-contrast button.bg-gray-200 { background-color: #444 !important; color: #fff !important; }
+        .high-contrast .achievement-popup { background-color: #222 !important; border-color: #ffc107 !important; }
+        .high-contrast .correct-answer { background-color: #166534 !important; } /* Darker green */
+        .high-contrast .incorrect-answer { background-color: #991b1b !important; } /* Darker red */
+
+        /* General UI element styles */
+        .worksheet-section {
+            display: none;
+        }
+        .worksheet-section.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Drag and Drop styling */
+        .draggable {
+            touch-action: none;
+            cursor: grab;
+            user-select: none;
+        }
+        .dragging {
+            opacity: 0.5;
+            transform: scale(1.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .drop-zone {
+            transition: background-color 0.2s, border-color 0.2s;
+            border: 2px dashed #cbd5e1;
+        }
+        .drop-zone.drag-over {
+            background-color: #e0f2fe; /* light-blue-100 */
+            border-color: #38bdf8; /* light-blue-400 */
+        }
+        .drop-zone.dropped {
+            border-style: solid;
+            border-color: #22c55e; /* green-500 */
+        }
+        /* Quiz option styles */
+        .quiz-option {
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        .quiz-option:hover {
+            transform: translateY(-2px);
+        }
+        .correct-answer {
+            background-color: #dcfce7; /* green-100 */
+            border-color: #22c55e;
+            color: #15803d;
+        }
+        .incorrect-answer {
+            background-color: #fee2e2; /* red-100 */
+            border-color: #ef4444;
+            color: #b91c1c;
+        }
+        /* Achievement popup styling */
+        .achievement-popup {
+            position: fixed;
+            bottom: -150px;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: bottom 0.5s ease-in-out;
+            z-index: 100;
+        }
+        .achievement-popup.show {
+            bottom: 20px;
+        }
+        /* Drawing Canvas */
+        #drawingCanvas {
+            cursor: crosshair;
+            touch-action: none; /* Important for touch drawing */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Header: Title, Gamification, Accessibility -->
+    <header class="bg-white shadow-md sticky top-0 z-40 p-3">
+        <div class="container mx-auto flex justify-between items-center flex-wrap gap-2">
+            <h1 class="text-xl md:text-2xl font-bold text-blue-700">Networking Worksheet</h1>
+            
+            <!-- Gamification HUD -->
+            <div id="gamification-hud" class="flex items-center gap-4 text-sm md:text-base">
+                <div class="font-semibold">
+                    <span>XP: </span><span id="xp-counter">0</span>
+                </div>
+                <div class="w-32 bg-gray-200 rounded-full h-4">
+                    <div id="level-progress" class="bg-green-500 h-4 rounded-full" style="width: 0%"></div>
+                </div>
+                <div class="font-semibold">
+                    <span>Level: </span><span id="level-counter">0</span>
+                </div>
+            </div>
+
+            <!-- Accessibility Controls -->
+            <div class="flex items-center gap-2">
+                <button id="contrast-toggle" aria-label="Toggle high contrast mode" class="p-2 rounded-md bg-gray-200 hover:bg-gray-300 text-sm">Contrast</button>
+                <button id="font-size-toggle" aria-label="Increase font size" class="p-2 rounded-md bg-gray-200 hover:bg-gray-300 text-sm">A+</button>
+                <button id="font-family-toggle" aria-label="Toggle dyslexia friendly font" class="p-2 rounded-md bg-gray-200 hover:bg-gray-300 text-sm">Dyslexia Font</button>
+            </div>
+        </div>
+        <!-- Quick Nav Bar -->
+        <nav id="quick-nav" class="container mx-auto mt-2">
+            <ul class="flex flex-wrap justify-center gap-1 md:gap-2 text-xs md:text-sm">
+                <!-- Nav items will be dynamically inserted here -->
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-6">
+        <!-- Section 0: Starter Activity -->
+        <section id="section-0" class="worksheet-section">
+            <h2 class="text-2xl font-bold mb-2">Starter Activity: Network Knowledge Check</h2>
+            <p class="mb-4 text-gray-600">Drag the terms on the left to their correct definitions on the right. You get 10 XP for each correct match!</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div id="starter-terms" class="flex flex-col gap-3">
+                    <!-- Draggable terms inserted here -->
+                </div>
+                <div id="starter-definitions" class="flex flex-col gap-3">
+                    <!-- Drop zones inserted here -->
+                </div>
+            </div>
+            <button onclick="resetTask('starter')" class="mt-4 px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">Reset</button>
+        </section>
+
+        <!-- Section 1: LANs vs WANs -->
+        <section id="section-1" class="worksheet-section">
+            <h2 class="text-2xl font-bold mb-2">Task 1: LAN or WAN?</h2>
+            <p class="mb-4 text-gray-600">Drag each scenario into the correct network category. Earn 15 XP for getting them all right.</p>
+            <div id="lan-wan-scenarios" class="flex flex-wrap gap-3 mb-6 justify-center">
+                <!-- Draggable scenarios inserted here -->
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg font-semibold text-center mb-2">Local Area Network (LAN)</h3>
+                    <div id="lan-drop-zone" data-type="LAN" class="drop-zone p-4 rounded-lg min-h-[200px] bg-white shadow"></div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-center mb-2">Wide Area Network (WAN)</h3>
+                    <div id="wan-drop-zone" data-type="WAN" class="drop-zone p-4 rounded-lg min-h-[200px] bg-white shadow"></div>
+                </div>
+            </div>
+            <button onclick="resetTask('lan-wan')" class="mt-4 px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">Reset</button>
+        </section>
+        
+        <!-- Section 2: Client-Server Model -->
+        <section id="section-2" class="worksheet-section">
+            <h2 class="text-2xl font-bold mb-2">Task 2: The Client-Server Model</h2>
+            <p class="mb-4 text-gray-600">First, watch the simulation to see how a client requests data from a server. Then, fill in the blanks below.</p>
+            <!-- Simulation -->
+            <div class="bg-white p-4 rounded-lg shadow mb-6">
+                <h3 class="font-semibold mb-2">Client-Server Simulation</h3>
+                <div class="relative h-40 flex items-center justify-between px-10">
+                    <!-- Client -->
+                    <div id="sim-client" class="text-center transition-transform duration-500">
+                        <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        <p>Client</p>
+                    </div>
+                    <!-- Server -->
+                    <div id="sim-server" class="text-center transition-transform duration-500">
+                        <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg>
+                        <p>Server</p>
+                    </div>
+                    <!-- Packet -->
+                    <div id="sim-packet" class="absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-1000 ease-in-out opacity-0">
+                        <svg class="w-8 h-8 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 2l7.997 3.884A2 2 0 0119 7.616V16a2 2 0 01-2 2H3a2 2 0 01-2-2V7.616a2 2 0 011.003-1.732zM10 4.269L4.01 7.126l5.99 2.909 5.99-2.909L10 4.269zM3 8.385l7 3.402v5.238L3 13.615V8.385z"></path></svg>
+                    </div>
+                </div>
+                <div id="sim-log" class="mt-2 text-sm text-center text-gray-600 min-h-[20px]"></div>
+                <button id="run-sim-btn" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Run Simulation</button>
+            </div>
+            <!-- Fill in the blanks -->
+            <div class="bg-white p-4 rounded-lg shadow">
+                 <h3 class="font-semibold mb-2">Benefits of a Client-Server Network</h3>
+                 <p class="mb-4">Complete the sentences below by choosing the correct word from the bank. Get 5 XP per correct answer.</p>
+                 <div id="cs-cloze-container" class="space-y-3 text-base">
+                     <!-- Cloze sentences inserted here -->
+                 </div>
+                 <div class="mt-4">
+                     <h4 class="font-semibold text-sm">Word Bank:</h4>
+                     <div id="cs-word-bank" class="flex flex-wrap gap-2 mt-2 p-2 bg-gray-100 rounded-md">
+                         <!-- Word bank items inserted here -->
+                     </div>
+                 </div>
+                 <button onclick="checkClozeAnswers('cs')" class="mt-4 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Check Answers</button>
+                 <button onclick="resetTask('cs-cloze')" class="mt-4 px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">Reset</button>
+            </div>
+        </section>
+
+        <!-- Section 3: Peer-to-Peer Model -->
+        <section id="section-3" class="worksheet-section">
+            <h2 class="text-2xl font-bold mb-2">Task 3: Peer-to-Peer Facts</h2>
+            <p class="mb-4 text-gray-600">Read each statement about peer-to-peer (P2P) networks and decide if it's True or False. Earn 5 XP for each correct answer.</p>
+            <div id="p2p-quiz-container" class="space-y-4">
+                <!-- P2P quiz questions will be inserted here -->
+            </div>
+            <button onclick="resetTask('p2p-quiz')" class="mt-4 px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">Reset</button>
+        </section>
+
+        <!-- Section 4: Comparing Models -->
+        <section id="section-4" class="worksheet-section">
+            <h2 class="text-2xl font-bold mb-2">Task 4: Which Network to Choose?</h2>
+            <p class="mb-4 text-gray-600">For each scenario, recommend a network model and justify your choice. Use the drawing canvas to sketch out your ideas if it helps!</p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-4 rounded-lg shadow space-y-4">
+                    <h3 class="font-bold text-lg">Scenario A: A large secondary school</h3>
+                    <p>A school with 1500 students and 100 staff needs a new network. Key requirements are central file storage for students, central software deployment, and robust security monitoring.</p>
+                    <textarea id="scenario-a-answer" rows="5" class="w-full p-2 border border-gray-300 rounded-md" placeholder="I would recommend a... because..."></textarea>
+                    <button onclick="checkShortAnswer('scenario-a')" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Submit Answer</button>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow space-y-4">
+                    <h3 class="font-bold text-lg">Scenario B: A small home office</h3>
+                    <p>A startup with 3 employees working from a home office needs to share a printer and occasionally transfer design files between computers. The budget is very tight.</p>
+                    <textarea id="scenario-b-answer" rows="5" class="w-full p-2 border border-gray-300 rounded-md" placeholder="For this situation, a... would be suitable as..."></textarea>
+                    <button onclick="checkShortAnswer('scenario-b')" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Submit Answer</button>
+                </div>
+            </div>
+             <div class="mt-6 bg-white p-4 rounded-lg shadow">
+                <h3 class="font-bold text-lg mb-2">Planning Canvas</h3>
+                <p class="text-sm text-gray-500 mb-2">Use this space to sketch network diagrams or jot down ideas.</p>
+                <canvas id="drawingCanvas" class="w-full h-64 border border-gray-300 rounded-md bg-white"></canvas>
+                <button onclick="clearCanvas()" class="mt-2 px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">Clear Canvas</button>
+            </div>
+        </section>
+
+        <!-- Section 5: Plenary: Exam Practice -->
+        <section id="section-5" class="worksheet-section">
+             <h2 class="text-2xl font-bold mb-2">Plenary: Exam Practice</h2>
+             <p class="mb-4 text-gray-600">Attempt these exam-style questions. Write a full answer before revealing the mark scheme to practice your exam technique.</p>
+             <div class="space-y-6">
+                <!-- Exam Question 1 -->
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="font-semibold">Question 1</h3>
+                    <p class="my-2">Explain two benefits of using a client-server network in a school environment compared to a peer-to-peer network. (4 marks)</p>
+                    <textarea id="exam-q1-answer" rows="5" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Type your answer here..."></textarea>
+                    <div class="mt-2">
+                        <button id="exam-q1-mark-btn" onclick="revealMarkScheme('exam-q1')" class="px-4 py-2 bg-gray-400 text-white rounded-md cursor-not-allowed" disabled>Show Mark Scheme</button>
+                    </div>
+                    <div id="exam-q1-marks" class="hidden mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <h4 class="font-bold">Mark Scheme:</h4>
+                        <ul class="list-disc list-inside text-sm">
+                            <li>Centralised storage (1) allowing users to access files from any computer on the network (1).</li>
+                            <li>Centralised backup (1) so all data is backed up together, without relying on individual users (1).</li>
+                            <li>Centralised security / updates (1) which is easier to manage and ensures all computers are protected (1).</li>
+                            <li>Monitoring of clients (1) to ensure they are being used correctly and are working properly (1).</li>
+                        </ul>
+                         <div class="mt-2">
+                            <label for="exam-q1-self-mark" class="text-sm font-semibold">My predicted mark (out of 4): </label>
+                            <input type="number" id="exam-q1-self-mark" min="0" max="4" class="w-16 p-1 border border-gray-300 rounded-md">
+                        </div>
+                    </div>
+                </div>
+                 <!-- Exam Question 2 -->
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="font-semibold">Question 2</h3>
+                    <p class="my-2">A small design agency decides to use a peer-to-peer network. Describe one benefit and one drawback of this choice. (4 marks)</p>
+                    <textarea id="exam-q2-answer" rows="5" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Type your answer here..."></textarea>
+                    <div class="mt-2">
+                        <button id="exam-q2-mark-btn" onclick="revealMarkScheme('exam-q2')" class="px-4 py-2 bg-gray-400 text-white rounded-md cursor-not-allowed" disabled>Show Mark Scheme</button>
+                    </div>
+                    <div id="exam-q2-marks" class="hidden mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <h4 class="font-bold">Mark Scheme:</h4>
+                        <p>Award one mark for the benefit and one for the expansion. One for the drawback and one for expansion.</p>
+                        <ul class="list-disc list-inside text-sm">
+                            <li><strong>Benefit:</strong> Lower cost (1) as no expensive server is needed (1). OR Simpler to set up (1) as no specialist knowledge is required (1).</li>
+                            <li><strong>Drawback:</strong> No centralised storage (1) meaning files are stored on individual machines and harder to share/find (1). OR Poorer security (1) as each machine is responsible for its own security (1).</li>
+                        </ul>
+                         <div class="mt-2">
+                            <label for="exam-q2-self-mark" class="text-sm font-semibold">My predicted mark (out of 4): </label>
+                            <input type="number" id="exam-q2-self-mark" min="0" max="4" class="w-16 p-1 border border-gray-300 rounded-md">
+                        </div>
+                    </div>
+                </div>
+             </div>
+        </section>
+
+        <!-- Section 6: Final Knowledge Check -->
+        <section id="section-6" class="worksheet-section">
+            <h2 class="text-2xl font-bold mb-2">Final Knowledge Check</h2>
+            <p class="mb-4 text-gray-600">Answer these questions to see what you've learned. You get 20 XP for each correct answer!</p>
+            <div id="final-quiz-container" class="space-y-4">
+                <!-- Final quiz questions will be inserted here -->
+            </div>
+            <div id="final-score-container" class="hidden mt-6 text-center">
+                <h3 class="text-2xl font-bold">Quiz Complete!</h3>
+                <p class="text-lg">You scored <span id="final-score"></span> out of <span id="total-questions"></span>.</p>
+            </div>
+            <button onclick="resetTask('final-quiz')" class="mt-4 px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">Reset Quiz</button>
+        </section>
+
+        <!-- Section 7: Extension & Resources -->
+        <section id="section-7" class="worksheet-section">
+            <h2 class="text-2xl font-bold mb-2">Extension & Further Learning</h2>
+            <div class="space-y-6">
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="font-bold text-lg">Extension Task: Network Topologies</h3>
+                    <p>Beyond the client-server and P2P models, networks can be arranged in different physical layouts called topologies. Research the <strong>Star</strong> and <strong>Mesh</strong> topologies. In the box below, briefly explain how each one works and give one advantage of each.</p>
+                    <textarea id="extension-answer" rows="6" class="w-full p-2 mt-2 border border-gray-300 rounded-md" placeholder="The Star topology works by... Its main advantage is...&#10;The Mesh topology works by... Its main advantage is..."></textarea>
+                    <button onclick="checkShortAnswer('extension')" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Submit for XP</button>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="font-bold text-lg">Recommended Videos</h3>
+                    <p class="text-gray-600">These videos can help reinforce your understanding.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                        <!-- Placeholder for video embeds -->
+                        <div class="aspect-w-16 aspect-h-9 bg-gray-200 rounded-md flex items-center justify-center">
+                            <p class="text-gray-500">Video Placeholder 1</p>
+                        </div>
+                        <div class="aspect-w-16 aspect-h-9 bg-gray-200 rounded-md flex items-center justify-center">
+                            <p class="text-gray-500">Video Placeholder 2</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <!-- Navigation Buttons -->
+    <footer class="container mx-auto p-4 flex justify-between items-center">
+        <button id="prev-btn" class="px-6 py-2 bg-gray-300 rounded-md hover:bg-gray-400">Previous</button>
+        <div id="page-indicator" class="text-sm text-gray-500"></div>
+        <button id="next-btn" class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Next</button>
+    </footer>
+
+    <!-- Achievement Unlocked Popup -->
+    <div id="achievement-popup" class="achievement-popup w-80 bg-white border-2 border-yellow-400 rounded-lg shadow-xl p-4 flex items-center gap-4">
+        <div class="text-3xl">🏆</div>
+        <div>
+            <h4 id="achievement-title" class="font-bold text-yellow-600">Achievement Unlocked!</h4>
+            <p id="achievement-desc" class="text-sm"></p>
+        </div>
+    </div>
+    
+    <!-- Anti-paste Shame Message -->
+    <div id="shame-message" class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-800 text-white p-8 rounded-lg shadow-2xl text-center z-50">
+        <h2 class="text-4xl font-bold mb-2">A C T I V I T Y</h2>
+        <h3 class="text-2xl mb-4">P A S T E D</h3>
+        <p>Real learning comes from your own effort. Try again.</p>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedback-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h2 class="text-xl font-bold mb-4">Submit Feedback or Report a Bug</h2>
+            <p class="text-sm text-gray-600 mb-4">Spotted an issue or have a suggestion? Let us know! Your current location in the worksheet will be sent automatically.</p>
+            <textarea id="feedback-text" rows="5" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Please describe the issue or your feedback..."></textarea>
+            <div class="mt-4 flex justify-end gap-3">
+                <button onclick="closeFeedbackModal()" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">Cancel</button>
+                <button onclick="sendFeedback()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Send Feedback</button>
+            </div>
+        </div>
+    </div>
+    <button onclick="openFeedbackModal()" class="fixed bottom-4 right-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg" aria-label="Submit Feedback">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+        </svg>
+    </button>
+
+
+<script>
+// --- DATA & STATE MANAGEMENT ---
+const appState = {
+    currentSection: 0,
+    totalSections: 8,
+    xp: 0,
+    level: 0,
+    xpForNextLevel: [100, 250, 500, 800, 1200], // XP needed to reach level 1, 2, 3, 4, 5
+    unlockedAchievements: new Set(),
+    tasksCompleted: new Set(), // To prevent awarding XP multiple times
+    settings: {
+        highContrast: false,
+        fontSize: 1, // 1=normal, 2=large, 3=xlarge
+        dyslexiaFont: false,
+    },
+    canvas: {
+        context: null,
+        isDrawing: false,
+        lastX: 0,
+        lastY: 0,
+    }
+};
+
+const taskData = {
+    starter: {
+        terms: [
+            { id: 't1', text: 'Router' }, { id: 't2', text: 'Switch' }, { id: 't3', text: 'WAN' }, { id: 't4', text: 'LAN' }
+        ],
+        definitions: [
+            { id: 'd1', matches: 't1', text: 'Connects different networks together, e.g., a LAN to the internet.' },
+            { id: 'd2', matches: 't2', text: 'Connects devices on a single network, using MAC addresses to forward data.' },
+            { id: 'd3', matches: 't3', text: 'A network that spans a large geographical area.' },
+            { id: 'd4', matches: 't4', text: 'A network restricted to a small geographical site.' }
+        ]
+    },
+    lanWan: {
+        scenarios: [
+            { text: "A school's computer suite", type: "LAN" },
+            { text: "The Internet", type: "WAN" },
+            { text: "Connecting a company's London and Tokyo offices", type: "WAN" },
+            { text: "Your home WiFi network", type: "LAN" },
+            { text: "A single university campus network", type: "LAN" }
+        ]
+    },
+    csCloze: {
+        sentences: [
+            "All files can be stored {blank}, so workers can access files from any computer.",
+            "Backups are also {blank}, meaning all data is backed up at once.",
+            "It is easier to {blank} clients to ensure they are working correctly.",
+            "Software can be upgraded {blank}, so you do not have to install it on each computer individually.",
+            "A central {blank} (e.g., firewall) protects the whole network."
+        ],
+        answers: ["centrally", "central", "monitor", "centrally", "security"],
+        wordBank: ["centrally", "central", "monitor", "security", "individually", "locally", "ignore", "firewall", "manually"]
+    },
+    p2pQuiz: [
+        { q: "A peer-to-peer network requires a powerful, central server.", a: false },
+        { q: "In a P2P network, computers are directly connected to each other.", a: true },
+        { q: "If one computer fails on a P2P network, the whole network goes down.", a: false },
+        { q: "P2P networks are generally more expensive to set up than client-server networks.", a: false },
+        { q: "Security is handled centrally on a P2P network.", a: false }
+    ],
+    finalQuiz: [
+        { q: "Which of these best describes a WAN?", o: ["A network in a single room", "A network spanning a large geographical area", "A network connecting two computers", "A network without a server"], a: 1 },
+        { q: "Who typically owns the communication medium for a WAN?", o: ["The home owner", "A school", "A telecommunications company", "Nobody"], a: 2 },
+        { q: "Which benefit is most associated with a client-server network?", o: ["Low setup cost", "No need for specialist staff", "Centralised backups and security", "Easy to add new devices"], a: 2 },
+        { q: "What is a major drawback of a peer-to-peer network?", o: ["Requires an expensive server", "Files and security are not centralised", "If the server fails, the network fails", "Complicated to set up"], a: 1 },
+        { q: "In which scenario would a P2P network be most suitable?", o: ["A large international bank", "A national retail chain with 200 stores", "A home network for sharing a printer", "A school with 1000 users"], a: 2 },
+        { q: "What is the primary role of a server in a client-server network?", o: ["To connect directly to other clients", "To provide resources and services to clients", "To be a computer used by a person", "To have its own individual files"], a: 1 },
+        { q: "Which of these is a characteristic of a LAN?", o: ["Spans multiple cities", "Owned by a company like BT", "Hardware is owned by the organisation/home owner", "Uses the internet to connect devices"], a: 2 },
+        { q: "What is a benefit of P2P networks regarding failure?", o: ["Failure is impossible", "Central backups prevent data loss", "Failure of one device does not bring down the network", "A technician is always on site"], a: 2 }
+    ],
+    achievements: {
+        'start': { title: 'Getting Started', desc: 'Completed the starter activity.' },
+        'categoriser': { title: 'Expert Categoriser', desc: 'Correctly sorted all LAN/WAN scenarios.' },
+        'architect': { title: 'Network Architect', desc: 'Understood the client-server model.' },
+        'peerless': { title: 'Peerless', desc: 'Mastered the facts of P2P networks.' },
+        'analyst': { title: 'Senior Analyst', desc: 'Successfully analysed both network scenarios.' },
+        'ready': { title: 'Exam Ready', desc: 'Attempted an exam question.' },
+        'graduate': { title: 'Network Graduate', desc: 'Completed the final knowledge check.' },
+        'explorer': { title: 'Explorer', desc: 'Completed the extension task.' },
+        'level1': { title: 'Level 1 Reached!', desc: 'Keep up the great work.' },
+        'level3': { title: 'Level 3!', desc: 'You\'re a networking natural!' },
+        'level5': { title: 'Max Level!', desc: 'You are a networking master!' }
+    }
+};
+
+// --- CORE APP LOGIC ---
+document.addEventListener('DOMContentLoaded', function() {
+    initApp();
+    
+    // Prevent pasting
+    const inputs = document.querySelectorAll('input, textarea');
+    for (let i = 0; i < inputs.length; i++) {
+        inputs[i].addEventListener('paste', function(e) {
+            e.preventDefault();
+            const shameMessage = document.getElementById('shame-message');
+            shameMessage.style.display = 'block';
+            setTimeout(function() {
+                shameMessage.style.display = 'none';
+            }, 3000);
+        });
+    }
+});
+
+function initApp() {
+    // Setup navigation
+    document.getElementById('prev-btn').addEventListener('click', function() { changeSection(-1); });
+    document.getElementById('next-btn').addEventListener('click', function() { changeSection(1); });
+    
+    // Setup accessibility toggles
+    document.getElementById('contrast-toggle').addEventListener('click', toggleContrast);
+    document.getElementById('font-size-toggle').addEventListener('click', toggleFontSize);
+    document.getElementById('font-family-toggle').addEventListener('click', toggleFontFamily);
+
+    // Populate dynamic content
+    populateQuickNav();
+    populateStarterTask();
+    populateLanWanTask();
+    populateClozeTask();
+    populateP2pQuiz();
+    populateFinalQuiz();
+
+    // Setup exam question listeners
+    document.getElementById('exam-q1-answer').addEventListener('input', function() { checkAnswerLength('exam-q1', 50); });
+    document.getElementById('exam-q2-answer').addEventListener('input', function() { checkAnswerLength('exam-q2', 50); });
+
+    // Setup drawing canvas
+    initCanvas();
+
+    // Setup swipe gestures
+    let touchstartX = 0;
+    let touchendX = 0;
+    const mainContent = document.querySelector('main');
+    mainContent.addEventListener('touchstart', function(event) {
+        touchstartX = event.changedTouches[0].screenX;
+    }, false);
+    mainContent.addEventListener('touchend', function(event) {
+        touchendX = event.changedTouches[0].screenX;
+        handleSwipe();
+    }, false); 
+    
+    function handleSwipe() {
+        if (touchendX < touchstartX) { // Swiped left
+            changeSection(1);
+        }
+        if (touchendX > touchstartX) { // Swiped right
+            changeSection(-1);
+        }
+    }
+    
+    // Show initial section
+    updateUI();
+}
+
+function updateUI() {
+    // Update sections
+    const sections = document.querySelectorAll('.worksheet-section');
+    for (let i = 0; i < sections.length; i++) {
+        sections[i].classList.remove('active');
+    }
+    document.getElementById('section-' + appState.currentSection).classList.add('active');
+
+    // Update nav buttons
+    document.getElementById('prev-btn').disabled = appState.currentSection === 0;
+    document.getElementById('next-btn').disabled = appState.currentSection === appState.totalSections - 1;
+    
+    // Update page indicator
+    document.getElementById('page-indicator').textContent = 'Section ' + (appState.currentSection + 1) + ' of ' + appState.totalSections;
+
+    // Update quick nav active state
+    const navLinks = document.querySelectorAll('#quick-nav a');
+    for (let i = 0; i < navLinks.length; i++) {
+        navLinks[i].classList.remove('bg-blue-600', 'text-white');
+        navLinks[i].classList.add('bg-gray-200');
+        if (parseInt(navLinks[i].dataset.section) === appState.currentSection) {
+            navLinks[i].classList.add('bg-blue-600', 'text-white');
+            navLinks[i].classList.remove('bg-gray-200');
+        }
+    }
+    
+    // Update gamification HUD
+    document.getElementById('xp-counter').textContent = appState.xp;
+    document.getElementById('level-counter').textContent = appState.level;
+    let progressPercent = 0;
+    if (appState.level < appState.xpForNextLevel.length) {
+        const xpForCurrentLevel = appState.level > 0 ? appState.xpForNextLevel[appState.level - 1] : 0;
+        const xpToNextLevel = appState.xpForNextLevel[appState.level];
+        const xpInCurrentLevel = appState.xp - xpForCurrentLevel;
+        const xpNeededForLevel = xpToNextLevel - xpForCurrentLevel;
+        progressPercent = (xpInCurrentLevel / xpNeededForLevel) * 100;
+    } else {
+        progressPercent = 100; // Max level
+    }
+    document.getElementById('level-progress').style.width = Math.min(progressPercent, 100) + '%';
+}
+
+function changeSection(direction) {
+    appState.currentSection += direction;
+    if (appState.currentSection < 0) appState.currentSection = 0;
+    if (appState.currentSection >= appState.totalSections) appState.currentSection = appState.totalSections - 1;
+    updateUI();
+}
+
+function goToSection(sectionIndex) {
+    appState.currentSection = sectionIndex;
+    updateUI();
+}
+
+function populateQuickNav() {
+    const navContainer = document.querySelector('#quick-nav ul');
+    const sectionTitles = [
+        "Starter", "LAN/WAN", "Client-Server", "P2P", "Compare", "Exam Prep", "Final Quiz", "Extension"
+    ];
+    let navHTML = '';
+    for (let i = 0; i < sectionTitles.length; i++) {
+        navHTML += `<li><a href="#" data-section="${i}" class="px-3 py-1 rounded-full bg-gray-200 hover:bg-blue-500 hover:text-white transition-colors">${sectionTitles[i]}</a></li>`;
+    }
+    navContainer.innerHTML = navHTML;
+    
+    const navLinks = navContainer.querySelectorAll('a');
+    for (let i = 0; i < navLinks.length; i++) {
+        navLinks[i].addEventListener('click', function(e) {
+            e.preventDefault();
+            goToSection(parseInt(e.target.dataset.section));
+        });
+    }
+}
+
+
+// --- GAMIFICATION ---
+function addXP(amount) {
+    appState.xp += amount;
+    checkLevelUp();
+    updateUI();
+}
+
+function checkLevelUp() {
+    if (appState.level < appState.xpForNextLevel.length) {
+        if (appState.xp >= appState.xpForNextLevel[appState.level]) {
+            appState.level++;
+            showAchievement('level' + appState.level);
+            if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
+            confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+        }
+    }
+}
+
+function showAchievement(id) {
+    if (appState.unlockedAchievements.has(id)) return;
+    
+    appState.unlockedAchievements.add(id);
+    const achievement = taskData.achievements[id];
+    if (!achievement) return;
+
+    const popup = document.getElementById('achievement-popup');
+    document.getElementById('achievement-title').textContent = achievement.title;
+    document.getElementById('achievement-desc').textContent = achievement.desc;
+    
+    popup.classList.add('show');
+    if ('vibrate' in navigator) navigator.vibrate(100);
+
+    setTimeout(function() {
+        popup.classList.remove('show');
+    }, 4000);
+}
+
+// --- ACCESSIBILITY ---
+function toggleContrast() {
+    appState.settings.highContrast = !appState.settings.highContrast;
+    document.body.classList.toggle('high-contrast');
+}
+
+function toggleFontSize() {
+    appState.settings.fontSize++;
+    if (appState.settings.fontSize > 3) appState.settings.fontSize = 1;
+    
+    document.body.classList.remove('text-base', 'text-lg', 'text-xl');
+    if(appState.settings.fontSize === 1) document.body.style.fontSize = "16px";
+    if(appState.settings.fontSize === 2) document.body.style.fontSize = "18px";
+    if(appState.settings.fontSize === 3) document.body.style.fontSize = "20px";
+}
+
+function toggleFontFamily() {
+    appState.settings.dyslexiaFont = !appState.settings.dyslexiaFont;
+    document.body.classList.toggle('dyslexia-font');
+}
+
+// --- TASK INITIALIZATION AND LOGIC ---
+
+// Generic Reset Function
+function resetTask(taskName) {
+    if (taskName === 'starter') populateStarterTask();
+    if (taskName === 'lan-wan') populateLanWanTask();
+    if (taskName === 'cs-cloze') populateClozeTask();
+    if (taskName === 'p2p-quiz') populateP2pQuiz();
+    if (taskName === 'final-quiz') populateFinalQuiz();
+}
+
+// Starter Task (Drag & Drop)
+function populateStarterTask() {
+    const termsContainer = document.getElementById('starter-terms');
+    const defsContainer = document.getElementById('starter-definitions');
+    
+    let terms = shuffleArray([...taskData.starter.terms]);
+    let defs = shuffleArray([...taskData.starter.definitions]);
+
+    let termsHTML = '';
+    for(let i=0; i<terms.length; i++) {
+        termsHTML += `<div id="${terms[i].id}" class="draggable p-3 bg-white border rounded-md shadow-sm" draggable="true">${terms[i].text}</div>`;
+    }
+    
+    let defsHTML = '';
+    for(let i=0; i<defs.length; i++) {
+        defsHTML += `<div class="drop-zone p-3 bg-gray-100 rounded-md min-h-[60px] flex items-center" data-matches="${defs[i].matches}"><span class="text-gray-500">${defs[i].text}</span></div>`;
+    }
+    
+    termsContainer.innerHTML = termsHTML;
+    defsContainer.innerHTML = defsHTML;
+
+    addDragDropListeners('starter');
+}
+
+// LAN/WAN Task (Drag & Drop)
+function populateLanWanTask() {
+    const scenariosContainer = document.getElementById('lan-wan-scenarios');
+    let scenarios = shuffleArray([...taskData.lanWan.scenarios]);
+    let scenariosHTML = '';
+    for(let i=0; i < scenarios.length; i++) {
+        scenariosHTML += `<div class="draggable p-3 bg-white border rounded-md shadow-sm" draggable="true" data-type="${scenarios[i].type}">${scenarios[i].text}</div>`;
+    }
+    scenariosContainer.innerHTML = scenariosHTML;
+    document.getElementById('lan-drop-zone').innerHTML = '';
+    document.getElementById('wan-drop-zone').innerHTML = '';
+     document.getElementById('lan-drop-zone').classList.remove('dropped');
+    document.getElementById('wan-drop-zone').classList.remove('dropped');
+    addDragDropListeners('lan-wan');
+}
+
+function addDragDropListeners(taskType) {
+    const draggables = document.querySelectorAll(taskType === 'starter' ? '#starter-terms .draggable' : '#lan-wan-scenarios .draggable');
+    const dropZones = document.querySelectorAll(taskType === 'starter' ? '#starter-definitions .drop-zone' : '.worksheet-section.active .drop-zone');
+
+    for(let i=0; i<draggables.length; i++) {
+        draggables[i].addEventListener('dragstart', function(e) {
+            e.target.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', e.target.id || e.target.textContent); // Use ID for starter, content for lan/wan
+            e.dataTransfer.setData('source-task', taskType);
+            e.dataTransfer.setData('source-element-id', e.target.id);
+        });
+        draggables[i].addEventListener('dragend', function(e) {
+            e.target.classList.remove('dragging');
+        });
+    }
+
+    for(let i=0; i<dropZones.length; i++) {
+        dropZones[i].addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.target.closest('.drop-zone').classList.add('drag-over');
+        });
+        dropZones[i].addEventListener('dragleave', function(e) {
+            e.target.closest('.drop-zone').classList.remove('drag-over');
+        });
+        dropZones[i].addEventListener('drop', handleDrop);
+    }
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    const dropZone = e.target.closest('.drop-zone');
+    dropZone.classList.remove('drag-over');
+    
+    const sourceTask = e.dataTransfer.getData('source-task');
+    const sourceId = e.dataTransfer.getData('source-element-id');
+    const draggedElement = document.getElementById(sourceId);
+
+    if (sourceTask === 'starter' && dropZone.parentElement.id === 'starter-definitions') {
+        if (dropZone.dataset.matches === sourceId) {
+            dropZone.innerHTML = ''; // Clear placeholder text
+            dropZone.appendChild(draggedElement);
+            dropZone.classList.add('dropped');
+            draggedElement.setAttribute('draggable', 'false');
+            draggedElement.style.cursor = 'default';
+            addXP(10);
+            if ('vibrate' in navigator) navigator.vibrate(50);
+            checkStarterCompletion();
+        }
+    } else if (sourceTask === 'lan-wan' && (dropZone.id === 'lan-drop-zone' || dropZone.id === 'wan-drop-zone')) {
+        if (draggedElement.dataset.type === dropZone.dataset.type) {
+            dropZone.appendChild(draggedElement);
+            if ('vibrate' in navigator) navigator.vibrate(50);
+            checkLanWanCompletion();
+        }
+    }
+}
+
+
+function checkStarterCompletion() {
+    const dropZones = document.querySelectorAll('#starter-definitions .drop-zone');
+    let allCorrect = true;
+    for(let i=0; i<dropZones.length; i++){
+        if (!dropZones[i].classList.contains('dropped')) {
+            allCorrect = false;
+        }
+    }
+    if (allCorrect && !appState.tasksCompleted.has('starter')) {
+        showAchievement('start');
+        appState.tasksCompleted.add('starter');
+    }
+}
+
+function checkLanWanCompletion() {
+    const scenarios = document.querySelectorAll('#lan-wan-scenarios .draggable');
+    if (scenarios.length === 0 && !appState.tasksCompleted.has('lan-wan')) {
+        addXP(15);
+        showAchievement('categoriser');
+        appState.tasksCompleted.add('lan-wan');
+        document.getElementById('lan-drop-zone').classList.add('dropped');
+        document.getElementById('wan-drop-zone').classList.add('dropped');
+    }
+}
+
+
+// Client-Server Simulation
+document.getElementById('run-sim-btn').addEventListener('click', runClientServerSim);
+
+function runClientServerSim(button) {
+    const btn = document.getElementById('run-sim-btn');
+    btn.disabled = true;
+    btn.textContent = 'Running...';
+    
+    const client = document.getElementById('sim-client');
+    const server = document.getElementById('sim-server');
+    const packet = document.getElementById('sim-packet');
+    const log = document.getElementById('sim-log');
+
+    // Reset positions and states
+    packet.style.transition = 'none';
+    packet.style.opacity = '0';
+    packet.style.transform = 'translateX(-200px) translateY(-50%)';
+    log.textContent = '';
+    
+    setTimeout(function() {
+        // Step 1: Request
+        log.textContent = '1. Client sends a request for a file to the server...';
+        packet.style.transition = 'transform 1.5s ease-in-out, opacity 0.5s';
+        packet.style.opacity = '1';
+        packet.style.transform = 'translateX(200px) translateY(-50%)';
+    }, 500);
+
+    setTimeout(function() {
+        // Step 2: Server processes
+        log.textContent = '2. Server receives the request and finds the file...';
+        server.classList.add('scale-110');
+    }, 2000);
+
+    setTimeout(function() {
+        // Step 3: Response
+        log.textContent = '3. Server sends the file back to the client...';
+        server.classList.remove('scale-110');
+        packet.style.transform = 'translateX(-200px) translateY(-50%) scaleX(-1)'; // Flip packet
+    }, 3500);
+
+    setTimeout(function() {
+        // Step 4: Client receives
+        log.textContent = '4. Client receives the file. Simulation complete!';
+        packet.style.opacity = '0';
+        client.classList.add('scale-110');
+    }, 5000);
+    
+    setTimeout(function() {
+        client.classList.remove('scale-110');
+        btn.disabled = false;
+        btn.textContent = 'Run Simulation Again';
+    }, 6000);
+}
+
+
+// Cloze (Fill-in-the-blanks) Task
+function populateClozeTask() {
+    const container = document.getElementById('cs-cloze-container');
+    const bankContainer = document.getElementById('cs-word-bank');
+    const sentences = taskData.csCloze.sentences;
+    const wordBank = shuffleArray([...taskData.csCloze.wordBank]);
+
+    let sentencesHTML = '';
+    for(let i=0; i < sentences.length; i++) {
+        const sentence = sentences[i].replace('{blank}', `<input type="text" class="mx-1 p-1 w-28 border-b-2 border-gray-300 focus:border-blue-500 outline-none" data-answer="${taskData.csCloze.answers[i]}">`);
+        sentencesHTML += `<p>${i+1}. ${sentence}</p>`;
+    }
+
+    let bankHTML = '';
+    for(let i=0; i<wordBank.length; i++) {
+        bankHTML += `<span class="px-2 py-1 bg-gray-200 rounded-md text-sm">${wordBank[i]}</span>`;
+    }
+    container.innerHTML = sentencesHTML;
+    bankContainer.innerHTML = bankHTML;
+}
+
+function checkClozeAnswers(taskName) {
+    if (appState.tasksCompleted.has(taskName)) return;
+
+    let allCorrect = true;
+    let correctCount = 0;
+    if (taskName === 'cs') {
+        const inputs = document.querySelectorAll('#cs-cloze-container input');
+        for(let i=0; i<inputs.length; i++){
+            inputs[i].classList.remove('correct-answer', 'incorrect-answer');
+            const isCorrect = inputs[i].value.trim().toLowerCase() === inputs[i].dataset.answer.toLowerCase();
+            if (isCorrect) {
+                inputs[i].classList.add('correct-answer');
+                correctCount++;
+            } else {
+                inputs[i].classList.add('incorrect-answer');
+                allCorrect = false;
+            }
+        }
+    }
+    
+    addXP(correctCount * 5);
+    if (allCorrect) {
+        showAchievement('architect');
+        appState.tasksCompleted.add(taskName);
+    }
+}
+
+
+// P2P True/False Quiz
+function populateP2pQuiz() {
+    const container = document.getElementById('p2p-quiz-container');
+    const questions = shuffleArray([...taskData.p2pQuiz]);
+    let html = '';
+    for(let i=0; i<questions.length; i++) {
+        html += `
+            <div class="p2p-question bg-white p-4 rounded-lg shadow" data-answer="${questions[i].a}" data-answered="false">
+                <p class="mb-3">${i+1}. ${questions[i].q}</p>
+                <div class="flex gap-4">
+                    <button class="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600" onclick="checkP2pAnswer(this, true)">True</button>
+                    <button class="w-full py-2 bg-red-500 text-white rounded-md hover:bg-red-600" onclick="checkP2pAnswer(this, false)">False</button>
+                </div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+}
+
+function checkP2pAnswer(button, answer) {
+    const questionDiv = button.closest('.p2p-question');
+    if (questionDiv.dataset.answered === "true") return;
+
+    questionDiv.dataset.answered = "true";
+    const correctAnswer = questionDiv.dataset.answer === 'true';
+    
+    if (answer === correctAnswer) {
+        questionDiv.classList.add('correct-answer');
+        addXP(5);
+        if ('vibrate' in navigator) navigator.vibrate(50);
+    } else {
+        questionDiv.classList.add('incorrect-answer');
+    }
+
+    checkP2pCompletion();
+}
+
+function checkP2pCompletion() {
+    const questions = document.querySelectorAll('.p2p-question');
+    let allAnswered = true;
+    for(let i=0; i<questions.length; i++) {
+        if (questions[i].dataset.answered === 'false') {
+            allAnswered = false;
+        }
+    }
+    if(allAnswered && !appState.tasksCompleted.has('p2p-quiz')) {
+        showAchievement('peerless');
+        appState.tasksCompleted.add('p2p-quiz');
+    }
+}
+
+// Short Answer / Scenario Task
+function checkShortAnswer(taskName) {
+    if (appState.tasksCompleted.has(taskName)) return;
+
+    let keywords = [];
+    let xp = 0;
+    const answerEl = document.getElementById(taskName + '-answer');
+    if(!answerEl) return;
+    const answer = answerEl.value.toLowerCase();
+
+    if (taskName === 'scenario-a') {
+        keywords = ['client-server', 'client server', 'central', 'backup', 'security', 'monitor', 'update'];
+        xp = 30;
+    } else if (taskName === 'scenario-b') {
+        keywords = ['peer-to-peer', 'p2p', 'peer to peer', 'cheap', 'cost', 'simple', 'easy'];
+        xp = 30;
+    } else if (taskName === 'extension') {
+        keywords = ['star', 'mesh', 'hub', 'switch', 'central', 'node', 'every', 'connect', 'route', 'failure', 'redundant'];
+        xp = 50;
+    }
+    
+    let keywordsFound = 0;
+    for(let i=0; i<keywords.length; i++) {
+        if(answer.indexOf(keywords[i]) !== -1){
+            keywordsFound++;
+        }
+    }
+
+    if (keywordsFound > keywords.length / 3) { // Require more than a third of keywords
+        addXP(xp);
+        if(taskName === 'scenario-a' || taskName === 'scenario-b'){
+            showAchievement('analyst');
+        }
+        if(taskName === 'extension'){
+            showAchievement('explorer');
+        }
+        appState.tasksCompleted.add(taskName);
+        answerEl.classList.add('correct-answer');
+        answerEl.disabled = true;
+    } else {
+         answerEl.classList.add('incorrect-answer');
+         setTimeout(function(){ answerEl.classList.remove('incorrect-answer'); }, 2000);
+    }
+}
+
+// Exam Question Logic
+function checkAnswerLength(questionId, minLength) {
+    const textarea = document.getElementById(questionId + '-answer');
+    const button = document.getElementById(questionId + '-mark-btn');
+    if (textarea.value.length > minLength) {
+        button.disabled = false;
+        button.classList.remove('bg-gray-400', 'cursor-not-allowed');
+        button.classList.add('bg-blue-600', 'hover:bg-blue-700');
+    } else {
+        button.disabled = true;
+        button.classList.add('bg-gray-400', 'cursor-not-allowed');
+        button.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+    }
+}
+
+function revealMarkScheme(questionId) {
+    document.getElementById(questionId + '-marks').style.display = 'block';
+    if (!appState.tasksCompleted.has('exam-practice')) {
+        addXP(25);
+        showAchievement('ready');
+        appState.tasksCompleted.add('exam-practice');
+    }
+}
+
+
+// Final Quiz
+function populateFinalQuiz() {
+    const container = document.getElementById('final-quiz-container');
+    const questions = shuffleArray([...taskData.finalQuiz]);
+    let html = '';
+    for(let i=0; i<questions.length; i++) {
+        let options = [];
+        for(let j=0; j<questions[i].o.length; j++) {
+            options.push({ text: questions[i].o[j], correct: j === questions[i].a });
+        }
+        options = shuffleArray(options);
+
+        let optionsHTML = '';
+        for(let j=0; j<options.length; j++) {
+            optionsHTML += `<div class="quiz-option border border-gray-300 p-3 rounded-md" data-correct="${options[j].correct}">${options[j].text}</div>`;
+        }
+
+        html += `
+            <div class="final-question bg-white p-4 rounded-lg shadow" data-answered="false">
+                <p class="font-semibold mb-3">${i+1}. ${questions[i].q}</p>
+                <div class="space-y-2">
+                    ${optionsHTML}
+                </div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+    document.getElementById('final-score-container').style.display = 'none';
+
+    const options = container.querySelectorAll('.quiz-option');
+    for(let i=0; i<options.length; i++) {
+        options[i].addEventListener('click', checkFinalQuizAnswer);
+    }
+}
+
+function checkFinalQuizAnswer(event) {
+    const option = event.target;
+    const questionDiv = option.closest('.final-question');
+    if (questionDiv.dataset.answered === "true") return;
+
+    questionDiv.dataset.answered = "true";
+    const isCorrect = option.dataset.correct === 'true';
+
+    const allOptions = questionDiv.querySelectorAll('.quiz-option');
+    for(let i=0; i<allOptions.length; i++){
+        allOptions[i].style.cursor = 'default';
+        if(allOptions[i].dataset.correct === 'true') {
+            allOptions[i].classList.add('correct-answer');
+        }
+    }
+
+    if (isCorrect) {
+        addXP(20);
+        if ('vibrate' in navigator) navigator.vibrate(50);
+    } else {
+        option.classList.add('incorrect-answer');
+    }
+    checkFinalQuizCompletion();
+}
+
+function checkFinalQuizCompletion() {
+    const questions = document.querySelectorAll('.final-question');
+    let allAnswered = true;
+    let correctCount = 0;
+    for(let i=0; i<questions.length; i++) {
+        if (questions[i].dataset.answered === 'false') {
+            allAnswered = false;
+        } else {
+           const correctOption = questions[i].querySelector('.quiz-option.correct-answer');
+           if(!correctOption.classList.contains('incorrect-answer')) {
+               correctCount++;
+           }
+        }
+    }
+
+    if (allAnswered) {
+        document.getElementById('final-score').textContent = correctCount;
+        document.getElementById('total-questions').textContent = questions.length;
+        document.getElementById('final-score-container').style.display = 'block';
+        if (!appState.tasksCompleted.has('final-quiz')) {
+            showAchievement('graduate');
+            appState.tasksCompleted.add('final-quiz');
+        }
+    }
+}
+
+// Canvas Logic
+function initCanvas() {
+    const canvas = document.getElementById('drawingCanvas');
+    appState.canvas.context = canvas.getContext('2d');
+    
+    // Resize canvas to be display-size aware
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    appState.canvas.context.scale(dpr, dpr);
+    appState.canvas.context.lineJoin = 'round';
+    appState.canvas.context.lineCap = 'round';
+    appState.canvas.context.lineWidth = 3;
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    canvas.addEventListener('touchstart', startDrawing);
+    canvas.addEventListener('touchmove', draw);
+    canvas.addEventListener('touchend', stopDrawing);
+}
+
+function getCanvasCoords(e) {
+    const canvas = appState.canvas.context.canvas;
+    const rect = canvas.getBoundingClientRect();
+    let x, y;
+
+    if (e.touches) { // Touch event
+        x = e.touches[0].clientX - rect.left;
+        y = e.touches[0].clientY - rect.top;
+    } else { // Mouse event
+        x = e.clientX - rect.left;
+        y = e.clientY - rect.top;
+    }
+    return { x: x, y: y };
+}
+
+function startDrawing(e) {
+    e.preventDefault();
+    appState.canvas.isDrawing = true;
+    const { x, y } = getCanvasCoords(e);
+    appState.canvas.lastX = x;
+    appState.canvas.lastY = y;
+}
+
+function draw(e) {
+    if (!appState.canvas.isDrawing) return;
+    e.preventDefault();
+    const { x, y } = getCanvasCoords(e);
+    const ctx = appState.canvas.context;
+    ctx.beginPath();
+    ctx.moveTo(appState.canvas.lastX, appState.canvas.lastY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    appState.canvas.lastX = x;
+    appState.canvas.lastY = y;
+}
+
+function stopDrawing() {
+    appState.canvas.isDrawing = false;
+}
+
+function clearCanvas() {
+    const ctx = appState.canvas.context;
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+}
+
+// Feedback Modal
+function openFeedbackModal() {
+    document.getElementById('feedback-modal').classList.remove('hidden');
+}
+
+function closeFeedbackModal() {
+    document.getElementById('feedback-modal').classList.add('hidden');
+}
+
+function sendFeedback() {
+    const feedbackText = document.getElementById('feedback-text').value;
+    if (feedbackText.trim() === '') {
+        alert('Please enter some feedback before sending.');
+        return;
+    }
+
+    const sectionTitle = document.querySelector(`#section-${appState.currentSection} h2`).textContent;
+    const subject = `Feedback on GCSE Worksheet: ${sectionTitle}`;
+    const body = `Feedback content:\n${feedbackText}\n\n---\nContext:\nWorksheet Section: ${appState.currentSection} (${sectionTitle})\nUser Agent: ${navigator.userAgent}`;
+    
+    // This creates a mailto link. The user needs to click send in their email client.
+    window.location.href = `mailto:millingtond@mgs.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    closeFeedbackModal();
+}
+
+// --- UTILITY FUNCTIONS ---
+function shuffleArray(array) {
+    let currentIndex = array.length, randomIndex;
+    // While there remain elements to shuffle.
+    while (currentIndex !== 0) {
+        // Pick a remaining element.
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+        // And swap it with the current element.
+        [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+    }
+    return array;
+}
+
+</script>
+
+</body>
+</html>

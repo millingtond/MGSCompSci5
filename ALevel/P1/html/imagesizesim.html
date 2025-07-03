@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Image File Size Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #121828;
+            --primary-color: #1a2238;
+            --secondary-color: #2a3a5e;
+            --accent-color: #ff6a88;
+            --accent-glow: rgba(255, 106, 136, 0.5);
+            --text-color: #e0e0e0;
+            --highlight-color: #4f6d9c;
+            --glass-bg: rgba(42, 58, 94, 0.5);
+            --success-color: #28a745;
+            --error-color: #e94560;
+            --border-radius: 16px;
+            --font-family: 'Inter', sans-serif;
+            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            --transition-speed: 0.5s;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--bg-color) 0%, #212c4a 100%);
+            overflow: hidden;
+        }
+
+        .simulation-container {
+            width: 100%;
+            max-width: 1100px;
+            height: 90vh;
+            max-height: 750px;
+            background: var(--primary-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--secondary-color);
+            transform: translateZ(0); /* Promotes GPU rendering */
+        }
+
+        header {
+            padding: 1.25rem 1.5rem;
+            background: linear-gradient(45deg, var(--secondary-color), var(--highlight-color));
+            border-bottom: 1px solid var(--secondary-color);
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            background-color: var(--primary-color);
+            padding: 0.5rem 1.5rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: var(--secondary-color);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-inner {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-color), #ff9a8b);
+            transition: width var(--transition-speed) cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        main {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #feedback-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .step {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(50px);
+            transition: opacity var(--transition-speed) ease-in-out, transform var(--transition-speed) ease-in-out, visibility 0s var(--transition-speed);
+            will-change: transform, opacity;
+        }
+
+        .step.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
+            transition: opacity var(--transition-speed) ease-in-out, transform var(--transition-speed) ease-in-out, visibility 0s 0s;
+        }
+        
+        .step.inactive-left {
+            transform: translateX(-50px);
+        }
+
+        h2 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+            color: white;
+        }
+        
+        p {
+            max-width: 600px;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .interactive-area {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            margin-top: 1rem;
+            background: var(--glass-bg);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            will-change: transform;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .input-group label {
+            font-weight: 600;
+        }
+
+        .input-group input[type="number"] {
+            width: 120px;
+            padding: 0.75rem;
+            background-color: var(--primary-color);
+            border: 1px solid var(--secondary-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 1rem;
+            text-align: center;
+            transition: box-shadow var(--transition-speed) ease, border-color 0.3s ease;
+        }
+
+        .input-group input[type="number"]:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 4px var(--accent-glow);
+        }
+
+        .calculation-display {
+            font-size: 1.5rem;
+            font-weight: 600;
+            padding: 1rem;
+            background-color: var(--primary-color);
+            border-radius: var(--border-radius);
+            min-width: 250px;
+            border: 1px solid var(--secondary-color);
+        }
+
+        .color-depth-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        .option-card {
+            background: var(--secondary-color);
+            padding: 1.5rem 1rem;
+            border-radius: var(--border-radius);
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+            will-change: transform, box-shadow;
+        }
+
+        .option-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            border-color: var(--highlight-color);
+        }
+
+        .option-card.selected {
+            border-color: var(--accent-color);
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+        
+        .option-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .final-calculation {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            animation: fadeInScale 1s ease-out;
+            text-shadow: 0 0 15px var(--accent-glow);
+        }
+        
+        .quiz-container .question {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .quiz-answers {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .quiz-feedback {
+            margin-top: 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            width: 100%;
+            max-width: 500px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        
+        .quiz-feedback.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .quiz-feedback.correct {
+            background-color: rgba(40, 167, 69, 0.15);
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+            box-shadow: 0 0 15px rgba(40, 167, 69, 0.4);
+        }
+
+        .quiz-feedback.incorrect {
+            background-color: rgba(233, 69, 96, 0.15);
+            color: var(--error-color);
+            border: 1px solid var(--error-color);
+            box-shadow: 0 0 15px rgba(233, 69, 96, 0.4);
+        }
+
+        .quiz-input {
+            width: 150px;
+            padding: 0.75rem;
+            background-color: var(--primary-color);
+            border: 1px solid var(--secondary-color);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        
+        .quiz-input:focus {
+             outline: none;
+             border-color: var(--accent-color);
+             box-shadow: 0 0 0 4px var(--accent-glow);
+        }
+
+        .results-score {
+            font-size: 4rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            text-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .results-text { font-size: 1.5rem; }
+        
+        footer {
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--secondary-color);
+            background-color: var(--primary-color);
+        }
+
+        .nav-btn, .action-btn {
+            background: var(--secondary-color);
+            color: var(--text-color);
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            will-change: transform;
+        }
+        
+        .nav-btn:hover:not(:disabled), .action-btn:hover:not(:disabled) {
+            background-color: var(--highlight-color);
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .nav-btn:disabled {
+            background-color: #2c3e50;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple 600ms linear;
+            background-color: rgba(255, 255, 255, 0.7);
+        }
+
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0s 0.3s;
+        }
+
+        .modal.visible {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.3s ease, visibility 0s 0s;
+        }
+
+        .modal-content {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
+            padding: 2.5rem;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 550px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal.visible .modal-content {
+            transform: scale(1);
+        }
+
+        .modal h3 {
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            color: white;
+        }
+        
+        .modal p {
+            margin-bottom: 2rem;
+        }
+
+        .modal-btn {
+            background-color: var(--accent-color);
+            padding: 0.75rem 2rem;
+        }
+        
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            body { padding: 0; }
+            .simulation-container {
+                height: 100vh;
+                max-height: none;
+                border-radius: 0;
+                border: none;
+            }
+            .interactive-area {
+                flex-direction: column;
+            }
+            .step {
+                padding: 1.5rem;
+            }
+            header h1 { font-size: 1.2rem; }
+            h2 { font-size: 1.5rem; }
+            .color-depth-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="simulation-container">
+        <header>
+            <h1>A-Level CS 9618: Image File Size Calculation</h1>
+        </header>
+        <div class="progress-bar-container">
+            <div class="progress-bar">
+                <div class="progress-bar-inner"></div>
+            </div>
+        </div>
+        <main>
+            <canvas id="feedback-canvas"></canvas>
+            <!-- Step 0: Introduction -->
+            <div class="step active" data-step="0">
+                <h2>Welcome to the Simulation!</h2>
+                <p>This interactive guide will walk you through calculating an image's file size, a key topic in your A-Level Computer Science course. You'll learn how resolution and color depth combine to determine the final size.</p>
+                <p>Use the 'Next' and 'Previous' buttons or your keyboard's arrow keys (← →) to navigate. Let's begin!</p>
+            </div>
+
+            <!-- Step 1: Resolution -->
+            <div class="step" data-step="1">
+                <h2>Step 1: Find the Total Number of Pixels</h2>
+                <p>An image is a grid of tiny dots called <strong>pixels</strong>. The image's <strong>resolution</strong> (e.g., 800x600) tells us its width and height in pixels. To start, we multiply these to find the total number of pixels.</p>
+                <div class="interactive-area">
+                    <div class="input-group">
+                        <label for="img-width">Image Width (px)</label>
+                        <input type="number" id="img-width" value="800">
+                    </div>
+                    <span>×</span>
+                    <div class="input-group">
+                        <label for="img-height">Image Height (px)</label>
+                        <input type="number" id="img-height" value="600">
+                    </div>
+                    <span>=</span>
+                    <div id="total-pixels-display" class="calculation-display">480,000 pixels</div>
+                </div>
+            </div>
+
+            <!-- Step 2: Color Depth -->
+            <div class="step" data-step="2">
+                <h2>Step 2: Determine Bits Per Pixel</h2>
+                <p><strong>Color depth</strong> (or bit depth) is the number of bits used to represent the color of a single pixel. A higher color depth means more available colors, but also a larger file size. Select an option to see its effect.</p>
+                <div class="color-depth-options">
+                    <div class="option-card" data-bpp="1">
+                        <h3>1-bit (Monochrome)</h3>
+                        <p>2 Colours</p>
+                    </div>
+                    <div class="option-card" data-bpp="8">
+                        <h3>8-bit</h3>
+                        <p>256 Colours</p>
+                    </div>
+                    <div class="option-card" data-bpp="16">
+                        <h3>16-bit (High Color)</h3>
+                        <p>65,536 Colours</p>
+                    </div>
+                    <div class="option-card selected" data-bpp="24">
+                        <h3>24-bit (True Color)</h3>
+                        <p>16.7 million Colours</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: File Size in Bits -->
+            <div class="step" data-step="3">
+                <h2>Step 3: Calculate File Size in Bits</h2>
+                <p>Now, we combine the total pixels with the bits per pixel (color depth) to find the raw file size in bits. This is the total amount of data needed to store the image without any compression.</p>
+                 <div class="interactive-area">
+                    <div id="bits-calc-display" class="calculation-display">480,000 × 24 =</div>
+                    <div id="file-size-bits" class="final-calculation">11,520,000 bits</div>
+                </div>
+            </div>
+            
+            <!-- Step 4: Convert to Bytes -->
+            <div class="step" data-step="4">
+                <h2>Step 4: Convert to Bytes & Other Units</h2>
+                <p>File sizes are usually shown in <strong>bytes</strong>, not bits. Since there are 8 bits in 1 byte, we divide our total by 8. We then convert to kilobytes (KB) by dividing by 1000.</p>
+                 <div class="interactive-area" style="flex-direction: column; gap: 1rem;">
+                    <div id="bytes-calc-display" class="calculation-display">11,520,000 bits ÷ 8 = 1,440,000 bytes</div>
+                    <div id="kb-calc-display" class="calculation-display">1,440,000 bytes ÷ 1000 = 1440.00 KB</div>
+                    <div id="mb-calc-display" class="calculation-display">1440.00 KB ÷ 1000 = 1.44 MB</div>
+                </div>
+            </div>
+
+            <!-- Step 5: Quiz -->
+            <div class="step quiz-container" data-step="5">
+                <h2>Quiz Time!</h2>
+                <div id="quiz-area">
+                    <!-- Quiz questions will be injected here by JS -->
+                </div>
+                <div id="quiz-feedback" class="quiz-feedback"></div>
+            </div>
+            
+            <!-- Step 6: Results -->
+            <div class="step" data-step="6">
+                <h2>Simulation Complete!</h2>
+                 <p class="results-text">Here's your quiz score:</p>
+                <div id="results-score" class="results-score"></div>
+                <p id="results-feedback-text"></p>
+                <button id="reset-btn" class="action-btn">Try Again</button>
+            </div>
+
+        </main>
+        <footer>
+            <button id="prev-btn" class="nav-btn">← Previous</button>
+            <button id="next-btn" class="nav-btn">Next →</button>
+        </footer>
+    </div>
+    
+    <!-- Modal -->
+    <div id="info-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title"></h3>
+            <p id="modal-text"></p>
+            <button id="modal-close-btn" class="action-btn modal-btn">Got it!</button>
+        </div>
+    </div>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Element Caching ---
+        const dom = {
+            steps: document.querySelectorAll('.step'),
+            prevBtn: document.getElementById('prev-btn'),
+            nextBtn: document.getElementById('next-btn'),
+            resetBtn: document.getElementById('reset-btn'),
+            progressBarInner: document.querySelector('.progress-bar-inner'),
+            imgWidthInput: document.getElementById('img-width'),
+            imgHeightInput: document.getElementById('img-height'),
+            totalPixelsDisplay: document.getElementById('total-pixels-display'),
+            colorDepthOptionsContainer: document.querySelector('.color-depth-options'),
+            colorDepthOptions: document.querySelectorAll('.option-card'),
+            bitsCalcDisplay: document.getElementById('bits-calc-display'),
+            fileSizeBits: document.getElementById('file-size-bits'),
+            bytesCalcDisplay: document.getElementById('bytes-calc-display'),
+            kbCalcDisplay: document.getElementById('kb-calc-display'),
+            mbCalcDisplay: document.getElementById('mb-calc-display'),
+            quizArea: document.getElementById('quiz-area'),
+            quizFeedback: document.getElementById('quiz-feedback'),
+            resultsScoreDisplay: document.getElementById('results-score'),
+            resultsFeedbackText: document.getElementById('results-feedback-text'),
+            modal: document.getElementById('info-modal'),
+            modalTitle: document.getElementById('modal-title'),
+            modalText: document.getElementById('modal-text'),
+            modalCloseBtn: document.getElementById('modal-close-btn'),
+            canvas: document.getElementById('feedback-canvas'),
+            buttons: document.querySelectorAll('.nav-btn, .action-btn'),
+        };
+
+        const ctx = dom.canvas.getContext('2d');
+        let particles = [];
+
+        // --- State Management ---
+        let currentStep = 0;
+        const totalSteps = dom.steps.length;
+        const simState = {
+            width: 800,
+            height: 600,
+            totalPixels: 480000,
+            bpp: 24,
+            fileSizeBits: 11520000,
+            fileSizeBytes: 1440000
+        };
+        const quizState = {
+            currentQuestion: 0,
+            score: 0,
+            questions: []
+        };
+        let modalIsOpen = false;
+
+        const quizQuestions = [
+            { type: 'mcq', question: "What is another term for the 'number of bits per pixel'?", options: ["Image Resolution", "File Metadata", "Color Depth", "Pixel Ratio"], answer: "Color Depth" },
+            { type: 'calculation', question: "An image is 1000px wide by 800px high with an 8-bit color depth. What is its file size in <strong>kilobytes (KB)</strong>? (Assume 1 KB = 1000 Bytes)", answer: 800 },
+            { type: 'fill', question: "To convert a file size from bits to bytes, you must divide the total number of bits by ___.", answer: "8" },
+            { type: 'mcq', question: "If you increase an image's resolution but keep the color depth the same, the file size will...", options: ["Decrease", "Stay the same", "Increase", "Become compressed"], answer: "Increase" }
+        ];
+        
+        // --- Visual Effects ---
+        const setupCanvas = () => {
+            dom.canvas.width = dom.canvas.offsetWidth;
+            dom.canvas.height = dom.canvas.offsetHeight;
+        };
+
+        const createParticles = () => {
+            for (let i = 0; i < 50; i++) {
+                particles.push({
+                    x: dom.canvas.width / 2,
+                    y: dom.canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: Math.random() * -12 - 5,
+                    size: Math.random() * 5 + 2,
+                    color: `hsl(${Math.random() * 60 + 90}, 100%, 70%)`,
+                    life: 60
+                });
+            }
+        };
+
+        const animateParticles = () => {
+            if (particles.length === 0) return;
+            ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
+            particles.forEach((p, i) => {
+                p.vx *= 0.98;
+                p.vy += 0.25; // gravity
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                
+                if (p.life <= 0) particles.splice(i, 1);
+                
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 60;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            });
+            requestAnimationFrame(animateParticles);
+        };
+        
+        const triggerConfetti = () => {
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            createParticles();
+            if (particles.length === 50) { // Start animation only if it's not running
+                animateParticles();
+            }
+        };
+
+        const createRipple = (event) => {
+            const button = event.currentTarget;
+            const circle = document.createElement("span");
+            const diameter = Math.max(button.clientWidth, button.clientHeight);
+            const radius = diameter / 2;
+            circle.style.width = circle.style.height = `${diameter}px`;
+            circle.style.left = `${event.clientX - button.offsetLeft - radius}px`;
+            circle.style.top = `${event.clientY - button.offsetTop - radius}px`;
+            circle.classList.add("ripple");
+            const ripple = button.getElementsByClassName("ripple")[0];
+            if (ripple) ripple.remove();
+            button.appendChild(circle);
+        };
+        
+        // --- Core Functions ---
+        const showModal = (title, text) => {
+            dom.modalTitle.textContent = title;
+            dom.modalText.innerHTML = text;
+            dom.modal.classList.add('visible');
+            modalIsOpen = true;
+        };
+        
+        const hideModal = () => {
+            dom.modal.classList.remove('visible');
+            modalIsOpen = false;
+        };
+
+        const updateUI = (previousStep = -1) => {
+            dom.steps.forEach((step, index) => {
+                const stepNumber = parseInt(step.dataset.step, 10);
+                step.classList.remove('active', 'inactive-left');
+                if (stepNumber === currentStep) step.classList.add('active');
+                else if (stepNumber < currentStep) step.classList.add('inactive-left');
+            });
+
+            const progress = (currentStep / (totalSteps - 2)) * 100;
+            dom.progressBarInner.style.width = `${Math.min(progress, 100)}%`;
+
+            dom.prevBtn.disabled = currentStep === 0;
+            dom.nextBtn.textContent = currentStep >= totalSteps - 2 ? 'Finish' : 'Next →';
+            dom.nextBtn.style.display = currentStep === totalSteps - 1 ? 'none' : 'inline-block';
+            dom.prevBtn.style.display = currentStep === totalSteps - 1 ? 'none' : 'inline-block';
+
+            const stepActions = {
+                1: () => { if(previousStep < currentStep) showModal("What are Pixels?", "A <strong>pixel</strong> (short for picture element) is the smallest controllable element of a picture represented on the screen. The resolution of an image is its dimensions in pixels, like <strong>width × height</strong>."); calculateTotalPixels(); },
+                2: () => { if(previousStep < currentStep) showModal("What is Color Depth?", "<strong>Color Depth</strong> defines how many bits are used to store the color for each pixel. For example, <strong>1-bit</strong> color can only store 2 colors. <strong>24-bit</strong> 'True Color' can store over 16.7 million different colors."); updateColorDepthSelection(); },
+                3: calculateFileSizeInBits,
+                4: () => { if(previousStep < currentStep) showModal("KB vs KiB: A Quick Note", "In this simulation, we use the standard that <strong>1 kilobyte (KB) = 1000 bytes</strong>. You may also see <strong>1 kibibyte (KiB) = 1024 bytes</strong> used, especially by operating systems. For consistency, we'll stick to the power-of-10 system."); convertFileSize(); },
+                5: () => { if (quizState.currentQuestion === 0 && previousStep < currentStep) startQuiz(); },
+                6: showResults,
+            };
+            stepActions[currentStep]?.();
+        };
+        
+        const navigate = (direction) => {
+            if (modalIsOpen) return;
+            const previousStep = currentStep;
+            const newStep = currentStep + direction;
+            if (newStep >= 0 && newStep < totalSteps) {
+                currentStep = newStep;
+                updateUI(previousStep);
+            }
+        };
+
+        const calculateTotalPixels = () => {
+            simState.width = parseInt(dom.imgWidthInput.value, 10) || 0;
+            simState.height = parseInt(dom.imgHeightInput.value, 10) || 0;
+            simState.totalPixels = simState.width * simState.height;
+            dom.totalPixelsDisplay.textContent = `${simState.totalPixels.toLocaleString()} pixels`;
+        };
+
+        const updateColorDepthSelection = () => {
+            dom.colorDepthOptions.forEach(opt => {
+                opt.classList.toggle('selected', parseInt(opt.dataset.bpp, 10) === simState.bpp);
+            });
+        };
+
+        const calculateFileSizeInBits = () => {
+            simState.fileSizeBits = simState.totalPixels * simState.bpp;
+            dom.bitsCalcDisplay.textContent = `${simState.totalPixels.toLocaleString()} × ${simState.bpp} =`;
+            dom.fileSizeBits.textContent = `${simState.fileSizeBits.toLocaleString()} bits`;
+        };
+        
+        const convertFileSize = () => {
+            simState.fileSizeBytes = simState.fileSizeBits / 8;
+            const fileSizeKB = simState.fileSizeBytes / 1000;
+            const fileSizeMB = fileSizeKB / 1000;
+            dom.bytesCalcDisplay.innerHTML = `${simState.fileSizeBits.toLocaleString()} bits &divide; 8 = <strong>${simState.fileSizeBytes.toLocaleString()} bytes</strong>`;
+            dom.kbCalcDisplay.innerHTML = `${simState.fileSizeBytes.toLocaleString()} bytes &divide; 1000 = <strong>${fileSizeKB.toFixed(2)} KB</strong>`;
+            dom.mbCalcDisplay.innerHTML = `${fileSizeMB >= 0.01 ? `${fileSizeKB.toFixed(2)} KB &divide; 1000 = <strong>${fileSizeMB.toFixed(2)} MB</strong>` : 'Less than 0.01 MB'}`;
+        };
+
+        // --- Quiz Functions ---
+        const startQuiz = () => {
+            quizState.questions = [...quizQuestions].sort(() => Math.random() - 0.5);
+            quizState.currentQuestion = 0;
+            quizState.score = 0;
+            loadQuizQuestion();
+        };
+
+        const loadQuizQuestion = () => {
+            dom.quizFeedback.classList.remove('visible');
+            dom.quizArea.innerHTML = '';
+            
+            if (quizState.currentQuestion >= quizState.questions.length) {
+                navigate(1); // Navigate to results
+                return;
+            }
+            const q = quizState.questions[quizState.currentQuestion];
+            dom.quizArea.innerHTML = `<p class="question">Q${quizState.currentQuestion + 1}: ${q.question}</p>`;
+            const answersContainer = document.createElement('div');
+            answersContainer.className = 'quiz-answers';
+            if (q.type === 'mcq') {
+                const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+                shuffledOptions.forEach(option => answersContainer.innerHTML += `<button class="action-btn" data-answer="${option}">${option}</button>`);
+            } else {
+                answersContainer.innerHTML = `<input class="quiz-input" type="${q.type === 'calculation' ? 'number' : 'text'}" id="quiz-answer-input"><button class="action-btn" id="quiz-submit-btn">Submit Answer</button>`;
+            }
+            dom.quizArea.appendChild(answersContainer);
+            dom.quizArea.querySelectorAll('.action-btn').forEach(btn => btn.addEventListener('click', createRipple));
+        };
+        
+        const checkQuizAnswer = (userAnswer) => {
+            if (String(userAnswer).trim().length < 1) return;
+            
+            const q = quizState.questions[quizState.currentQuestion];
+            const correctAnswer = String(q.answer).trim().toLowerCase();
+            const normalizedUserAnswer = String(userAnswer).trim().toLowerCase();
+            const isCorrect = (q.type === 'calculation')
+                ? Math.abs(parseFloat(normalizedUserAnswer) - parseFloat(correctAnswer)) < 0.01
+                : normalizedUserAnswer === correctAnswer;
+
+            dom.quizFeedback.classList.remove('correct', 'incorrect');
+            if (isCorrect) {
+                dom.quizFeedback.textContent = 'Correct!';
+                dom.quizFeedback.classList.add('correct');
+                quizState.score++;
+                triggerConfetti();
+            } else {
+                dom.quizFeedback.innerHTML = `Not quite. The correct answer is <strong>${q.answer}</strong>.`;
+                dom.quizFeedback.classList.add('incorrect');
+            }
+            dom.quizFeedback.classList.add('visible');
+            dom.quizArea.querySelectorAll('button, input').forEach(el => el.disabled = true);
+            setTimeout(() => { quizState.currentQuestion++; loadQuizQuestion(); }, 2200);
+        };
+
+        const showResults = () => {
+            const { score, questions } = quizState;
+            const total = questions.length;
+            dom.resultsScoreDisplay.textContent = `${score} / ${total}`;
+            let feedback = "Good effort! Review the steps to master the concepts.";
+            if (score === total) feedback = "Excellent work! You've mastered the calculations.";
+            else if (score >= total * 0.75) feedback = "Great job! You have a solid understanding.";
+            dom.resultsFeedbackText.textContent = feedback;
+        };
+
+        const resetSimulation = () => {
+            currentStep = 0;
+            Object.assign(simState, { width: 800, height: 600, totalPixels: 480000, bpp: 24, fileSizeBits: 11520000, fileSizeBytes: 1440000 });
+            Object.assign(quizState, { currentQuestion: 0, score: 0, questions: [] });
+            dom.imgWidthInput.value = simState.width;
+            dom.imgHeightInput.value = simState.height;
+            updateUI();
+        };
+
+        // --- Event Listeners ---
+        const initEventListeners = () => {
+            dom.prevBtn.addEventListener('click', () => navigate(-1));
+            dom.nextBtn.addEventListener('click', () => navigate(1));
+            dom.resetBtn.addEventListener('click', resetSimulation);
+            dom.buttons.forEach(button => button.addEventListener("click", createRipple));
+            [dom.imgWidthInput, dom.imgHeightInput].forEach(input => input.addEventListener('input', calculateTotalPixels));
+            dom.colorDepthOptionsContainer.addEventListener('click', (e) => {
+                const selectedCard = e.target.closest('.option-card');
+                if (selectedCard) { simState.bpp = parseInt(selectedCard.dataset.bpp, 10); updateColorDepthSelection(); }
+            });
+            dom.quizArea.addEventListener('click', (e) => {
+                if (e.target.matches('button[data-answer]')) checkQuizAnswer(e.target.dataset.answer);
+                if (e.target.matches('#quiz-submit-btn')) checkQuizAnswer(document.getElementById('quiz-answer-input').value);
+            });
+            dom.quizArea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.target.matches('#quiz-answer-input')) document.getElementById('quiz-submit-btn')?.click();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (modalIsOpen || document.activeElement.tagName === 'INPUT') return;
+                if (e.key === 'ArrowRight') navigate(1);
+                else if (e.key === 'ArrowLeft') navigate(-1);
+            });
+            dom.modalCloseBtn.addEventListener('click', hideModal);
+            dom.modal.addEventListener('click', (e) => { if (e.target === dom.modal) hideModal(); });
+            window.addEventListener('resize', setupCanvas);
+        };
+
+        // --- Initialisation ---
+        initEventListeners();
+        setupCanvas();
+        updateUI();
+    });
+    </script>
+</body>
+</html>

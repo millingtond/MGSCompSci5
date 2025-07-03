@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compiler Stage 3: Code Generation Simulation (Python)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #111827;
+            --primary-color: #3b82f6;
+            --secondary-color: #1f2937;
+            --text-color: #e5e7eb;
+            --accent-color: #8b5cf6;
+            --success-color: #22c55e;
+            --error-color: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow-y: auto; 
+            overflow-x: hidden;
+        }
+
+        .glassmorphism {
+            background: rgba(31, 41, 55, 0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+        }
+        
+        .animated-gradient-bg {
+            background: linear-gradient(-45deg, #1e3a8a, #3b82f6, #8b5cf6, #be185d);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform, box-shadow;
+            transform: translateZ(0);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(-1px) scale(1.02);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .step-content {
+            display: none;
+            animation: fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .step-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .highlight {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            background-color: rgba(59, 130, 246, 0.3);
+            border-radius: 0.25rem;
+            padding: 0.1rem 0.2rem;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+        
+        #ast-canvas {
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.5s ease;
+        }
+
+        .popup {
+            animation: popup-in 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes popup-in {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .quiz-option {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .quiz-option.correct {
+            background-color: var(--success-color) !important;
+            border-color: var(--success-color) !important;
+            transform: scale(1.02);
+        }
+        
+        .quiz-option.incorrect {
+            background-color: var(--error-color) !important;
+            border-color: var(--error-color) !important;
+            transform: scale(1.02);
+        }
+        
+        .draggable {
+            touch-action: none;
+            user-select: none;
+            cursor: grab;
+        }
+        .draggable.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+
+        .drop-zone {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .drop-zone.over {
+            background-color: rgba(59, 130, 246, 0.2);
+            border-style: dashed;
+        }
+
+        /* FIX: Styles for draggable items when they are inside a drop zone */
+        .drop-zone .draggable {
+            padding: 0.25rem; /* p-1 */
+            font-size: 0.875rem; /* text-sm */
+            line-height: 1.25rem;
+            text-align: center;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: default;
+        }
+
+        /* Reduced motion accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after {
+                animation-delay: -1ms !important;
+                animation-duration: 1ms !important;
+                animation-iteration-count: 1 !important;
+                background-attachment: initial !important;
+                scroll-behavior: auto !important;
+                transition-duration: 0s !important;
+                transition-delay: 0s !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+    <div id="simulation-container" class="min-h-screen p-4 sm:p-6 lg:p-8 pb-24 flex flex-col">
+
+        <header class="text-center p-4 mb-6 rounded-xl animated-gradient-bg shadow-lg">
+            <h1 class="text-3xl sm:text-4xl font-bold text-white">Compiler Stage 3: Code Generation</h1>
+            <p class="text-lg text-gray-200 mt-1">An Interactive A-Level Simulation (Python)</p>
+        </header>
+
+        <main id="main-content" class="flex-grow flex flex-col">
+            <!-- Step 0: Introduction -->
+            <div id="step-0" class="step-content active">
+                <div class="glassmorphism p-6 max-w-4xl mx-auto text-center">
+                    <h2 class="text-2xl font-bold text-blue-400 mb-4">Welcome!</h2>
+                    <p class="text-lg mb-4">This simulation will guide you through the final stage of compilation: <strong class="text-blue-300">Code Generation</strong>.</p>
+                    <p class="mb-6">You'll see how high-level Python code is transformed into a low-level program (object code) that a computer can execute. Use the arrow buttons or your keyboard's arrow keys to navigate.</p>
+                    <div id="start-popup" class="bg-gray-800 border border-blue-500 rounded-lg p-4 mt-4">
+                        <h3 class="font-bold text-lg text-blue-300">Instructions</h3>
+                        <p class="mt-2">1. Follow the steps using the <strong class="text-blue-300">'Next Step'</strong> button.</p>
+                        <p>2. Read the explanations that appear in pop-up boxes.</p>
+                        <p>3. Pay attention to how the code changes at each stage.</p>
+                        <p>4. Complete the quiz at the end to test your knowledge.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Simulation Steps -->
+            <div id="simulation-view" class="hidden flex-grow flex-col lg:flex-row gap-6">
+                <!-- Left Panel: Code & Registers -->
+                <div class="lg:w-1/3 flex flex-col gap-6">
+                    <div class="glassmorphism p-4 flex-grow">
+                        <h3 class="font-semibold text-lg mb-3 border-b border-gray-600 pb-2 text-blue-300">1. High-Level Code (Python)</h3>
+                        <pre class="bg-gray-900 rounded-lg p-3 text-sm sm:text-base"><code id="high-level-code">
+<span id="hlc-line1">a = 10</span>
+<span id="hlc-line2">b = 20</span>
+<span id="hlc-line3">result = (a + b) * 2</span>
+                        </code></pre>
+                    </div>
+                    <div class="glassmorphism p-4">
+                        <h3 class="font-semibold text-lg mb-3 border-b border-gray-600 pb-2 text-blue-300">2. CPU Registers</h3>
+                        <div id="registers" class="grid grid-cols-2 gap-2 mt-2">
+                           <!-- Registers will be populated by JS -->
+                        </div>
+                    </div>
+                </div>
+                <!-- Middle Panel: AST -->
+                <div class="glassmorphism p-4 flex-grow lg:w-1/3 flex flex-col">
+                     <h3 class="font-semibold text-lg mb-3 border-b border-gray-600 pb-2 text-blue-300">Intermediate Representation (AST)</h3>
+                     <div class="flex-grow bg-gray-900 rounded-lg p-2 relative">
+                        <canvas id="ast-canvas"></canvas>
+                     </div>
+                </div>
+                <!-- Right Panel: Generated Code -->
+                <div class="glassmorphism p-4 flex-grow lg:w-1/3">
+                    <h3 class="font-semibold text-lg mb-3 border-b border-gray-600 pb-2 text-blue-300">3. Generated Object Code (Assembly)</h3>
+                    <pre class="bg-gray-900 rounded-lg p-3 h-full"><code id="assembly-code" class="text-sm sm:text-base">; Code will be generated here...</code></pre>
+                </div>
+            </div>
+            
+            <!-- Quiz Section -->
+            <div id="quiz-view" class="hidden flex-grow flex-col items-center justify-center">
+                <!-- Quiz content will be injected here -->
+            </div>
+        </main>
+
+        <!-- Footer with navigation buttons -->
+        <footer class="sticky bottom-0 bg-gray-900 py-4 z-10 flex justify-between items-center">
+            <button id="reset-btn" class="btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hidden">
+                Reset Simulation
+            </button>
+            <div class="flex gap-4">
+                <button id="prev-btn" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                    &larr; Previous Step
+                </button>
+                <button id="next-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                    Next Step &rarr;
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Popup Modal -->
+    <div id="popup-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+        <div class="glassmorphism p-6 rounded-xl max-w-lg w-full shadow-2xl popup">
+            <h3 id="popup-title" class="text-xl font-bold text-blue-300 mb-4"></h3>
+            <div id="popup-content" class="text-gray-300"></div>
+            <button id="popup-close-btn" class="btn mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
+                Got it!
+            </button>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- DOM Caching ---
+    const dom = {
+        step0: document.getElementById('step-0'),
+        simulationView: document.getElementById('simulation-view'),
+        quizView: document.getElementById('quiz-view'),
+        mainContent: document.getElementById('main-content'),
+        prevBtn: document.getElementById('prev-btn'),
+        nextBtn: document.getElementById('next-btn'),
+        resetBtn: document.getElementById('reset-btn'),
+        highLevelCode: {
+            line1: document.getElementById('hlc-line1'),
+            line2: document.getElementById('hlc-line2'),
+            line3: document.getElementById('hlc-line3'),
+        },
+        registers: document.getElementById('registers'),
+        assemblyCode: document.getElementById('assembly-code'),
+        astCanvas: document.getElementById('ast-canvas'),
+        popup: {
+            modal: document.getElementById('popup-modal'),
+            title: document.getElementById('popup-title'),
+            content: document.getElementById('popup-content'),
+            closeBtn: document.getElementById('popup-close-btn'),
+        }
+    };
+
+    // --- State Management ---
+    let currentState = {
+        step: 0,
+        maxSteps: 10,
+        isPopupOpen: false,
+        isAnimating: false,
+        quizScore: 0,
+        quizQuestion: 0,
+    };
+    
+    const registerNames = ['R0', 'R1', 'R2', 'R3'];
+
+    // --- AST Data & Drawing ---
+    const ast = {
+        op: '=', name: 'result',
+        children: [{
+            op: '*',
+            children: [{
+                op: '+',
+                children: [{ op: 'VAR', name: 'a'}, { op: 'VAR', name: 'b'}]
+            }, {
+                op: 'CONST', name: '2'
+            }]
+        }]
+    };
+    
+    let astCtx;
+    const nodePositions = new Map();
+    
+    function drawAST() {
+        if (!dom.astCanvas.getContext) return;
+        astCtx = dom.astCanvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = dom.astCanvas.getBoundingClientRect();
+        dom.astCanvas.width = rect.width * dpr;
+        dom.astCanvas.height = rect.height * dpr;
+        astCtx.scale(dpr, dpr);
+        
+        astCtx.clearRect(0, 0, dom.astCanvas.width, dom.astCanvas.height);
+        drawNode(ast, dom.astCanvas.clientWidth / 2, 40, dom.astCanvas.clientWidth / 4, null);
+    }
+
+    function drawNode(node, x, y, xOffset, parentPos, highlight = false) {
+        const nodeRadius = 22;
+        const text = node.op === 'VAR' || node.op === 'CONST' ? node.name : node.op;
+        
+        // Draw line to parent
+        if (parentPos) {
+            astCtx.beginPath();
+            astCtx.moveTo(parentPos.x, parentPos.y);
+            astCtx.lineTo(x, y);
+            astCtx.strokeStyle = 'rgba(156, 163, 175, 0.7)';
+            astCtx.lineWidth = 2;
+            astCtx.stroke();
+        }
+
+        // Draw node
+        astCtx.beginPath();
+        astCtx.arc(x, y, nodeRadius, 0, 2 * Math.PI);
+        astCtx.fillStyle = highlight ? 'rgba(59, 130, 246, 0.8)' : 'rgba(55, 65, 81, 1)';
+        astCtx.strokeStyle = highlight ? '#3b82f6' : '#9ca3af';
+        astCtx.lineWidth = 2;
+        astCtx.fill();
+        astCtx.stroke();
+
+        // Draw text
+        astCtx.fillStyle = '#e5e7eb';
+        astCtx.font = 'bold 16px Inter';
+        astCtx.textAlign = 'center';
+        astCtx.textBaseline = 'middle';
+        astCtx.fillText(text, x, y);
+
+        nodePositions.set(node, { x, y });
+
+        if (node.children) {
+            const y_child = y + 80;
+            if (node.children.length === 1) {
+                drawNode(node.children[0], x, y_child, xOffset / 2, {x, y});
+            } else if (node.children.length === 2) {
+                drawNode(node.children[0], x - xOffset, y_child, xOffset / 2, {x, y});
+                drawNode(node.children[1], x + xOffset, y_child, xOffset / 2, {x, y});
+            }
+        }
+    }
+
+    function highlightASTNode(targetNode) {
+        astCtx.clearRect(0, 0, dom.astCanvas.width, dom.astCanvas.height);
+        function redraw(node, x, y, xOffset, parentPos) {
+            const isTarget = (node === targetNode);
+            drawNode(node, x, y, xOffset, parentPos, isTarget);
+             if (node.children) {
+                const y_child = y + 80;
+                if (node.children.length === 1) {
+                    redraw(node.children[0], x, y_child, xOffset / 2, {x, y});
+                } else if (node.children.length === 2) {
+                    redraw(node.children[0], x - xOffset, y_child, xOffset / 2, {x, y});
+                    redraw(node.children[1], x + xOffset, y_child, xOffset / 2, {x, y});
+                }
+            }
+        }
+        redraw(ast, dom.astCanvas.clientWidth / 2, 40, dom.astCanvas.clientWidth / 4, null);
+    }
+
+    // --- Simulation Logic ---
+    const stepActions = [
+        // Step 0: Intro
+        () => {
+            dom.step0.classList.add('active');
+            dom.simulationView.classList.add('hidden');
+            dom.simulationView.classList.remove('flex');
+            dom.quizView.classList.add('hidden');
+            dom.resetBtn.classList.add('hidden');
+        },
+        // Step 1: Show simulation view
+        () => {
+            dom.step0.classList.remove('active');
+            dom.simulationView.classList.remove('hidden');
+            dom.simulationView.classList.add('flex');
+            initSimulationView();
+            showPopup(
+                "Let's Begin: The Input",
+                "<p>The Code Generator receives an intermediate representation of the code, often an <strong>Abstract Syntax Tree (AST)</strong>, from the previous compilation stage (Semantic Analysis).</p><p class='mt-2'>Our goal is to convert this tree into a sequence of low-level instructions.</p>"
+            );
+        },
+        // Step 2: Explain traversal
+        () => {
+            showPopup(
+                "Post-Order Traversal",
+                "<p>The generator typically traverses the AST using a <strong>post-order traversal</strong> (Left, Right, Root). This means we process the children (operands) before the parent (operator).</p><p class='mt-2'>We'll start at the deepest, leftmost part of the tree: the variable 'a'.</p>"
+            );
+        },
+        // Step 3: Process 'a'
+        () => {
+            runAnimationSequence([
+                () => highlightElement(dom.highLevelCode.line1),
+                () => highlightASTNode(ast.children[0].children[0].children[0]),
+                () => showPopup("Instruction Selection: LOAD", "To use the value of 'a', we need to load it from memory into a CPU register. We select the `LOAD` instruction."),
+                () => updateRegister('R0', 'a (10)'),
+                () => appendAssemblyCode("LOAD R0, a  ; Load value of 'a' into Register 0"),
+            ]);
+        },
+        // Step 4: Process 'b'
+        () => {
+            runAnimationSequence([
+                () => highlightElement(dom.highLevelCode.line2),
+                () => highlightASTNode(ast.children[0].children[0].children[1]),
+                () => showPopup("Loading the Next Operand", "Next, we process the right child of the '+' node, which is 'b'. We load it into another available register, R1."),
+                () => updateRegister('R1', 'b (20)'),
+                () => appendAssemblyCode("LOAD R1, b  ; Load value of 'b' into Register 1"),
+            ]);
+        },
+        // Step 5: Process '+'
+        () => {
+            runAnimationSequence([
+                () => highlightASTNode(ast.children[0].children[0]),
+                () => showPopup("Generating the ADD instruction", "Now that both children ('a' and 'b') are in registers, we can process the '+' operator. We'll generate an `ADD` instruction. The result will be stored back in one of the registers, overwriting the previous value."),
+                () => updateRegister('R0', '30'),
+                () => appendAssemblyCode("ADD R0, R0, R1 ; Add R1 to R0, store in R0"),
+            ]);
+        },
+        // Step 6: Process '2'
+        () => {
+            runAnimationSequence([
+                () => highlightASTNode(ast.children[0].children[1]),
+                () => showPopup("Handling Constants", "The next operand is the constant '2'. Instead of loading from memory, we can use an 'immediate' value directly in the instruction. We'll load it into a new register, R2."),
+                () => updateRegister('R2', '2'),
+                () => appendAssemblyCode("LOADI R2, 2  ; Load immediate value 2 into R2"),
+            ]);
+        },
+        // Step 7: Process '*'
+        () => {
+            runAnimationSequence([
+                () => highlightASTNode(ast.children[0]),
+                () => showPopup("Generating the MUL instruction", "With the result of the addition in R0 and the constant 2 in R2, we can perform the multiplication. The result is stored in R0."),
+                () => updateRegister('R0', '60'),
+                () => appendAssemblyCode("MUL R0, R0, R2 ; Multiply R0 by R2, store in R0"),
+            ]);
+        },
+        // Step 8: Process '='
+        () => {
+            runAnimationSequence([
+                () => highlightElement(dom.highLevelCode.line3),
+                () => highlightASTNode(ast),
+                () => showPopup("Storing the Final Result", "Finally, we process the root of the tree, the assignment operator. We need to store the final result from R0 back into the memory location for the variable 'result'."),
+                () => appendAssemblyCode("STORE result, R0 ; Store value from R0 into 'result'"),
+            ]);
+        },
+        // Step 9: Final Code
+        () => {
+            showPopup(
+                "Code Generation Complete!",
+                "<p>The final sequence of assembly instructions is the <strong>object program</strong>. This program is functionally equivalent to the original high-level code.</p><p class='mt-2'>This code can now be passed to a <strong>linker</strong> to be combined with other object files and libraries to create a final executable program.</p>"
+            );
+        },
+        // Step 10: Start Quiz
+        () => {
+            dom.simulationView.classList.add('hidden');
+            dom.simulationView.classList.remove('flex');
+            dom.quizView.classList.remove('hidden');
+            dom.quizView.classList.add('flex');
+            dom.resetBtn.classList.remove('hidden');
+            displayQuizQuestion();
+        }
+    ];
+
+    // --- Quiz Data & Logic ---
+    const quizQuestions = [
+        {
+            type: 'mcq',
+            question: "What is the primary input to the code generation phase?",
+            options: [
+                "The original source code file.",
+                "An intermediate representation (e.g., AST).",
+                "The final executable program.",
+                "A list of syntax errors."
+            ],
+            answer: 1
+        },
+        {
+            type: 'mcq',
+            question: "The output of the code generator is called the...",
+            options: [
+                "Source Program",
+                "Target Program / Object Program",
+                "Lexical Analysis",
+                "Abstract Syntax Tree"
+            ],
+            answer: 1
+        },
+        {
+            type: 'drag-drop',
+            question: "Drag the assembly instructions to match the high-level code: `x = y + 5`",
+            statements: [
+                { text: "1. Get value of 'y'", answer: "LOAD R0, y" },
+                { text: "2. Add the constant 5", answer: "ADDI R0, R0, 5" },
+                { text: "3. Store in 'x'", answer: "STORE x, R0" }
+            ],
+            options: ["STORE x, R0", "LOAD R0, y", "ADDI R0, R0, 5"]
+        },
+        {
+            type: 'short-answer',
+            question: "What is the name of the process that decides which variables or temporary values are kept in CPU registers to speed up access?",
+            answer: "register allocation"
+        }
+    ];
+
+    function displayQuizQuestion() {
+        if (currentState.quizQuestion >= quizQuestions.length) {
+            showFinalScore();
+            return;
+        }
+
+        const q = quizQuestions[currentState.quizQuestion];
+        let html = `<div class="glassmorphism p-6 w-full max-w-2xl">
+            <p class="text-gray-400 mb-2">Question ${currentState.quizQuestion + 1} of ${quizQuestions.length}</p>
+            <h3 class="text-xl font-bold mb-6">${q.question}</h3>`;
+
+        if (q.type === 'mcq') {
+            html += `<div id="quiz-options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">`;
+            q.options.forEach((opt, index) => {
+                html += `<button data-index="${index}" class="quiz-option text-left p-4 bg-gray-700 border border-gray-600 rounded-lg hover:bg-gray-600 hover:border-blue-500">${opt}</button>`;
+            });
+            html += `</div>`;
+        } else if (q.type === 'drag-drop') {
+            html += `<div class="flex flex-col md:flex-row gap-8">
+                <div class="flex-1 space-y-4">
+                    ${q.statements.map((s, i) => `
+                        <div class="flex items-center gap-4">
+                            <span class="text-gray-400">${s.text}</span>
+                            <div class="drop-zone flex-1 p-3 bg-gray-800 border-2 border-gray-600 rounded-lg h-12" data-answer="${s.answer}"></div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="flex-1 md:border-l border-gray-600 md:pl-8">
+                    <p class="font-semibold mb-2 text-blue-300">Instructions:</p>
+                    <div id="draggable-options" class="space-y-2">
+                        ${shuffleArray(q.options).map(opt => `
+                            <div class="draggable p-3 bg-blue-600 rounded-lg" draggable="true">${opt}</div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+            <button id="check-drag-drop" class="btn mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Check Answer</button>`;
+        } else if (q.type === 'short-answer') {
+            html += `<div>
+                <input type="text" id="short-answer-input" class="w-full p-3 bg-gray-800 border-2 border-gray-600 rounded-lg focus:outline-none focus:border-blue-500" placeholder="Your answer here...">
+                <button id="check-short-answer" class="btn mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Submit Answer</button>
+                <div id="mark-scheme" class="hidden mt-4 p-3 bg-gray-800 border border-gray-600 rounded-lg">
+                    <p class="font-bold text-green-400">Correct Answer:</p>
+                    <p>${q.answer}</p>
+                    <p class="mt-2 text-sm text-gray-400">This process is crucial for optimization, as accessing registers is much faster than accessing main memory.</p>
+                </div>
+            </div>`;
+        }
+        
+        html += `<div id="feedback" class="mt-4 text-center font-bold"></div></div>`;
+        dom.quizView.innerHTML = html;
+        addQuizEventListeners();
+    }
+    
+    function showFinalScore() {
+        let message = '';
+        const percentage = (currentState.quizScore / quizQuestions.length) * 100;
+        if (percentage === 100) {
+            message = "Perfect Score! You've mastered the concepts of code generation.";
+        } else if (percentage >= 75) {
+            message = "Excellent work! You have a strong understanding of this topic.";
+        } else if (percentage >= 50) {
+            message = "Good effort. Review the simulation again to solidify the key concepts.";
+        } else {
+            message = "Keep trying! The compilation process is complex. Try the simulation again.";
+        }
+        
+        dom.quizView.innerHTML = `
+            <div class="glassmorphism p-8 text-center">
+                <h2 class="text-3xl font-bold text-blue-400 mb-4">Quiz Complete!</h2>
+                <p class="text-xl mb-2">Your Score: <strong class="text-green-400">${currentState.quizScore} / ${quizQuestions.length}</strong></p>
+                <p class="text-lg text-gray-300 mb-6">${message}</p>
+                <button id="restart-quiz-btn" class="btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg">
+                    Restart Simulation
+                </button>
+            </div>
+        `;
+        dom.quizView.querySelector('#restart-quiz-btn').addEventListener('click', resetSimulation);
+    }
+    
+    function addQuizEventListeners() {
+        const q = quizQuestions[currentState.quizQuestion];
+        if (q.type === 'mcq') {
+            const container = dom.quizView.querySelector('#quiz-options-container');
+            container.addEventListener('click', handleMCQAnswer);
+        } else if (q.type === 'drag-drop') {
+            setupDragAndDrop();
+            document.getElementById('check-drag-drop').addEventListener('click', checkDragDropAnswer);
+        } else if (q.type === 'short-answer') {
+            document.getElementById('check-short-answer').addEventListener('click', checkShortAnswer);
+        }
+    }
+
+    function handleMCQAnswer(e) {
+        if (!e.target.matches('.quiz-option')) return;
+        const selectedIndex = parseInt(e.target.dataset.index);
+        const correctIndex = quizQuestions[currentState.quizQuestion].answer;
+        const options = dom.quizView.querySelectorAll('.quiz-option');
+        
+        // Disable further clicks
+        dom.quizView.querySelector('#quiz-options-container').removeEventListener('click', handleMCQAnswer);
+
+        if (selectedIndex === correctIndex) {
+            e.target.classList.add('correct');
+            dom.quizView.querySelector('#feedback').textContent = "Correct!";
+            dom.quizView.querySelector('#feedback').style.color = 'var(--success-color)';
+            currentState.quizScore++;
+        } else {
+            e.target.classList.add('incorrect');
+            options[correctIndex].classList.add('correct');
+            dom.quizView.querySelector('#feedback').textContent = "Not quite.";
+            dom.quizView.querySelector('#feedback').style.color = 'var(--error-color)';
+        }
+        
+        setTimeout(() => {
+            currentState.quizQuestion++;
+            displayQuizQuestion();
+        }, 2000);
+    }
+
+    function setupDragAndDrop() {
+        const draggables = document.querySelectorAll('.draggable');
+        const dropZones = document.querySelectorAll('.drop-zone');
+        let draggedItem = null;
+
+        // --- Mouse Events ---
+        draggables.forEach(draggable => {
+            draggable.addEventListener('dragstart', (e) => {
+                draggedItem = e.target;
+                draggedItem.classList.add('dragging');
+            });
+
+            draggable.addEventListener('dragend', (e) => {
+                draggedItem.classList.remove('dragging');
+                draggedItem = null;
+            });
+        });
+
+        dropZones.forEach(zone => {
+            zone.addEventListener('dragover', e => {
+                e.preventDefault();
+                zone.classList.add('over');
+            });
+            zone.addEventListener('dragleave', e => {
+                zone.classList.remove('over');
+            });
+            zone.addEventListener('drop', e => {
+                e.preventDefault();
+                zone.classList.remove('over');
+                if (zone.children.length === 0) {
+                    zone.appendChild(draggedItem);
+                }
+            });
+        });
+        
+        // --- Touch Events ---
+        let touchDraggedItem = null;
+
+        draggables.forEach(draggable => {
+            draggable.addEventListener('touchstart', (e) => {
+                touchDraggedItem = e.target;
+                touchDraggedItem.classList.add('dragging');
+            }, { passive: true });
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!touchDraggedItem) return;
+            e.preventDefault(); // Prevent scrolling while dragging
+
+            const touch = e.touches[0];
+            const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+            
+            dropZones.forEach(zone => {
+                if(zone === elementUnderTouch || zone.contains(elementUnderTouch)) {
+                    zone.classList.add('over');
+                } else {
+                    zone.classList.remove('over');
+                }
+            });
+        }, { passive: false });
+
+        document.addEventListener('touchend', (e) => {
+            if (!touchDraggedItem) return;
+            
+            const touch = e.changedTouches[0];
+            const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+            
+            let droppedOnZone = false;
+            dropZones.forEach(zone => {
+                zone.classList.remove('over');
+                if((zone === elementUnderTouch || zone.contains(elementUnderTouch)) && zone.children.length === 0) {
+                    zone.appendChild(touchDraggedItem);
+                    droppedOnZone = true;
+                }
+            });
+
+            touchDraggedItem.classList.remove('dragging');
+            touchDraggedItem = null;
+        });
+
+
+        // --- Common Logic (Return to start) ---
+        const optionsContainer = document.getElementById('draggable-options');
+        dropZones.forEach(zone => {
+            zone.addEventListener('click', (e) => {
+                if(e.target.classList.contains('draggable')) {
+                    optionsContainer.appendChild(e.target);
+                }
+            });
+        });
+    }
+
+    function checkDragDropAnswer() {
+        const dropZones = document.querySelectorAll('.drop-zone');
+        let correctCount = 0;
+        dropZones.forEach(zone => {
+            const droppedEl = zone.querySelector('.draggable');
+            if (droppedEl && droppedEl.textContent === zone.dataset.answer) {
+                zone.style.borderColor = 'var(--success-color)';
+                correctCount++;
+            } else {
+                zone.style.borderColor = 'var(--error-color)';
+            }
+        });
+
+        const feedback = dom.quizView.querySelector('#feedback');
+        if (correctCount === dropZones.length) {
+            feedback.textContent = "Perfect! All instructions are in the correct place.";
+            feedback.style.color = 'var(--success-color)';
+            currentState.quizScore++;
+        } else {
+            feedback.textContent = `You got ${correctCount} out of ${dropZones.length} correct. Try again!`;
+            feedback.style.color = 'var(--error-color)';
+        }
+        
+        if(correctCount === dropZones.length) {
+            setTimeout(() => {
+                currentState.quizQuestion++;
+                displayQuizQuestion();
+            }, 2000);
+        }
+    }
+    
+    function checkShortAnswer() {
+        const input = document.getElementById('short-answer-input');
+        const answer = input.value.trim().toLowerCase();
+        const markScheme = document.getElementById('mark-scheme');
+        const feedback = dom.quizView.querySelector('#feedback');
+        
+        if (answer.length < 5) { // Require a reasonable attempt
+            feedback.textContent = "Please provide a more detailed answer.";
+            feedback.style.color = 'var(--error-color)';
+            return;
+        }
+
+        const correctAnswer = quizQuestions[currentState.quizQuestion].answer;
+        markScheme.classList.remove('hidden');
+        document.getElementById('check-short-answer').disabled = true;
+        input.disabled = true;
+
+        if (answer.includes(correctAnswer)) {
+            feedback.textContent = "Correct!";
+            feedback.style.color = 'var(--success-color)';
+            currentState.quizScore++;
+        } else {
+            feedback.textContent = "That's not the term we're looking for. See the correct answer below.";
+            feedback.style.color = 'var(--error-color)';
+        }
+        
+        setTimeout(() => {
+            currentState.quizQuestion++;
+            displayQuizQuestion();
+        }, 4000);
+    }
+
+
+    // --- UI & Event Handlers ---
+    function updateNavButtons() {
+        dom.prevBtn.disabled = currentState.step === 0 || currentState.isAnimating;
+        dom.nextBtn.disabled = currentState.step >= currentState.maxSteps || currentState.isAnimating;
+        dom.prevBtn.style.opacity = dom.prevBtn.disabled ? 0.5 : 1;
+        dom.nextBtn.style.opacity = dom.nextBtn.disabled ? 0.5 : 1;
+    }
+
+    function handleNav(direction) {
+        if (currentState.isAnimating || currentState.isPopupOpen) return;
+        const newStep = currentState.step + direction;
+        if (newStep >= 0 && newStep <= currentState.maxSteps) {
+            currentState.step = newStep;
+            stepActions[currentState.step]();
+            updateNavButtons();
+        }
+    }
+    
+    function showPopup(title, content) {
+        if (currentState.isPopupOpen) return;
+        currentState.isPopupOpen = true;
+        dom.popup.title.innerHTML = title;
+        dom.popup.content.innerHTML = content;
+        dom.popup.modal.classList.remove('hidden');
+    }
+
+    function closePopup() {
+        currentState.isPopupOpen = false;
+        dom.popup.modal.classList.add('hidden');
+        if(currentState.isAnimating) {
+             // Resume animation if it was paused by popup
+            currentState.isAnimating = false;
+            runAnimationSequence(window.animationQueue, window.animationIndex);
+        }
+    }
+    
+    function highlightElement(el) {
+        if (!el) return;
+        el.classList.add('highlight');
+        setTimeout(() => el.classList.remove('highlight'), 2000);
+    }
+    
+    function runAnimationSequence(sequence, startIndex = 0) {
+        if (currentState.isAnimating && startIndex === 0) return;
+
+        currentState.isAnimating = true;
+        updateNavButtons();
+        
+        window.animationQueue = sequence;
+        window.animationIndex = startIndex;
+
+        function nextInSequence() {
+            if (window.animationIndex >= sequence.length) {
+                currentState.isAnimating = false;
+                updateNavButtons();
+                return;
+            }
+            
+            if (currentState.isPopupOpen) {
+                // Pause animation if a popup is open
+                return;
+            }
+
+            const action = sequence[window.animationIndex];
+            action();
+            window.animationIndex++;
+            
+            // The popup action itself will pause the sequence.
+            // Other actions can have a small delay.
+            if (!currentState.isPopupOpen) {
+                setTimeout(nextInSequence, 1000);
+            }
+        }
+        
+        nextInSequence();
+    }
+
+    function initSimulationView() {
+        // Clear previous state
+        dom.assemblyCode.textContent = '; Code will be generated here...';
+        dom.registers.innerHTML = '';
+        registerNames.forEach(name => {
+            dom.registers.innerHTML += `
+                <div class="flex items-center gap-2 bg-gray-800 p-2 rounded-md">
+                    <span class="font-mono font-bold text-blue-400">${name}:</span>
+                    <span id="reg-${name}" class="font-mono text-sm">empty</span>
+                </div>
+            `;
+        });
+        drawAST();
+        Object.values(dom.highLevelCode).forEach(el => el.classList.remove('highlight'));
+    }
+    
+    function updateRegister(regName, value) {
+        const regEl = document.getElementById(`reg-${regName}`);
+        if(regEl) {
+            regEl.textContent = value;
+            highlightElement(regEl.parentElement);
+        }
+    }
+    
+    function appendAssemblyCode(line) {
+        const currentCode = dom.assemblyCode.textContent;
+        if (currentCode === '; Code will be generated here...') {
+            dom.assemblyCode.textContent = line;
+        } else {
+            dom.assemblyCode.textContent += `\n${line}`;
+        }
+        highlightElement(dom.assemblyCode);
+    }
+
+    function resetSimulation() {
+        currentState.step = 0;
+        currentState.quizScore = 0;
+        currentState.quizQuestion = 0;
+        stepActions[0]();
+        updateNavButtons();
+    }
+    
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    // --- Initial Setup ---
+    dom.nextBtn.addEventListener('click', () => handleNav(1));
+    dom.prevBtn.addEventListener('click', () => handleNav(-1));
+    dom.resetBtn.addEventListener('click', resetSimulation);
+    dom.popup.closeBtn.addEventListener('click', closePopup);
+
+    document.addEventListener('keydown', (e) => {
+        // Do not navigate if user is typing in an input
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+        if (e.key === 'ArrowRight') {
+            handleNav(1);
+        } else if (e.key === 'ArrowLeft') {
+            handleNav(-1);
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (currentState.step > 0 && currentState.step < 10) {
+            drawAST();
+        }
+    }, false);
+
+    // Initialize
+    stepActions[0]();
+    updateNavButtons();
+});
+</script>
+</body>
+</html>
